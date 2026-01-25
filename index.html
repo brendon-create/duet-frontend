@@ -3315,16 +3315,23 @@
         // 呼叫後端生成設計理念
         async function generateDesignStory(combination, fontReason) {
             try {
-                // 從 localStorage 取得初次諮詢的 conversationSummary
-                const aiDataStr = localStorage.getItem('duet_ai_consultation');
+                // 優先使用付款後從後端載入的 AI 諮詢資料
+                let aiData = window.aiConsultationData;
+                
+                // 如果沒有（例如測試模式），才從 localStorage 取得
+                if (!aiData) {
+                    const aiDataStr = localStorage.getItem('duet_ai_consultation');
+                    if (aiDataStr) {
+                        aiData = JSON.parse(aiDataStr);
+                    }
+                }
 
-                if (!aiDataStr) {
+                if (!aiData) {
                     console.warn('⚠️ 無 AI 諮詢資料，使用預設格式');
                     return `這個 DUET 作品交織了 ${combination.letters.letter1} 和 ${combination.letters.letter2} 兩個字母。\n\n${fontReason}`;
                 }
 
-                const aiData = JSON.parse(aiDataStr);
-                const conversationSummary = aiData.conversationSummary || {};
+                const conversationSummary = aiData.conversationSummary || aiData;
 
                 const response = await fetch(`${BACKEND_URL}/api/design-story`, {
                     method: 'POST',
