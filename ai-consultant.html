@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET 設計諮詢 | BCAG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #1a1a1a;
+            --dark-light: #2d2d2d;
+            --text-light: #ccc;
+            --text-lighter: #888;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Noto Sans TC", sans-serif;
+            background: linear-gradient(135deg, #0a0e14 0%, #1a1a1a 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Welcome Modal */
+        #welcome-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-light) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 24px;
+            padding: 50px 60px;
+            max-width: 650px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.5s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .brand-logo {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 36px;
+            color: var(--gold);
+            font-weight: 300;
+            letter-spacing: 8px;
+        }
+
+        .modal-content h2 {
+            color: var(--gold);
+            text-align: center;
+            font-size: 28px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+        }
+
+        .intro-text {
+            text-align: center;
+            line-height: 2;
+            color: var(--text-light);
+            margin-bottom: 35px;
+            font-size: 16px;
+        }
+
+        .benefits {
+            list-style: none;
+            margin-bottom: 40px;
+        }
+
+        .benefits li {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px 0;
+            font-size: 15px;
+            color: #ddd;
+            line-height: 1.6;
+        }
+
+        .benefits .icon {
+            font-size: 24px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--gold) 0%, #f4d03f 100%);
+            color: #000;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+        }
+
+        .text-btn {
+            background: transparent;
+            color: var(--text-lighter);
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .text-btn:hover {
+            color: #aaa;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: var(--gold);
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--text-lighter);
+            font-size: 14px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-bottom: 40px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), #f4d03f);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: var(--text-lighter);
+            font-size: 14px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            min-height: 500px;
+            max-height: 600px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: messageSlideIn 0.3s ease-out;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.assistant {
+            text-align: left;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.6;
+        }
+
+        .message.assistant .message-bubble {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: #fff;
+        }
+
+        .message.user .message-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .typing-indicator {
+            display: inline-flex;
+            gap: 5px;
+            padding: 15px 20px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--gold);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        /* Input Area */
+        .input-area {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            padding: 8px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-area input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .input-area input::placeholder {
+            color: var(--text-lighter);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--gold), #f4d03f);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #000;
+        }
+
+        /* Letter Selection */
+        .letter-selection {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .letter-input-group {
+            text-align: center;
+        }
+
+        .letter-input-group label {
+            display: block;
+            color: var(--gold);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .letter-input-group input {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            color: #fff;
+            font-size: 36px;
+            text-align: center;
+            text-transform: uppercase;
+            font-family: inherit;
+        }
+
+        .letter-input-group input:focus {
+            outline: none;
+            border-color: #f4d03f;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Completion Screen */
+        .completion-screen {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .completion-screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .completion-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .completion-screen h2 {
+            color: var(--gold);
+            font-size: 28px;
+            font-weight: 400;
+            margin-bottom: 15px;
+        }
+
+        .completion-screen p {
+            color: var(--text-light);
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .recommendations {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .recommendations h3 {
+            color: var(--gold);
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .font-recommendation {
+            margin-bottom: 25px;
+        }
+
+        .font-recommendation h4 {
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .font-preview {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 10px;
+        }
+
+        .font-preview .font-name {
+            font-size: 32px;
+            color: var(--gold);
+            margin-bottom: 5px;
+        }
+
+        .font-preview .font-label {
+            color: var(--text-lighter);
+            font-size: 14px;
+        }
+
+        .font-reason {
+            color: var(--text-light);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .continue-btn {
+            background: linear-gradient(135deg, var(--gold), #f4d03f);
+            color: #000;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .continue-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5);
+        }
+
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-lighter);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(212, 175, 55, 0.2);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Scrollbar */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(212, 175, 55, 0.3);
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(212, 175, 55, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <!-- Main Container -->
+    <div class="container" id="main-container">
+        <div class="header">
+            <h1>DUET 設計諮詢</h1>
+            <p>讓我們一起創造獨一無二的作品</p>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">準備開始...</div>
+        </div>
+
+        <div class="chat-container" id="chat-container">
+            <!-- Messages will be added here -->
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="輸入您的回答..."
+                onkeypress="if(event.key==='Enter') sendMessage()" />
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Completion Screen -->
+    <div class="completion-screen" id="completion-screen">
+        <div class="completion-icon">✨</div>
+        <h2>設計諮詢完成！</h2>
+        <p>根據您的分享，我們為您準備了專屬的字體推薦</p>
+
+        <div class="recommendations" id="recommendations">
+            <!-- Will be filled by JavaScript -->
+        </div>
+
+        <button class="continue-btn" onclick="continueToDesign()">
+            開始設計我的 DUET
+        </button>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
+
+        // State
+        let conversationHistory = [];
+        let currentTurn = 0;
+        let maxTurns = 15;
+        let selectedLetters = { letter1: '', letter2: '' };
+        let isWaitingForResponse = false;
+
+        // Start Design Journey
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeConversation();
+        });
+
+        // Skip to Manual Selection
+        function skipToManual() {
+            localStorage.setItem('duet_skip_ai', 'true');
+            window.location.href = '/duet';
+        }
+
+        // Initialize Conversation
+        async function initializeConversation() {
+            updateProgress(0);
+
+            // First message from AI
+            const welcomeMessage = "您好！我是 BCAG 的設計顧問。很高興能協助您設計專屬的 DUET 作品。\n\n首先，這件作品是要送給誰的呢？";
+
+            addMessage('assistant', welcomeMessage);
+            conversationHistory.push({
+                role: 'assistant',
+                content: welcomeMessage
+            });
+        }
+
+        // Add Message to Chat
+        function addMessage(role, content) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.textContent = content;
+
+            messageDiv.appendChild(bubbleDiv);
+            chatContainer.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Show Typing Indicator
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chat-container');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant';
+            typingDiv.id = 'typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Remove Typing Indicator
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        // Send Message
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+
+            if (!message || isWaitingForResponse) return;
+
+            // Add user message
+            addMessage('user', message);
+            conversationHistory.push({
+                role: 'user',
+                content: message
+            });
+
+            // Clear input
+            input.value = '';
+
+            // Update state
+            isWaitingForResponse = true;
+            document.getElementById('send-btn').disabled = true;
+            currentTurn++;
+            updateProgress(currentTurn);
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                // Call AI API
+                const response = await fetch(`${BACKEND_URL}/api/ai-consultant`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: conversationHistory
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                removeTypingIndicator();
+
+                if (data.completed) {
+                    // Conversation completed
+                    showCompletionScreen(data);
+                } else {
+                    // 檢查 message 中是否包含 JSON（備用檢測）
+                    const message = data.message;
+                    
+                    // 嘗試從 message 中提取 JSON
+                    const jsonMatch = message.match(/```json\s*([\s\S]*?)```|({[\s\S]*"recommendations"[\s\S]*})/);
+                    
+                    if (jsonMatch) {
+                        try {
+                            const jsonStr = jsonMatch[1] || jsonMatch[2];
+                            const parsed = JSON.parse(jsonStr.trim());
+                            
+                            if (parsed.recommendations && parsed.letters) {
+                                console.log('✅ 前端檢測到 JSON，觸發完成畫面');
+                                showCompletionScreen(parsed);
+                                return;
+                            }
+                        } catch (e) {
+                            console.log('⚠️ JSON 解析失敗，繼續顯示對話');
+                        }
+                    }
+                    
+                    // Continue conversation
+                    addMessage('assistant', message);
+                    conversationHistory.push({
+                        role: 'assistant',
+                        content: message
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                removeTypingIndicator();
+                addMessage('assistant', '抱歉，發生了一些問題。請重新整理頁面再試一次。');
+            } finally {
+                isWaitingForResponse = false;
+                document.getElementById('send-btn').disabled = false;
+            }
+        }
+
+        // Update Progress
+        function updateProgress(turn) {
+            const progress = Math.min((turn / 12) * 100, 100);
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+            document.getElementById('progress-text').textContent = `進度：${Math.round(progress)}%`;
+        }
+
+        // Show Completion Screen
+        function showCompletionScreen(data) {
+            console.log('📊 收到完整推薦資料:', data);
+            
+            // 載入推薦字體
+            const allFonts = [
+                ...data.recommendations.letter1.map(r => r.font),
+                ...data.recommendations.letter2.map(r => r.font)
+            ];
+            const uniqueFonts = [...new Set(allFonts)];
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?${uniqueFonts.map(f => `family=${f.replace(/ /g, '+')}`).join('&')}&display=swap`;
+            document.head.appendChild(link);
+
+            // 提取推薦字體（新格式：每個字母 3 個）
+            const letter1Fonts = data.recommendations.letter1.map(r => r.font);
+            const letter2Fonts = data.recommendations.letter2.map(r => r.font);
+
+            // Store AI consultation data
+            const aiData = {
+                selectedLetters: {
+                    letter1: data.letters.letter1,
+                    letter2: data.letters.letter2
+                },
+                recommendedFonts: {
+                    letter1: letter1Fonts,  // ['Cormorant Garamond', 'Playfair Display', 'EB Garamond']
+                    letter2: letter2Fonts   // ['Jost', 'Poppins', 'Outfit']
+                },
+                conversationHistory: conversationHistory,
+                summary: data.summary,
+                fullRecommendations: data.recommendations  // 保存完整推薦（包含理由）
+            };
+
+            localStorage.setItem('duet_ai_consultation', JSON.stringify(aiData));
+            console.log('✅ AI 諮詢資料已儲存:', aiData);
+
+            // Hide chat container
+            document.getElementById('main-container').style.display = 'none';
+
+            // Show completion screen
+            const completionScreen = document.getElementById('completion-screen');
+            completionScreen.classList.add('active');
+
+            // Display recommendations
+            const recommendationsDiv = document.getElementById('recommendations');
+            const letter1 = data.letters.letter1;
+            const letter2 = data.letters.letter2;
+
+            recommendationsDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h3 style="color: #d4af37; font-size: 24px; margin-bottom: 15px;">為您精選的字體組合</h3>
+            <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+                ${data.summary || '根據您的分享，我為您挑選了以下字體'}
+            </p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
+            <!-- Letter 1 推薦 -->
+            <div>
+                <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
+                    字母 "${letter1}" 的推薦
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    ${data.recommendations.letter1.map((rec, index) => `
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; 
+                                    border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                                <div style="font-size: 48px; font-family: '${rec.font}', serif; color: #fff;">
+                                    ${letter1}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="color: #d4af37; font-size: 16px; font-weight: 600; margin-bottom: 5px;">
+                                        ${index === 0 ? '⭐ ' : ''}${rec.font}
+                                    </div>
+                                    <div style="color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.5;">
+                                        ${rec.reason}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <!-- Letter 2 推薦 -->
+            <div>
+                <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
+                    字母 "${letter2}" 的推薦
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    ${data.recommendations.letter2.map((rec, index) => `
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; 
+                                    border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                                <div style="font-size: 48px; font-family: '${rec.font}', serif; color: #fff;">
+                                    ${letter2}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="color: #d4af37; font-size: 16px; font-weight: 600; margin-bottom: 5px;">
+                                        ${index === 0 ? '⭐ ' : ''}${rec.font}
+                                    </div>
+                                    <div style="color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.5;">
+                                        ${rec.reason}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+        }
+
+        // Continue to Design
+        function continueToDesign() {
+            // 修正：確保回到主程式時是全螢幕跳轉，不被嵌在框架內
+            window.top.location.href = 'https://brendonchen.com/duet';
+        }
+    </script>
+</body>
+
+</html>
