@@ -769,8 +769,15 @@
                 
                 console.log('✅ 所有設計理念已確認:', finalConcepts);
                 
-                // 清除 localStorage
+                // 清除所有 DUET 相關的 localStorage
                 localStorage.removeItem('duet_design_concepts');
+                localStorage.removeItem('duet_ai_consultation');
+                localStorage.removeItem('duet_skip_ai');
+                localStorage.removeItem('duet_payment_success');
+                localStorage.removeItem('duet_payment_timestamp');
+                localStorage.removeItem('duet_payment_failed');
+                
+                console.log('🧹 已清空 localStorage，準備下次訂單');
                 
                 // 顯示完成訊息
                 showCompletionMessage();
