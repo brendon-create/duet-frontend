@@ -1284,35 +1284,30 @@
 
         // ========== 付款成功檢測 (新增) ==========
         /**
-         * 檢測付款成功狀態（從 localStorage 讀取）
-         * Wix 會過濾所有 URL 參數和 Hash，所以改用 localStorage
+         * 檢測付款成功狀態（從 URL 參數讀取）
+         * GitHub Pages 不會過濾 URL 參數，可以安全使用
          */
         function checkPaymentStatusImmediate() {
             console.log('🔍 立即檢測付款狀態...');
             
-            // 檢查 localStorage 中的付款成功標記
-            const paymentSuccessOrderId = localStorage.getItem('duet_payment_success');
-            const paymentFailedOrderId = localStorage.getItem('duet_payment_failed');
-            const paymentTimestamp = localStorage.getItem('duet_payment_timestamp');
+            // 從 URL 參數讀取
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentSuccess = urlParams.get('payment_success') === 'true';
+            const paymentFailed = urlParams.get('payment_failed') === 'true';
+            const orderId = urlParams.get('order');
             
-            console.log('🔍 localStorage 檢測:', { 
-                paymentSuccessOrderId, 
-                paymentFailedOrderId,
-                paymentTimestamp 
+            console.log('🔍 URL 參數檢測:', { 
+                paymentSuccess, 
+                paymentFailed,
+                orderId 
             });
             
-            // 檢查時間戳，避免舊的標記被重複使用（5分鐘內有效）
-            const now = Date.now();
-            const timestamp = parseInt(paymentTimestamp || '0');
-            const isRecent = (now - timestamp) < 5 * 60 * 1000; // 5分鐘
-            
             // 付款成功
-            if (paymentSuccessOrderId && isRecent) {
-                console.log(`✅ 檢測到付款成功: ${paymentSuccessOrderId}`);
+            if (paymentSuccess && orderId) {
+                console.log(`✅ 檢測到付款成功: ${orderId}`);
                 
-                // 清除標記（避免重複觸發）
-                localStorage.removeItem('duet_payment_success');
-                localStorage.removeItem('duet_payment_timestamp');
+                // 清除 URL 參數（避免重複觸發）
+                window.history.replaceState({}, document.title, window.location.pathname);
                 
                 // 設定標記：付款成功後進入設計理念流程
                 window.isPostPayment = true;
@@ -1326,13 +1321,13 @@
                     
                     // 先從後端載入訂單資料，恢復購物車
                     try {
-                        const response = await fetch(`${BACKEND_URL}/api/order/${paymentSuccessOrderId}`);
+                        const response = await fetch(`${BACKEND_URL}/api/order/${orderId}`);
                         const data = await response.json();
                         
                         if (data.success && data.items) {
                             // 恢復購物車資料和 AI 諮詢資料
                             window.cartItems = data.items;
-                            window.lastOrderId = paymentSuccessOrderId;
+                            window.lastOrderId = orderId;
                             window.aiConsultationData = data.ai_data;  // ✅ 儲存 AI 諮詢資料
                             
                             console.log('✅ 訂單資料已載入');
@@ -1359,13 +1354,8 @@
             }
             
             // 檢測付款失敗
-            if (paymentFailedOrderId && isRecent) {
+            if (paymentFailed && orderId) {
                 console.log('❌ 檢測到付款失敗');
-                
-                // 清除標記
-                localStorage.removeItem('duet_payment_failed');
-                localStorage.removeItem('duet_payment_timestamp');
-                
                 showNotification('付款失敗，請重新嘗試', 'error');
                 return true;
             }
