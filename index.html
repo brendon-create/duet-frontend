@@ -964,14 +964,22 @@
         </div>
     </div>
 
-    <!-- 佩戴模擬預覽 -->
-    <div id="wearing-preview-container" style="
-    position: relative;
-    z-index: 10;
-    clear: both;
-    width: 100%;
-    margin-top: 40px;
-"></div>
+    <!-- 佩戴模擬預覽 (已修正定位：對齊右側 Slot 下方) -->
+    <div id="wearing-preview-container" class="glass" style="
+    position: absolute;
+    top: 260px;
+    right: 40px;
+    width: 420px;
+    height: 300px;
+    z-index: 100;
+    border-radius: 20px;
+    overflow: hidden;
+">
+        <div
+            style="position: absolute; top: 15px; left: 15px; font-size: 12px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase;">
+            Wearing Simulation
+        </div>
+    </div>
 
     <!-- Font Selector Modal -->
     <div id="font-selector-modal">
