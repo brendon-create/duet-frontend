@@ -268,43 +268,79 @@
         }
 
         setupEventListeners() {
-            // Model 切換
+            // Model 切換（使用 addEventListener 確保事件正確綁定）
             const prevBtn = document.getElementById('prev-model');
             const nextBtn = document.getElementById('next-model');
-            if (prevBtn) prevBtn.onclick = () => this.prevModel();
-            if (nextBtn) nextBtn.onclick = () => this.nextModel();
+            if (prevBtn) {
+                prevBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.prevModel();
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.nextModel();
+                });
+            }
 
-            // 縮放
+            // 縮放（使用 addEventListener 確保事件正確綁定）
             const zoomInBtn = document.getElementById('zoom-in');
             const zoomOutBtn = document.getElementById('zoom-out');
-            if (zoomInBtn) zoomInBtn.onclick = () => this.zoomIn();
-            if (zoomOutBtn) zoomOutBtn.onclick = () => this.zoomOut();
+            if (zoomInBtn) {
+                console.log('✅ 找到 zoom-in 按鈕');
+                zoomInBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔍 zoom-in 按鈕被點擊');
+                    this.zoomIn();
+                });
+            } else {
+                console.error('❌ 找不到 zoom-in 按鈕');
+            }
+            if (zoomOutBtn) {
+                console.log('✅ 找到 zoom-out 按鈕');
+                zoomOutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔍 zoom-out 按鈕被點擊');
+                    this.zoomOut();
+                });
+            } else {
+                console.error('❌ 找不到 zoom-out 按鈕');
+            }
 
-            // 上傳
+            // 上傳（使用 addEventListener 確保事件正確綁定）
             const uploadBtn = document.getElementById('upload-btn');
             const uploadInput = document.getElementById('photo-upload');
             if (uploadBtn && uploadInput) {
-                uploadBtn.onclick = () => uploadInput.click();
-                uploadInput.onchange = (e) => this.handleUpload(e);
+                uploadBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadInput.click();
+                });
+                uploadInput.addEventListener('change', (e) => this.handleUpload(e));
             }
 
-            // 按鈕 hover 效果
+            // 按鈕 hover 效果（使用 addEventListener 避免覆蓋 onclick）
             const buttons = this.container.querySelectorAll('button');
             buttons.forEach(btn => {
-                btn.onmouseover = () => {
+                btn.addEventListener('mouseover', () => {
                     if (btn.id === 'upload-btn') {
                         btn.style.background = 'rgba(212,175,55,0.1)';
                     } else {
                         btn.style.background = 'rgba(255,255,255,0.1)';
                     }
-                };
-                btn.onmouseout = () => {
+                });
+                btn.addEventListener('mouseout', () => {
                     if (btn.id === 'upload-btn') {
                         btn.style.background = 'rgba(212,175,55,0.05)';
                     } else {
                         btn.style.background = 'rgba(255,255,255,0.05)';
                     }
-                };
+                });
             });
         }
 
@@ -323,16 +359,28 @@
         }
 
         zoomIn() {
+            console.log('🔍 zoomIn 被點擊，當前縮放級別:', this.currentZoom, '/', CONFIG.zoomLevels.length - 1);
             if (this.currentZoom < CONFIG.zoomLevels.length - 1) {
                 this.currentZoom++;
-                this.render();
+                console.log('✅ 縮放級別增加到:', this.currentZoom, '倍率:', CONFIG.zoomLevels[this.currentZoom]);
+                this.render().catch(error => {
+                    console.error('❌ 渲染錯誤:', error);
+                });
+            } else {
+                console.log('⚠️ 已達到最大縮放級別');
             }
         }
 
         zoomOut() {
+            console.log('🔍 zoomOut 被點擊，當前縮放級別:', this.currentZoom);
             if (this.currentZoom > 0) {
                 this.currentZoom--;
-                this.render();
+                console.log('✅ 縮放級別減少到:', this.currentZoom, '倍率:', CONFIG.zoomLevels[this.currentZoom]);
+                this.render().catch(error => {
+                    console.error('❌ 渲染錯誤:', error);
+                });
+            } else {
+                console.log('⚠️ 已達到最小縮放級別');
             }
         }
 
