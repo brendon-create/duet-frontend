@@ -502,7 +502,8 @@
         }
 
         .confirm-container {
-            position: absolute;  /* 改為 absolute，相對於 font-selector-modal */
+            position: absolute;
+            /* 改為 absolute，相對於 font-selector-modal */
             bottom: 30px;
             right: 30px;
             z-index: 2002;
@@ -963,6 +964,9 @@
         </div>
     </div>
 
+    <!-- 佩戴模擬預覽 -->
+    <div id="wearing-preview-container"></div>
+
     <!-- Font Selector Modal -->
     <div id="font-selector-modal">
         <button class="close-modal-btn" id="close-modal">×</button>
@@ -1225,7 +1229,7 @@
         // ========== 通用通知函數 (新增) ==========
         // 後端 URL 配置（提前定義，供付款檢測使用）
         const BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
-        
+
         /**
          * 顯示通知訊息
          * @param {string} message - 通知訊息
@@ -1233,7 +1237,7 @@
          */
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            
+
             // 根據類型設定顏色
             const colors = {
                 'success': {
@@ -1249,9 +1253,9 @@
                     shadow: 'rgba(212, 175, 55, 0.4)'
                 }
             };
-            
+
             const color = colors[type] || colors.info;
-            
+
             notification.style.cssText = `
                 position: fixed;
                 top: 80px;
@@ -1270,10 +1274,10 @@
             `;
             notification.textContent = message;
             document.body.appendChild(notification);
-            
+
             // 淡入效果
             setTimeout(() => notification.style.opacity = '1', 10);
-            
+
             // 3 秒後淡出並移除
             setTimeout(() => {
                 notification.style.opacity = '0';
@@ -1289,51 +1293,51 @@
          */
         function checkPaymentStatusImmediate() {
             console.log('🔍 立即檢測付款狀態...');
-            
+
             // 從 URL 參數讀取
             const urlParams = new URLSearchParams(window.location.search);
             const paymentSuccess = urlParams.get('payment_success') === 'true';
             const paymentFailed = urlParams.get('payment_failed') === 'true';
             const orderId = urlParams.get('order');
-            
-            console.log('🔍 URL 參數檢測:', { 
-                paymentSuccess, 
+
+            console.log('🔍 URL 參數檢測:', {
+                paymentSuccess,
                 paymentFailed,
-                orderId 
+                orderId
             });
-            
+
             // 付款成功
             if (paymentSuccess && orderId) {
                 console.log(`✅ 檢測到付款成功: ${orderId}`);
-                
+
                 // 清除 URL 參數（避免重複觸發）
                 window.history.replaceState({}, document.title, window.location.pathname);
-                
+
                 // 設定標記：付款成功後進入設計理念流程
                 window.isPostPayment = true;
-                
+
                 // 顯示付款成功通知
                 showNotification('付款成功！正在為您準備設計諮詢...', 'success');
-                
+
                 // 延遲 1.5 秒後載入訂單並觸發設計理念收集流程
                 setTimeout(async () => {
                     console.log('🎨 準備設計理念收集流程');
-                    
+
                     // 先從後端載入訂單資料，恢復購物車
                     try {
                         const response = await fetch(`${BACKEND_URL}/api/order/${orderId}`);
                         const data = await response.json();
-                        
+
                         if (data.success && data.items) {
                             // 恢復購物車資料和 AI 諮詢資料
                             window.cartItems = data.items;
                             window.lastOrderId = orderId;
                             window.aiConsultationData = data.ai_data;  // ✅ 儲存 AI 諮詢資料
-                            
+
                             console.log('✅ 訂單資料已載入');
                             console.log('  - 商品數量:', data.items.length);
                             console.log('  - AI 諮詢:', data.ai_data ? '有' : '無');
-                            
+
                             // 觸發設計理念收集
                             if (typeof collectDesignStories === 'function') {
                                 collectDesignStories();
@@ -1349,17 +1353,17 @@
                         showNotification('載入訂單資料失敗', 'error');
                     }
                 }, 1500);
-                
+
                 return true;
             }
-            
+
             // 檢測付款失敗
             if (paymentFailed && orderId) {
                 console.log('❌ 檢測到付款失敗');
                 showNotification('付款失敗，請重新嘗試', 'error');
                 return true;
             }
-            
+
             console.log('ℹ️ 非付款成功頁面');
             return false;
         }
@@ -1371,7 +1375,7 @@
             try {
                 const response = await fetch(`${BACKEND_URL}/api/order/status/${orderId}`);
                 const data = await response.json();
-                
+
                 if (data.success && data.paid) {
                     console.log('✅ 後端確認訂單已付款');
                     showNotification('付款成功！正在為您準備設計諮詢...', 'success');
@@ -1399,7 +1403,7 @@
                 console.log('ℹ️ 付款成功流程，跳過 AI 推薦載入');
                 return;
             }
-            
+
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
 
             if (aiDataStr) {
@@ -3154,13 +3158,13 @@
         async function collectDesignStories() {
             // 使用 window.cartItems（付款後從後端載入的）
             const items = window.cartItems || [];
-            
+
             if (items.length === 0) {
                 console.error('❌ 沒有購物車資料');
                 showNotification('無法載入訂單商品', 'error');
                 return;
             }
-            
+
             const combinations = getUniqueDesignCombinations(items);
 
             console.log(`📝 需要收集 ${combinations.length} 個設計理念`);
@@ -3317,7 +3321,7 @@
             try {
                 // 優先使用付款後從後端載入的 AI 諮詢資料
                 let aiData = window.aiConsultationData;
-                
+
                 // 如果沒有（例如測試模式），才從 localStorage 取得
                 if (!aiData) {
                     const aiDataStr = localStorage.getItem('duet_ai_consultation');
@@ -3402,7 +3406,7 @@
                 // 取得 AI 諮詢資料（如果有的話）
                 const aiDataStr = localStorage.getItem('duet_ai_consultation');
                 const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
-                
+
                 // 呼叫後端初始化支付
                 console.log('🌐 呼叫後端 API:', `${BACKEND_URL}/api/checkout`);
                 const response = await fetch(`${BACKEND_URL}/api/checkout`, {
@@ -3873,6 +3877,8 @@
         }
         loadGoogleFonts();
     </script>
+    <!-- 佩戴模擬預覽模組 -->
+    <script src="wearing-preview.js"></script>
 </body>
 
 </html>
