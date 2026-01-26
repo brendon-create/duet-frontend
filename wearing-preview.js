@@ -16,10 +16,14 @@
         ],
         chain: { color: '#D4AF37', width: 2 },
         // 三種視角模式：半身照、鎖骨周邊、墜飾特寫
+        // zoom: 圖片裁剪縮放倍數（越大越近）
+        // focusY: 聚焦點的 Y 位置（0-1，0.5 是中間）
+        // pendantSize: 墜飾顯示大小（像素）
+        // chainOffset: 鏈條從鎖骨的偏移量
         viewModes: [
-            { name: '半身照', zoom: 0.4, focusY: 0.5, pendantSize: 60 },
-            { name: '鎖骨周邊', zoom: 0.7, focusY: 0.25, pendantSize: 80 },
-            { name: '墜飾特寫', zoom: 1.2, focusY: 0.35, pendantSize: 120 }
+            { name: '半身照', zoom: 0.5, focusY: 0.45, pendantSize: 50, chainOffset: 0.12 },
+            { name: '鎖骨周邊', zoom: 0.8, focusY: 0.28, pendantSize: 70, chainOffset: 0.10 },
+            { name: '墜飾特寫', zoom: 1.5, focusY: 0.35, pendantSize: 100, chainOffset: 0.08 }
         ]
     };
 
@@ -438,34 +442,63 @@
         }
 
         async captureJewelry() {
-            // 嘗試從多個可能的 renderer 獲取
-            if (window.renderer) {
+            console.log('📸 開始捕獲飾品圖片...');
+            
+            // 優先從 window.renderer 獲取
+            if (window.renderer && window.renderer.domElement) {
                 try {
+                    console.log('✅ 找到 window.renderer，嘗試捕獲...');
+                    // 確保 renderer 已經渲染過
+                    if (window.scene && window.camera && window.renderer) {
+                        window.renderer.render(window.scene, window.camera);
+                    }
+                    
                     const dataURL = window.renderer.domElement.toDataURL('image/png');
-                    return new Promise(resolve => {
-                        const img = new Image();
-                        img.onload = () => resolve(img);
-                        img.src = dataURL;
-                    });
+                    if (dataURL && dataURL !== 'data:,') {
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                console.log('✅ 成功從 window.renderer 捕獲飾品，尺寸:', img.width, 'x', img.height);
+                                resolve(img);
+                            };
+                            img.onerror = () => {
+                                console.warn('⚠️ 圖片載入失敗');
+                                reject(null);
+                            };
+                            img.src = dataURL;
+                        });
+                    }
                 } catch (e) {
                     console.warn('⚠️ 無法從 window.renderer 獲取圖片:', e);
                 }
             }
             
-            // 嘗試從 viewport canvas 獲取
+            // 備用：從 viewport canvas 獲取
             const viewportCanvas = document.querySelector('#viewport canvas');
             if (viewportCanvas) {
                 try {
-                    return new Promise(resolve => {
-                        const img = new Image();
-                        img.onload = () => resolve(img);
-                        img.src = viewportCanvas.toDataURL('image/png');
-                    });
+                    console.log('✅ 找到 viewport canvas，嘗試捕獲...');
+                    const dataURL = viewportCanvas.toDataURL('image/png');
+                    if (dataURL && dataURL !== 'data:,') {
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                console.log('✅ 成功從 viewport canvas 捕獲飾品，尺寸:', img.width, 'x', img.height);
+                                resolve(img);
+                            };
+                            img.onerror = () => {
+                                console.warn('⚠️ 圖片載入失敗');
+                                reject(null);
+                            };
+                            img.src = dataURL;
+                        });
+                    }
                 } catch (e) {
                     console.warn('⚠️ 無法從 viewport canvas 獲取圖片:', e);
                 }
             }
             
+            console.warn('⚠️ 無法找到可用的 renderer 或 canvas');
             return null;
         }
 
@@ -501,8 +534,9 @@
             const zoom = viewMode.zoom;
             const focusY = viewMode.focusY;
             const pendantSize = viewMode.pendantSize;
+            const chainOffset = viewMode.chainOffset;
 
-            // 繪製背景（根據視角模式調整顯示區域）
+            // 繪製背景（根據視角模式調整顯示區域和裁剪）
             const bg = this.uploadedImage || this.modelImages[this.currentModelIndex];
             if (bg) {
                 const imgAspect = bg.width / bg.height;
@@ -510,22 +544,23 @@
                 
                 let drawW, drawH, drawX, drawY;
                 
-                // 根據視角模式計算裁剪區域
-                const cropY = focusY - 0.5 / zoom; // 裁剪起始位置
-                const cropHeight = 1 / zoom; // 裁剪高度
+                // 計算裁剪區域：以 focusY 為中心，zoom 控制裁剪範圍
+                // zoom 越小，顯示範圍越大（半身照）
+                // zoom 越大，顯示範圍越小（特寫）
                 
                 if (imgAspect > canvasAspect) {
                     // 圖片較寬，以高度為準
-                    drawH = h * zoom;
+                    drawH = h / zoom; // 放大圖片以實現裁剪效果
                     drawW = drawH * imgAspect;
                     drawX = (w - drawW) / 2;
-                    drawY = h * (0.5 - focusY) * zoom;
+                    // 根據 focusY 調整垂直位置：focusY=0.5 是中間，0.3 是上方
+                    drawY = h * (0.5 - focusY) - (drawH * (0.5 - focusY));
                 } else {
                     // 圖片較高，以寬度為準
-                    drawW = w * zoom;
+                    drawW = w / zoom;
                     drawH = drawW / imgAspect;
                     drawX = (w - drawW) / 2;
-                    drawY = h * (0.5 - focusY) * zoom;
+                    drawY = h * (0.5 - focusY) - (drawH * (0.5 - focusY));
                 }
                 
                 // 繪製裁剪後的圖片
@@ -540,40 +575,86 @@
             // 繪製珠寶
             const pendant = await this.captureJewelry();
             if (pendant) {
+                console.log('✅ 開始繪製墜飾和鏈條...');
                 const model = this.uploadedImage ? 
-                    { clavicleY: this.uploadedClavicleY || 0.22, pendantY: (this.uploadedClavicleY || 0.22) + 0.15 } :
+                    { clavicleY: this.uploadedClavicleY || 0.22 } :
                     CONFIG.models[this.currentModelIndex];
                 
-                // 根據視角模式計算墜飾位置
+                // 獲取鎖骨位置
                 const clavicleY = this.getClaviclePosition();
-                const pendantY = h * (clavicleY + 0.15 * (1 / zoom)); // 根據縮放調整位置
+                
+                // 計算墜飾位置：鎖骨下方，根據視角模式調整距離
+                // 在半身照中，墜飾應該在鎖骨下方較遠
+                // 在特寫中，墜飾應該在鎖骨下方較近
+                const pendantY = h * (clavicleY + chainOffset);
                 const centerX = w * 0.5;
 
-                // 繪製項鍊線條（從鎖骨位置開始）
+                // 繪製項鍊線條（從鎖骨位置連接到墜飾）
                 const chainStartY = h * clavicleY;
+                const chainEndY = pendantY;
+                
                 ctx.strokeStyle = CONFIG.chain.color;
-                ctx.lineWidth = CONFIG.chain.width * (1 / zoom); // 根據縮放調整線條粗細
+                ctx.lineWidth = CONFIG.chain.width * Math.max(1, 1.5 / zoom); // 根據縮放調整線條粗細
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
                 ctx.beginPath();
                 
-                // 根據視角模式調整鏈條形狀
-                if (this.currentViewMode === 2) {
-                    // 特寫模式：更緊湊的鏈條
-                    ctx.moveTo(centerX - (20 * zoom), chainStartY);
-                    ctx.quadraticCurveTo(centerX, pendantY - (10 * zoom), centerX + (20 * zoom), chainStartY);
+                // 根據視角模式調整鏈條形狀和寬度
+                const chainWidth = 25 * (1 / zoom); // 鏈條寬度根據縮放調整
+                
+                if (this.currentViewMode === 0) {
+                    // 半身照：較寬的鏈條，自然下垂
+                    ctx.moveTo(centerX - chainWidth, chainStartY);
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.3,
+                        centerX, chainEndY
+                    );
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.7,
+                        centerX + chainWidth, chainStartY
+                    );
+                } else if (this.currentViewMode === 1) {
+                    // 鎖骨周邊：標準鏈條
+                    ctx.moveTo(centerX - chainWidth * 0.8, chainStartY);
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.4,
+                        centerX, chainEndY
+                    );
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.6,
+                        centerX + chainWidth * 0.8, chainStartY
+                    );
                 } else {
-                    // 半身照和鎖骨模式：標準鏈條
-                    ctx.moveTo(centerX - (30 * zoom), chainStartY);
-                    ctx.quadraticCurveTo(centerX, pendantY - (5 * zoom), centerX + (30 * zoom), chainStartY);
+                    // 特寫：緊湊的鏈條
+                    ctx.moveTo(centerX - chainWidth * 0.6, chainStartY);
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.5,
+                        centerX, chainEndY
+                    );
+                    ctx.quadraticCurveTo(
+                        centerX, chainStartY + (chainEndY - chainStartY) * 0.5,
+                        centerX + chainWidth * 0.6, chainStartY
+                    );
                 }
                 ctx.stroke();
 
-                // 繪製 3D 飾品截圖
-                const size = pendantSize * zoom;
+                // 繪製 3D 飾品截圖（根據視角模式調整大小）
+                // 在半身照中，墜飾應該較小
+                // 在特寫中，墜飾應該較大
+                const size = pendantSize * (1 / zoom);
+                const actualSize = Math.max(30, Math.min(150, size)); // 限制大小範圍
+                
+                console.log('📐 墜飾位置:', { x: centerX, y: pendantY, size: actualSize, viewMode: viewMode.name });
+                
                 ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                ctx.shadowBlur = 10 * zoom;
-                ctx.drawImage(pendant, centerX - size / 2, pendantY, size, size);
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 8 * (1 / zoom);
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.drawImage(pendant, centerX - actualSize / 2, pendantY, actualSize, actualSize);
                 ctx.restore();
+                
+                console.log('✅ 墜飾和鏈條繪製完成');
             } else {
                 console.log('ℹ️ 尚未有飾品可顯示，等待商品生成...');
             }
