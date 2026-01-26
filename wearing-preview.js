@@ -272,19 +272,40 @@
 
             this.canvas = document.getElementById('wearing-canvas');
             this.ctx = this.canvas.getContext('2d');
-            this.resize();
+            
+            // 延遲 resize 以確保容器尺寸已正確計算
+            setTimeout(() => {
+                this.resize();
+            }, 100);
         }
 
         resize() {
-            if (!this.canvas || !this.container) return;
-            const rect = this.container.getBoundingClientRect();
-            const previewArea = this.canvas.parentElement;
-            if (previewArea) {
-                const areaRect = previewArea.getBoundingClientRect();
-                this.canvas.width = areaRect.width;
-                this.canvas.height = areaRect.height;
+            if (!this.canvas || !this.container) {
+                console.warn('⚠️ Canvas 或 Container 未準備好，無法 resize');
+                return;
             }
-            this.render();
+            
+            const previewArea = this.canvas.parentElement;
+            if (!previewArea) {
+                console.warn('⚠️ 找不到 previewArea，無法 resize');
+                return;
+            }
+            
+            const areaRect = previewArea.getBoundingClientRect();
+            if (areaRect.width === 0 || areaRect.height === 0) {
+                console.warn('⚠️ PreviewArea 尺寸為 0，延遲 resize');
+                setTimeout(() => this.resize(), 200);
+                return;
+            }
+            
+            this.canvas.width = areaRect.width;
+            this.canvas.height = areaRect.height;
+            console.log('✅ Canvas 尺寸設置為:', areaRect.width, 'x', areaRect.height);
+            
+            // 只在尺寸有效時才渲染
+            if (this.canvas.width > 0 && this.canvas.height > 0) {
+                this.render();
+            }
         }
 
         setupEventListeners() {
