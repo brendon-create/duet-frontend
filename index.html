@@ -1661,6 +1661,8 @@
             renderer.toneMappingExposure = 1.2;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.getElementById('viewport').appendChild(renderer.domElement);
+            // 暴露 renderer 給全局，供佩戴模擬使用
+            window.renderer = renderer;
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -1999,6 +2001,14 @@
             createBail();
             updateVolumeWeight();
             console.log('Generation complete!'); // Debug
+            
+            // 更新佩戴模擬預覽
+            if (window.updateWearingPreview) {
+                setTimeout(() => {
+                    console.log('🔄 商品生成完成，更新佩戴模擬');
+                    window.updateWearingPreview();
+                }, 300);
+            }
         }
 
         // 從 opentype.js 字體轉換為 Three.js typeface 格式
