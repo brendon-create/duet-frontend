@@ -1661,8 +1661,10 @@
             renderer.toneMappingExposure = 1.2;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.getElementById('viewport').appendChild(renderer.domElement);
-            // 暴露 renderer 給全局，供佩戴模擬使用
+            // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
             window.renderer = renderer;
+            window.scene = scene;
+            window.camera = camera;
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -1699,6 +1701,8 @@
             const material = getMaterial('gold18k', 'glossy');
             mainMesh = new THREE.Mesh(geometry, material);
             scene.add(mainMesh);
+            // 暴露 mainMesh 給全局，供佩戴模擬使用
+            window.mainMesh = mainMesh;
             document.getElementById('loader').style.display = 'none';
         }
 
