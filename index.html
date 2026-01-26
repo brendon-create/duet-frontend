@@ -964,19 +964,22 @@
         </div>
     </div>
 
-    <!-- 佩戴模擬預覽 (已修正定位：對齊右側 Slot 下方) -->
+    <!-- 佩戴模擬預覽 (修正版：寬度縮小、高度增加) -->
     <div id="wearing-preview-container" class="glass" style="
     position: absolute;
     top: 260px;
     right: 40px;
-    width: 420px;
-    height: 300px;
+    width: 200px; /* 寬度減半，對齊單個 Slot */
+    height: 380px; /* 增加高度以完整顯示模特兒 */
     z-index: 100;
     border-radius: 20px;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 ">
         <div
-            style="position: absolute; top: 15px; left: 15px; font-size: 12px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase;">
+            style="position: absolute; top: 12px; left: 12px; font-size: 10px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; z-index: 5;">
             Wearing Simulation
         </div>
     </div>
