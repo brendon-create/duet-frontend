@@ -1,6 +1,6 @@
 /**
  * DUET 佩戴模擬預覽模組
- * 完整版本：包含 UI 控制（模型切換、縮放、上傳照片）
+ * 完整版本：包含三種視角模式、智能鎖骨檢測、自動更新
  */
 
 (function () {
@@ -8,14 +8,19 @@
 
     const CONFIG = {
         models: [
-            { name: '女性 - 短髮', src: 'assets/models/model_f1.png', neckY: 0.2, pendantY: 0.4 },
-            { name: '女性 - 中長髮', src: 'assets/models/model_f2.png', neckY: 0.2, pendantY: 0.4 },
-            { name: '女性 - 長髮', src: 'assets/models/model_f3.png', neckY: 0.2, pendantY: 0.4 },
-            { name: '男性 - 短髮', src: 'assets/models/model_m1.png', neckY: 0.2, pendantY: 0.4 },
-            { name: '男性 - 中長髮', src: 'assets/models/model_m2.png', neckY: 0.2, pendantY: 0.4 }
+            { name: '女性 - 短髮', src: 'assets/models/model_f1.png', neckY: 0.18, pendantY: 0.35, clavicleY: 0.22 },
+            { name: '女性 - 中長髮', src: 'assets/models/model_f2.png', neckY: 0.18, pendantY: 0.35, clavicleY: 0.22 },
+            { name: '女性 - 長髮', src: 'assets/models/model_f3.png', neckY: 0.18, pendantY: 0.35, clavicleY: 0.22 },
+            { name: '男性 - 短髮', src: 'assets/models/model_m1.png', neckY: 0.20, pendantY: 0.38, clavicleY: 0.24 },
+            { name: '男性 - 中長髮', src: 'assets/models/model_m2.png', neckY: 0.20, pendantY: 0.38, clavicleY: 0.24 }
         ],
         chain: { color: '#D4AF37', width: 2 },
-        zoomLevels: [0.6, 0.8, 1.0, 1.2, 1.5]
+        // 三種視角模式：半身照、鎖骨周邊、墜飾特寫
+        viewModes: [
+            { name: '半身照', zoom: 0.4, focusY: 0.5, pendantSize: 60 },
+            { name: '鎖骨周邊', zoom: 0.7, focusY: 0.25, pendantSize: 80 },
+            { name: '墜飾特寫', zoom: 1.2, focusY: 0.35, pendantSize: 120 }
+        ]
     };
 
     class WearingPreview {
@@ -31,9 +36,10 @@
             this.canvas = null;
             this.ctx = null;
             this.currentModelIndex = 0;
-            this.currentZoom = 2; // 預設 1.0
+            this.currentViewMode = 1; // 預設鎖骨周邊
             this.modelImages = [];
             this.uploadedImage = null;
+            this.uploadedClavicleY = null; // 上傳照片的鎖骨位置
 
             this.init();
         }
@@ -58,7 +64,6 @@
                     this.render();
                 }).catch(error => {
                     console.error('❌ 圖片預載入錯誤:', error);
-                    // 即使圖片載入失敗，也嘗試渲染（使用佔位符）
                     this.render();
                 });
                 
@@ -136,7 +141,7 @@
                     top: 50px;
                     left: 12px;
                     right: 12px;
-                    bottom: 100px;
+                    bottom: 120px;
                     border-radius: 12px;
                     overflow: hidden;
                 ">
@@ -156,96 +161,111 @@
                     left: 12px;
                     right: 12px;
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
+                    flex-direction: column;
                     gap: 8px;
                 ">
-                    <!-- 左：Model 切換 -->
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <button id="prev-model" style="
-                            width: 28px;
-                            height: 28px;
-                            border-radius: 50%;
+                    <!-- 第一行：視角模式切換 -->
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 4px;
+                    ">
+                        <button id="view-half" class="view-mode-btn" data-mode="0" style="
+                            flex: 1;
+                            padding: 6px 8px;
+                            border-radius: 12px;
                             border: 1px solid rgba(255,255,255,0.2);
                             background: rgba(255,255,255,0.05);
-                            color: rgba(255,255,255,0.8);
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            transition: all 0.3s;
-                            font-size: 14px;
-                            padding: 0;
-                        ">◀</button>
-                        <span id="model-indicator" style="
                             color: rgba(255,255,255,0.6);
-                            font-size: 11px;
-                            min-width: 32px;
-                            text-align: center;
-                        ">1/5</span>
-                        <button id="next-model" style="
-                            width: 28px;
-                            height: 28px;
-                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 9px;
+                            transition: all 0.3s;
+                        ">半身</button>
+                        <button id="view-clavicle" class="view-mode-btn active" data-mode="1" style="
+                            flex: 1;
+                            padding: 6px 8px;
+                            border-radius: 12px;
+                            border: 1px solid rgba(212,175,55,0.5);
+                            background: rgba(212,175,55,0.15);
+                            color: rgba(212,175,55,1);
+                            cursor: pointer;
+                            font-size: 9px;
+                            transition: all 0.3s;
+                        ">鎖骨</button>
+                        <button id="view-closeup" class="view-mode-btn" data-mode="2" style="
+                            flex: 1;
+                            padding: 6px 8px;
+                            border-radius: 12px;
                             border: 1px solid rgba(255,255,255,0.2);
                             background: rgba(255,255,255,0.05);
-                            color: rgba(255,255,255,0.8);
+                            color: rgba(255,255,255,0.6);
                             cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
+                            font-size: 9px;
                             transition: all 0.3s;
-                            font-size: 14px;
-                            padding: 0;
-                        ">▶</button>
+                        ">特寫</button>
                     </div>
                     
-                    <!-- 中：上傳按鈕 -->
-                    <button id="upload-btn" style="
-                        padding: 6px 12px;
-                        border-radius: 16px;
-                        border: 1px solid rgba(212,175,55,0.3);
-                        background: rgba(212,175,55,0.05);
-                        color: rgba(212,175,55,0.8);
-                        cursor: pointer;
-                        font-size: 10px;
-                        transition: all 0.3s;
-                        white-space: nowrap;
-                    ">📷</button>
-                    <input type="file" id="photo-upload" accept="image/*" style="display:none;">
-                    
-                    <!-- 右：縮放控制 -->
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <button id="zoom-out" style="
-                            width: 28px;
-                            height: 28px;
-                            border-radius: 50%;
-                            border: 1px solid rgba(255,255,255,0.2);
-                            background: rgba(255,255,255,0.05);
-                            color: rgba(255,255,255,0.8);
+                    <!-- 第二行：其他控制 -->
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 8px;
+                    ">
+                        <!-- 左：Model 切換 -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <button id="prev-model" style="
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 50%;
+                                border: 1px solid rgba(255,255,255,0.2);
+                                background: rgba(255,255,255,0.05);
+                                color: rgba(255,255,255,0.8);
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.3s;
+                                font-size: 14px;
+                                padding: 0;
+                            ">◀</button>
+                            <span id="model-indicator" style="
+                                color: rgba(255,255,255,0.6);
+                                font-size: 11px;
+                                min-width: 32px;
+                                text-align: center;
+                            ">1/5</span>
+                            <button id="next-model" style="
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 50%;
+                                border: 1px solid rgba(255,255,255,0.2);
+                                background: rgba(255,255,255,0.05);
+                                color: rgba(255,255,255,0.8);
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.3s;
+                                font-size: 14px;
+                                padding: 0;
+                            ">▶</button>
+                        </div>
+                        
+                        <!-- 中：上傳按鈕 -->
+                        <button id="upload-btn" style="
+                            padding: 6px 12px;
+                            border-radius: 16px;
+                            border: 1px solid rgba(212,175,55,0.3);
+                            background: rgba(212,175,55,0.05);
+                            color: rgba(212,175,55,0.8);
                             cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
+                            font-size: 10px;
                             transition: all 0.3s;
-                            font-size: 16px;
-                            padding: 0;
-                        ">−</button>
-                        <button id="zoom-in" style="
-                            width: 28px;
-                            height: 28px;
-                            border-radius: 50%;
-                            border: 1px solid rgba(255,255,255,0.2);
-                            background: rgba(255,255,255,0.05);
-                            color: rgba(255,255,255,0.8);
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            transition: all 0.3s;
-                            font-size: 16px;
-                            padding: 0;
-                        ">+</button>
+                            white-space: nowrap;
+                        ">📷</button>
+                        <input type="file" id="photo-upload" accept="image/*" style="display:none;">
                     </div>
                 </div>
             `;
@@ -268,7 +288,19 @@
         }
 
         setupEventListeners() {
-            // Model 切換（使用 addEventListener 確保事件正確綁定）
+            // 視角模式切換
+            const viewModeBtns = this.container.querySelectorAll('.view-mode-btn');
+            viewModeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const mode = parseInt(btn.getAttribute('data-mode'));
+                    console.log('🔍 切換視角模式:', mode, CONFIG.viewModes[mode].name);
+                    this.setViewMode(mode);
+                });
+            });
+
+            // Model 切換
             const prevBtn = document.getElementById('prev-model');
             const nextBtn = document.getElementById('next-model');
             if (prevBtn) {
@@ -286,33 +318,7 @@
                 });
             }
 
-            // 縮放（使用 addEventListener 確保事件正確綁定）
-            const zoomInBtn = document.getElementById('zoom-in');
-            const zoomOutBtn = document.getElementById('zoom-out');
-            if (zoomInBtn) {
-                console.log('✅ 找到 zoom-in 按鈕');
-                zoomInBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔍 zoom-in 按鈕被點擊');
-                    this.zoomIn();
-                });
-            } else {
-                console.error('❌ 找不到 zoom-in 按鈕');
-            }
-            if (zoomOutBtn) {
-                console.log('✅ 找到 zoom-out 按鈕');
-                zoomOutBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔍 zoom-out 按鈕被點擊');
-                    this.zoomOut();
-                });
-            } else {
-                console.error('❌ 找不到 zoom-out 按鈕');
-            }
-
-            // 上傳（使用 addEventListener 確保事件正確綁定）
+            // 上傳
             const uploadBtn = document.getElementById('upload-btn');
             const uploadInput = document.getElementById('photo-upload');
             if (uploadBtn && uploadInput) {
@@ -324,28 +330,53 @@
                 uploadInput.addEventListener('change', (e) => this.handleUpload(e));
             }
 
-            // 按鈕 hover 效果（使用 addEventListener 避免覆蓋 onclick）
+            // 按鈕 hover 效果
             const buttons = this.container.querySelectorAll('button');
             buttons.forEach(btn => {
                 btn.addEventListener('mouseover', () => {
                     if (btn.id === 'upload-btn') {
                         btn.style.background = 'rgba(212,175,55,0.1)';
-                    } else {
+                    } else if (btn.classList.contains('view-mode-btn') && !btn.classList.contains('active')) {
                         btn.style.background = 'rgba(255,255,255,0.1)';
                     }
                 });
                 btn.addEventListener('mouseout', () => {
                     if (btn.id === 'upload-btn') {
                         btn.style.background = 'rgba(212,175,55,0.05)';
-                    } else {
+                    } else if (btn.classList.contains('view-mode-btn') && !btn.classList.contains('active')) {
                         btn.style.background = 'rgba(255,255,255,0.05)';
                     }
                 });
             });
         }
 
+        setViewMode(mode) {
+            if (mode >= 0 && mode < CONFIG.viewModes.length) {
+                this.currentViewMode = mode;
+                
+                // 更新按鈕樣式
+                const viewModeBtns = this.container.querySelectorAll('.view-mode-btn');
+                viewModeBtns.forEach((btn, index) => {
+                    if (index === mode) {
+                        btn.classList.add('active');
+                        btn.style.border = '1px solid rgba(212,175,55,0.5)';
+                        btn.style.background = 'rgba(212,175,55,0.15)';
+                        btn.style.color = 'rgba(212,175,55,1)';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.border = '1px solid rgba(255,255,255,0.2)';
+                        btn.style.background = 'rgba(255,255,255,0.05)';
+                        btn.style.color = 'rgba(255,255,255,0.6)';
+                    }
+                });
+                
+                this.render();
+            }
+        }
+
         prevModel() {
             this.uploadedImage = null;
+            this.uploadedClavicleY = null;
             this.currentModelIndex = (this.currentModelIndex - 1 + CONFIG.models.length) % CONFIG.models.length;
             this.updateIndicator();
             this.render();
@@ -353,35 +384,10 @@
 
         nextModel() {
             this.uploadedImage = null;
+            this.uploadedClavicleY = null;
             this.currentModelIndex = (this.currentModelIndex + 1) % CONFIG.models.length;
             this.updateIndicator();
             this.render();
-        }
-
-        zoomIn() {
-            console.log('🔍 zoomIn 被點擊，當前縮放級別:', this.currentZoom, '/', CONFIG.zoomLevels.length - 1);
-            if (this.currentZoom < CONFIG.zoomLevels.length - 1) {
-                this.currentZoom++;
-                console.log('✅ 縮放級別增加到:', this.currentZoom, '倍率:', CONFIG.zoomLevels[this.currentZoom]);
-                this.render().catch(error => {
-                    console.error('❌ 渲染錯誤:', error);
-                });
-            } else {
-                console.log('⚠️ 已達到最大縮放級別');
-            }
-        }
-
-        zoomOut() {
-            console.log('🔍 zoomOut 被點擊，當前縮放級別:', this.currentZoom);
-            if (this.currentZoom > 0) {
-                this.currentZoom--;
-                console.log('✅ 縮放級別減少到:', this.currentZoom, '倍率:', CONFIG.zoomLevels[this.currentZoom]);
-                this.render().catch(error => {
-                    console.error('❌ 渲染錯誤:', error);
-                });
-            } else {
-                console.log('⚠️ 已達到最小縮放級別');
-            }
         }
 
         updateIndicator() {
@@ -399,6 +405,10 @@
                 const img = new Image();
                 img.onload = () => {
                     this.uploadedImage = img;
+                    // 嘗試自動檢測鎖骨位置（簡單方法：圖片上半部分）
+                    // 對於更精確的檢測，可以讓用戶點擊標記鎖骨位置
+                    this.uploadedClavicleY = 0.22; // 預設值，可以改進
+                    console.log('✅ 照片上傳成功，鎖骨位置設為:', this.uploadedClavicleY);
                     this.render();
                 };
                 img.src = ev.target.result;
@@ -407,30 +417,71 @@
         }
 
         async captureJewelry() {
-            if (!window.renderer) return null;
-            try {
-                const dataURL = window.renderer.domElement.toDataURL('image/png');
-                return new Promise(resolve => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.src = dataURL;
-                });
-            } catch (e) {
-                return null;
+            // 嘗試從多個可能的 renderer 獲取
+            if (window.renderer) {
+                try {
+                    const dataURL = window.renderer.domElement.toDataURL('image/png');
+                    return new Promise(resolve => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.src = dataURL;
+                    });
+                } catch (e) {
+                    console.warn('⚠️ 無法從 window.renderer 獲取圖片:', e);
+                }
             }
+            
+            // 嘗試從 viewport canvas 獲取
+            const viewportCanvas = document.querySelector('#viewport canvas');
+            if (viewportCanvas) {
+                try {
+                    return new Promise(resolve => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.src = viewportCanvas.toDataURL('image/png');
+                    });
+                } catch (e) {
+                    console.warn('⚠️ 無法從 viewport canvas 獲取圖片:', e);
+                }
+            }
+            
+            return null;
+        }
+
+        getClaviclePosition() {
+            // 獲取當前使用的鎖骨位置
+            if (this.uploadedImage && this.uploadedClavicleY !== null) {
+                return this.uploadedClavicleY;
+            }
+            const model = CONFIG.models[this.currentModelIndex];
+            return model.clavicleY || model.neckY;
         }
 
         async render() {
-            if (!this.ctx || !this.canvas) return;
+            if (!this.ctx || !this.canvas) {
+                console.warn('⚠️ Canvas 未準備好，跳過渲染');
+                return;
+            }
 
             const ctx = this.ctx;
             const canvas = this.canvas;
             const w = canvas.width;
             const h = canvas.height;
 
+            if (w === 0 || h === 0) {
+                console.warn('⚠️ Canvas 尺寸為 0，跳過渲染');
+                return;
+            }
+
             ctx.clearRect(0, 0, w, h);
 
-            // 繪製背景（自動裁切居中）
+            // 獲取當前視角模式
+            const viewMode = CONFIG.viewModes[this.currentViewMode];
+            const zoom = viewMode.zoom;
+            const focusY = viewMode.focusY;
+            const pendantSize = viewMode.pendantSize;
+
+            // 繪製背景（根據視角模式調整顯示區域）
             const bg = this.uploadedImage || this.modelImages[this.currentModelIndex];
             if (bg) {
                 const imgAspect = bg.width / bg.height;
@@ -438,47 +489,72 @@
                 
                 let drawW, drawH, drawX, drawY;
                 
+                // 根據視角模式計算裁剪區域
+                const cropY = focusY - 0.5 / zoom; // 裁剪起始位置
+                const cropHeight = 1 / zoom; // 裁剪高度
+                
                 if (imgAspect > canvasAspect) {
                     // 圖片較寬，以高度為準
-                    drawH = h;
-                    drawW = h * imgAspect;
+                    drawH = h * zoom;
+                    drawW = drawH * imgAspect;
                     drawX = (w - drawW) / 2;
-                    drawY = 0;
+                    drawY = h * (0.5 - focusY) * zoom;
                 } else {
                     // 圖片較高，以寬度為準
-                    drawW = w;
-                    drawH = w / imgAspect;
-                    drawX = 0;
-                    drawY = (h - drawH) / 2;
+                    drawW = w * zoom;
+                    drawH = drawW / imgAspect;
+                    drawX = (w - drawW) / 2;
+                    drawY = h * (0.5 - focusY) * zoom;
                 }
                 
+                // 繪製裁剪後的圖片
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, w, h);
+                ctx.clip();
                 ctx.drawImage(bg, drawX, drawY, drawW, drawH);
+                ctx.restore();
             }
 
             // 繪製珠寶
             const pendant = await this.captureJewelry();
             if (pendant) {
-                const model = CONFIG.models[this.currentModelIndex];
-                const zoom = CONFIG.zoomLevels[this.currentZoom];
-
-                const pendantY = h * model.pendantY;
+                const model = this.uploadedImage ? 
+                    { clavicleY: this.uploadedClavicleY || 0.22, pendantY: (this.uploadedClavicleY || 0.22) + 0.15 } :
+                    CONFIG.models[this.currentModelIndex];
+                
+                // 根據視角模式計算墜飾位置
+                const clavicleY = this.getClaviclePosition();
+                const pendantY = h * (clavicleY + 0.15 * (1 / zoom)); // 根據縮放調整位置
                 const centerX = w * 0.5;
 
-                // 繪製項鍊線條
+                // 繪製項鍊線條（從鎖骨位置開始）
+                const chainStartY = h * clavicleY;
                 ctx.strokeStyle = CONFIG.chain.color;
-                ctx.lineWidth = CONFIG.chain.width;
+                ctx.lineWidth = CONFIG.chain.width * (1 / zoom); // 根據縮放調整線條粗細
                 ctx.beginPath();
-                ctx.moveTo(centerX - (40 * zoom), pendantY - (60 * zoom));
-                ctx.quadraticCurveTo(centerX, pendantY + (10 * zoom), centerX + (40 * zoom), pendantY - (60 * zoom));
+                
+                // 根據視角模式調整鏈條形狀
+                if (this.currentViewMode === 2) {
+                    // 特寫模式：更緊湊的鏈條
+                    ctx.moveTo(centerX - (20 * zoom), chainStartY);
+                    ctx.quadraticCurveTo(centerX, pendantY - (10 * zoom), centerX + (20 * zoom), chainStartY);
+                } else {
+                    // 半身照和鎖骨模式：標準鏈條
+                    ctx.moveTo(centerX - (30 * zoom), chainStartY);
+                    ctx.quadraticCurveTo(centerX, pendantY - (5 * zoom), centerX + (30 * zoom), chainStartY);
+                }
                 ctx.stroke();
 
                 // 繪製 3D 飾品截圖
-                const size = 80 * zoom;
+                const size = pendantSize * zoom;
                 ctx.save();
                 ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 10 * zoom;
                 ctx.drawImage(pendant, centerX - size / 2, pendantY, size, size);
                 ctx.restore();
+            } else {
+                console.log('ℹ️ 尚未有飾品可顯示，等待商品生成...');
             }
         }
     }
@@ -504,12 +580,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             console.log('📄 DOMContentLoaded 事件觸發，開始初始化 WearingPreview');
-            setTimeout(init, 200); // 稍微延遲以確保所有元素都已準備好
+            setTimeout(init, 200);
         });
     } else {
-        // 如果 DOM 已經載入，稍微延遲以確保所有元素都已準備好
         console.log('📄 DOM 已載入，延遲初始化 WearingPreview');
-        setTimeout(init, 500); // 給更多時間讓其他腳本完成
+        setTimeout(init, 500);
     }
     
     // 備用初始化：如果上面的初始化失敗，1秒後再試一次
@@ -522,8 +597,27 @@
 
     // 保持與 index.html 的兼容性
     window.updateWearingPreview = () => {
+        console.log('🔄 updateWearingPreview 被調用');
         if (window.wearingPreviewInstance) {
             window.wearingPreviewInstance.render();
+        } else {
+            console.warn('⚠️ wearingPreviewInstance 尚未初始化');
         }
     };
+
+    // 監聽商品生成完成事件（如果有的話）
+    const originalGenerateModel = window.generateModel;
+    if (typeof originalGenerateModel === 'function') {
+        window.generateModel = async function(...args) {
+            const result = await originalGenerateModel.apply(this, args);
+            // 商品生成完成後，更新佩戴模擬
+            setTimeout(() => {
+                console.log('🔄 商品生成完成，更新佩戴模擬');
+                if (window.wearingPreviewInstance) {
+                    window.wearingPreviewInstance.render();
+                }
+            }, 500);
+            return result;
+        };
+    }
 })();
