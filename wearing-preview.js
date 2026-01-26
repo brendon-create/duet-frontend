@@ -550,7 +550,7 @@
 
             // 繪製背景（根據視角模式調整顯示區域和裁剪）
             const bg = this.uploadedImage || this.modelImages[this.currentModelIndex];
-            if (bg) {
+            if (bg && bg.width && bg.height) {
                 const imgAspect = bg.width / bg.height;
                 const canvasAspect = w / h;
                 
@@ -605,12 +605,21 @@
                 ctx.clip();
                 ctx.drawImage(bg, drawX, drawY, drawW, drawH);
                 ctx.restore();
+            } else {
+                console.log('ℹ️ 背景圖片尚未載入，等待中...');
             }
 
             // 繪製珠寶
             const pendant = await this.captureJewelry();
             if (pendant) {
                 console.log('✅ 開始繪製墜飾和鏈條...');
+                
+                // 確保背景圖片已載入（需要用於計算坐標）
+                if (!bg || !bg.width || !bg.height) {
+                    console.warn('⚠️ 背景圖片尚未載入，無法計算墜飾位置');
+                    return;
+                }
+                
                 const model = this.uploadedImage ? 
                     { clavicleY: this.uploadedClavicleY || 0.22 } :
                     CONFIG.models[this.currentModelIndex];
@@ -628,7 +637,6 @@
                     pendantY = h * (clavicleY + chainOffset);
                 } else {
                     // 鎖骨/特寫：需要考慮裁剪偏移
-                    const bg = this.uploadedImage || this.modelImages[this.currentModelIndex];
                     const focusPixelY = bg.height * focusY;
                     const cropStartY = focusPixelY - (h / 2 / zoom);
                     const claviclePixelY = bg.height * clavicleY;
