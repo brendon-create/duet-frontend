@@ -967,35 +967,34 @@
     <!-- 佩戴模擬預覽 (修正版：寬度縮小、高度增加) -->
     <div id="wearing-preview-container" class="glass" style="
         position: absolute;
-        top: 152px;          /* 計算：頂部 20 + Slot 高度 120 + 間距 12 = 152px */
-        right: 20px;         /* 距離右緣 20px */
-        width: 252px;        /* 計算：Slot1 120 + 間距 12 + Slot2 120 = 252px */
-        bottom: 20px;        /* 距離下緣 20px */
-        z-index: 100;
-        border-radius: 20px;
+        top: 200px;          /* 位於 Slot 下方 (20+160+20) */
+        right: 20px;         /* 與 Slot 2 右邊緣對齊 */
+        width: 332px;        /* Slot1(160) + Slot2(160) + 間距(12) */
+        bottom: 40px;        /* 與左側參數面板底部齊平 */
+        z-index: 50;        /* 降低 z-index，避免阻擋 modal */
+        border-radius: 24px;
         overflow: hidden;
         display: flex;
         flex-direction: column;
         pointer-events: auto;
     ">
-        <!-- 標題裝飾 -->
+        <!-- 標題裝飾層 -->
         <div style="
             position: absolute; 
-            top: 15px; 
-            left: 15px; 
+            top: 20px; 
+            left: 24px; 
             font-size: 10px; 
             font-weight: 600;
-            letter-spacing: 0.1em; 
+            letter-spacing: 0.15em; 
             color: rgba(255, 255, 255, 0.4); 
             text-transform: uppercase; 
             z-index: 5;
             display: flex;
             align-items: center;
-            gap: 8px;
-            pointer-events: none;
+            gap: 10px;
         ">
             <span
-                style="width: 6px; height: 6px; background: #D4AF37; border-radius: 50%; box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);"></span>
+                style="width: 6px; height: 6px; background: #D4AF37; border-radius: 50%; box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);"></span>
             Model Simulation
         </div>
     </div>
@@ -1160,6 +1159,12 @@
         }
         // 顯示 AI 介紹 Modal
         function showAIIntroModal() {
+            console.log('🔔 準備顯示 AI 介紹 Modal');
+            // 確保沒有現有的 modal
+            const existingModal = document.getElementById('ai-intro-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
             const modal = document.createElement('div');
             modal.id = 'ai-intro-modal';
             modal.innerHTML = `
@@ -1235,6 +1240,15 @@
                 </style>
             `;
             document.body.appendChild(modal);
+            console.log('✅ AI 介紹 Modal 已創建並添加到 DOM');
+            // 確保 modal 在最高層級
+            const modalElement = document.getElementById('ai-intro-modal');
+            if (modalElement) {
+                const overlay = modalElement.querySelector('div');
+                if (overlay) {
+                    overlay.style.zIndex = '10000';
+                }
+            }
         }
 
         window.startAIConsultation = function () {
