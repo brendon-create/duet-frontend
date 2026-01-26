@@ -20,8 +20,13 @@
 
     class WearingPreview {
         constructor(containerId) {
+            console.log('🔍 WearingPreview constructor 被調用，containerId:', containerId);
             this.container = document.getElementById(containerId);
-            if (!this.container) return;
+            if (!this.container) {
+                console.error('❌ 無法找到 container:', containerId);
+                return;
+            }
+            console.log('✅ Container 找到，開始初始化');
 
             this.canvas = null;
             this.ctx = null;
@@ -34,27 +39,56 @@
         }
 
         async init() {
-            await this.preloadModels();
-            this.createUI();
-            this.setupEventListeners();
-            window.addEventListener('resize', () => this.resize());
-            await this.render();
+            console.log('🔍 WearingPreview init() 開始');
+            try {
+                // 先創建 UI，不等待圖片載入
+                console.log('🎨 開始創建 UI（不等待圖片載入）...');
+                this.createUI();
+                console.log('✅ UI 創建完成');
+                console.log('🔗 設置事件監聽器...');
+                this.setupEventListeners();
+                console.log('✅ 事件監聽器設置完成');
+                window.addEventListener('resize', () => this.resize());
+                
+                // 在背景載入圖片，不阻塞 UI 顯示
+                console.log('📦 開始預載入模型圖片（背景載入）...');
+                this.preloadModels().then(() => {
+                    console.log('✅ 模型圖片預載入完成，共', this.modelImages.length, '張');
+                    console.log('🖼️ 開始渲染...');
+                    this.render();
+                }).catch(error => {
+                    console.error('❌ 圖片預載入錯誤:', error);
+                    // 即使圖片載入失敗，也嘗試渲染（使用佔位符）
+                    this.render();
+                });
+                
+                // 立即渲染一次（使用佔位符或已載入的圖片）
+                console.log('🖼️ 立即渲染初始畫面...');
+                await this.render();
+                console.log('✅ 初始化完成！');
+            } catch (error) {
+                console.error('❌ WearingPreview 初始化錯誤:', error);
+            }
         }
 
         async preloadModels() {
-            const promises = CONFIG.models.map(model => {
+            const promises = CONFIG.models.map((model, index) => {
                 return new Promise(resolve => {
                     const img = new Image();
                     img.crossOrigin = "anonymous";
-                    img.onload = () => resolve(img);
+                    img.onload = () => {
+                        console.log(`✅ 模型圖片 ${index + 1}/${CONFIG.models.length} 載入成功:`, model.name);
+                        resolve(img);
+                    };
                     img.onerror = () => {
-                        console.warn("無法載入模特兒圖片:", model.src);
+                        console.warn(`⚠️ 無法載入模特兒圖片 ${index + 1}:`, model.src, '，使用佔位符');
                         resolve(this.createPlaceholder(model.name));
                     };
                     img.src = model.src;
                 });
             });
             this.modelImages = await Promise.all(promises);
+            console.log('✅ 所有模型圖片預載入完成');
         }
 
         createPlaceholder(name) {
@@ -74,8 +108,7 @@
         }
 
         createUI() {
-            // 保留原有的標題裝飾層，添加完整 UI
-            const existingTitle = this.container.querySelector('div[style*="position: absolute"]');
+            console.log('🎨 createUI() 開始，container 當前內容:', this.container.innerHTML.substring(0, 100));
             
             this.container.innerHTML = `
                 <!-- 標題裝飾層 -->
@@ -404,14 +437,40 @@
 
     // 初始化並掛載到 window 供外部按鈕呼叫
     function init() {
+        console.log('🔍 開始初始化 WearingPreview...');
+        const container = document.getElementById('wearing-preview-container');
+        if (!container) {
+            console.error('❌ 找不到 wearing-preview-container 元素');
+            return;
+        }
+        console.log('✅ 找到 container，開始創建實例');
         window.wearingPreviewInstance = new WearingPreview('wearing-preview-container');
+        if (window.wearingPreviewInstance) {
+            console.log('✅ WearingPreview 實例創建成功');
+        } else {
+            console.error('❌ WearingPreview 實例創建失敗');
+        }
     }
 
+    // 確保在 DOM 完全載入後初始化
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 DOMContentLoaded 事件觸發，開始初始化 WearingPreview');
+            setTimeout(init, 200); // 稍微延遲以確保所有元素都已準備好
+        });
     } else {
-        init();
+        // 如果 DOM 已經載入，稍微延遲以確保所有元素都已準備好
+        console.log('📄 DOM 已載入，延遲初始化 WearingPreview');
+        setTimeout(init, 500); // 給更多時間讓其他腳本完成
     }
+    
+    // 備用初始化：如果上面的初始化失敗，1秒後再試一次
+    setTimeout(() => {
+        if (!window.wearingPreviewInstance) {
+            console.warn('⚠️ 初次初始化可能失敗，嘗試備用初始化...');
+            init();
+        }
+    }, 2000);
 
     // 保持與 index.html 的兼容性
     window.updateWearingPreview = () => {
