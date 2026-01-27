@@ -2181,6 +2181,8 @@
                 bailMesh.geometry?.dispose();
                 bailMesh.material?.dispose();
                 bailMesh = null;
+                // 暴露給佩戴模擬（用於截取墜飾）
+                window.bailMesh = null;
             }
 
             if (!mainMesh) return;
@@ -2200,6 +2202,8 @@
             );
             bailMesh = new THREE.Mesh(geometry, material);
             scene.add(bailMesh);
+            // 暴露給佩戴模擬（用於截取墜飾）
+            window.bailMesh = bailMesh;
 
             updateBailPosition();
         }

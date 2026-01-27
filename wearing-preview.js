@@ -6,6 +6,9 @@
 (function () {
     'use strict';
 
+    // 用於確認「站上是否載到最新檔案」
+    const WEARING_PREVIEW_BUILD = '2026-01-27-tryon-proxy-v3';
+
     // 配置
     const CONFIG = {
         // 後端代理端點（由 Render 後端呼叫 Gemini，前端不持有 API Key）
@@ -41,23 +44,23 @@
             }
         ],
 
-        // AI 提示詞模板
-        prompt: `TASK: Professional Jewelry Portrait Synthesis - Ultra-realistic chain necklace rendering.
+        // AI 提示詞模板（加強：必須生成鏈子，且墜飾要可見）
+        prompt: `TASK: Professional Jewelry Portrait Synthesis - Luxury necklace try-on.
 
 REQUIREMENTS:
 1. ANALYZE: Identify the person's neck, collarbone, and shoulder anatomy in the Model Image.
-2. CHAIN PHYSICS: Generate a photorealistic metallic chain (Silver/Platinum finish) that naturally wraps around the neck following gravity and body contours.
-3. PENDANT PLACEMENT: Position the Pendant Image at the center of the collarbone, connected to the chain via a bail loop.
+2. CHAIN (MUST): Generate a photorealistic metallic chain (Silver/Platinum) that wraps around the neck naturally (gravity + body contours).
+   - The chain MUST be visible and continuous. Do NOT omit it.
+   - The chain MUST connect to the pendant's bail.
+3. PENDANT (MUST): Place the Pendant Image naturally at the center of the collarbone/chest area. Keep realistic scale.
 4. LIGHTING & MATERIAL:
-   - Match chain reflections to the environment lighting in the photo
-   - Add subtle subsurface scattering on skin where chain touches
-   - Pendant should cast soft shadow on skin
-   - Metal shows realistic highlights and ambient occlusion
-5. PERSPECTIVE: Ensure pendant orientation matches the person's body angle and camera perspective.
-6. PRESERVATION: Keep the person's face, hair, clothing, and background completely unchanged.
-7. QUALITY: High-end jewelry catalog standard. Photorealistic. No artifacts.
+   - Match metal reflections to the environment lighting in the photo
+   - Add soft, realistic shadow on skin beneath pendant
+   - No harsh edges, no stickers, no cartoon look
+5. PRESERVATION: Keep the person's face, hair, clothing, and background exactly the same.
+6. OUTPUT QUALITY: High-end fashion magazine quality. No artifacts.
 
-OUTPUT: Single composite image with the person naturally wearing the pendant necklace.`
+OUTPUT: Single composite image. If the chain or pendant is missing, the output is invalid.`
     };
 
     function getBackendUrl() {
@@ -67,7 +70,7 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
 
     class WearingPreview {
         constructor(containerId) {
-            console.log('🎨 初始化 AI 佩戴模擬...');
+            console.log('🎨 初始化 AI 佩戴模擬...', WEARING_PREVIEW_BUILD);
             this.container = document.getElementById(containerId);
             if (!this.container) {
                 console.error('❌ 找不到 container:', containerId);
@@ -309,6 +312,177 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
             this.loadingOverlay = document.getElementById('loading-overlay');
             this.waitingHint = document.getElementById('waiting-hint');
             this.errorToast = document.getElementById('tryon-error');
+        }
+
+        getJewelryObjects() {
+            const objs = [];
+            if (window.mainMesh) objs.push(window.mainMesh);
+            // index.html 內的 bailMesh 預設是區域變數；我們在 index.html 已暴露 window.bailMesh
+            if (window.bailMesh) objs.push(window.bailMesh);
+            return objs;
+        }
+
+        /**
+         * 產生「透明背景(去背)」的墜飾 PNG（包含 bail），再縮放到合理尺寸供 AI 使用。
+         * 這不是單純裁切：先用 alpha=0 清空背景，確保輸入是真正去背 PNG。
+         */
+        captureJewelryTransparentDataURL(options = {}) {
+            const size = options.size || 1024;
+            const maxSide = options.maxSide || 520;
+            const alphaThreshold = options.alphaThreshold ?? 6;
+
+            if (!window.THREE || !window.renderer || !window.scene || !window.camera) return null;
+            const THREE = window.THREE;
+            const renderer = window.renderer;
+            const scene = window.scene;
+            const camera = window.camera;
+
+            const jewelry = this.getJewelryObjects();
+            if (!jewelry.length) return null;
+
+            const oldTarget = renderer.getRenderTarget();
+            const oldBg = scene.background;
+            const oldClear = renderer.getClearColor(new THREE.Color());
+            const oldClearAlpha = renderer.getClearAlpha();
+            const oldSize = renderer.getSize(new THREE.Vector2());
+            const oldPixelRatio = renderer.getPixelRatio();
+
+            const oldCam = {
+                aspect: camera.aspect,
+                near: camera.near,
+                far: camera.far,
+                position: camera.position.clone(),
+                quaternion: camera.quaternion.clone(),
+            };
+
+            // 隱藏非墜飾 mesh（避免把場景其他物件/背景一起 render 進來）
+            const keep = new Set();
+            for (const obj of jewelry) obj.traverse(o => keep.add(o));
+
+            const visBackup = [];
+            scene.traverse((o) => {
+                if (o && o.isMesh && !keep.has(o)) {
+                    visBackup.push([o, o.visible]);
+                    o.visible = false;
+                }
+            });
+
+            try {
+                const box = new THREE.Box3();
+                for (const obj of jewelry) box.expandByObject(obj);
+                const sphere = new THREE.Sphere();
+                box.getBoundingSphere(sphere);
+
+                // 保持原視角方向，將相機拉近以填滿畫面
+                const dir = oldCam.position.clone().sub(sphere.center).normalize();
+                const fov = THREE.MathUtils.degToRad(camera.fov || 50);
+                const dist = (sphere.radius / Math.tan(fov / 2)) * 1.35;
+
+                camera.position.copy(sphere.center.clone().add(dir.multiplyScalar(dist)));
+                camera.lookAt(sphere.center);
+                camera.near = Math.max(0.01, dist / 100);
+                camera.far = Math.max(camera.near + 10, dist * 100);
+                camera.aspect = 1;
+                camera.updateProjectionMatrix();
+
+                // 透明去背
+                scene.background = null;
+                renderer.setClearColor(0x000000, 0);
+
+                const rt = new THREE.WebGLRenderTarget(size, size, {
+                    format: THREE.RGBAFormat,
+                    type: THREE.UnsignedByteType,
+                    depthBuffer: true,
+                    stencilBuffer: false,
+                });
+
+                renderer.setPixelRatio(1);
+                renderer.setSize(size, size, false);
+                renderer.setRenderTarget(rt);
+                renderer.clear(true, true, true);
+                renderer.render(scene, camera);
+
+                const pixels = new Uint8Array(size * size * 4);
+                renderer.readRenderTargetPixels(rt, 0, 0, size, size, pixels);
+
+                const c = document.createElement('canvas');
+                c.width = size;
+                c.height = size;
+                const ctx = c.getContext('2d');
+                const imgData = ctx.createImageData(size, size);
+
+                // readRenderTargetPixels 是左下原點，需要翻轉
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        const src = ((size - 1 - y) * size + x) * 4;
+                        const dst = (y * size + x) * 4;
+                        imgData.data[dst] = pixels[src];
+                        imgData.data[dst + 1] = pixels[src + 1];
+                        imgData.data[dst + 2] = pixels[src + 2];
+                        imgData.data[dst + 3] = pixels[src + 3];
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // 縮緊透明邊界（背景仍是透明，只是移除空白）
+                let minX = size, minY = size, maxX = 0, maxY = 0;
+                let found = false;
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        const a = imgData.data[(y * size + x) * 4 + 3];
+                        if (a > alphaThreshold) {
+                            found = true;
+                            minX = Math.min(minX, x);
+                            minY = Math.min(minY, y);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+
+                if (!found) return c.toDataURL('image/png');
+
+                const pad = Math.round(Math.max(size * 0.015, 10));
+                minX = this.clamp(minX - pad, 0, size - 1);
+                minY = this.clamp(minY - pad, 0, size - 1);
+                maxX = this.clamp(maxX + pad, 0, size - 1);
+                maxY = this.clamp(maxY + pad, 0, size - 1);
+
+                const cropW = Math.max(1, maxX - minX + 1);
+                const cropH = Math.max(1, maxY - minY + 1);
+
+                const scale = Math.min(1, maxSide / Math.max(cropW, cropH));
+                const outW = Math.max(1, Math.round(cropW * scale));
+                const outH = Math.max(1, Math.round(cropH * scale));
+
+                const out = document.createElement('canvas');
+                out.width = outW;
+                out.height = outH;
+                const octx = out.getContext('2d');
+                octx.imageSmoothingEnabled = true;
+                octx.imageSmoothingQuality = 'high';
+                octx.drawImage(c, minX, minY, cropW, cropH, 0, 0, outW, outH);
+
+                return out.toDataURL('image/png');
+            } catch (e) {
+                console.warn('⚠️ 無法生成透明墜飾 PNG:', e);
+                return null;
+            } finally {
+                // 還原
+                for (const [o, v] of visBackup) o.visible = v;
+                scene.background = oldBg;
+                renderer.setClearColor(oldClear, oldClearAlpha);
+                renderer.setRenderTarget(oldTarget);
+                renderer.setPixelRatio(oldPixelRatio);
+                renderer.setSize(oldSize.x, oldSize.y, false);
+
+                camera.position.copy(oldCam.position);
+                camera.quaternion.copy(oldCam.quaternion);
+                camera.near = oldCam.near;
+                camera.far = oldCam.far;
+                camera.aspect = oldCam.aspect;
+                camera.updateProjectionMatrix();
+            }
         }
 
         getBaseClavicleY() {
@@ -676,27 +850,32 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
             }
 
             try {
-                // 渲染場景
-                window.renderer.render(window.scene, window.camera);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // 先嘗試：透明去背墜飾 PNG（包含 bail）
+                const transparentURL = this.captureJewelryTransparentDataURL({ size: 1024, maxSide: 520 });
 
-                // 捕獲圖片
-                const dataURL = window.renderer.domElement.toDataURL('image/png');
-
-                const fullImg = new Image();
-                fullImg.onload = () => {
-                    const croppedDataURL = this.cropPendantFromRendererImage(fullImg);
-                    const finalURL = croppedDataURL || dataURL;
-
+                if (transparentURL) {
                     const img = new Image();
                     img.onload = () => {
                         this.pendantImage = img;
-                        console.log('✅ 墜子圖片已更新:', img.width, 'x', img.height, croppedDataURL ? '(cropped)' : '(full)');
+                        console.log('✅ 墜子圖片已更新(transparent):', img.width, 'x', img.height);
                         this.tryGenerateWearing();
                     };
-                    img.src = finalURL;
+                    img.src = transparentURL;
+                    return;
+                }
+
+                // 退回：原本 renderer 截圖（可能包含背景）
+                console.warn('⚠️ 透明去背失敗，退回使用 renderer 截圖');
+                window.renderer.render(window.scene, window.camera);
+                await new Promise(resolve => setTimeout(resolve, 80));
+                const dataURL = window.renderer.domElement.toDataURL('image/png');
+                const img = new Image();
+                img.onload = () => {
+                    this.pendantImage = img;
+                    console.log('✅ 墜子圖片已更新(backup):', img.width, 'x', img.height);
+                    this.tryGenerateWearing();
                 };
-                fullImg.src = dataURL;
+                img.src = dataURL;
 
             } catch (error) {
                 console.error('❌ 捕獲墜子失敗:', error);
