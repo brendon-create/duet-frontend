@@ -8,37 +8,34 @@
 
     // 配置
     const CONFIG = {
-        // Gemini API Key（請在此設置您的 API Key）
-        GEMINI_API_KEY: 'REDACTED_GOOGLE_API_KEY', // TODO: 需要設置 API Key
-
-        // Gemini API 端點
-        GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent',
+        // 後端代理端點（由 Render 後端呼叫 Gemini，前端不持有 API Key）
+        TRYON_ENDPOINT: '/api/tryon',
 
         // 預設模型圖片
         models: [
             {
                 name: '女性 - 短髮',
-                src: '../images/duet-f-short.png',
+                src: 'assets/models/model_f1.png',
                 clavicleY: 0.22
             },
             {
                 name: '女性 - 中長髮',
-                src: '../images/duet-f-mid.png',
+                src: 'assets/models/model_f2.png',
                 clavicleY: 0.23
             },
             {
                 name: '女性 - 長髮',
-                src: '../images/duet-f-long.png',
+                src: 'assets/models/model_f3.png',
                 clavicleY: 0.24
             },
             {
                 name: '男性 - 短髮',
-                src: '../images/duet-m-short.png',
+                src: 'assets/models/model_m1.png',
                 clavicleY: 0.20
             },
             {
                 name: '男性 - 中長髮',
-                src: '../images/duet-m-mid.png',
+                src: 'assets/models/model_m2.png',
                 clavicleY: 0.21
             }
         ],
@@ -61,6 +58,16 @@ REQUIREMENTS:
 
 OUTPUT: Single composite image with the person naturally wearing the pendant necklace.`
     };
+
+    function getBackendUrl() {
+        // index.html 內有定義 const BACKEND_URL（供其他 script 使用）
+        try {
+            // eslint-disable-next-line no-undef
+            if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) return BACKEND_URL;
+        } catch (_) {}
+        if (window.BACKEND_URL) return window.BACKEND_URL;
+        return '';
+    }
 
     class WearingPreview {
         constructor(containerId) {
@@ -456,55 +463,55 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
         }
 
         async generateWearing() {
-            if (!CONFIG.GEMINI_API_KEY) {
-                console.error('❌ 未設置 Gemini API Key');
-                this.showError('請在 wearing-preview.js 中設置 GEMINI_API_KEY');
-                return;
-            }
-
             this.loading = true;
             this.loadingOverlay.style.display = 'flex';
             console.log('🤖 開始 AI 合成...');
 
             try {
+                const backendUrl = getBackendUrl();
+                if (!backendUrl) {
+                    console.error('❌ 找不到 BACKEND_URL，無法呼叫後端 tryon 服務');
+                    this.showError('後端未設定，無法生成佩戴圖');
+                    return;
+                }
+
                 // 準備圖片
                 const modelImage = this.uploadedImage || this.modelImages[this.currentModelIndex];
                 const modelB64 = await this.imageToBase64(modelImage);
                 const pendantB64 = await this.imageToBase64(this.pendantImage);
 
-                // 調用 Gemini API
-                const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
+                // 呼叫後端代理（後端再呼叫 Gemini）
+                const response = await fetch(`${backendUrl}${CONFIG.TRYON_ENDPOINT}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: CONFIG.prompt },
-                                { inlineData: { mimeType: "image/png", data: modelB64 } },
-                                { inlineData: { mimeType: "image/png", data: pendantB64 } }
-                            ]
-                        }],
-                        generationConfig: { responseModalities: ["IMAGE"] }
+                        modelImageB64: modelB64,
+                        pendantImageB64: pendantB64,
+                        prompt: CONFIG.prompt,
+                        modelMimeType: "image/png",
+                        pendantMimeType: "image/png"
                     })
                 });
 
                 const result = await response.json();
-                console.log('📊 API 回應:', result);
+                console.log('📊 tryon 回應:', result);
 
-                const outputB64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-
-                if (outputB64) {
-                    // 載入結果圖片
-                    const img = new Image();
-                    img.onload = () => {
-                        this.resultImage = img;
-                        this.updateCanvas();
-                        console.log('✅ AI 合成完成:', img.width, 'x', img.height);
-                    };
-                    img.src = `data:image/png;base64,${outputB64}`;
-                } else {
-                    throw new Error('AI 未回傳影像');
+                if (!result || !result.success) {
+                    throw new Error(result?.error || 'tryon 失敗');
                 }
+
+                const outputB64 = result.imageB64;
+                const mimeType = result.mimeType || 'image/png';
+                if (!outputB64) throw new Error('tryon 未回傳影像');
+
+                // 載入結果圖片
+                const img = new Image();
+                img.onload = () => {
+                    this.resultImage = img;
+                    this.updateCanvas();
+                    console.log('✅ AI 合成完成:', img.width, 'x', img.height);
+                };
+                img.src = `data:${mimeType};base64,${outputB64}`;
 
             } catch (error) {
                 console.error('❌ AI 合成失敗:', error);
