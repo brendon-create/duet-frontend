@@ -810,8 +810,9 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 console.log('📊 tryon 回應:', result);
 
                 if (!response.ok || !result || !result.success) {
-                    const msg = result?.error || `tryon 失敗（HTTP ${response.status}）`;
-                    throw new Error(msg);
+                    const baseMsg = result?.error || `tryon 失敗（HTTP ${response.status}）`;
+                    const details = result?.details ? `（details: ${typeof result.details === 'string' ? result.details : JSON.stringify(result.details).slice(0, 300)}）` : '';
+                    throw new Error(`${baseMsg}${details}`);
                 }
 
                 const outputB64 = result.imageB64;
