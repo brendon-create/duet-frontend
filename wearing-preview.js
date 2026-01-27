@@ -7,7 +7,7 @@
     'use strict';
 
     // 用於確認「站上是否載到最新檔案」
-    const WEARING_PREVIEW_BUILD = '2026-01-27-tryon-proxy-v3';
+    const WEARING_PREVIEW_BUILD = '2026-01-27-tryon-proxy-v4-b64cache';
 
     // 配置
     const CONFIG = {
@@ -68,6 +68,18 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
         return '';
     }
 
+    function parseDataURL(dataURL) {
+        // data:image/png;base64,xxxx
+        if (!dataURL || typeof dataURL !== 'string') return { mimeType: null, b64: null };
+        const comma = dataURL.indexOf(',');
+        if (!dataURL.startsWith('data:') || comma === -1) return { mimeType: null, b64: null };
+        const meta = dataURL.slice(5, comma); // "image/png;base64"
+        const b64 = dataURL.slice(comma + 1);
+        const semi = meta.indexOf(';');
+        const mimeType = semi === -1 ? meta : meta.slice(0, semi);
+        return { mimeType: mimeType || null, b64: b64 || null };
+    }
+
     class WearingPreview {
         constructor(containerId) {
             console.log('🎨 初始化 AI 佩戴模擬...', WEARING_PREVIEW_BUILD);
@@ -80,8 +92,14 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             // 狀態
             this.currentModelIndex = 0;
             this.modelImages = [];
+            this.modelB64Cache = [];     // 與 models 同 index
+            this.modelMimeCache = [];    // 與 models 同 index
             this.uploadedImage = null;
+            this.uploadedB64 = null;
+            this.uploadedMimeType = null;
             this.pendantImage = null;
+            this.pendantB64 = null;
+            this.pendantMimeType = 'image/png';
             this.resultImage = null;
             this.loading = false;
             this.lastTryOnAt = 0;
@@ -535,6 +553,22 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             this.modelImages = await Promise.all(promises);
             console.log('📦 模型載入完成:', this.modelImages.filter(img => img).length, '/', CONFIG.models.length);
 
+            // 預先快取 base64（避免某些時機 imageToBase64 取到 null）
+            this.modelB64Cache = [];
+            this.modelMimeCache = [];
+            for (let i = 0; i < this.modelImages.length; i++) {
+                const img = this.modelImages[i];
+                if (!img) {
+                    this.modelB64Cache[i] = null;
+                    this.modelMimeCache[i] = null;
+                    continue;
+                }
+                const b64 = await this.imageToBase64(img);
+                this.modelB64Cache[i] = b64;
+                // assets/models 目前都是 png
+                this.modelMimeCache[i] = 'image/png';
+            }
+
             this.updateCanvas();
         }
 
@@ -565,6 +599,11 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
 
             const reader = new FileReader();
             reader.onload = (event) => {
+                const dataURL = event.target.result;
+                const parsed = parseDataURL(dataURL);
+                this.uploadedB64 = parsed.b64;
+                this.uploadedMimeType = parsed.mimeType || file.type || 'image/jpeg';
+
                 const img = new Image();
                 img.onload = () => {
                     this.uploadedImage = img;
@@ -573,7 +612,7 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                     this.updateCanvas();
                     this.tryGenerateWearing();
                 };
-                img.src = event.target.result;
+                img.src = dataURL;
             };
             reader.readAsDataURL(file);
         }
@@ -665,7 +704,7 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
 
         async tryGenerateWearing() {
             // 檢查是否有墜子圖片
-            if (!this.pendantImage) {
+            if (!this.pendantB64) {
                 console.log('ℹ️ 等待商品生成...');
                 return;
             }
@@ -693,10 +732,23 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 }
                 if (this.errorToast) this.errorToast.style.display = 'none';
 
-                // 準備圖片
-                const modelImage = this.uploadedImage || this.modelImages[this.currentModelIndex];
-                const modelB64 = await this.imageToBase64(modelImage);
-                const pendantB64 = await this.imageToBase64(this.pendantImage);
+                // 準備圖片（全部走快取，避免 null）
+                const modelB64 = this.uploadedB64 || this.modelB64Cache[this.currentModelIndex] || null;
+                const modelMimeType = this.uploadedMimeType || this.modelMimeCache[this.currentModelIndex] || 'image/png';
+                const pendantB64 = this.pendantB64 || null;
+                const pendantMimeType = this.pendantMimeType || 'image/png';
+
+                // 防呆：避免打到後端 400
+                if (!modelB64 || modelB64.length < 64) {
+                    console.warn('⚠️ modelImageB64 尚未就緒');
+                    this.showError('模型圖片尚未就緒，請稍後再試');
+                    return;
+                }
+                if (!pendantB64 || pendantB64.length < 64) {
+                    console.warn('⚠️ pendantImageB64 尚未就緒');
+                    this.showError('墜飾圖片尚未就緒，請先生成商品');
+                    return;
+                }
 
                 // 呼叫後端代理（後端再呼叫 Gemini）
                 const response = await fetch(`${backendUrl}${CONFIG.TRYON_ENDPOINT}`, {
@@ -706,8 +758,8 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                         modelImageB64: modelB64,
                         pendantImageB64: pendantB64,
                         prompt: CONFIG.prompt,
-                        modelMimeType: "image/png",
-                        pendantMimeType: "image/png"
+                        modelMimeType,
+                        pendantMimeType
                     })
                 });
 
@@ -854,6 +906,10 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 const transparentURL = this.captureJewelryTransparentDataURL({ size: 1024, maxSide: 520 });
 
                 if (transparentURL) {
+                    const parsed = parseDataURL(transparentURL);
+                    this.pendantB64 = parsed.b64;
+                    this.pendantMimeType = parsed.mimeType || 'image/png';
+
                     const img = new Image();
                     img.onload = () => {
                         this.pendantImage = img;
@@ -869,6 +925,10 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 window.renderer.render(window.scene, window.camera);
                 await new Promise(resolve => setTimeout(resolve, 80));
                 const dataURL = window.renderer.domElement.toDataURL('image/png');
+                const parsed = parseDataURL(dataURL);
+                this.pendantB64 = parsed.b64;
+                this.pendantMimeType = parsed.mimeType || 'image/png';
+
                 const img = new Image();
                 img.onload = () => {
                     this.pendantImage = img;
