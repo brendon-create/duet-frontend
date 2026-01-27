@@ -16,27 +16,28 @@
             {
                 name: '女性 - 短髮',
                 src: 'assets/models/model_f1.png',
-                clavicleY: 0.22
+                // 以目前圖檔構圖估算：鎖骨中心大約在 0.62~0.64
+                clavicleY: 0.63
             },
             {
                 name: '女性 - 中長髮',
                 src: 'assets/models/model_f2.png',
-                clavicleY: 0.23
+                clavicleY: 0.63
             },
             {
                 name: '女性 - 長髮',
                 src: 'assets/models/model_f3.png',
-                clavicleY: 0.24
+                clavicleY: 0.63
             },
             {
                 name: '男性 - 短髮',
                 src: 'assets/models/model_m1.png',
-                clavicleY: 0.20
+                clavicleY: 0.68
             },
             {
                 name: '男性 - 中長髮',
                 src: 'assets/models/model_m2.png',
-                clavicleY: 0.21
+                clavicleY: 0.68
             }
         ],
 
@@ -80,6 +81,8 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
             this.pendantImage = null;
             this.resultImage = null;
             this.loading = false;
+            this.lastTryOnAt = 0;
+            this.errorToast = null;
             this.currentZoomLevel = 0; // 0: 半身, 1: 鎖骨, 2: 特寫
 
             // 初始化
@@ -130,6 +133,24 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
                     overflow: hidden;
                 ">
                     <canvas id="preview-canvas" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+
+                    <!-- 錯誤提示（低調，不遮擋主畫面） -->
+                    <div id="tryon-error" style="
+                        position: absolute;
+                        left: 14px;
+                        right: 14px;
+                        top: 44px;
+                        padding: 10px 12px;
+                        border-radius: 12px;
+                        background: rgba(0,0,0,0.55);
+                        border: 1px solid rgba(255,255,255,0.10);
+                        color: rgba(255,255,255,0.78);
+                        font-size: 10px;
+                        line-height: 1.4;
+                        display: none;
+                        z-index: 120;
+                        backdrop-filter: blur(10px);
+                    "></div>
                     
                     <!-- 等待提示 -->
                     <div id="waiting-hint" style="
@@ -287,6 +308,18 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
             this.ctx = this.canvas.getContext('2d');
             this.loadingOverlay = document.getElementById('loading-overlay');
             this.waitingHint = document.getElementById('waiting-hint');
+            this.errorToast = document.getElementById('tryon-error');
+        }
+
+        getBaseClavicleY() {
+            // 上傳照片目前沒有自動鎖骨偵測：先用合理預設值（偏向鎖骨區域）
+            if (this.uploadedImage) return 0.64;
+            const model = CONFIG.models[this.currentModelIndex];
+            return (model && typeof model.clavicleY === 'number') ? model.clavicleY : 0.64;
+        }
+
+        clamp(n, min, max) {
+            return Math.max(min, Math.min(max, n));
         }
 
         setupEventListeners() {
@@ -401,11 +434,14 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
             this.waitingHint.style.display = 'none';
 
             // 根據視角調整顯示
-            const zoomLevels = [1.0, 2.2, 3.5];
-            const focusYLevels = [0.5, 0.24, 0.26];
-
+            const zoomLevels = [1.0, 1.9, 2.8];
             const zoom = zoomLevels[this.currentZoomLevel];
-            const focusY = focusYLevels[this.currentZoomLevel];
+
+            // 聚焦點改為以「鎖骨」為主（避免變成人臉特寫）
+            const baseClavicleY = this.getBaseClavicleY();
+            const focusY = (zoom === 1.0)
+                ? 0.55
+                : this.clamp(baseClavicleY + (this.currentZoomLevel === 2 ? 0.06 : 0.00), 0.05, 0.95);
 
             const imgAspect = displayImage.width / displayImage.height;
             const canvasAspect = w / h;
@@ -439,7 +475,13 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
                     drawH = drawW / imgAspect;
                 }
 
-                const cropStartY = focusPixelY - (h / 2 / zoom);
+                // 在原圖座標中，畫面高度相當於 (image.height / zoom)
+                const viewSrcH = displayImage.height / zoom;
+                const cropStartY = this.clamp(
+                    focusPixelY - viewSrcH / 2,
+                    0,
+                    Math.max(0, displayImage.height - viewSrcH)
+                );
                 drawX = -(drawW - w) / 2;
                 drawY = -(cropStartY * (drawH / displayImage.height));
             }
@@ -458,6 +500,12 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
         }
 
         async generateWearing() {
+            // 防止連點/重複觸發造成大量 API 呼叫
+            const now = Date.now();
+            if (this.loading) return;
+            if (now - this.lastTryOnAt < 1500) return;
+            this.lastTryOnAt = now;
+
             this.loading = true;
             this.loadingOverlay.style.display = 'flex';
             console.log('🤖 開始 AI 合成...');
@@ -469,6 +517,7 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
                     this.showError('後端未設定，無法生成佩戴圖');
                     return;
                 }
+                if (this.errorToast) this.errorToast.style.display = 'none';
 
                 // 準備圖片
                 const modelImage = this.uploadedImage || this.modelImages[this.currentModelIndex];
@@ -488,11 +537,12 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
                     })
                 });
 
-                const result = await response.json();
+                const result = await response.json().catch(() => null);
                 console.log('📊 tryon 回應:', result);
 
-                if (!result || !result.success) {
-                    throw new Error(result?.error || 'tryon 失敗');
+                if (!response.ok || !result || !result.success) {
+                    const msg = result?.error || `tryon 失敗（HTTP ${response.status}）`;
+                    throw new Error(msg);
                 }
 
                 const outputB64 = result.imageB64;
@@ -510,7 +560,7 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
 
             } catch (error) {
                 console.error('❌ AI 合成失敗:', error);
-                this.showError('AI 模擬失敗，請稍後再試');
+                this.showError(`AI 模擬失敗：${error?.message || '請稍後再試'}`);
             } finally {
                 this.loading = false;
                 this.loadingOverlay.style.display = 'none';
@@ -532,17 +582,84 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
         }
 
         showError(message) {
-            // 簡單的錯誤提示
+            // 低調提示：不覆蓋畫面、也不會被 render() 隱藏
+            if (this.errorToast) {
+                this.errorToast.textContent = message;
+                this.errorToast.style.display = 'block';
+                clearTimeout(this._errorToastTimer);
+                this._errorToastTimer = setTimeout(() => {
+                    if (this.errorToast) this.errorToast.style.display = 'none';
+                }, 8000);
+                return;
+            }
+            // 退化方案：用等待提示區
             const hint = this.waitingHint;
             hint.style.display = 'flex';
-            hint.innerHTML = `
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 16px; color: rgba(255, 100, 100, 0.8);">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-                <div style="font-size: 11px; font-weight: 500; color: rgba(255, 100, 100, 0.9);">${message}</div>
-            `;
+            hint.innerHTML = `<div style="font-size: 11px; font-weight: 500; color: rgba(255, 100, 100, 0.9);">${message}</div>`;
+        }
+
+        cropPendantFromRendererImage(fullImg) {
+            try {
+                if (!window.THREE || !window.mainMesh || !window.camera || !window.renderer) return null;
+                const THREE = window.THREE;
+                const mesh = window.mainMesh;
+                const camera = window.camera;
+                const dom = window.renderer.domElement;
+                const rw = dom.width;
+                const rh = dom.height;
+
+                const box = new THREE.Box3().setFromObject(mesh);
+                const corners = [
+                    new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+                    new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+                    new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+                    new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+                    new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+                    new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+                    new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+                    new THREE.Vector3(box.max.x, box.max.y, box.max.z),
+                ];
+
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const v of corners) {
+                    v.project(camera);
+                    const x = (v.x * 0.5 + 0.5) * rw;
+                    const y = (-v.y * 0.5 + 0.5) * rh;
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+
+                if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return null;
+
+                const padX = (maxX - minX) * 0.22;
+                const padY = (maxY - minY) * 0.22;
+                minX = this.clamp(minX - padX, 0, rw);
+                minY = this.clamp(minY - padY, 0, rh);
+                maxX = this.clamp(maxX + padX, 0, rw);
+                maxY = this.clamp(maxY + padY, 0, rh);
+
+                const cropW = Math.max(1, Math.floor(maxX - minX));
+                const cropH = Math.max(1, Math.floor(maxY - minY));
+
+                const maxSide = 520;
+                const scale = Math.min(1, maxSide / Math.max(cropW, cropH));
+                const outW = Math.max(1, Math.round(cropW * scale));
+                const outH = Math.max(1, Math.round(cropH * scale));
+
+                const c = document.createElement('canvas');
+                c.width = outW;
+                c.height = outH;
+                const ctx = c.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(fullImg, minX, minY, cropW, cropH, 0, 0, outW, outH);
+                return c.toDataURL('image/png');
+            } catch (e) {
+                console.warn('⚠️ 無法裁切墜飾圖片:', e);
+                return null;
+            }
         }
 
         // 供外部調用：當 3D 模型生成時更新墜子圖片
@@ -551,6 +668,10 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
 
             if (!window.renderer || !window.scene || !window.camera) {
                 console.warn('⚠️ Three.js 尚未初始化');
+                return;
+            }
+            if (!window.mainMesh) {
+                console.warn('⚠️ mainMesh 不存在，暫時無法截取墜飾');
                 return;
             }
 
@@ -562,13 +683,20 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
                 // 捕獲圖片
                 const dataURL = window.renderer.domElement.toDataURL('image/png');
 
-                const img = new Image();
-                img.onload = () => {
-                    this.pendantImage = img;
-                    console.log('✅ 墜子圖片已更新:', img.width, 'x', img.height);
-                    this.tryGenerateWearing();
+                const fullImg = new Image();
+                fullImg.onload = () => {
+                    const croppedDataURL = this.cropPendantFromRendererImage(fullImg);
+                    const finalURL = croppedDataURL || dataURL;
+
+                    const img = new Image();
+                    img.onload = () => {
+                        this.pendantImage = img;
+                        console.log('✅ 墜子圖片已更新:', img.width, 'x', img.height, croppedDataURL ? '(cropped)' : '(full)');
+                        this.tryGenerateWearing();
+                    };
+                    img.src = finalURL;
                 };
-                img.src = dataURL;
+                fullImg.src = dataURL;
 
             } catch (error) {
                 console.error('❌ 捕獲墜子失敗:', error);

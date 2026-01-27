@@ -1092,6 +1092,10 @@
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
+        // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
+        // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
+        window.THREE = THREE;
+
         // ============================================================
         // DUET 後端整合 - 添加於 2024
         // ============================================================
