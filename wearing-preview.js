@@ -1,214 +1,604 @@
 /**
- * DUET 佩戴模擬預覽模組 V5.0
- * 核心：金屬質感渲染、三點座標連動、3D 透視對齊
+ * DUET 佩戴模擬預覽 - Gemini AI 版本
+ * 使用 Gemini 2.5 Flash Image Preview API 進行物理級渲染
  */
 
 (function () {
     'use strict';
 
+    // 配置
     const CONFIG = {
-        // Model 定位數據：設定項鍊兩端 (left/right) 與 墜子頂端中心 (pendantCenter)
+        // Gemini API Key（請在此設置您的 API Key）
+        GEMINI_API_KEY: 'REDACTED_GOOGLE_API_KEY', // TODO: 需要設置 API Key
+
+        // Gemini API 端點
+        GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent',
+
+        // 預設模型圖片
         models: [
             {
-                name: '女性 - 優雅鎖骨',
-                src: 'https://images.unsplash.com/photo-1539109132381-3475517a630a?auto=format&fit=crop&q=80&w=800',
-                width: 800,
-                height: 1200,
-                points: {
-                    leftAnchor: { x: 0.42, y: 0.35 },    // 項鍊左端起始點
-                    rightAnchor: { x: 0.58, y: 0.35 },   // 項鍊右端起始點
-                    pendantTop: { x: 0.505, y: 0.51 }    // 墜子頂端圓環中心
-                }
+                name: '女性 - 短髮',
+                src: '../images/duet-f-short.png',
+                clavicleY: 0.22
+            },
+            {
+                name: '女性 - 中長髮',
+                src: '../images/duet-f-mid.png',
+                clavicleY: 0.23
+            },
+            {
+                name: '女性 - 長髮',
+                src: '../images/duet-f-long.png',
+                clavicleY: 0.24
+            },
+            {
+                name: '男性 - 短髮',
+                src: '../images/duet-m-short.png',
+                clavicleY: 0.20
+            },
+            {
+                name: '男性 - 中長髮',
+                src: '../images/duet-m-mid.png',
+                clavicleY: 0.21
             }
         ],
-        jewelry: {
-            gold: {
-                base: '#D4AF37',
-                highlight: '#FFF7D6',
-                shadow: '#8A6D3B',
-                width: 2.2
-            }
-        }
+
+        // AI 提示詞模板
+        prompt: `TASK: Professional Jewelry Portrait Synthesis - Ultra-realistic chain necklace rendering.
+
+REQUIREMENTS:
+1. ANALYZE: Identify the person's neck, collarbone, and shoulder anatomy in the Model Image.
+2. CHAIN PHYSICS: Generate a photorealistic metallic chain (Silver/Platinum finish) that naturally wraps around the neck following gravity and body contours.
+3. PENDANT PLACEMENT: Position the Pendant Image at the center of the collarbone, connected to the chain via a bail loop.
+4. LIGHTING & MATERIAL:
+   - Match chain reflections to the environment lighting in the photo
+   - Add subtle subsurface scattering on skin where chain touches
+   - Pendant should cast soft shadow on skin
+   - Metal shows realistic highlights and ambient occlusion
+5. PERSPECTIVE: Ensure pendant orientation matches the person's body angle and camera perspective.
+6. PRESERVATION: Keep the person's face, hair, clothing, and background completely unchanged.
+7. QUALITY: High-end jewelry catalog standard. Photorealistic. No artifacts.
+
+OUTPUT: Single composite image with the person naturally wearing the pendant necklace.`
     };
 
     class WearingPreview {
         constructor(containerId) {
+            console.log('🎨 初始化 AI 佩戴模擬...');
             this.container = document.getElementById(containerId);
-            if (!this.container) return;
+            if (!this.container) {
+                console.error('❌ 找不到 container:', containerId);
+                return;
+            }
 
-            this.canvas = document.createElement('canvas');
-            this.ctx = this.canvas.getContext('2d', { alpha: true });
-            this.container.appendChild(this.canvas);
-
+            // 狀態
             this.currentModelIndex = 0;
-            this.modelImage = new Image();
-            this.pendantImage = null; // 從 Three.js 傳入
+            this.modelImages = [];
+            this.uploadedImage = null;
+            this.pendantImage = null;
+            this.resultImage = null;
+            this.loading = false;
+            this.currentZoomLevel = 0; // 0: 半身, 1: 鎖骨, 2: 特寫
 
+            // 初始化
             this.init();
         }
 
         async init() {
-            await this.loadModel(this.currentModelIndex);
-            this.resize();
-            window.addEventListener('resize', () => this.resize());
+            console.log('🔧 創建 UI...');
+            this.createUI();
+            this.setupEventListeners();
+
+            console.log('📦 預載入模型圖片...');
+            await this.preloadModels();
+
+            console.log('✅ 初始化完成');
         }
 
-        loadModel(index) {
-            return new Promise((resolve) => {
-                this.modelImage.crossOrigin = "anonymous";
-                this.modelImage.src = CONFIG.models[index].src;
-                this.modelImage.onload = () => {
-                    this.render();
-                    resolve();
-                };
+        createUI() {
+            this.container.innerHTML = `
+                <!-- 標題 -->
+                <div style="
+                    position: absolute;
+                    top: 16px;
+                    left: 20px;
+                    font-size: 9px;
+                    font-weight: 600;
+                    letter-spacing: 0.15em;
+                    color: rgba(255, 255, 255, 0.35);
+                    text-transform: uppercase;
+                    z-index: 10;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <span style="width: 5px; height: 5px; background: #D4AF37; border-radius: 50%; box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);"></span>
+                    AI Virtual Try-On
+                </div>
+
+                <!-- 預覽區域 -->
+                <div id="preview-area" style="
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                ">
+                    <canvas id="preview-canvas" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+                    
+                    <!-- 等待提示 -->
+                    <div id="waiting-hint" style="
+                        position: absolute;
+                        inset: 0;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        color: rgba(255, 255, 255, 0.3);
+                        text-align: center;
+                        padding: 40px;
+                        pointer-events: none;
+                    ">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 16px; opacity: 0.5;">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        <div style="font-size: 11px; font-weight: 500; margin-bottom: 8px;">等待商品生成</div>
+                        <div style="font-size: 9px; opacity: 0.6;">完成設計後將自動顯示佩戴效果</div>
+                    </div>
+
+                    <!-- 載入動畫 -->
+                    <div id="loading-overlay" style="
+                        position: absolute;
+                        inset: 0;
+                        background: rgba(0, 0, 0, 0.85);
+                        backdrop-filter: blur(20px);
+                        display: none;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 100;
+                    ">
+                        <div style="
+                            width: 48px;
+                            height: 48px;
+                            border: 2px solid rgba(212, 175, 55, 0.2);
+                            border-top-color: #D4AF37;
+                            border-radius: 50%;
+                            animation: spin 1s linear infinite;
+                            margin-bottom: 16px;
+                        "></div>
+                        <div style="
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: #D4AF37;
+                            letter-spacing: 0.2em;
+                            text-transform: uppercase;
+                            margin-bottom: 8px;
+                        ">AI Processing</div>
+                        <div style="
+                            font-size: 9px;
+                            color: rgba(255, 255, 255, 0.4);
+                            text-align: center;
+                            line-height: 1.4;
+                        ">
+                            <div>正在分析人體結構...</div>
+                            <div style="opacity: 0.6; margin-top: 4px;">模擬金屬光影與重力效果</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部控制列 -->
+                <div style="
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    padding: 12px 16px;
+                    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+                    display: flex;
+                    gap: 8px;
+                    z-index: 10;
+                ">
+                    <!-- 模型切換按鈕 -->
+                    <button id="prev-model" class="control-btn" title="上一個模特">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <button id="next-model" class="control-btn" title="下一個模特">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <div style="flex: 1;"></div>
+
+                    <!-- 視角切換 -->
+                    <button id="zoom-half" class="zoom-btn active" title="半身照">半身</button>
+                    <button id="zoom-clavicle" class="zoom-btn" title="鎖骨周邊">鎖骨</button>
+                    <button id="zoom-close" class="zoom-btn" title="墜飾特寫">特寫</button>
+
+                    <div style="flex: 1;"></div>
+
+                    <!-- 上傳按鈕 -->
+                    <button id="upload-photo" class="control-btn" title="上傳照片">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </button>
+                    <input type="file" id="photo-input" accept="image/*" style="display: none;">
+                </div>
+
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+
+                    .control-btn, .zoom-btn {
+                        background: rgba(255, 255, 255, 0.05);
+                        backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 8px;
+                        color: rgba(255, 255, 255, 0.6);
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .control-btn {
+                        width: 36px;
+                        height: 36px;
+                        padding: 0;
+                    }
+
+                    .zoom-btn {
+                        padding: 8px 12px;
+                        font-size: 10px;
+                        font-weight: 500;
+                        letter-spacing: 0.05em;
+                    }
+
+                    .control-btn:hover, .zoom-btn:hover {
+                        background: rgba(255, 255, 255, 0.1);
+                        border-color: rgba(212, 175, 55, 0.3);
+                        color: rgba(255, 255, 255, 0.9);
+                    }
+
+                    .zoom-btn.active {
+                        background: rgba(212, 175, 55, 0.15);
+                        border-color: rgba(212, 175, 55, 0.4);
+                        color: #D4AF37;
+                    }
+                </style>
+            `;
+
+            this.canvas = document.getElementById('preview-canvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.loadingOverlay = document.getElementById('loading-overlay');
+            this.waitingHint = document.getElementById('waiting-hint');
+        }
+
+        setupEventListeners() {
+            // 模型切換
+            document.getElementById('prev-model').addEventListener('click', () => this.switchModel(-1));
+            document.getElementById('next-model').addEventListener('click', () => this.switchModel(1));
+
+            // 視角切換
+            document.getElementById('zoom-half').addEventListener('click', () => this.setZoom(0));
+            document.getElementById('zoom-clavicle').addEventListener('click', () => this.setZoom(1));
+            document.getElementById('zoom-close').addEventListener('click', () => this.setZoom(2));
+
+            // 上傳照片
+            document.getElementById('upload-photo').addEventListener('click', () => {
+                document.getElementById('photo-input').click();
             });
+            document.getElementById('photo-input').addEventListener('change', (e) => this.handlePhotoUpload(e));
+
+            // 窗口調整
+            window.addEventListener('resize', () => this.updateCanvas());
         }
 
-        /**
-         * 核心：從主畫面 Three.js 同步墜子視角
-         * @param {HTMLCanvasElement} threeCanvas 
-         */
-        syncWithThreeJS(threeCanvas) {
-            // 創建離屏 Canvas 進行裁切與縮放
-            const cropCanvas = document.createElement('canvas');
-            const size = 512;
-            cropCanvas.width = size;
-            cropCanvas.height = size;
-            const cCtx = cropCanvas.getContext('2d');
+        async preloadModels() {
+            const promises = CONFIG.models.map(model => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        console.log('✅ 載入模型:', model.name);
+                        resolve(img);
+                    };
+                    img.onerror = () => {
+                        console.warn('⚠️ 載入失敗:', model.name);
+                        resolve(null);
+                    };
+                    img.src = model.src;
+                });
+            });
 
-            // 假設墜子在 Three.js 畫面正中心，裁切適當比例
-            const sourceSize = Math.min(threeCanvas.width, threeCanvas.height) * 0.4;
-            cCtx.drawImage(
-                threeCanvas,
-                (threeCanvas.width - sourceSize) / 2, (threeCanvas.height - sourceSize) / 2, sourceSize, sourceSize,
-                0, 0, size, size
-            );
+            this.modelImages = await Promise.all(promises);
+            console.log('📦 模型載入完成:', this.modelImages.filter(img => img).length, '/', CONFIG.models.length);
 
-            this.pendantImage = cropCanvas;
-            this.render();
+            this.updateCanvas();
         }
 
-        /**
-         * 繪製具金屬質感的項鍊鏈條
-         */
-        drawMetalChain(ctx, p1, p2, pCenter, scale) {
-            const config = CONFIG.jewelry.gold;
-            const chainWidth = config.width * scale;
-
-            // 創建金屬漸層
-            const gradient = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-            gradient.addColorStop(0, config.shadow);
-            gradient.addColorStop(0.3, config.base);
-            gradient.addColorStop(0.5, config.highlight);
-            gradient.addColorStop(0.7, config.base);
-            gradient.addColorStop(1, config.shadow);
-
-            ctx.save();
-
-            // 1. 底層陰影 (Ambient Occlusion)
-            ctx.beginPath();
-            ctx.lineWidth = chainWidth + 1;
-            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-            ctx.setLineDash([]);
-            this.traceChainPath(ctx, p1, p2, pCenter);
-            ctx.stroke();
-
-            // 2. 主鏈條
-            ctx.beginPath();
-            ctx.lineWidth = chainWidth;
-            ctx.strokeStyle = gradient;
-            this.traceChainPath(ctx, p1, p2, pCenter);
-            ctx.stroke();
-
-            // 3. 珠寶質感：模擬金屬結節高光
-            ctx.beginPath();
-            ctx.lineWidth = chainWidth * 0.4;
-            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-            ctx.setLineDash([2 * scale, 4 * scale]); // 模擬鏈條的一環一環
-            this.traceChainPath(ctx, p1, p2, pCenter);
-            ctx.stroke();
-
-            ctx.restore();
+        switchModel(direction) {
+            this.currentModelIndex = (this.currentModelIndex + direction + CONFIG.models.length) % CONFIG.models.length;
+            this.uploadedImage = null;
+            this.resultImage = null;
+            console.log('🔄 切換至模型:', CONFIG.models[this.currentModelIndex].name);
+            this.updateCanvas();
+            this.tryGenerateWearing();
         }
 
-        traceChainPath(ctx, p1, p2, pCenter) {
-            ctx.moveTo(p1.x, p1.y);
-            // 使用控制點讓曲線更有重量下墜感 (U型)
-            const cp1x = p1.x + (pCenter.x - p1.x) * 0.3;
-            const cp1y = pCenter.y;
-            const cp2x = p2.x - (p2.x - pCenter.x) * 0.3;
-            const cp2y = pCenter.y;
+        setZoom(level) {
+            this.currentZoomLevel = level;
 
-            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            // 更新按鈕樣式
+            document.querySelectorAll('.zoom-btn').forEach(btn => btn.classList.remove('active'));
+            const buttons = ['zoom-half', 'zoom-clavicle', 'zoom-close'];
+            document.getElementById(buttons[level]).classList.add('active');
+
+            console.log('🔍 視角切換:', ['半身照', '鎖骨周邊', '墜飾特寫'][level]);
+            this.updateCanvas();
         }
 
-        resize() {
-            const rect = this.container.getBoundingClientRect();
-            // 處理高解析度螢幕模糊問題
-            const dpr = window.devicePixelRatio || 1;
-            this.canvas.width = rect.width * dpr;
-            this.canvas.height = rect.height * dpr;
-            this.canvas.style.width = `${rect.width}px`;
-            this.canvas.style.height = `${rect.height}px`;
-            this.ctx.scale(dpr, dpr);
+        handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    this.uploadedImage = img;
+                    this.resultImage = null;
+                    console.log('📸 上傳照片:', img.width, 'x', img.height);
+                    this.updateCanvas();
+                    this.tryGenerateWearing();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        updateCanvas() {
+            if (!this.canvas) return;
+
+            const container = this.canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+
             this.render();
         }
 
         render() {
-            if (!this.modelImage.complete) return;
-
             const ctx = this.ctx;
-            const model = CONFIG.models[this.currentModelIndex];
-            const canvasW = this.canvas.width / (window.devicePixelRatio || 1);
-            const canvasH = this.canvas.height / (window.devicePixelRatio || 1);
+            const w = this.canvas.width;
+            const h = this.canvas.height;
 
-            ctx.clearRect(0, 0, canvasW, canvasH);
+            ctx.clearRect(0, 0, w, h);
 
-            // 計算圖片縮放以填充容器 (Object-fit: cover)
-            const scale = Math.max(canvasW / model.width, canvasH / model.height);
-            const imgW = model.width * scale;
-            const imgH = model.height * scale;
-            const offsetX = (canvasW - imgW) / 2;
-            const offsetY = (canvasH - imgH) / 2;
+            // 顯示結果圖（AI 合成後）或原始模型圖
+            const displayImage = this.resultImage || this.uploadedImage || this.modelImages[this.currentModelIndex];
 
-            // 1. 繪製模特兒
-            ctx.drawImage(this.modelImage, offsetX, offsetY, imgW, imgH);
+            if (!displayImage) {
+                this.waitingHint.style.display = 'flex';
+                return;
+            }
 
-            // 2. 轉換座標點
-            const toCanvas = (pt) => ({
-                x: offsetX + (pt.x * imgW),
-                y: offsetY + (pt.y * imgH)
-            });
+            this.waitingHint.style.display = 'none';
 
-            const p1 = toCanvas(model.points.leftAnchor);
-            const p2 = toCanvas(model.points.rightAnchor);
-            const pTop = toCanvas(model.points.pendantTop);
+            // 根據視角調整顯示
+            const zoomLevels = [1.0, 2.2, 3.5];
+            const focusYLevels = [0.5, 0.24, 0.26];
 
-            // 3. 繪製鏈條 (在墜子下方)
-            this.drawMetalChain(ctx, p1, p2, pTop, scale);
+            const zoom = zoomLevels[this.currentZoomLevel];
+            const focusY = focusYLevels[this.currentZoomLevel];
 
-            // 4. 繪製墜子
-            if (this.pendantImage) {
-                const pDisplaySize = 85 * scale; // 可根據實際尺寸調整
+            const imgAspect = displayImage.width / displayImage.height;
+            const canvasAspect = w / h;
 
-                ctx.save();
-                // 陰影處理
-                ctx.shadowColor = 'rgba(0,0,0,0.35)';
-                ctx.shadowBlur = 12;
-                ctx.shadowOffsetY = 8;
+            let drawW, drawH, drawX, drawY;
 
-                // 繪製從 3D 抓取下來的墜子圖片
-                ctx.drawImage(
-                    this.pendantImage,
-                    pTop.x - pDisplaySize / 2,
-                    pTop.y - (pDisplaySize * 0.1), // 稍微向下偏移，讓圓環對準定位點
-                    pDisplaySize,
-                    pDisplaySize
-                );
-                ctx.restore();
+            if (zoom === 1.0) {
+                // 半身照：完整顯示
+                if (imgAspect > canvasAspect) {
+                    drawH = h;
+                    drawW = h * imgAspect;
+                    drawX = -(drawW - w) / 2;
+                    drawY = 0;
+                } else {
+                    drawW = w;
+                    drawH = w / imgAspect;
+                    drawX = 0;
+                    drawY = -(drawH - h) / 2;
+                }
+            } else {
+                // 放大視角：聚焦特定區域
+                const scaledW = w * zoom;
+                const scaledH = h * zoom;
+                const focusPixelY = displayImage.height * focusY;
+
+                if (imgAspect > canvasAspect) {
+                    drawH = scaledH;
+                    drawW = drawH * imgAspect;
+                } else {
+                    drawW = scaledW;
+                    drawH = drawW / imgAspect;
+                }
+
+                const cropStartY = focusPixelY - (h / 2 / zoom);
+                drawX = -(drawW - w) / 2;
+                drawY = -(cropStartY * (drawH / displayImage.height));
+            }
+
+            ctx.drawImage(displayImage, drawX, drawY, drawW, drawH);
+        }
+
+        async tryGenerateWearing() {
+            // 檢查是否有墜子圖片
+            if (!this.pendantImage) {
+                console.log('ℹ️ 等待商品生成...');
+                return;
+            }
+
+            await this.generateWearing();
+        }
+
+        async generateWearing() {
+            if (!CONFIG.GEMINI_API_KEY) {
+                console.error('❌ 未設置 Gemini API Key');
+                this.showError('請在 wearing-preview.js 中設置 GEMINI_API_KEY');
+                return;
+            }
+
+            this.loading = true;
+            this.loadingOverlay.style.display = 'flex';
+            console.log('🤖 開始 AI 合成...');
+
+            try {
+                // 準備圖片
+                const modelImage = this.uploadedImage || this.modelImages[this.currentModelIndex];
+                const modelB64 = await this.imageToBase64(modelImage);
+                const pendantB64 = await this.imageToBase64(this.pendantImage);
+
+                // 調用 Gemini API
+                const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: CONFIG.prompt },
+                                { inlineData: { mimeType: "image/png", data: modelB64 } },
+                                { inlineData: { mimeType: "image/png", data: pendantB64 } }
+                            ]
+                        }],
+                        generationConfig: { responseModalities: ["IMAGE"] }
+                    })
+                });
+
+                const result = await response.json();
+                console.log('📊 API 回應:', result);
+
+                const outputB64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                if (outputB64) {
+                    // 載入結果圖片
+                    const img = new Image();
+                    img.onload = () => {
+                        this.resultImage = img;
+                        this.updateCanvas();
+                        console.log('✅ AI 合成完成:', img.width, 'x', img.height);
+                    };
+                    img.src = `data:image/png;base64,${outputB64}`;
+                } else {
+                    throw new Error('AI 未回傳影像');
+                }
+
+            } catch (error) {
+                console.error('❌ AI 合成失敗:', error);
+                this.showError('AI 模擬失敗，請稍後再試');
+            } finally {
+                this.loading = false;
+                this.loadingOverlay.style.display = 'none';
+            }
+        }
+
+        async imageToBase64(img) {
+            // 如果是 Image 物件，需要轉換為 canvas 再提取
+            if (img instanceof HTMLImageElement) {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL('image/png');
+                return dataURL.split(',')[1];
+            }
+            return null;
+        }
+
+        showError(message) {
+            // 簡單的錯誤提示
+            const hint = this.waitingHint;
+            hint.style.display = 'flex';
+            hint.innerHTML = `
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 16px; color: rgba(255, 100, 100, 0.8);">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div style="font-size: 11px; font-weight: 500; color: rgba(255, 100, 100, 0.9);">${message}</div>
+            `;
+        }
+
+        // 供外部調用：當 3D 模型生成時更新墜子圖片
+        async updatePendant() {
+            console.log('📸 捕獲 3D 墜子...');
+
+            if (!window.renderer || !window.scene || !window.camera) {
+                console.warn('⚠️ Three.js 尚未初始化');
+                return;
+            }
+
+            try {
+                // 渲染場景
+                window.renderer.render(window.scene, window.camera);
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // 捕獲圖片
+                const dataURL = window.renderer.domElement.toDataURL('image/png');
+
+                const img = new Image();
+                img.onload = () => {
+                    this.pendantImage = img;
+                    console.log('✅ 墜子圖片已更新:', img.width, 'x', img.height);
+                    this.tryGenerateWearing();
+                };
+                img.src = dataURL;
+
+            } catch (error) {
+                console.error('❌ 捕獲墜子失敗:', error);
             }
         }
     }
 
-    window.WearingPreview = WearingPreview;
+    // 初始化
+    function init() {
+        console.log('🚀 啟動 AI 佩戴模擬系統...');
+        const container = document.getElementById('wearing-preview-container');
+        if (!container) {
+            console.error('❌ 找不到 wearing-preview-container');
+            return;
+        }
+
+        const preview = new WearingPreview('wearing-preview-container');
+        window.wearingPreviewInstance = preview;
+
+        // 暴露更新函數供主程式調用
+        window.updateWearingPreview = () => {
+            if (preview) {
+                preview.updatePendant();
+            }
+        };
+    }
+
+    // DOM 載入完成後初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        setTimeout(init, 300);
+    }
+
 })();
