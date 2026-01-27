@@ -1,32 +1,83 @@
 /**
  * DUET 佩戴模擬預覽模組
- * 版本: 2.2.0 - 修正座標計算
+ * 版本: 3.0.0 - 精確座標系統
  */
 
 (function() {
     'use strict';
     
     const CONFIG = {
+        // 精確測量的 Model 數據
         models: [
-            { name: '女性 - 短髮', src: 'assets/models/model_f1.png' },
-            { name: '女性 - 中長髮', src: 'assets/models/model_f2.png' },
-            { name: '女性 - 長髮', src: 'assets/models/model_f3.png' },
-            { name: '男性 - 短髮', src: 'assets/models/model_m1.png' },
-            { name: '男性 - 中長髮', src: 'assets/models/model_m2.png' }
+            { 
+                name: '女性 - 短髮',
+                src: 'assets/models/model_f1.png',
+                width: 587,
+                height: 754,
+                neckX: 0.50,      // 鎖骨中心 X（相對於照片寬度）
+                neckY: 0.278,     // 鎖骨中心 Y（相對於照片高度）
+                pendantY: 0.420,  // 墜子位置 Y
+                shoulderWidth: 180 // 肩寬（像素）
+            },
+            { 
+                name: '女性 - 中長髮',
+                src: 'assets/models/model_f2.png',
+                width: 587,
+                height: 754,
+                neckX: 0.50,
+                neckY: 0.285,
+                pendantY: 0.430,
+                shoulderWidth: 175
+            },
+            { 
+                name: '女性 - 長髮',
+                src: 'assets/models/model_f3.png',
+                width: 587,
+                height: 754,
+                neckX: 0.50,
+                neckY: 0.272,
+                pendantY: 0.415,
+                shoulderWidth: 170
+            },
+            { 
+                name: '男性 - 短髮',
+                src: 'assets/models/model_m1.png',
+                width: 485,
+                height: 645,
+                neckX: 0.50,
+                neckY: 0.302,
+                pendantY: 0.470,
+                shoulderWidth: 200
+            },
+            { 
+                name: '男性 - 中長髮',
+                src: 'assets/models/model_m2.png',
+                width: 494,
+                height: 647,
+                neckX: 0.50,
+                neckY: 0.294,
+                pendantY: 0.455,
+                shoulderWidth: 195
+            }
         ],
         chain: { 
             color: '#D4AF37', 
             width: 2.5 
         },
-        // 這些是相對於 Canvas 高度的位置
-        neckY: 0.15,      // 脖子底部（鎖骨）
-        pendantY: 0.35,   // 墜子位置
+        // 真實尺寸（毫米）
+        realSizes: {
+            'S': 12,
+            'M': 15,
+            'L': 18
+        },
+        // 假設平均肩寬 40cm = 400mm
+        avgShoulderWidthMM: 400,
         zoomLevels: [0.8, 1.0, 1.2, 1.5, 1.8]
     };
     
     class WearingPreview {
         constructor(containerId) {
-            console.log('🎨 初始化 WearingPreview');
+            console.log('🎨 初始化佩戴預覽 v3.0');
             this.container = document.getElementById(containerId);
             if (!this.container) {
                 console.error('❌ 找不到容器');
@@ -38,8 +89,8 @@
             this.currentModelIndex = 0;
             this.currentZoom = 1; // 預設 1.0x
             this.modelImages = [];
-            this.uploadedImage = null;
             this.pendantImage = null;
+            this.currentSize = 'M'; // 預設中號
             
             this.init();
         }
@@ -54,16 +105,16 @@
         
         async preloadModels() {
             console.log('📥 載入 Model 圖片');
-            const promises = CONFIG.models.map(model => {
+            const promises = CONFIG.models.map((model, index) => {
                 return new Promise(resolve => {
                     const img = new Image();
                     img.onload = () => {
-                        console.log('✅ 載入:', model.name);
+                        console.log(`✅ 載入完成 [${index + 1}/5]: ${model.name} (${model.width}x${model.height})`);
                         resolve(img);
                     };
                     img.onerror = () => {
-                        console.warn('⚠️ 載入失敗:', model.name);
-                        resolve(this.createPlaceholder(model.name));
+                        console.error(`❌ 載入失敗: ${model.name}`);
+                        resolve(this.createPlaceholder(model.name, model.width, model.height));
                     };
                     img.src = model.src;
                 });
@@ -71,20 +122,20 @@
             this.modelImages = await Promise.all(promises);
         }
         
-        createPlaceholder(name) {
+        createPlaceholder(name, width, height) {
             const canvas = document.createElement('canvas');
-            canvas.width = 400;
-            canvas.height = 600;
+            canvas.width = width;
+            canvas.height = height;
             const ctx = canvas.getContext('2d');
             
             ctx.fillStyle = '#2a2a2a';
-            ctx.fillRect(0, 0, 400, 600);
+            ctx.fillRect(0, 0, width, height);
             
             ctx.fillStyle = '#666';
             ctx.font = '14px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(name, 200, 300);
-            ctx.fillText('(照片載入中)', 200, 320);
+            ctx.fillText(name, width / 2, height / 2 - 10);
+            ctx.fillText('載入中...', width / 2, height / 2 + 10);
             
             const img = new Image();
             img.src = canvas.toDataURL();
@@ -104,8 +155,6 @@
                             <span id="model-indicator" style="color:rgba(255,255,255,0.6); font-size:11px; min-width:30px; text-align:center;">1/5</span>
                             <button id="next-model" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; cursor:pointer; font-size:14px;">▶</button>
                         </div>
-                        <button id="upload-btn" style="padding:6px 12px; border-radius:16px; border:1px solid rgba(212,175,55,0.3); background:rgba(212,175,55,0.05); color:rgba(212,175,55,0.9); cursor:pointer; font-size:10px;">📷</button>
-                        <input type="file" id="photo-upload" accept="image/*" style="display:none;">
                         <div style="display:flex; gap:6px;">
                             <button id="zoom-out" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; cursor:pointer; font-size:16px;">−</button>
                             <button id="zoom-in" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; cursor:pointer; font-size:16px;">+</button>
@@ -123,22 +172,15 @@
             document.getElementById('next-model').onclick = () => this.nextModel();
             document.getElementById('zoom-in').onclick = () => this.zoomIn();
             document.getElementById('zoom-out').onclick = () => this.zoomOut();
-            
-            const uploadBtn = document.getElementById('upload-btn');
-            const uploadInput = document.getElementById('photo-upload');
-            uploadBtn.onclick = () => uploadInput.click();
-            uploadInput.onchange = (e) => this.handleUpload(e);
         }
         
         prevModel() {
-            this.uploadedImage = null;
             this.currentModelIndex = (this.currentModelIndex - 1 + CONFIG.models.length) % CONFIG.models.length;
             this.updateIndicator();
             this.render();
         }
         
         nextModel() {
-            this.uploadedImage = null;
             this.currentModelIndex = (this.currentModelIndex + 1) % CONFIG.models.length;
             this.updateIndicator();
             this.render();
@@ -165,51 +207,24 @@
             }
         }
         
-        handleUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.onload = () => {
-                    this.uploadedImage = img;
-                    this.render();
-                };
-                img.src = ev.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-        
         startAutoUpdate() {
-            // 每 0.5 秒檢查並更新珠寶圖片
             setInterval(() => {
                 this.capturePendant();
             }, 500);
         }
         
         async capturePendant() {
-            if (!window.renderer || !window.scene || !window.camera) {
-                return;
-            }
+            if (!window.renderer || !window.scene || !window.camera) return;
             
             try {
-                // 強制渲染最新狀態
                 window.renderer.render(window.scene, window.camera);
-                
                 const dataURL = window.renderer.domElement.toDataURL('image/png');
                 
                 if (dataURL && dataURL.length > 100) {
                     const img = new Image();
                     img.onload = () => {
-                        const changed = !this.pendantImage || 
-                                      this.pendantImage.src !== img.src;
-                        
                         this.pendantImage = img;
-                        
-                        if (changed) {
-                            this.render();
-                        }
+                        this.render();
                     };
                     img.src = dataURL;
                 }
@@ -223,115 +238,112 @@
             
             const ctx = this.ctx;
             const canvas = this.canvas;
-            const w = canvas.width;
-            const h = canvas.height;
+            const canvasW = canvas.width;
+            const canvasH = canvas.height;
             
-            // 清空畫布
-            ctx.clearRect(0, 0, w, h);
+            ctx.clearRect(0, 0, canvasW, canvasH);
             
-            // === 1. 繪製背景 Model 照片 ===
-            const bg = this.uploadedImage || this.modelImages[this.currentModelIndex];
-            if (bg && bg.width && bg.height) {
-                const zoom = CONFIG.zoomLevels[this.currentZoom];
-                
-                // 計算縮放比例（填滿整個 canvas）
-                const scale = Math.max(w / bg.width, h / bg.height) * zoom;
-                const scaledW = bg.width * scale;
-                const scaledH = bg.height * scale;
-                
-                // 居中顯示
-                const bgX = (w - scaledW) / 2;
-                const bgY = (h - scaledH) / 2;
-                
-                ctx.drawImage(bg, bgX, bgY, scaledW, scaledH);
-                
-                console.log('📐 背景尺寸:', { 
-                    原始: `${bg.width}x${bg.height}`,
-                    縮放後: `${scaledW.toFixed(0)}x${scaledH.toFixed(0)}`,
-                    位置: `(${bgX.toFixed(0)}, ${bgY.toFixed(0)})`
-                });
-            }
+            const model = CONFIG.models[this.currentModelIndex];
+            const modelImg = this.modelImages[this.currentModelIndex];
             
-            // === 2. 繪製項鍊和墜子 ===
+            if (!modelImg || !modelImg.width) return;
+            
+            const zoom = CONFIG.zoomLevels[this.currentZoom];
+            
+            // === 1. 計算照片在 Canvas 中的位置和尺寸 ===
+            const scale = Math.max(canvasW / model.width, canvasH / model.height) * zoom;
+            const scaledW = model.width * scale;
+            const scaledH = model.height * scale;
+            const imgX = (canvasW - scaledW) / 2;
+            const imgY = (canvasH - scaledH) / 2;
+            
+            console.log('📐 照片位置:', {
+                原始: `${model.width}x${model.height}`,
+                縮放: zoom,
+                縮放後: `${scaledW.toFixed(0)}x${scaledH.toFixed(0)}`,
+                位置: `(${imgX.toFixed(0)}, ${imgY.toFixed(0)})`
+            });
+            
+            // === 2. 繪製背景照片 ===
+            ctx.drawImage(modelImg, imgX, imgY, scaledW, scaledH);
+            
+            // === 3. 計算項鍊位置（相對於照片） ===
+            const neckX = imgX + (scaledW * model.neckX);
+            const neckY = imgY + (scaledH * model.neckY);
+            const pendantX = imgX + (scaledW * model.neckX);
+            const pendantY = imgY + (scaledH * model.pendantY);
+            
+            console.log('📐 項鍊位置:', {
+                鎖骨: `(${neckX.toFixed(0)}, ${neckY.toFixed(0)})`,
+                墜子: `(${pendantX.toFixed(0)}, ${pendantY.toFixed(0)})`
+            });
+            
+            // === 4. 繪製項鍊 ===
             if (this.pendantImage) {
-                const zoom = CONFIG.zoomLevels[this.currentZoom];
-                
-                // 關鍵：這些座標是相對於 Canvas 的絕對位置
-                const centerX = w * 0.5;
-                const neckY = h * CONFIG.neckY;       // 鎖骨位置
-                const pendantY = h * CONFIG.pendantY;  // 墜子位置
-                
-                console.log('📐 項鍊座標:', {
-                    canvas尺寸: `${w}x${h}`,
-                    中心X: centerX,
-                    鎖骨Y: neckY,
-                    墜子Y: pendantY,
-                    縮放: zoom
-                });
-                
-                // === 2a. 繪製鏈子 ===
+                // 4a. 繪製鏈子
                 ctx.strokeStyle = CONFIG.chain.color;
                 ctx.lineWidth = CONFIG.chain.width;
                 ctx.lineCap = 'round';
                 ctx.shadowColor = 'rgba(0,0,0,0.3)';
                 ctx.shadowBlur = 4;
                 
-                const chainWidth = 60; // 鏈子兩側的距離
+                const chainWidthPx = 60 * (scaledW / model.width); // 鏈子寬度隨照片縮放
                 
-                // 左側鏈子
+                // 左鏈
                 ctx.beginPath();
-                ctx.moveTo(centerX - chainWidth, neckY);
+                ctx.moveTo(neckX - chainWidthPx, neckY);
                 ctx.bezierCurveTo(
-                    centerX - chainWidth * 0.7, neckY + (pendantY - neckY) * 0.4,
-                    centerX - 20, pendantY - 20,
-                    centerX, pendantY
+                    neckX - chainWidthPx * 0.7, neckY + (pendantY - neckY) * 0.4,
+                    pendantX - 20, pendantY - 20,
+                    pendantX, pendantY
                 );
                 ctx.stroke();
                 
-                // 右側鏈子
+                // 右鏈
                 ctx.beginPath();
-                ctx.moveTo(centerX + chainWidth, neckY);
+                ctx.moveTo(neckX + chainWidthPx, neckY);
                 ctx.bezierCurveTo(
-                    centerX + chainWidth * 0.7, neckY + (pendantY - neckY) * 0.4,
-                    centerX + 20, pendantY - 20,
-                    centerX, pendantY
+                    neckX + chainWidthPx * 0.7, neckY + (pendantY - neckY) * 0.4,
+                    pendantX + 20, pendantY - 20,
+                    pendantX, pendantY
                 );
                 ctx.stroke();
                 
                 ctx.shadowColor = 'transparent';
                 
-                // === 2b. 繪製墜頭 ===
+                // 4b. 繪製墜頭
                 ctx.fillStyle = CONFIG.chain.color;
                 ctx.beginPath();
-                ctx.arc(centerX, pendantY, 5, 0, Math.PI * 2);
+                ctx.arc(pendantX, pendantY, 5, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 水滴形墜頭
                 ctx.beginPath();
-                ctx.moveTo(centerX, pendantY - 5);
+                ctx.moveTo(pendantX, pendantY - 5);
                 ctx.bezierCurveTo(
-                    centerX - 5, pendantY,
-                    centerX - 5, pendantY + 8,
-                    centerX, pendantY + 12
+                    pendantX - 5, pendantY,
+                    pendantX - 5, pendantY + 8,
+                    pendantX, pendantY + 12
                 );
                 ctx.bezierCurveTo(
-                    centerX + 5, pendantY + 8,
-                    centerX + 5, pendantY,
-                    centerX, pendantY - 5
+                    pendantX + 5, pendantY + 8,
+                    pendantX + 5, pendantY,
+                    pendantX, pendantY - 5
                 );
                 ctx.fill();
                 
-                // === 2c. 繪製珠寶主體 ===
-                const pendantSize = 90 * zoom;
-                const pendantX = centerX - pendantSize / 2;
-                const pendantYPos = pendantY + 12; // 墜頭下方
+                // 4c. 計算墜子尺寸（根據真實尺寸和照片比例）
+                const realSizeMM = CONFIG.realSizes[this.currentSize];
+                const pixelPerMM = model.shoulderWidth / CONFIG.avgShoulderWidthMM;
+                const pendantSizeInPhoto = realSizeMM * pixelPerMM;
+                const pendantSizeInCanvas = pendantSizeInPhoto * (scaledW / model.width);
                 
-                console.log('📐 珠寶位置:', {
-                    尺寸: pendantSize,
-                    X: pendantX,
-                    Y: pendantYPos
+                console.log('📐 墜子尺寸:', {
+                    真實尺寸: `${realSizeMM}mm`,
+                    照片中: `${pendantSizeInPhoto.toFixed(1)}px`,
+                    Canvas中: `${pendantSizeInCanvas.toFixed(1)}px`
                 });
                 
+                // 4d. 繪製墜子
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 10;
                 ctx.shadowOffsetX = 3;
@@ -339,19 +351,13 @@
                 
                 ctx.drawImage(
                     this.pendantImage,
-                    pendantX,
-                    pendantYPos,
-                    pendantSize,
-                    pendantSize
+                    pendantX - pendantSizeInCanvas / 2,
+                    pendantY + 12,
+                    pendantSizeInCanvas,
+                    pendantSizeInCanvas
                 );
                 
                 ctx.shadowColor = 'transparent';
-            } else {
-                // 沒有珠寶時顯示提示
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('等待珠寶生成...', w / 2, h / 2);
             }
         }
     }
@@ -360,23 +366,20 @@
     window.WearingPreview = WearingPreview;
     
     function init() {
-        console.log('🚀 開始初始化佩戴預覽');
+        console.log('🚀 初始化佩戴預覽系統');
         const container = document.getElementById('wearing-preview-container');
         if (container) {
-            console.log('✅ 找到容器，建立實例');
             window.wearingPreviewInstance = new WearingPreview('wearing-preview-container');
         } else {
             console.error('❌ 找不到 wearing-preview-container');
         }
     }
     
-    // 多重初始化策略
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
     
-    // 備援延遲初始化
     setTimeout(init, 1000);
 })();
