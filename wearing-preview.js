@@ -7,7 +7,10 @@
     'use strict';
 
     // 用於確認「站上是否載到最新檔案」
-    const WEARING_PREVIEW_BUILD = '2026-01-27-tryon-proxy-v4-b64cache';
+    const WEARING_PREVIEW_BUILD = '2026-01-27-tryon-proxy-v5-ready-guard';
+    // 讓你能在 Console 直接確認是否為最新版本
+    window.WEARING_PREVIEW_BUILD = WEARING_PREVIEW_BUILD;
+    console.log('WEARING_PREVIEW_BUILD:', WEARING_PREVIEW_BUILD);
 
     // 配置
     const CONFIG = {
@@ -94,6 +97,7 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             this.modelImages = [];
             this.modelB64Cache = [];     // 與 models 同 index
             this.modelMimeCache = [];    // 與 models 同 index
+            this.modelsReadyPromise = null;
             this.uploadedImage = null;
             this.uploadedB64 = null;
             this.uploadedMimeType = null;
@@ -116,7 +120,8 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             this.setupEventListeners();
 
             console.log('📦 預載入模型圖片...');
-            await this.preloadModels();
+            this.modelsReadyPromise = this.preloadModels();
+            await this.modelsReadyPromise;
 
             console.log('✅ 初始化完成');
         }
@@ -712,6 +717,37 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             await this.generateWearing();
         }
 
+        async ensureModelB64Ready() {
+            if (this.uploadedB64 && this.uploadedB64.length > 64) return true;
+
+            // 先看 cache
+            const cached = this.modelB64Cache?.[this.currentModelIndex];
+            if (cached && cached.length > 64) return true;
+
+            // 等待模型預載入完成（避免在 init 還沒跑完就觸發）
+            if (this.modelsReadyPromise) {
+                try {
+                    await this.modelsReadyPromise;
+                } catch (_) {}
+            }
+
+            const cached2 = this.modelB64Cache?.[this.currentModelIndex];
+            if (cached2 && cached2.length > 64) return true;
+
+            // 最後退化：用目前的 Image 再轉一次
+            const img = this.modelImages?.[this.currentModelIndex];
+            if (img) {
+                const b64 = await this.imageToBase64(img);
+                if (b64 && b64.length > 64) {
+                    this.modelB64Cache[this.currentModelIndex] = b64;
+                    this.modelMimeCache[this.currentModelIndex] = 'image/png';
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         async generateWearing() {
             // 防止連點/重複觸發造成大量 API 呼叫
             const now = Date.now();
@@ -733,6 +769,13 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 if (this.errorToast) this.errorToast.style.display = 'none';
 
                 // 準備圖片（全部走快取，避免 null）
+                const modelReady = await this.ensureModelB64Ready();
+                if (!modelReady) {
+                    console.warn('⚠️ modelImageB64 尚未就緒（等待模型預載入/上傳照片）');
+                    this.showError('模型圖片尚未就緒，請稍後再試');
+                    return;
+                }
+
                 const modelB64 = this.uploadedB64 || this.modelB64Cache[this.currentModelIndex] || null;
                 const modelMimeType = this.uploadedMimeType || this.modelMimeCache[this.currentModelIndex] || 'image/png';
                 const pendantB64 = this.pendantB64 || null;
@@ -740,7 +783,7 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
 
                 // 防呆：避免打到後端 400
                 if (!modelB64 || modelB64.length < 64) {
-                    console.warn('⚠️ modelImageB64 尚未就緒');
+                    console.warn('⚠️ modelImageB64 尚未就緒(長度不足)');
                     this.showError('模型圖片尚未就緒，請稍後再試');
                     return;
                 }
