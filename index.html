@@ -1260,6 +1260,8 @@
         // ========== 通用通知函數 (新增) ==========
         // 後端 URL 配置（提前定義，供付款檢測使用）
         const BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
+        // 重要：讓其他檔案（如 wearing-preview.js）可讀取
+        window.BACKEND_URL = BACKEND_URL;
 
         /**
          * 顯示通知訊息

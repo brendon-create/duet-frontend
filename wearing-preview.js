@@ -60,11 +60,6 @@ OUTPUT: Single composite image with the person naturally wearing the pendant nec
     };
 
     function getBackendUrl() {
-        // index.html 內有定義 const BACKEND_URL（供其他 script 使用）
-        try {
-            // eslint-disable-next-line no-undef
-            if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) return BACKEND_URL;
-        } catch (_) {}
         if (window.BACKEND_URL) return window.BACKEND_URL;
         return '';
     }
