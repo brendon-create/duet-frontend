@@ -752,8 +752,16 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
             // 防止連點/重複觸發造成大量 API 呼叫
             const now = Date.now();
             if (this.loading) return;
-            if (now - this.lastTryOnAt < 1500) return;
+            // 你現在遇到 429 配額限制，這裡改成更保守的節流（避免自動重新生成模型時狂打）
+            if (now - this.lastTryOnAt < 15000) return;
             this.lastTryOnAt = now;
+
+            // 若剛剛遇到 429，進入冷卻期
+            if (this.cooldownUntil && now < this.cooldownUntil) {
+                const remain = Math.ceil((this.cooldownUntil - now) / 1000);
+                this.showError(`AI 額度/頻率限制，請稍候 ${remain}s 再試`);
+                return;
+            }
 
             this.loading = true;
             this.loadingOverlay.style.display = 'flex';
@@ -812,6 +820,10 @@ OUTPUT: Single composite image. If the chain or pendant is missing, the output i
                 if (!response.ok || !result || !result.success) {
                     const baseMsg = result?.error || `tryon 失敗（HTTP ${response.status}）`;
                     const details = result?.details ? `（details: ${typeof result.details === 'string' ? result.details : JSON.stringify(result.details).slice(0, 300)}）` : '';
+                    // 429：設定冷卻期，避免一直打到配額
+                    if (response.status === 429) {
+                        this.cooldownUntil = Date.now() + 60_000; // 先冷卻 60 秒
+                    }
                     throw new Error(`${baseMsg}${details}`);
                 }
 
