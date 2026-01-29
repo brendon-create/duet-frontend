@@ -3869,7 +3869,6 @@
                 console.log('💰 原始金額:', originalTotal);
                 console.log('🎫 優惠碼:', appliedPromoCode || '無');
 
-            try {
                 // 取得 AI 諮詢資料（如果有的話）
                 const aiDataStr = localStorage.getItem('duet_ai_consultation');
                 const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
@@ -3901,6 +3900,8 @@
                 } else {
                     console.error('❌ 結帳失敗:', result.error);
                     alert('❌ 結帳失敗：' + result.error);
+                    hideLoadingOverlay();
+                    isProcessingPayment = false;
                 }
 
             } catch (error) {
@@ -3910,6 +3911,8 @@
                     stack: error.stack
                 });
                 alert('❌ 支付過程發生錯誤：' + error.message);
+                hideLoadingOverlay();
+                isProcessingPayment = false;
             }
         }
 
