@@ -854,22 +854,28 @@
         <div class="divider"></div>
 
         <div class="control-group">
-            <label>Material</label>
+            <label>材質 (Material)</label>
             <select id="material">
-                <option value="gold18k">18K Gold</option>
-                <option value="whitegold18k">18K White Gold</option>
-                <option value="rosegold18k">18K Rose Gold</option>
-                <option value="silver925">925 Sterling Silver</option>
-                <option value="brass">Brass</option>
-                <option value="platinum">Platinum PT950</option>
+                <option value="silver925">925 銀</option>
+                <option value="brass">黃銅</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label>Texture</label>
+            <label>表面電鍍 (Plating)</label>
+            <select id="plating">
+                <option value="none">無</option>
+                <option value="gold18k">18K 金</option>
+                <option value="whitegold18k">18K 白K金</option>
+                <option value="rosegold18k">18K 玫瑰金</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>表面質地 (Finish)</label>
             <select id="finish">
-                <option value="glossy">Glossy (Mirror Finish)</option>
-                <option value="matte">Matte (Brushed)</option>
+                <option value="glossy">亮面</option>
+                <option value="matte">霧面</option>
             </select>
         </div>
 
@@ -968,6 +974,8 @@
     </div>
 
     <!-- 佩戴模擬預覽 -->
+    <!-- Wearing Preview - Temporarily Disabled -->
+    <!-- 
     <div id="wearing-preview-container" class="glass" style="
         position: absolute;
         top: 200px;
@@ -982,6 +990,7 @@
         pointer-events: auto;
     ">
     </div>
+    -->
 
     <!-- Font Selector Modal -->
     <div id="font-selector-modal">
@@ -1631,6 +1640,14 @@
             platinum: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 21.4 }
         };
 
+        // 電鍍顏色定義
+        const PLATING_COLORS = {
+            none: null,  // 無電鍍，使用基礎材質顏色
+            gold18k: 0xFFD700,      // 18K 金色
+            whitegold18k: 0xE5E5E5, // 18K 白K金色
+            rosegold18k: 0xECC5B0   // 18K 玫瑰金色
+        };
+
         // 初始化場景（Z-up 系統）
         function initScene() {
             scene = new THREE.Scene();
@@ -1685,7 +1702,7 @@
 
         function showInitialSphere() {
             const geometry = new THREE.SphereGeometry(7.5, 64, 64);
-            const material = getMaterial('gold18k', 'glossy');
+            const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
             mainMesh = new THREE.Mesh(geometry, material);
             scene.add(mainMesh);
             // 暴露 mainMesh 給全局，供佩戴模擬使用
@@ -1693,11 +1710,17 @@
             document.getElementById('loader').style.display = 'none';
         }
 
-        function getMaterial(materialType, finish) {
+        function getMaterial(materialType, finish, plating = 'none') {
             const mat = MATERIALS[materialType];
             const roughness = mat.roughness[finish];
+            
+            // 決定最終顏色：如果有電鍍，使用電鍍顏色；否則使用基礎材質顏色
+            const finalColor = PLATING_COLORS[plating] !== null 
+                ? PLATING_COLORS[plating] 
+                : mat.color;
+            
             return new THREE.MeshStandardMaterial({
-                color: mat.color,
+                color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
                 envMap: envMap,
@@ -1970,7 +1993,8 @@
 
             result.material = getMaterial(
                 document.getElementById('material').value,
-                document.getElementById('finish').value
+                document.getElementById('finish').value,
+                document.getElementById('plating').value
             );
 
             mainMesh = result;
@@ -2198,7 +2222,8 @@
 
             const material = getMaterial(
                 document.getElementById('material').value,
-                document.getElementById('finish').value
+                document.getElementById('finish').value,
+                document.getElementById('plating').value
             );
             bailMesh = new THREE.Mesh(geometry, material);
             scene.add(bailMesh);
@@ -2247,7 +2272,8 @@
 
             const materialType = document.getElementById('material').value;
             const finish = document.getElementById('finish').value;
-            const newMaterial = getMaterial(materialType, finish);
+            const plating = document.getElementById('plating').value;
+            const newMaterial = getMaterial(materialType, finish, plating);
 
             // 更換主體和墜頭的材質
             mainMesh.material = newMaterial;
@@ -2562,6 +2588,7 @@
                 font1: font1Name,
                 font2: font2Name,
                 material: document.getElementById('material').value,
+                plating: document.getElementById('plating').value,
                 finish: document.getElementById('finish').value,
                 size: document.getElementById('size').value,
                 bailX: document.getElementById('bailX').value,
@@ -2643,6 +2670,7 @@
             document.getElementById('letter1').value = slotData.letter1;
             document.getElementById('letter2').value = slotData.letter2;
             document.getElementById('material').value = slotData.material;
+            document.getElementById('plating').value = slotData.plating || 'none';  // 向後相容：如果沒有電鍍資料，預設為「無」
             document.getElementById('finish').value = slotData.finish;
             document.getElementById('size').value = slotData.size;
             document.getElementById('bailX').value = slotData.bailX;
@@ -2755,6 +2783,8 @@
                 font1: font1Name,
                 font2: font2Name,
                 material: document.getElementById('material').value,
+                plating: document.getElementById('plating').value,
+                finish: document.getElementById('finish').value,
                 size: parseInt(document.getElementById('size').value),  // ✅ 轉換為整數
                 volume: document.getElementById('volume-display').textContent,
                 weight: document.getElementById('weight-display').textContent,
@@ -2823,13 +2853,15 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'cart-item-info';
+                const platingText = item.plating === 'none' ? '無電鍍' : item.plating;
+                const finishText = item.finish === 'glossy' ? '亮面' : '霧面';
                 infoDiv.innerHTML = `
                     <h3>DUET "${item.letter1}${item.letter2}"</h3>
                     <div class="cart-item-details">
                         "${item.letter1}" in font "${item.font1}"<br>
                         "${item.letter2}" in font "${item.font2}"<br>
-                        Material: ${item.material}<br>
-                        Size: ${item.size}mm | Weight: ${item.weight}
+                        材質: ${item.material} | 電鍍: ${platingText} | 質地: ${finishText}<br>
+                        尺寸: ${item.size}mm | 重量: ${item.weight}
                     </div>
                 `;
                 div.appendChild(infoDiv);
@@ -3837,7 +3869,7 @@
             });
 
             // 材質參數改變 → 只更新材質，不重建模型（即時！）
-            ['material', 'finish'].forEach(id => {
+            ['material', 'finish', 'plating'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     updateMaterial();
                 });
@@ -3932,8 +3964,8 @@
         }
         loadGoogleFonts();
     </script>
-    <!-- 佩戴模擬預覽模組 -->
-    <script src="wearing-preview.js"></script>
+    <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
+    <!-- <script src="wearing-preview.js"></script> -->
 </body>
 
 </html>
