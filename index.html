@@ -1506,11 +1506,25 @@
                 // 延遲 1.5 秒後載入訂單並觸發設計理念收集流程
                 setTimeout(async () => {
                     console.log('🎨 準備設計理念收集流程');
+                    console.log('🔍 訂單ID:', orderId);
+                    console.log('🔍 BACKEND_URL:', BACKEND_URL);
+                    console.log('🔍 完整 API URL:', `${BACKEND_URL}/api/order/${orderId}`);
 
                     // 先從後端載入訂單資料，恢復購物車
                     try {
-                        const response = await fetch(`${BACKEND_URL}/api/order/${orderId}`);
+                        const apiUrl = `${BACKEND_URL}/api/order/${orderId}`;
+                        console.log('📡 正在呼叫 API:', apiUrl);
+                        
+                        const response = await fetch(apiUrl);
+                        console.log('📡 Response status:', response.status);
+                        console.log('📡 Response ok:', response.ok);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
                         const data = await response.json();
+                        console.log('📦 收到資料:', data);
 
                         if (data.success && data.items) {
                             // 恢復購物車資料和 AI 諮詢資料
@@ -1530,11 +1544,17 @@
                             }
                         } else {
                             console.error('❌ 無法載入訂單資料');
-                            showNotification('載入訂單資料失敗', 'error');
+                            console.error('  - success:', data.success);
+                            console.error('  - items:', data.items);
+                            console.error('  - error:', data.error);
+                            showNotification('載入訂單資料失敗: ' + (data.error || '未知錯誤'), 'error');
                         }
                     } catch (error) {
                         console.error('❌ 載入訂單時發生錯誤:', error);
-                        showNotification('載入訂單資料失敗', 'error');
+                        console.error('  - Error name:', error.name);
+                        console.error('  - Error message:', error.message);
+                        console.error('  - Error stack:', error.stack);
+                        showNotification('載入訂單資料失敗: ' + error.message, 'error');
                     }
                 }, 1500);
 
@@ -4138,11 +4158,36 @@
         window.applyPromoCode = applyPromoCode;
         window.removePromoCode = removePromoCode;
         window.checkout = checkout;
+        
+        // 測試設計理念卡片顯示
+        window.testDesignStoryCard = function() {
+            const modal = document.getElementById('design-story-modal');
+            const content = document.getElementById('story-content');
+            
+            // 測試內容
+            content.innerHTML = `
+                這是一個關於「L」與「J」的故事。<br><br>
+                
+                字母「L」選用了優雅的 Playfair Display 字體，<br>
+                象徵著溫柔中帶著力量的堅定。<br><br>
+                
+                字母「J」則採用 Dancing Script 手寫體，<br>
+                展現出自由奔放的浪漫情懷。<br><br>
+                
+                兩個字母交織在一起，<br>
+                如同兩顆心靈相互依偎，<br>
+                共同譜寫屬於你們的獨特篇章。
+            `;
+            
+            modal.style.display = 'flex';
+            console.log('✅ 設計理念卡片已顯示');
+        };
 
         console.log('✅ 全局函數已暴露:', {
             applyPromoCode: typeof window.applyPromoCode,
             removePromoCode: typeof window.removePromoCode,
-            checkout: typeof window.checkout
+            checkout: typeof window.checkout,
+            testDesignStoryCard: typeof window.testDesignStoryCard
         });
 
         // 載入 Google Fonts - 分批載入所有字體
