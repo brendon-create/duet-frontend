@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DUET by BCAG</title>
     
-    <!-- Google Fonts: 中文鋼筆字體 -->
+    <!-- Google Fonts: 中文手寫楷書 + 英文鋼筆字 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
         * {
@@ -1050,12 +1050,11 @@
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
             <div id="story-content" style="
-                font-family: 'Liu Jian Mao Cao', '標楷體', cursive;
-                font-size: 18px;
-                line-height: 2.2;
-                letter-spacing: 0.5px;
+                font-family: 'Ma Shan Zheng', 'Caveat', '標楷體', cursive;
+                font-size: 19px;
+                line-height: 2.4;
+                letter-spacing: 1px;
                 flex: 1;
-                overflow-y: auto;
             ">
                 這是一個關於兩個字母的故事...
             </div>
@@ -1774,7 +1773,7 @@
             if (!skipAI && !aiDataStr) {
                 setTimeout(() => {
                     showAIIntroModal();
-                }, 2000);
+                }, 3000); // 延遲 3 秒顯示
             }
         });
         // ========== AI 諮詢整合程式碼結束 ==========
@@ -3052,20 +3051,31 @@
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
             const thumbnailDataURL = thumbnailCanvas.toDataURL('image/png');
 
+            const material = document.getElementById('material').value;
+            const plating = document.getElementById('plating').value;
+            const finish = document.getElementById('finish').value;
+            
+            // 計算價格
+            let price = 3850; // 925銀和黃銅基礎價格
+            if (plating !== 'none') {
+                price += 400; // 任何電鍍 +400 = 4250
+            }
+            // 亮面霧面不影響價格
+
             const item = {
                 id: Date.now(),
                 letter1: document.getElementById('letter1').value,
                 letter2: document.getElementById('letter2').value,
                 font1: font1Name,
                 font2: font2Name,
-                material: document.getElementById('material').value,
-                plating: document.getElementById('plating').value,
-                finish: document.getElementById('finish').value,
+                material: material,
+                plating: plating,
+                finish: finish,
                 size: parseInt(document.getElementById('size').value),  // ✅ 轉換為整數
                 volume: document.getElementById('volume-display').textContent,
                 weight: document.getElementById('weight-display').textContent,
                 quantity: 1,
-                price: 5000,
+                price: price,
                 // 儲存墜頭相對向量
                 bailRelativeX: bailRelativeX,
                 bailRelativeY: bailRelativeY,
@@ -3738,7 +3748,15 @@
 
                 if (result.success) {
                     console.log('✅ 設計理念生成成功');
-                    return result.designStory;
+                    let story = result.designStory;
+                    
+                    // 限制長度為 100-150 字（包含標點符號）
+                    if (story.length > 150) {
+                        story = story.substring(0, 147) + '...';
+                        console.log('📏 設計理念已截斷至 150 字');
+                    }
+                    
+                    return story;
                 } else {
                     console.error('❌ 設計理念生成失敗:', result.error);
                     // 回傳預設格式
@@ -3792,24 +3810,43 @@
         }
 
         // 正常支付流程
+        // 防止重複結帳的標記
+        let isProcessingPayment = false;
+        
         async function processPayment() {
-            console.log('💳 開始支付流程...');
-
-            // 收集用戶資訊
-            console.log('📝 等待用戶填寫資訊...');
-            const userInfo = await getUserInfo();
-            console.log('✅ 用戶資訊收集完成:', userInfo ? '成功' : '已取消');
-
-            if (!userInfo) {
-                console.warn('⚠️ 用戶取消填寫資訊');
-                return; // 用戶取消
+            // 防止重複點擊
+            if (isProcessingPayment) {
+                console.warn('⚠️ 支付流程進行中，請勿重複操作');
+                return;
             }
+            
+            isProcessingPayment = true;
+            console.log('💳 開始支付流程...');
+            
+            // 立即關閉購物車
+            closeCart();
+            
+            // 顯示載入中遮罩
+            showLoadingOverlay('正在處理您的訂單...');
 
-            const orderId = 'DUET' + Date.now();
-            console.log('🔢 訂單ID:', orderId);
-            console.log('📦 購物車商品:', cartItems);
-            console.log('💰 原始金額:', originalTotal);
-            console.log('🎫 優惠碼:', appliedPromoCode || '無');
+            try {
+                // 收集用戶資訊
+                console.log('📝 等待用戶填寫資訊...');
+                const userInfo = await getUserInfo();
+                console.log('✅ 用戶資訊收集完成:', userInfo ? '成功' : '已取消');
+
+                if (!userInfo) {
+                    console.warn('⚠️ 用戶取消填寫資訊');
+                    hideLoadingOverlay();
+                    isProcessingPayment = false;
+                    return; // 用戶取消
+                }
+
+                const orderId = 'DUET' + Date.now();
+                console.log('🔢 訂單ID:', orderId);
+                console.log('📦 購物車商品:', cartItems);
+                console.log('💰 原始金額:', originalTotal);
+                console.log('🎫 優惠碼:', appliedPromoCode || '無');
 
             try {
                 // 取得 AI 諮詢資料（如果有的話）
@@ -4259,6 +4296,40 @@
                 
                 // 更新內容區域顏色
                 document.getElementById('story-content').style.color = style.color;
+                
+                // 裝飾線差異化
+                const signatureArea = card.querySelector('[style*="設計師"]').parentElement;
+                const signatureLine = signatureArea.querySelector('div');
+                
+                if (style.name === '經典風格') {
+                    // 雙線 + 小圓點
+                    signatureLine.style.width = '120px';
+                    signatureLine.style.height = '3px';
+                    signatureLine.style.background = 'none';
+                    signatureLine.style.borderTop = '1px solid currentColor';
+                    signatureLine.style.borderBottom = '1px solid currentColor';
+                    signatureLine.style.opacity = '0.4';
+                    signatureLine.innerHTML = '';
+                } else if (style.name === '現代風格') {
+                    // 虛線 + 幾何
+                    signatureLine.style.width = '120px';
+                    signatureLine.style.height = '1px';
+                    signatureLine.style.background = 'none';
+                    signatureLine.style.borderTop = 'none';
+                    signatureLine.style.borderBottom = '2px dashed currentColor';
+                    signatureLine.style.opacity = '0.5';
+                    signatureLine.innerHTML = '';
+                } else if (style.name === '浪漫風格') {
+                    // 實線 + 愛心
+                    signatureLine.style.width = '120px';
+                    signatureLine.style.height = '1px';
+                    signatureLine.style.background = 'currentColor';
+                    signatureLine.style.borderTop = 'none';
+                    signatureLine.style.borderBottom = 'none';
+                    signatureLine.style.opacity = '0.3';
+                    signatureLine.style.position = 'relative';
+                    signatureLine.innerHTML = '<span style="position: absolute; right: -15px; top: -8px; font-size: 14px; opacity: 0.6;">♡</span>';
+                }
             }
             
             document.getElementById('prev-card-style').addEventListener('click', () => {
@@ -4364,4 +4435,6 @@
     <!-- <script src="wearing-preview.js"></script> -->
 </body>
 
-</html>
+</html><script>
+// 載入遮罩函數已在 processPayment 函數前定義
+</script>
