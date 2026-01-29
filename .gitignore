@@ -1,14 +1,14 @@
 # macOS
 .DS_Store
+**/.DS_Store
 
 # Editor
 .vscode/
 .idea/
 
-# Temporary files
-*.tmp
+# Backup files
 *.bak
 *~
 
-# Configuration (contains API keys)
-config.js
+# Logs
+*.log
