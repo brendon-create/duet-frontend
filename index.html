@@ -1132,11 +1132,32 @@
             </button>
         </div>
         
-        <!-- 關閉按鈕 -->
+        <!-- 確定按鈕 -->
+        <button id="confirm-story-card" style="
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 14px 50px;
+            background: linear-gradient(135deg, #d4af37, #f4d03f);
+            border: none;
+            border-radius: 50px;
+            color: #000;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+            transition: all 0.3s;
+            z-index: 10;
+        " onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'; this.style.boxShadow='0 12px 35px rgba(212, 175, 55, 0.6)'" onmouseout="this.style.transform='translateX(-50%) translateY(0)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.4)'">
+            ✓ 確定這個設計
+        </button>
+        
+        <!-- 關閉按鈕（改為左上角） -->
         <button id="close-story-card" style="
             position: absolute;
             top: 30px;
-            right: 30px;
+            left: 30px;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -4340,6 +4361,15 @@
             document.getElementById('next-card-style').addEventListener('click', () => {
                 currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
                 updateCardStyle();
+            });
+            
+            document.getElementById('confirm-story-card').addEventListener('click', () => {
+                // 確定後關閉 Modal，可能還會有後續動作（如下載、分享）
+                document.getElementById('design-story-modal').style.display = 'none';
+                showNotification('設計理念已確認！', 'success');
+                
+                // 可以在這裡加上下載卡片的功能
+                // downloadDesignCard();
             });
             
             document.getElementById('close-story-card').addEventListener('click', () => {
