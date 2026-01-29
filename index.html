@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DUET by BCAG</title>
+    
+    <!-- Google Fonts: 中文鋼筆字體 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&display=swap" rel="stylesheet">
+    
     <style>
         * {
             margin: 0;
@@ -1016,6 +1022,138 @@
         <div class="confirm-container">
             <button class="confirm-btn" id="confirm-btn">Confirm Selection</button>
         </div>
+    </div>
+
+    <!-- Design Story Card Modal -->
+    <div id="design-story-modal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            width: 560px;
+            height: 400px;
+            position: relative;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        " id="story-card" data-style="classic">
+            <!-- 設計理念內容 -->
+            <div id="story-content" style="
+                font-family: 'Liu Jian Mao Cao', '標楷體', cursive;
+                font-size: 18px;
+                line-height: 2.2;
+                letter-spacing: 0.5px;
+                flex: 1;
+                overflow-y: auto;
+            ">
+                這是一個關於兩個字母的故事...
+            </div>
+            
+            <!-- 簽名欄位 -->
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 15px;
+                margin-top: 30px;
+            ">
+                <span style="font-size: 14px; opacity: 0.6;">設計師</span>
+                <div style="
+                    width: 120px;
+                    height: 1px;
+                    background: currentColor;
+                    opacity: 0.3;
+                "></div>
+            </div>
+        </div>
+        
+        <!-- 卡片切換控制 -->
+        <div style="
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        ">
+            <button id="prev-card-style" style="
+                background: none;
+                border: none;
+                color: rgba(255, 255, 255, 0.6);
+                font-size: 24px;
+                cursor: pointer;
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s;
+            " onmouseover="this.style.color='rgba(255,255,255,1)'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+                ←
+            </button>
+            <span id="card-style-name" style="
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.8);
+                min-width: 80px;
+                text-align: center;
+            ">經典風格</span>
+            <button id="next-card-style" style="
+                background: none;
+                border: none;
+                color: rgba(255, 255, 255, 0.6);
+                font-size: 24px;
+                cursor: pointer;
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s;
+            " onmouseover="this.style.color='rgba(255,255,255,1)'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+                →
+            </button>
+        </div>
+        
+        <!-- 關閉按鈕 -->
+        <button id="close-story-card" style="
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        " onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+            ×
+        </button>
     </div>
 
     <!-- Cart Modal -->
@@ -2382,6 +2520,14 @@
                 document.querySelectorAll('.preview-char').forEach(el => {
                     el.textContent = chars;
                 });
+                
+                // 同步回左側字母選擇（雙向同步）
+                if (chars.length >= 1) {
+                    document.getElementById('letter1').value = chars[0] || 'A';
+                }
+                if (chars.length >= 2) {
+                    document.getElementById('letter2').value = chars[1] || 'A';
+                }
             });
 
             document.getElementById('select-all-checkbox').addEventListener('change', (e) => {
@@ -3864,6 +4010,16 @@
             // 結構參數改變 → 重建模型
             ['letter1', 'letter2', 'size'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
+                    // 如果字體選擇視窗開著，同步字母到視窗
+                    const modal = document.getElementById('font-selector-modal');
+                    if (modal.classList.contains('active')) {
+                        const letter1 = document.getElementById('letter1').value;
+                        const letter2 = document.getElementById('letter2').value;
+                        const charInput = document.getElementById('char-input');
+                        charInput.value = letter1 + letter2;
+                        charInput.dispatchEvent(new Event('input'));
+                    }
+                    
                     generateModel();
                 });
             });
@@ -3906,6 +4062,45 @@
             });
             document.getElementById('continue-shopping').addEventListener('click', closeCart);
             document.getElementById('checkout').addEventListener('click', checkout);
+            
+            // 設計理念卡片切換邏輯
+            const cardStyles = [
+                { name: '經典風格', bg: '#f5f5dc', border: '3px solid #d4af37', color: '#2d2d2d' },
+                { name: '現代風格', bg: '#2d2d2d', border: '2px solid #c0c0c0', color: '#ffffff' },
+                { name: '浪漫風格', bg: '#fff5f5', border: '3px solid #dda0a0', color: '#2d2d2d' }
+            ];
+            let currentCardStyle = 0;
+            
+            function updateCardStyle() {
+                const card = document.getElementById('story-card');
+                const styleName = document.getElementById('card-style-name');
+                const style = cardStyles[currentCardStyle];
+                
+                card.style.background = style.bg;
+                card.style.border = style.border;
+                card.style.color = style.color;
+                styleName.textContent = style.name;
+                
+                // 更新內容區域顏色
+                document.getElementById('story-content').style.color = style.color;
+            }
+            
+            document.getElementById('prev-card-style').addEventListener('click', () => {
+                currentCardStyle = (currentCardStyle - 1 + cardStyles.length) % cardStyles.length;
+                updateCardStyle();
+            });
+            
+            document.getElementById('next-card-style').addEventListener('click', () => {
+                currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
+                updateCardStyle();
+            });
+            
+            document.getElementById('close-story-card').addEventListener('click', () => {
+                document.getElementById('design-story-modal').style.display = 'none';
+            });
+            
+            // 初始化卡片樣式
+            updateCardStyle();
         }
 
         function onResize() {
