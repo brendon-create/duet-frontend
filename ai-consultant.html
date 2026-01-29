@@ -24,7 +24,10 @@
 
         body {
             font-family: "Noto Sans TC", sans-serif;
-            background: linear-gradient(135deg, #0a0e14 0%, #1a1a1a 100%);
+            /* 改為半透明，讓主畫面背景透出 */
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             color: #fff;
             min-height: 100vh;
             padding: 20px;
@@ -638,13 +641,42 @@
 
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-            bubbleDiv.textContent = content;
-
-            messageDiv.appendChild(bubbleDiv);
-            chatContainer.appendChild(messageDiv);
+            
+            // 如果是 AI 訊息，使用打字機效果
+            if (role === 'assistant') {
+                bubbleDiv.textContent = '';
+                messageDiv.appendChild(bubbleDiv);
+                chatContainer.appendChild(messageDiv);
+                
+                // 打字機效果
+                typewriterEffect(content, bubbleDiv, 30);
+            } else {
+                // 用戶訊息直接顯示
+                bubbleDiv.textContent = content;
+                messageDiv.appendChild(bubbleDiv);
+                chatContainer.appendChild(messageDiv);
+            }
 
             // Scroll to bottom
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // 打字機效果函數
+        function typewriterEffect(text, element, speed = 30) {
+            let i = 0;
+            element.textContent = '';
+            
+            const timer = setInterval(() => {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    // 持續滾動到底部
+                    const chatContainer = document.getElementById('chat-container');
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else {
+                    clearInterval(timer);
+                }
+            }, speed);
         }
 
         // Show Typing Indicator
