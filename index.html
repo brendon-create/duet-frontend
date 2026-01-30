@@ -1971,7 +1971,7 @@
             scene.add(directionalLight);
 
             const rgbeLoader = new RGBELoader();
-            rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_08_1k.hdr',
+            rgbeLoader.load('https://raw.githubusercontent.com/brendon-z/duet-openscad/main/images/studio_small_03_1k.hdr',
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
@@ -2007,13 +2007,19 @@
                 ? PLATING_COLORS[plating] 
                 : mat.color;
             
-            return new THREE.MeshStandardMaterial({
+            const materialConfig = {
                 color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
-                envMap: envMap,
                 envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
-            });
+            };
+            
+            // 只在 envMap 存在時才加入
+            if (envMap) {
+                materialConfig.envMap = envMap;
+            }
+            
+            return new THREE.MeshStandardMaterial(materialConfig);
         }
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
