@@ -1050,12 +1050,15 @@
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
             <div id="story-content" style="
-                font-family: 'Liu Jian Mao Cao', '標楷體', cursive;
-                font-size: 18px;
-                line-height: 2.2;
+                font-family: 'Caveat', 'Ma Shan Zheng', cursive;
+                font-size: 22px;
+                line-height: 1.6;
                 letter-spacing: 0.5px;
                 flex: 1;
-                overflow-y: auto;
+                display: flex;
+                align-items: center;
+                text-align: justify;
+                padding: 0 5px;
             ">
                 這是一個關於兩個字母的故事...
             </div>
@@ -1951,7 +1954,7 @@
             scene.add(directionalLight);
 
             const rgbeLoader = new RGBELoader();
-            rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_08_1k.hdr',
+            rgbeLoader.load('https://raw.githubusercontent.com/brendon-z/duet-openscad/main/images/studio_small_03_1k.hdr',
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
@@ -3065,7 +3068,17 @@
                 volume: document.getElementById('volume-display').textContent,
                 weight: document.getElementById('weight-display').textContent,
                 quantity: 1,
-                price: 5000,
+                // 動態計算價格
+                price: (() => {
+                    const plating = document.getElementById('plating').value;
+                    // 基礎價格：925銀、黃銅都是 3850
+                    let basePrice = 3850;
+                    // 有電鍍（任何電鍍）+400
+                    if (plating && plating !== 'none') {
+                        basePrice += 400;
+                    }
+                    return basePrice;
+                })(),
                 // 儲存墜頭相對向量
                 bailRelativeX: bailRelativeX,
                 bailRelativeY: bailRelativeY,
@@ -3738,7 +3751,15 @@
 
                 if (result.success) {
                     console.log('✅ 設計理念生成成功');
-                    return result.designStory;
+                    let story = result.designStory;
+                    
+                    // 前端安全網：確保不超過 150 字
+                    if (story.length > 150) {
+                        console.warn('⚠️ 設計理念超過 150 字，自動截斷');
+                        story = story.substring(0, 147) + '...';
+                    }
+                    
+                    return story;
                 } else {
                     console.error('❌ 設計理念生成失敗:', result.error);
                     // 回傳預設格式
