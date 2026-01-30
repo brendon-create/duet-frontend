@@ -24,24 +24,23 @@
 
         body {
             font-family: "Noto Sans TC", sans-serif;
-            /* 改為半透明，讓主畫面背景透出 */
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            /* 深色漸層背景（與主頁面一致）*/
+            background: linear-gradient(135deg, #0a0e14 0%, #1a1a1a 100%);
             color: #fff;
             min-height: 100vh;
             padding: 20px;
         }
 
-        /* Welcome Modal */
+        /* Welcome Modal - Liquid Glass 風格 */
         #welcome-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -49,12 +48,19 @@
         }
 
         .modal-content {
-            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-light) 100%);
+            /* Liquid Glass: 半透明深色背景 + 強烈模糊 */
+            background: rgba(26, 26, 26, 0.85);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
             border: 1px solid rgba(212, 175, 55, 0.3);
             border-radius: 24px;
             padding: 50px 60px;
             max-width: 650px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            /* 多層陰影營造深度 */
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 2px 8px rgba(212, 175, 55, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
             animation: modalSlideIn 0.5s ease-out;
         }
 
@@ -220,14 +226,21 @@
 
         /* Chat Container */
         .chat-container {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
+            /* Liquid Glass: 半透明 + 強烈模糊 */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px) saturate(120%);
+            -webkit-backdrop-filter: blur(20px) saturate(120%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
             padding: 30px;
             min-height: 500px;
             max-height: 600px;
             overflow-y: auto;
             margin-bottom: 20px;
+            /* 多層陰影 */
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .message {
@@ -259,20 +272,27 @@
             display: inline-block;
             max-width: 80%;
             padding: 15px 20px;
-            border-radius: 18px;
+            border-radius: 20px;
             line-height: 1.6;
+            /* Liquid Glass 基礎 */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .message.assistant .message-bubble {
-            background: rgba(212, 175, 55, 0.1);
-            border: 1px solid rgba(212, 175, 55, 0.3);
+            /* AI 訊息：金色 Liquid Glass */
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.4);
             color: #fff;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
         }
 
         .message.user .message-bubble {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            /* 用戶訊息：白色 Liquid Glass */
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .typing-indicator {
@@ -314,13 +334,24 @@
 
         /* Input Area */
         .input-area {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* Liquid Glass 輸入框 */
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px) saturate(120%);
+            -webkit-backdrop-filter: blur(15px) saturate(120%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 50px;
             padding: 8px;
             display: flex;
             gap: 10px;
             align-items: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .input-area:focus-within {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(212, 175, 55, 0.5);
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
         }
 
         .input-area input {
