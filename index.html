@@ -1958,16 +1958,24 @@
             scene.add(directionalLight);
 
             const rgbeLoader = new RGBELoader();
-            rgbeLoader.load('https://raw.githubusercontent.com/brendon-chen/duet-openscad/main/images/studio_small_03_1k.hdr',
+            const hdrUrl = 'https://raw.githubusercontent.com/brendon-create/duet-openscad/main/images/studio_small_08_1k.hdr';
+            
+            console.log('🔄 開始載入 HDR:', hdrUrl);
+            
+            rgbeLoader.load(
+                hdrUrl,
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
                     scene.environment = envMap;
+                    console.log('✅ HDR 環境貼圖載入成功');
                     showInitialSphere();
                 },
                 undefined,  // onProgress
                 (error) => {
-                    console.warn('HDR 載入失敗，使用預設環境', error);
+                    console.error('❌ HDR 載入失敗:', error);
+                    console.error('   URL:', hdrUrl);
+                    console.error('   球體將顯示但缺少環境反射');
                     showInitialSphere();  // 失敗也要顯示球體
                 }
             );
@@ -1994,13 +2002,19 @@
                 ? PLATING_COLORS[plating]
                 : mat.color;
 
-            return new THREE.MeshStandardMaterial({
+            const materialConfig = {
                 color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
-                envMap: envMap,
                 envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
-            });
+            };
+            
+            // 只在 envMap 存在時才加入（防止黑色球體）
+            if (envMap) {
+                materialConfig.envMap = envMap;
+            }
+
+            return new THREE.MeshStandardMaterial(materialConfig);
         }
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
