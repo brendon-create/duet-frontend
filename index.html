@@ -9,7 +9,7 @@
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&family=Caveat:wght@400;700&family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Long+Cang&display=swap" rel="stylesheet">
 
     <style>
         * {
@@ -1083,7 +1083,7 @@
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
             <div id="story-content" contenteditable="true" style="
-                font-family: 'Caveat', 'Liu Jian Mao Cao', cursive, sans-serif;
+                font-family: 'Caveat', 'Long Cang', cursive, sans-serif;
                 font-size: 15px;
                 line-height: 1.5;
                 letter-spacing: 0.3px;
@@ -1917,32 +1917,51 @@
         let originalTotal = 0;
 
         // 120 種字體清單（來自 font-selector.htm）
-        // 可用字體清單（將由後端動態載入）
+        // 可用字體清單（從外部 JSON 載入）
         let availableFonts = [];
 
-        // 完整字體清單（前端定義）
-        const allFonts = [
-            "Abel", "Abril Fatface", "Advent Pro", "Alegreya", "Alex Brush",
-            "Alfa Slab One", "Alice", "Allura", "Amatic SC", "Amiri",
-            "Anton", "Arapey", "Archivo", "Armata", "Artifika",
-            "Arvo", "Audiowide", "Average", "Baloo 2", "Bangers",
-            "Bebas Neue", "Belgrano", "Bentham", "Bitter", "Bree Serif",
-            "Bubblegum Sans", "Bungee", "Cabin", "Cantata One", "Caudex",
-            "Caveat", "Chivo", "Cinzel", "Comfortaa", "Commissioner",
-            "Cookie", "Copse", "Cormorant Garamond", "Courier Prime", "Coustard",
-            "Creepster", "Cutive Mono", "DM Serif Text", "Dancing Script", "Dosis",
-            "EB Garamond", "Eczar", "Encode Sans", "Fauna One", "Fira Code",
-            "Fira Sans", "Fjalla One", "Fugaz One", "Gelasio", "Gloria Hallelujah",
-            "Great Vibes", "Handlee", "Hind", "Holtwood One SC", "Inconsolata",
-            "Indie Flower", "Jost", "Kalam", "Kanit", "Karla",
-            "Lexend", "Lobster", "Merriweather", "Neuton", "Nunito",
-            "Old Standard TT", "Orbitron", "Oswald", "Outfit", "Pacifico",
-            "Passion One", "Pathway Gothic One", "Patrick Hand", "Paytone One", "Playfair Display",
-            "Poppins", "Prata", "Quicksand", "Righteous", "Rubik",
-            "Russo One", "Sacramento", "Secular One", "Shadows Into Light", "Share Tech Mono",
-            "Shrikhand", "Sniglet", "Space Grotesk", "Space Mono", "Spectral",
-            "Tangerine", "Titan One", "Varela Round", "Vollkorn", "Zilla Slab"
-        ];
+        // 從外部 JSON 檔案載入字體庫
+        async function loadFontsFromJSON() {
+            try {
+                const response = await fetch('fonts.json');
+                const data = await response.json();
+                return data.fonts || [];
+            } catch (error) {
+                console.error('❌ 載入字體庫失敗，使用內建列表:', error);
+                // Fallback: 使用內建字體列表
+                return [
+                    "Abel", "Abril Fatface", "Advent Pro", "Alegreya", "Alex Brush",
+                    "Alfa Slab One", "Alice", "Allura", "Amatic SC", "Amiri",
+                    "Anton", "Arapey", "Archivo", "Armata", "Artifika",
+                    "Arvo", "Audiowide", "Average", "Baloo 2", "Bangers",
+                    "Bebas Neue", "Belgrano", "Bentham", "Bitter", "Bree Serif",
+                    "Bubblegum Sans", "Bungee", "Cabin", "Cantata One", "Caudex",
+                    "Caveat", "Chivo", "Cinzel", "Comfortaa", "Commissioner",
+                    "Cookie", "Copse", "Cormorant Garamond", "Courier Prime", "Coustard",
+                    "Creepster", "Cutive Mono", "DM Serif Text", "Dancing Script", "Dosis",
+                    "EB Garamond", "Eczar", "Encode Sans", "Fauna One", "Fira Code",
+                    "Fira Sans", "Fjalla One", "Fugaz One", "Gelasio", "Gloria Hallelujah",
+                    "Great Vibes", "Handlee", "Hind", "Holtwood One SC", "Inconsolata",
+                    "Indie Flower", "Jost", "Kalam", "Kanit", "Karla",
+                    "Lexend", "Lobster", "Merriweather", "Neuton", "Nunito",
+                    "Old Standard TT", "Orbitron", "Oswald", "Outfit", "Pacifico",
+                    "Passion One", "Pathway Gothic One", "Patrick Hand", "Paytone One", "Playfair Display",
+                    "Poppins", "Prata", "Quicksand", "Righteous", "Rubik",
+                    "Russo One", "Sacramento", "Secular One", "Shadows Into Light", "Share Tech Mono",
+                    "Shrikhand", "Sniglet", "Space Grotesk", "Space Mono", "Spectral",
+                    "Tangerine", "Titan One", "Varela Round", "Vollkorn", "Zilla Slab"
+                ];
+            }
+        }
+
+        // 初始化：載入字體庫
+        (async function initializeFonts() {
+            const allFonts = await loadFontsFromJSON();
+            console.log(`✅ 字體庫已載入：${allFonts.length} 種字體`);
+            
+            // 設定可用字體為全部字體
+            availableFonts = allFonts;
+        })();
 
         // 初始化可用字體清單（暫時使用本地清單）
         async function initAvailableFonts() {
@@ -1986,7 +2005,7 @@
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.up.set(0, 0, 1); // Z-up 系統
             // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
-            camera.position.set(50, -70, 15);  // X=50(右), Y=-70(前), Z=15(上)
+            camera.position.set(60, -85, 18);  // 拉遠鏡頭（原: 50, -70, 15）
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -2018,30 +2037,21 @@
             
             console.log('🔄 開始載入 HDR:', hdrUrl);
             
-            // ✅ 先顯示球體（不等待 HDR）
-            showInitialSphere();
-            
-            // HDR 在背景載入
             rgbeLoader.load(
                 hdrUrl,
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
                     scene.environment = envMap;
-                    
-                    // 更新已存在球體的材質
-                    if (mainMesh && mainMesh.material) {
-                        mainMesh.material.envMap = envMap;
-                        mainMesh.material.needsUpdate = true;
-                    }
-                    
-                    console.log('✅ HDR 環境貼圖載入成功並應用到球體');
+                    console.log('✅ HDR 環境貼圖載入成功');
+                    showInitialSphere();
                 },
                 undefined,  // onProgress
                 (error) => {
                     console.error('❌ HDR 載入失敗:', error);
                     console.error('   URL:', hdrUrl);
-                    console.error('   球體已顯示但缺少環境反射');
+                    console.error('   球體將顯示但缺少環境反射');
+                    showInitialSphere();  // 失敗也要顯示球體
                 }
             );
 
