@@ -4043,6 +4043,16 @@
 
                 // 呼叫後端初始化支付
                 console.log('🌐 呼叫後端 API:', `${BACKEND_URL}/api/checkout`);
+                console.log('💰 DEBUG - originalTotal:', originalTotal, 'type:', typeof originalTotal);
+                console.log('🎫 DEBUG - appliedPromoCode:', appliedPromoCode);
+                
+                // 確保 total 是數字
+                const totalAmount = Number(originalTotal);
+                if (isNaN(totalAmount) || totalAmount < 1) {
+                    alert('❌ 訂單金額錯誤，請重新整理頁面後再試');
+                    return;
+                }
+                
                 const response = await fetch(`${BACKEND_URL}/api/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4050,7 +4060,7 @@
                         orderId: orderId,
                         items: cartItems,
                         userInfo: userInfo,
-                        total: originalTotal,           // 傳送原始金額
+                        total: totalAmount,             // 確保是數字
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
                         returnUrl: window.location.origin + '/payment-success.html'
@@ -4063,6 +4073,20 @@
 
                 if (result.success) {
                     console.log('✅ 結帳成功，準備顯示綠界表單');
+                    
+                    // 檢查是否為特殊金額狀況（優惠後 ≤ 0）
+                    if (result.specialAmountCase) {
+                        console.log('⚠️ 特殊狀況：優惠後金額為 0，需用戶確認');
+                        
+                        // 顯示說明彈窗
+                        const confirmed = await showSpecialAmountModal(result.originalTotal, result.discount);
+                        
+                        if (!confirmed) {
+                            console.log('❌ 用戶取消結帳');
+                            return;
+                        }
+                    }
+                    
                     // 顯示綠界支付表單
                     displayPaymentForm(result.paymentFormHTML);
                 } else {
@@ -4344,6 +4368,129 @@
                     modal.remove();
                     resolve(userInfo);
                 });
+            });
+        }
+
+        // 顯示綠界支付表單
+        // 特殊金額說明彈窗（優惠後 ≤ 0 元）
+        function showSpecialAmountModal(originalTotal, discount) {
+            return new Promise((resolve) => {
+                // 創建彈窗
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(10px);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 240, 0.95));
+                        border-radius: 20px;
+                        padding: 40px;
+                        max-width: 500px;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                        text-align: center;
+                    ">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🎉</div>
+                        <h2 style="color: #333; margin-bottom: 20px; font-size: 24px;">恭喜！您獲得超值優惠</h2>
+                        
+                        <div style="
+                            background: rgba(212, 175, 55, 0.1);
+                            border: 2px solid rgba(212, 175, 55, 0.3);
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin: 20px 0;
+                        ">
+                            <p style="color: #666; margin: 8px 0; font-size: 16px;">
+                                原價：<span style="text-decoration: line-through;">NT$ ${originalTotal.toLocaleString()}</span>
+                            </p>
+                            <p style="color: #4CAF50; margin: 8px 0; font-size: 18px; font-weight: bold;">
+                                折扣：-NT$ ${discount.toLocaleString()}
+                            </p>
+                            <div style="
+                                border-top: 2px dashed rgba(212, 175, 55, 0.3);
+                                margin: 15px 0;
+                                padding-top: 15px;
+                            ">
+                                <p style="color: #333; margin: 0; font-size: 14px;">應付金額：NT$ 0</p>
+                            </div>
+                        </div>
+                        
+                        <p style="
+                            color: #666;
+                            font-size: 14px;
+                            line-height: 1.6;
+                            margin: 20px 0;
+                        ">
+                            由於優惠折抵後金額為 <strong>NT$ 0</strong><br>
+                            綠界金流系統要求最低交易金額為 NT$ 1<br>
+                            因此您只需支付 <strong style="color: #d4af37;">NT$ 1</strong> 即可完成訂單
+                        </p>
+                        
+                        <div style="display: flex; gap: 15px; margin-top: 30px;">
+                            <button id="cancel-special-btn" style="
+                                flex: 1;
+                                padding: 15px;
+                                background: rgba(150, 150, 150, 0.1);
+                                border: 1px solid rgba(150, 150, 150, 0.3);
+                                color: #666;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                            ">
+                                取消
+                            </button>
+                            <button id="confirm-special-btn" style="
+                                flex: 1;
+                                padding: 15px;
+                                background: linear-gradient(135deg, #d4af37, #aa8a2e);
+                                border: none;
+                                color: #000;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                            ">
+                                確定，前往付款
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // 按鈕事件
+                document.getElementById('confirm-special-btn').onclick = () => {
+                    modal.remove();
+                    resolve(true);
+                };
+                
+                document.getElementById('cancel-special-btn').onclick = () => {
+                    modal.remove();
+                    resolve(false);
+                };
+                
+                // Hover 效果
+                const confirmBtn = document.getElementById('confirm-special-btn');
+                confirmBtn.onmouseover = () => {
+                    confirmBtn.style.transform = 'translateY(-2px)';
+                    confirmBtn.style.boxShadow = '0 6px 20px rgba(212, 175, 55, 0.4)';
+                };
+                confirmBtn.onmouseout = () => {
+                    confirmBtn.style.transform = 'translateY(0)';
+                    confirmBtn.style.boxShadow = 'none';
+                };
             });
         }
 
