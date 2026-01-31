@@ -9,7 +9,7 @@
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Long+Cang&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
         rel="stylesheet">
 
     <style>
@@ -1095,9 +1095,9 @@
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
             <div id="story-content" contenteditable="true" style="
-                font-family: 'Caveat', 'Long Cang', cursive, sans-serif;
+                font-family: 'Noto Serif TC', serif;
                 font-size: 15px;
-                line-height: 1.5;
+                line-height: 1.8;
                 letter-spacing: 0.3px;
                 flex: 1;
                 text-align: justify;
@@ -1129,10 +1129,10 @@
             </div>
         </div>
 
-        <!-- 卡片切換控制 -->
+        <!-- 卡片切換控制（移到上方） -->
         <div style="
             position: absolute;
-            bottom: 40px;
+            bottom: 125px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -1189,7 +1189,7 @@
         <!-- 編輯提示（在卡片外，靠近卡片） -->
         <div style="
             position: absolute;
-            bottom: 165px;
+            bottom: 195px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 10px;
@@ -1204,18 +1204,18 @@
             💡 點擊卡片內文字可編輯
         </div>
 
-        <!-- 確定按鈕（低調小巧） -->
+        <!-- 確定按鈕（移到最下方，改小） -->
         <button id="confirm-story-card" style="
             position: absolute;
-            bottom: 125px;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(212, 175, 55, 0.15);
             border: 1px solid rgba(212, 175, 55, 0.3);
             color: rgba(212, 175, 55, 0.9);
-            padding: 6px 24px;
-            border-radius: 15px;
-            font-size: 12px;
+            padding: 8px 32px;
+            border-radius: 18px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
@@ -3956,11 +3956,20 @@
                 if (result.success) {
                     console.log('✅ 設計理念生成成功');
                     let story = result.designStory;
+                    
+                    // 清理 JSON 標記和多餘內容
+                    story = story
+                        .replace(/```json\s*/gi, '')
+                        .replace(/```\s*/g, '')
+                        .replace(/^\s*{\s*"designStory":\s*"/i, '')
+                        .replace(/"\s*}\s*$/i, '')
+                        .replace(/^["'\s]+|["'\s]+$/g, '')
+                        .trim();
 
-                    // 前端安全網：確保不超過 150 字
-                    if (story.length > 150) {
-                        console.warn('⚠️ 設計理念超過 150 字，自動截斷');
-                        story = story.substring(0, 147) + '...';
+                    // 前端安全網：確保不超過 250 字
+                    if (story.length > 250) {
+                        console.warn('⚠️ 設計理念超過 250 字，自動截斷');
+                        story = story.substring(0, 247) + '...';
                     }
 
                     return story;
@@ -4372,10 +4381,72 @@
         }
 
         // 顯示綠界支付表單
+        // 付款完成訊息彈窗
+        function showPaymentCompleteModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(20px);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: rgba(255, 255, 255, 0.08);
+                    backdrop-filter: blur(40px) saturate(180%);
+                    -webkit-backdrop-filter: blur(40px) saturate(180%);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    border-radius: 24px;
+                    padding: 40px;
+                    width: 420px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                ">
+                    <div style="font-size: 64px; margin-bottom: 24px;">✓</div>
+                    <h2 style="
+                        color: rgba(255, 255, 255, 0.95);
+                        margin: 0 0 20px 0;
+                        font-size: 22px;
+                        font-weight: 500;
+                        letter-spacing: 0.5px;
+                    ">訂單已完成</h2>
+                    <p style="
+                        color: rgba(255, 255, 255, 0.7);
+                        font-size: 14px;
+                        line-height: 1.8;
+                        margin: 0 0 28px 0;
+                    ">
+                        您的設計已完成，將很快收到訂單確認信<br>
+                        畫面即將導引至 BCAG 設計師訂製珠寶首頁
+                    </p>
+                    <div style="
+                        color: rgba(212, 175, 55, 0.8);
+                        font-size: 13px;
+                        font-weight: 500;
+                    ">3 秒後自動跳轉...</div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 3 秒後跳轉
+            setTimeout(() => {
+                window.location.href = 'https://www.brendonchen.com';
+            }, 3000);
+        }
+        
         // 特殊金額說明彈窗（優惠後 ≤ 0 元）
+        // 特殊金額說明彈窗（Liquid Glass 風格）
         function showSpecialAmountModal(originalTotal, discount) {
             return new Promise((resolve) => {
-                // 創建彈窗
                 const modal = document.createElement('div');
                 modal.style.cssText = `
                     position: fixed;
@@ -4383,8 +4454,8 @@
                     left: 0;
                     width: 100%;
                     height: 100%;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(10px);
+                    background: rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(20px);
                     z-index: 10000;
                     display: flex;
                     align-items: center;
@@ -4393,76 +4464,90 @@
                 
                 modal.innerHTML = `
                     <div style="
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 240, 0.95));
-                        border-radius: 20px;
-                        padding: 40px;
-                        max-width: 500px;
-                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                        text-align: center;
+                        background: rgba(255, 255, 255, 0.08);
+                        backdrop-filter: blur(40px) saturate(180%);
+                        -webkit-backdrop-filter: blur(40px) saturate(180%);
+                        border: 1px solid rgba(255, 255, 255, 0.18);
+                        border-radius: 24px;
+                        padding: 32px 36px;
+                        width: 380px;
+                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
                     ">
-                        <div style="font-size: 48px; margin-bottom: 20px;">🎉</div>
-                        <h2 style="color: #333; margin-bottom: 20px; font-size: 24px;">恭喜！您獲得超值優惠</h2>
+                        <h3 style="
+                            color: rgba(255, 255, 255, 0.95);
+                            margin: 0 0 22px 0;
+                            font-size: 17px;
+                            font-weight: 500;
+                            letter-spacing: 0.3px;
+                        ">優惠折抵說明</h3>
                         
                         <div style="
-                            background: rgba(212, 175, 55, 0.1);
-                            border: 2px solid rgba(212, 175, 55, 0.3);
-                            border-radius: 12px;
-                            padding: 20px;
-                            margin: 20px 0;
+                            background: rgba(0, 0, 0, 0.2);
+                            backdrop-filter: blur(10px);
+                            border: 1px solid rgba(255, 255, 255, 0.08);
+                            border-radius: 14px;
+                            padding: 16px 18px;
+                            margin-bottom: 18px;
                         ">
-                            <p style="color: #666; margin: 8px 0; font-size: 16px;">
-                                原價：<span style="text-decoration: line-through;">NT$ ${originalTotal.toLocaleString()}</span>
-                            </p>
-                            <p style="color: #4CAF50; margin: 8px 0; font-size: 18px; font-weight: bold;">
-                                折扣：-NT$ ${discount.toLocaleString()}
-                            </p>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: rgba(255, 255, 255, 0.55); font-size: 13px;">原價</span>
+                                <span style="color: rgba(255, 255, 255, 0.4); font-size: 13px; text-decoration: line-through;">NT$ ${originalTotal.toLocaleString()}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="color: rgba(255, 255, 255, 0.55); font-size: 13px;">折扣</span>
+                                <span style="color: rgba(76, 175, 80, 0.85); font-size: 13px; font-weight: 500;">-NT$ ${discount.toLocaleString()}</span>
+                            </div>
                             <div style="
-                                border-top: 2px dashed rgba(212, 175, 55, 0.3);
-                                margin: 15px 0;
-                                padding-top: 15px;
+                                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                                margin: 10px 0 0 0;
+                                padding-top: 10px;
                             ">
-                                <p style="color: #333; margin: 0; font-size: 14px;">應付金額：NT$ 0</p>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: rgba(255, 255, 255, 0.75); font-size: 14px;">應付金額</span>
+                                    <span style="color: rgba(255, 255, 255, 0.95); font-size: 14px; font-weight: 600;">NT$ 0</span>
+                                </div>
                             </div>
                         </div>
                         
                         <p style="
-                            color: #666;
-                            font-size: 14px;
+                            color: rgba(255, 255, 255, 0.6);
+                            font-size: 12px;
                             line-height: 1.6;
-                            margin: 20px 0;
+                            margin: 0 0 22px 0;
                         ">
-                            由於優惠折抵後金額為 <strong>NT$ 0</strong><br>
-                            綠界金流系統要求最低交易金額為 NT$ 1<br>
-                            因此您只需支付 <strong style="color: #d4af37;">NT$ 1</strong> 即可完成訂單
+                            優惠折抵後金額為 0 元。由於金流系統要求最低交易金額為 NT$ 1，您只需支付 <span style="color: rgba(212, 175, 55, 0.9);">NT$ 1</span> 即可完成訂單。
                         </p>
                         
-                        <div style="display: flex; gap: 15px; margin-top: 30px;">
+                        <div style="display: flex; gap: 10px;">
                             <button id="cancel-special-btn" style="
                                 flex: 1;
-                                padding: 15px;
-                                background: rgba(150, 150, 150, 0.1);
-                                border: 1px solid rgba(150, 150, 150, 0.3);
-                                color: #666;
+                                padding: 11px 18px;
+                                background: rgba(255, 255, 255, 0.05);
+                                border: 1px solid rgba(255, 255, 255, 0.15);
+                                color: rgba(255, 255, 255, 0.7);
                                 border-radius: 12px;
-                                font-size: 16px;
+                                font-size: 14px;
                                 cursor: pointer;
                                 transition: all 0.3s;
+                                backdrop-filter: blur(10px);
                             ">
                                 取消
                             </button>
                             <button id="confirm-special-btn" style="
-                                flex: 1;
-                                padding: 15px;
-                                background: linear-gradient(135deg, #d4af37, #aa8a2e);
-                                border: none;
-                                color: #000;
+                                flex: 1.2;
+                                padding: 11px 18px;
+                                background: rgba(212, 175, 55, 0.2);
+                                border: 1px solid rgba(212, 175, 55, 0.4);
+                                color: rgba(212, 175, 55, 0.95);
                                 border-radius: 12px;
-                                font-size: 16px;
-                                font-weight: 600;
+                                font-size: 14px;
+                                font-weight: 500;
                                 cursor: pointer;
                                 transition: all 0.3s;
+                                backdrop-filter: blur(10px);
+                                white-space: nowrap;
                             ">
-                                確定，前往付款
+                                確定付款
                             </button>
                         </div>
                     </div>
@@ -4470,7 +4555,6 @@
                 
                 document.body.appendChild(modal);
                 
-                // 按鈕事件
                 document.getElementById('confirm-special-btn').onclick = () => {
                     modal.remove();
                     resolve(true);
@@ -4484,12 +4568,20 @@
                 // Hover 效果
                 const confirmBtn = document.getElementById('confirm-special-btn');
                 confirmBtn.onmouseover = () => {
-                    confirmBtn.style.transform = 'translateY(-2px)';
-                    confirmBtn.style.boxShadow = '0 6px 20px rgba(212, 175, 55, 0.4)';
+                    confirmBtn.style.background = 'rgba(212, 175, 55, 0.3)';
+                    confirmBtn.style.borderColor = 'rgba(212, 175, 55, 0.6)';
                 };
                 confirmBtn.onmouseout = () => {
-                    confirmBtn.style.transform = 'translateY(0)';
-                    confirmBtn.style.boxShadow = 'none';
+                    confirmBtn.style.background = 'rgba(212, 175, 55, 0.2)';
+                    confirmBtn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+                };
+                
+                const cancelBtn = document.getElementById('cancel-special-btn');
+                cancelBtn.onmouseover = () => {
+                    cancelBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+                };
+                cancelBtn.onmouseout = () => {
+                    cancelBtn.style.background = 'rgba(255, 255, 255, 0.05)';
                 };
             });
         }
@@ -4654,6 +4746,15 @@
 
                 // 關閉 Modal
                 document.getElementById('design-story-modal').style.display = 'none';
+                
+                // 檢查是否為付款成功流程
+                const urlParams = new URLSearchParams(window.location.search);
+                const isPaymentFlow = urlParams.get('payment_success') === 'true';
+                
+                if (isPaymentFlow) {
+                    console.log('✅ 付款流程完成，顯示完成訊息');
+                    showPaymentCompleteModal();
+                }
             });
 
             // 初始化卡片樣式
