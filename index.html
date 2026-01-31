@@ -9,7 +9,8 @@
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Long+Cang&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Long+Cang&display=swap"
+        rel="stylesheet">
 
     <style>
         * {
@@ -827,14 +828,25 @@
         #story-content::-webkit-scrollbar {
             display: none;
         }
-        
+
         /* 點點動畫 */
         @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+
+            0%,
+            20% {
+                content: '.';
+            }
+
+            40% {
+                content: '..';
+            }
+
+            60%,
+            100% {
+                content: '...';
+            }
         }
-        
+
         .dots-animation::after {
             content: '';
             animation: dots 1.5s infinite;
@@ -964,7 +976,7 @@
 
         <button class="btn-secondary" id="save-slot-1">Save to Slot 1</button>
         <button class="btn-secondary" id="save-slot-2">Save to Slot 2</button>
-        
+
         <!-- 3D 模型重建提示 -->
         <div id="model-rebuilding-indicator" style="
             display: none;
@@ -980,7 +992,7 @@
         ">
             ⚙️ Re-constructing 3D model<span class="dots-animation"></span>
         </div>
-        
+
         <button class="btn-primary" id="addToCartBtn">
             <span style="flex: 1;">Add to Cart</span>
             <div class="view-cart-section" id="viewCartBtn">
@@ -1954,31 +1966,27 @@
             }
         }
 
-        // 初始化：載入字體庫
+        // 初始化：載入字體庫（fonts.json），並在載入完成後觸發 Google Fonts 預載
         (async function initializeFonts() {
-            const allFonts = await loadFontsFromJSON();
-            console.log(`✅ 字體庫已載入：${allFonts.length} 種字體`);
-            
-            // 設定可用字體為全部字體
-            availableFonts = allFonts;
+            const loaded = await loadFontsFromJSON();
+            console.log(`✅ 字體庫已載入：${loaded.length} 種字體`);
+            availableFonts = loaded;
+            if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
         })();
 
-        // 初始化可用字體清單（暫時使用本地清單）
+        // 初始化可用字體清單：一律從 fonts.json 載入（方便後續變更字體清單）
         async function initAvailableFonts() {
             try {
-                console.log('🔍 使用本地字體清單...');
-                // 暫時跳過後端檢查，直接使用所有字體
-                availableFonts = allFonts;
+                console.log('🔍 從 fonts.json 載入字體清單...');
+                availableFonts = await loadFontsFromJSON();
                 console.log(`✅ 共有 ${availableFonts.length} 種字體可用`);
-
+                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
             } catch (error) {
-                console.error('❌ 無法獲取字體清單:', error);
-                // 如果失敗，使用全部字體（保持原有行為）
-                availableFonts = allFonts;
+                console.error('❌ 載入 fonts.json 失敗:', error);
+                availableFonts = await loadFontsFromJSON().catch(() => []);
+                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
             }
         }
-
-        const fonts = allFonts; // 保持向後兼容（稍後會移除）
 
         // 材質設定
         const MATERIALS = {
@@ -2034,9 +2042,9 @@
 
             const rgbeLoader = new RGBELoader();
             const hdrUrl = 'https://raw.githubusercontent.com/brendon-create/duet-openscad/main/images/studio_small_08_1k.hdr';
-            
+
             console.log('🔄 開始載入 HDR:', hdrUrl);
-            
+
             rgbeLoader.load(
                 hdrUrl,
                 (texture) => {
@@ -2083,7 +2091,7 @@
                 roughness: roughness,
                 envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
             };
-            
+
             // 只在 envMap 存在時才加入（防止黑色球體）
             if (envMap) {
                 materialConfig.envMap = envMap;
@@ -2097,7 +2105,7 @@
             // 顯示重建提示
             let indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'block';
-            
+
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
 
@@ -2386,7 +2394,7 @@
             createBail();
             updateVolumeWeight();
             console.log('Generation complete!'); // Debug
-            
+
             // 隱藏重建提示
             indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'none';
@@ -2655,23 +2663,23 @@
 
             // 更新重量顯示（密度改變了）
             updateVolumeWeight();
-            
+
             // 更新價格顯示
             updatePriceDisplay();
         }
-        
+
         // 更新價格顯示
         function updatePriceDisplay() {
             const plating = document.getElementById('plating').value;
-            
+
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
-            
+
             // 有電鍍（任何電鍍）+400
             if (plating && plating !== 'none') {
                 price += 400;
             }
-            
+
             // 更新顯示
             document.getElementById('price-display').textContent = `NT$ ${price.toLocaleString()}`;
         }
@@ -2709,8 +2717,8 @@
             const listContainer = document.getElementById('font-list-container');
             const displayArea = document.getElementById('font-display-area');
 
-            // 使用經過後端驗證的字體清單
-            const fontsToDisplay = availableFonts.length > 0 ? availableFonts : allFonts;
+            // 使用從 fonts.json 載入的可用字體清單
+            const fontsToDisplay = availableFonts.length > 0 ? availableFonts : [];
 
             fontsToDisplay.forEach((font) => {
                 const item = document.createElement('div');
@@ -3678,9 +3686,9 @@
                 if (fontReason) {
                     // 顯示設計理念生成提示
                     showDesignStoryGeneratingIndicator();
-                    
+
                     const designStory = await generateDesignStory(combinations[i], fontReason);
-                    
+
                     // 隱藏提示
                     hideDesignStoryGeneratingIndicator();
 
@@ -3729,7 +3737,7 @@
                 align-items: center;
                 justify-content: center;
             `;
-            
+
             overlay.innerHTML = `
                 <div style="
                     text-align: center;
@@ -3740,10 +3748,10 @@
                     <div>正在為您撰寫設計理念<span class="dots-animation"></span></div>
                 </div>
             `;
-            
+
             document.body.appendChild(overlay);
         }
-        
+
         // 隱藏設計理念生成提示
         function hideDesignStoryGeneratingIndicator() {
             const overlay = document.getElementById('design-story-generating-overlay');
@@ -3759,7 +3767,7 @@
             // 將設計理念文字轉換為 HTML（保留換行）
             const formattedStory = designStory.replace(/\n/g, '<br>');
             content.innerHTML = formattedStory;
-            
+
             // 初始化時也儲存設計理念
             window.finalDesignStory = designStory;
 
@@ -4469,12 +4477,12 @@
             document.getElementById('confirm-story-card').addEventListener('click', () => {
                 // 獲取編輯後的設計理念
                 const editedStory = document.getElementById('story-content').textContent;
-                
+
                 // 儲存到全局變數（供後續訂單使用）
                 window.finalDesignStory = editedStory;
-                
+
                 console.log('✅ 設計理念已確認:', editedStory);
-                
+
                 // 關閉 Modal
                 document.getElementById('design-story-modal').style.display = 'none';
             });
@@ -4513,7 +4521,7 @@
         initFontSelector();
         setupEventListeners();
         animate();
-        
+
         // 初始化價格顯示
         updatePriceDisplay();
 
@@ -4553,19 +4561,18 @@
             testDesignStoryCard: typeof window.testDesignStoryCard
         });
 
-        // 載入 Google Fonts - 分批載入所有字體
+        // 載入 Google Fonts - 分批載入可用字體（使用 availableFonts）
         function loadGoogleFonts() {
-            // 分批載入，每批50個字體（避免URL過長）
+            if (!availableFonts || availableFonts.length === 0) return;
             const batchSize = 50;
-            for (let i = 0; i < fonts.length; i += batchSize) {
-                const batch = fonts.slice(i, i + batchSize);
+            for (let i = 0; i < availableFonts.length; i += batchSize) {
+                const batch = availableFonts.slice(i, i + batchSize);
                 const link = document.createElement('link');
                 link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
                 link.rel = 'stylesheet';
                 document.head.appendChild(link);
             }
         }
-        loadGoogleFonts();
     </script>
     <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
     <!-- <script src="wearing-preview.js"></script> -->
