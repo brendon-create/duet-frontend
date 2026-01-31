@@ -1843,13 +1843,24 @@
 
             const skipAI = localStorage.getItem('duet_skip_ai');
             if (!skipAI && !aiDataStr) {
-                // 等待主畫面完全載入（包括 3D 球體）後才顯示
-                window.addEventListener('load', () => {
+                // 等待主畫面完全載入（包括 3D 球體）後 2 秒才顯示
+                function showAIAfterDelay() {
                     setTimeout(() => {
-                        console.log('🔔 主畫面已載入，2 秒後顯示 AI 介紹');
+                        console.log('🔔 2 秒延遲結束，顯示 AI 介紹');
                         showAIIntroModal();
                     }, 2000);
-                });
+                }
+
+                // 檢查頁面是否已經載入完成
+                if (document.readyState === 'complete') {
+                    console.log('🔔 頁面已載入完成，2 秒後顯示 AI 介紹');
+                    showAIAfterDelay();
+                } else {
+                    window.addEventListener('load', () => {
+                        console.log('🔔 頁面載入完成，2 秒後顯示 AI 介紹');
+                        showAIAfterDelay();
+                    });
+                }
             }
         });
         // ========== AI 諮詢整合程式碼結束 ==========
@@ -1966,12 +1977,18 @@
             }
         }
 
+        // 字體載入完成的 Promise（供其他地方 await）
+        let fontsLoadedResolve;
+        const fontsLoadedPromise = new Promise(resolve => { fontsLoadedResolve = resolve; });
+
         // 初始化：載入字體庫（fonts.json），並在載入完成後觸發 Google Fonts 預載
         (async function initializeFonts() {
             const loaded = await loadFontsFromJSON();
             console.log(`✅ 字體庫已載入：${loaded.length} 種字體`);
             availableFonts = loaded;
             if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
+            // 通知其他等待字體載入的地方
+            if (fontsLoadedResolve) fontsLoadedResolve();
         })();
 
         // 初始化可用字體清單：一律從 fonts.json 載入（方便後續變更字體清單）
@@ -2712,8 +2729,13 @@
             document.getElementById('weight-display').textContent = `${weight.toFixed(2)} g`;
         }
 
-        // 字體選擇器
-        function initFontSelector() {
+        // 字體選擇器（等待 fonts.json 載入完成後才初始化）
+        async function initFontSelector() {
+            // 等待字體載入完成
+            if (typeof fontsLoadedPromise !== 'undefined') {
+                await fontsLoadedPromise;
+            }
+
             const listContainer = document.getElementById('font-list-container');
             const displayArea = document.getElementById('font-display-area');
 
