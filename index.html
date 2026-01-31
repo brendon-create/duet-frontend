@@ -822,6 +822,11 @@
         .ai-consultant-link a:hover {
             color: #f4d03f;
         }
+
+        /* 隱藏設計理念卡片的滾軸 */
+        #story-content::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 
@@ -1050,28 +1055,19 @@
             <!-- 設計理念內容 -->
             <div id="story-content" contenteditable="true" style="
                 font-family: 'Caveat', 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Zhi Mang Xing', cursive, sans-serif;
-                font-size: 16px;
-                line-height: 1.8;
-                letter-spacing: 0.5px;
+                font-size: 15px;
+                line-height: 1.5;
+                letter-spacing: 0.3px;
                 flex: 1;
                 text-align: justify;
-                padding: 0 5px;
+                padding: 0;
                 overflow-y: auto;
-                max-height: 280px;
+                max-height: 100%;
                 outline: none;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
             " placeholder="您的設計理念將顯示在這裡...">
                 這是一個關於兩個字母的故事...
-            </div>
-            
-            <!-- 編輯提示 -->
-            <div style="
-                font-size: 11px;
-                color: rgba(255, 255, 255, 0.4);
-                text-align: center;
-                margin-top: 10px;
-                font-style: italic;
-            ">
-                💡 您可以點擊上方文字進行編輯修改
             </div>
 
             <!-- 簽名欄位 -->
@@ -1149,27 +1145,43 @@
             </button>
         </div>
 
-        <!-- 關閉按鈕 -->
-        <button id="close-story-card" style="
+        <!-- 編輯提示（在卡片外） -->
+        <div style="
             position: absolute;
-            top: 30px;
-            right: 30px;
-            background: rgba(255, 255, 255, 0.1);
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 24px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        ">
+            💡 您可以點擊卡片內文字進行編輯
+        </div>
+
+        <!-- 確定按鈕 -->
+        <button id="confirm-story-card" style="
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #d4af37, #aa8a2e);
+            border: none;
+            color: #000;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             transition: all 0.3s;
-        " onmouseover="this.style.background='rgba(255,255,255,0.2)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-            ×
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        " onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)'"
+            onmouseout="this.style.transform='translateX(-50%) translateY(0)'; this.style.boxShadow='0 4px 15px rgba(212, 175, 55, 0.3)'">
+            確定
         </button>
     </div>
 
@@ -1790,9 +1802,13 @@
 
             const skipAI = localStorage.getItem('duet_skip_ai');
             if (!skipAI && !aiDataStr) {
-                setTimeout(() => {
-                    showAIIntroModal();
-                }, 2000);
+                // 等待主畫面完全載入（包括 3D 球體）後才顯示
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        console.log('🔔 主畫面已載入，2 秒後顯示 AI 介紹');
+                        showAIIntroModal();
+                    }, 2000);
+                });
             }
         });
         // ========== AI 諮詢整合程式碼結束 ==========
@@ -3139,6 +3155,8 @@
                 // 儲存字母 BBox 信息（用於後端精確建模）
                 letter1BBox: window.letter1BBox || {},
                 letter2BBox: window.letter2BBox || {},
+                // ✅ 儲存設計理念
+                designStory: window.finalDesignStory || '',
                 // ✅ 儲存縮略圖（用於購物車預覽）
                 thumbnail: thumbnailDataURL
             };
@@ -3636,6 +3654,9 @@
             // 將設計理念文字轉換為 HTML（保留換行）
             const formattedStory = designStory.replace(/\n/g, '<br>');
             content.innerHTML = formattedStory;
+            
+            // 初始化時也儲存設計理念
+            window.finalDesignStory = designStory;
 
             // 顯示 Modal
             modal.style.display = 'flex';
@@ -4340,7 +4361,16 @@
                 updateCardStyle();
             });
 
-            document.getElementById('close-story-card').addEventListener('click', () => {
+            document.getElementById('confirm-story-card').addEventListener('click', () => {
+                // 獲取編輯後的設計理念
+                const editedStory = document.getElementById('story-content').textContent;
+                
+                // 儲存到全局變數（供後續訂單使用）
+                window.finalDesignStory = editedStory;
+                
+                console.log('✅ 設計理念已確認:', editedStory);
+                
+                // 關閉 Modal
                 document.getElementById('design-story-modal').style.display = 'none';
             });
 
