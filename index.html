@@ -2085,7 +2085,7 @@
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
             // 顯示重建提示
-            const indicator = document.getElementById('model-rebuilding-indicator');
+            let indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'block';
             
             const l1 = document.getElementById('letter1').value;
@@ -2378,7 +2378,7 @@
             console.log('Generation complete!'); // Debug
             
             // 隱藏重建提示
-            const indicator = document.getElementById('model-rebuilding-indicator');
+            indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'none';
 
             // 更新佩戴模擬預覽
