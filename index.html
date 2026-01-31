@@ -924,13 +924,12 @@
 
         <div class="info-box">
             <div class="info-row">
-                <span class="info-label">VOLUME</span>
-                <span class="info-value" id="volume-display">- mm³</span>
+                <span class="info-label">價格</span>
+                <span class="info-value" id="price-display">NT$ 3,850</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">WEIGHT</span>
-                <span class="info-value" id="weight-display">- g</span>
-            </div>
+            <!-- 體積重量資訊隱藏，但保留在 DOM 中供後端使用 -->
+            <input type="hidden" id="volume-display" value="- mm³">
+            <input type="hidden" id="weight-display" value="- g">
         </div>
 
         <!-- 字體預載入進度提示 -->
@@ -2570,6 +2569,25 @@
 
             // 更新重量顯示（密度改變了）
             updateVolumeWeight();
+            
+            // 更新價格顯示
+            updatePriceDisplay();
+        }
+        
+        // 更新價格顯示
+        function updatePriceDisplay() {
+            const plating = document.getElementById('plating').value;
+            
+            // 基礎價格：925銀、黃銅都是 3850
+            let price = 3850;
+            
+            // 有電鍍（任何電鍍）+400
+            if (plating && plating !== 'none') {
+                price += 400;
+            }
+            
+            // 更新顯示
+            document.getElementById('price-display').textContent = `NT$ ${price.toLocaleString()}`;
         }
 
         function updateVolumeWeight() {
@@ -4348,6 +4366,9 @@
         initFontSelector();
         setupEventListeners();
         animate();
+        
+        // 初始化價格顯示
+        updatePriceDisplay();
 
         // 暴露關鍵函數到全局（確保 HTML onclick 可以訪問）
         window.applyPromoCode = applyPromoCode;
