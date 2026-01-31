@@ -827,6 +827,18 @@
         #story-content::-webkit-scrollbar {
             display: none;
         }
+        
+        /* 點點動畫 */
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .dots-animation::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
     </style>
 </head>
 
@@ -952,6 +964,23 @@
 
         <button class="btn-secondary" id="save-slot-1">Save to Slot 1</button>
         <button class="btn-secondary" id="save-slot-2">Save to Slot 2</button>
+        
+        <!-- 3D 模型重建提示 -->
+        <div id="model-rebuilding-indicator" style="
+            display: none;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 6px;
+            font-size: 10px;
+            color: rgba(212, 175, 55, 0.6);
+            text-align: center;
+            font-style: italic;
+        ">
+            ⚙️ Re-constructing 3D model<span class="dots-animation"></span>
+        </div>
+        
         <button class="btn-primary" id="addToCartBtn">
             <span style="flex: 1;">Add to Cart</span>
             <div class="view-cart-section" id="viewCartBtn">
@@ -1054,7 +1083,7 @@
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
             <div id="story-content" contenteditable="true" style="
-                font-family: 'Caveat', 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Zhi Mang Xing', cursive, sans-serif;
+                font-family: 'Caveat', 'Liu Jian Mao Cao', cursive, sans-serif;
                 font-size: 15px;
                 line-height: 1.5;
                 letter-spacing: 0.3px;
@@ -1145,42 +1174,42 @@
             </button>
         </div>
 
-        <!-- 編輯提示（在卡片外） -->
+        <!-- 編輯提示（在卡片外，靠近卡片） -->
         <div style="
             position: absolute;
-            bottom: 100px;
+            bottom: 165px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
             text-align: center;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            padding: 8px 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         ">
-            💡 您可以點擊卡片內文字進行編輯
+            💡 點擊卡片內文字可編輯
         </div>
 
-        <!-- 確定按鈕 -->
+        <!-- 確定按鈕（低調小巧） -->
         <button id="confirm-story-card" style="
             position: absolute;
-            bottom: 30px;
+            bottom: 125px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #d4af37, #aa8a2e);
-            border: none;
-            color: #000;
-            padding: 12px 40px;
-            border-radius: 25px;
-            font-size: 15px;
-            font-weight: 600;
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: rgba(212, 175, 55, 0.9);
+            padding: 6px 24px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
-        " onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)'"
-            onmouseout="this.style.transform='translateX(-50%) translateY(0)'; this.style.boxShadow='0 4px 15px rgba(212, 175, 55, 0.3)'">
+            backdrop-filter: blur(10px);
+        " onmouseover="this.style.background='rgba(212, 175, 55, 0.25)'; this.style.borderColor='rgba(212, 175, 55, 0.5)'"
+            onmouseout="this.style.background='rgba(212, 175, 55, 0.15)'; this.style.borderColor='rgba(212, 175, 55, 0.3)'">
             確定
         </button>
     </div>
@@ -1989,21 +2018,30 @@
             
             console.log('🔄 開始載入 HDR:', hdrUrl);
             
+            // ✅ 先顯示球體（不等待 HDR）
+            showInitialSphere();
+            
+            // HDR 在背景載入
             rgbeLoader.load(
                 hdrUrl,
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
                     scene.environment = envMap;
-                    console.log('✅ HDR 環境貼圖載入成功');
-                    showInitialSphere();
+                    
+                    // 更新已存在球體的材質
+                    if (mainMesh && mainMesh.material) {
+                        mainMesh.material.envMap = envMap;
+                        mainMesh.material.needsUpdate = true;
+                    }
+                    
+                    console.log('✅ HDR 環境貼圖載入成功並應用到球體');
                 },
                 undefined,  // onProgress
                 (error) => {
                     console.error('❌ HDR 載入失敗:', error);
                     console.error('   URL:', hdrUrl);
-                    console.error('   球體將顯示但缺少環境反射');
-                    showInitialSphere();  // 失敗也要顯示球體
+                    console.error('   球體已顯示但缺少環境反射');
                 }
             );
 
@@ -2046,6 +2084,10 @@
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
+            // 顯示重建提示
+            const indicator = document.getElementById('model-rebuilding-indicator');
+            if (indicator) indicator.style.display = 'block';
+            
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
 
@@ -2065,6 +2107,8 @@
                 if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
                     showInitialSphere();
                 }
+                // 隱藏重建提示
+                if (indicator) indicator.style.display = 'none';
                 return;
             }
 
@@ -2332,6 +2376,10 @@
             createBail();
             updateVolumeWeight();
             console.log('Generation complete!'); // Debug
+            
+            // 隱藏重建提示
+            const indicator = document.getElementById('model-rebuilding-indicator');
+            if (indicator) indicator.style.display = 'none';
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
@@ -3618,7 +3666,13 @@
                 const fontReason = await askFontReason(combinations[i], i, combinations.length);
 
                 if (fontReason) {
+                    // 顯示設計理念生成提示
+                    showDesignStoryGeneratingIndicator();
+                    
                     const designStory = await generateDesignStory(combinations[i], fontReason);
+                    
+                    // 隱藏提示
+                    hideDesignStoryGeneratingIndicator();
 
                     if (designStory) {
                         concepts.push({
@@ -3647,6 +3701,47 @@
         }
 
         // 顯示設計理念明信片卡片
+        // 顯示設計理念生成提示
+        function showDesignStoryGeneratingIndicator() {
+            // 創建全螢幕遮罩
+            const overlay = document.createElement('div');
+            overlay.id = 'design-story-generating-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(10px);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    text-align: center;
+                    color: rgba(212, 175, 55, 0.9);
+                    font-size: 14px;
+                ">
+                    <div style="font-size: 32px; margin-bottom: 15px;">✍️</div>
+                    <div>正在為您撰寫設計理念<span class="dots-animation"></span></div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // 隱藏設計理念生成提示
+        function hideDesignStoryGeneratingIndicator() {
+            const overlay = document.getElementById('design-story-generating-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
         function showDesignStoryCard(designStory) {
             const modal = document.getElementById('design-story-modal');
             const content = document.getElementById('story-content');
