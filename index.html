@@ -5,12 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DUET by BCAG</title>
-    
+
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&display=swap" rel="stylesheet">
-    
+
     <style>
         * {
             margin: 0;
@@ -1062,7 +1062,7 @@
             ">
                 這是一個關於兩個字母的故事...
             </div>
-            
+
             <!-- 簽名欄位 -->
             <div style="
                 display: flex;
@@ -1080,7 +1080,7 @@
                 "></div>
             </div>
         </div>
-        
+
         <!-- 卡片切換控制 -->
         <div style="
             position: absolute;
@@ -1109,7 +1109,8 @@
                 align-items: center;
                 justify-content: center;
                 transition: all 0.3s;
-            " onmouseover="this.style.color='rgba(255,255,255,1)'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+            " onmouseover="this.style.color='rgba(255,255,255,1)'"
+                onmouseout="this.style.color='rgba(255,255,255,0.6)'">
                 ←
             </button>
             <span id="card-style-name" style="
@@ -1131,11 +1132,12 @@
                 align-items: center;
                 justify-content: center;
                 transition: all 0.3s;
-            " onmouseover="this.style.color='rgba(255,255,255,1)'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+            " onmouseover="this.style.color='rgba(255,255,255,1)'"
+                onmouseout="this.style.color='rgba(255,255,255,0.6)'">
                 →
             </button>
         </div>
-        
+
         <!-- 關閉按鈕 -->
         <button id="close-story-card" style="
             position: absolute;
@@ -1154,7 +1156,8 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s;
-        " onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+        " onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.1)'">
             ×
         </button>
     </div>
@@ -1201,7 +1204,7 @@
                     margin: 0;
                 ">還有一個特別的步驟在等著您...</p>
             </div>
-            
+
             <!-- 內容 -->
             <div style="
                 background: rgba(255, 255, 255, 0.05);
@@ -1230,7 +1233,7 @@
                     </li>
                 </ul>
             </div>
-            
+
             <!-- 提醒文字 -->
             <div style="
                 text-align: center;
@@ -1250,7 +1253,7 @@
                     ⏳ 請在付款完成後，稍候片刻不要關閉視窗
                 </p>
             </div>
-            
+
             <!-- 按鈕 -->
             <button id="proceed-to-checkout-btn" style="
                 width: 100%;
@@ -1264,7 +1267,8 @@
                 cursor: pointer;
                 transition: all 0.3s;
                 box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 35px rgba(212, 175, 55, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.4)'">
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 35px rgba(212, 175, 55, 0.5)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.4)'">
                 我知道了，前往結帳
             </button>
         </div>
@@ -1627,15 +1631,15 @@
                     try {
                         const apiUrl = `${BACKEND_URL}/api/order/${orderId}`;
                         console.log('📡 正在呼叫 API:', apiUrl);
-                        
+
                         const response = await fetch(apiUrl);
                         console.log('📡 Response status:', response.status);
                         console.log('📡 Response ok:', response.ok);
-                        
+
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
-                        
+
                         const data = await response.json();
                         console.log('📦 收到資料:', data);
 
@@ -1954,7 +1958,7 @@
             scene.add(directionalLight);
 
             const rgbeLoader = new RGBELoader();
-            rgbeLoader.load('https://raw.githubusercontent.com/brendon-z/duet-openscad/main/images/studio_small_03_1k.hdr',
+            rgbeLoader.load('https://raw.githubusercontent.com/brendon-chen/duet-openscad/main/images/studio_small_03_1k.hdr',
                 (texture) => {
                     texture.mapping = THREE.EquirectangularReflectionMapping;
                     envMap = texture;
@@ -1984,12 +1988,12 @@
         function getMaterial(materialType, finish, plating = 'none') {
             const mat = MATERIALS[materialType];
             const roughness = mat.roughness[finish];
-            
+
             // 決定最終顏色：如果有電鍍，使用電鍍顏色；否則使用基礎材質顏色
-            const finalColor = PLATING_COLORS[plating] !== null 
-                ? PLATING_COLORS[plating] 
+            const finalColor = PLATING_COLORS[plating] !== null
+                ? PLATING_COLORS[plating]
                 : mat.color;
-            
+
             return new THREE.MeshStandardMaterial({
                 color: finalColor,
                 metalness: mat.metalness,
@@ -2653,7 +2657,7 @@
                 document.querySelectorAll('.preview-char').forEach(el => {
                     el.textContent = chars;
                 });
-                
+
                 // 同步回左側字母選擇（雙向同步）
                 if (chars.length >= 1) {
                     document.getElementById('letter1').value = chars[0] || 'A';
@@ -3579,19 +3583,19 @@
                 console.error('❌ 沒有設計理念可顯示');
             }
         }
-        
+
         // 顯示設計理念明信片卡片
         function showDesignStoryCard(designStory) {
             const modal = document.getElementById('design-story-modal');
             const content = document.getElementById('story-content');
-            
+
             // 將設計理念文字轉換為 HTML（保留換行）
             const formattedStory = designStory.replace(/\n/g, '<br>');
             content.innerHTML = formattedStory;
-            
+
             // 顯示 Modal
             modal.style.display = 'flex';
-            
+
             console.log('✅ 設計理念卡片已顯示');
         }
 
@@ -3752,13 +3756,13 @@
                 if (result.success) {
                     console.log('✅ 設計理念生成成功');
                     let story = result.designStory;
-                    
+
                     // 前端安全網：確保不超過 150 字
                     if (story.length > 150) {
                         console.warn('⚠️ 設計理念超過 150 字，自動截斷');
                         story = story.substring(0, 147) + '...';
                     }
-                    
+
                     return story;
                 } else {
                     console.error('❌ 設計理念生成失敗:', result.error);
@@ -3781,7 +3785,7 @@
             // 檢查是否有經過 AI 諮詢
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
             const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
-            
+
             if (hasAIConsultation) {
                 // 顯示提醒彈窗
                 showCheckoutReminder();
@@ -3794,15 +3798,15 @@
                 }
             }
         }
-        
+
         // 顯示結帳提醒彈窗
         function showCheckoutReminder() {
             const modal = document.getElementById('checkout-reminder-modal');
             modal.style.display = 'flex';
-            
+
             // 綁定按鈕事件（只綁定一次）
             const btn = document.getElementById('proceed-to-checkout-btn');
-            btn.onclick = function() {
+            btn.onclick = function () {
                 modal.style.display = 'none';
                 if (TESTING_MODE) {
                     testModeCheckout();
@@ -4216,7 +4220,7 @@
                         charInput.value = letter1 + letter2;
                         charInput.dispatchEvent(new Event('input'));
                     }
-                    
+
                     generateModel();
                 });
             });
@@ -4259,7 +4263,7 @@
             });
             document.getElementById('continue-shopping').addEventListener('click', closeCart);
             document.getElementById('checkout').addEventListener('click', checkout);
-            
+
             // 設計理念卡片切換邏輯
             const cardStyles = [
                 { name: '經典風格', bg: '#f5f5dc', border: '3px solid #d4af37', color: '#2d2d2d' },
@@ -4267,35 +4271,35 @@
                 { name: '浪漫風格', bg: '#fff5f5', border: '3px solid #dda0a0', color: '#2d2d2d' }
             ];
             let currentCardStyle = 0;
-            
+
             function updateCardStyle() {
                 const card = document.getElementById('story-card');
                 const styleName = document.getElementById('card-style-name');
                 const style = cardStyles[currentCardStyle];
-                
+
                 card.style.background = style.bg;
                 card.style.border = style.border;
                 card.style.color = style.color;
                 styleName.textContent = style.name;
-                
+
                 // 更新內容區域顏色
                 document.getElementById('story-content').style.color = style.color;
             }
-            
+
             document.getElementById('prev-card-style').addEventListener('click', () => {
                 currentCardStyle = (currentCardStyle - 1 + cardStyles.length) % cardStyles.length;
                 updateCardStyle();
             });
-            
+
             document.getElementById('next-card-style').addEventListener('click', () => {
                 currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
                 updateCardStyle();
             });
-            
+
             document.getElementById('close-story-card').addEventListener('click', () => {
                 document.getElementById('design-story-modal').style.display = 'none';
             });
-            
+
             // 初始化卡片樣式
             updateCardStyle();
         }
@@ -4335,12 +4339,12 @@
         window.applyPromoCode = applyPromoCode;
         window.removePromoCode = removePromoCode;
         window.checkout = checkout;
-        
+
         // 測試設計理念卡片顯示
-        window.testDesignStoryCard = function() {
+        window.testDesignStoryCard = function () {
             const modal = document.getElementById('design-story-modal');
             const content = document.getElementById('story-content');
-            
+
             // 測試內容
             content.innerHTML = `
                 這是一個關於「L」與「J」的故事。<br><br>
@@ -4355,7 +4359,7 @@
                 如同兩顆心靈相互依偎，<br>
                 共同譜寫屬於你們的獨特篇章。
             `;
-            
+
             modal.style.display = 'flex';
             console.log('✅ 設計理念卡片已顯示');
         };
