@@ -9,7 +9,7 @@
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Liu+Jian+Mao+Cao&family=Caveat:wght@400;700&family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
 
     <style>
         * {
@@ -1048,18 +1048,30 @@
             justify-content: space-between;
         " id="story-card" data-style="classic">
             <!-- 設計理念內容 -->
-            <div id="story-content" style="
-                font-family: 'Caveat', 'Ma Shan Zheng', cursive;
-                font-size: 22px;
-                line-height: 1.6;
+            <div id="story-content" contenteditable="true" style="
+                font-family: 'Caveat', 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Zhi Mang Xing', cursive, sans-serif;
+                font-size: 16px;
+                line-height: 1.8;
                 letter-spacing: 0.5px;
                 flex: 1;
-                display: flex;
-                align-items: center;
                 text-align: justify;
                 padding: 0 5px;
-            ">
+                overflow-y: auto;
+                max-height: 280px;
+                outline: none;
+            " placeholder="您的設計理念將顯示在這裡...">
                 這是一個關於兩個字母的故事...
+            </div>
+            
+            <!-- 編輯提示 -->
+            <div style="
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.4);
+                text-align: center;
+                margin-top: 10px;
+                font-style: italic;
+            ">
+                💡 您可以點擊上方文字進行編輯修改
             </div>
 
             <!-- 簽名欄位 -->
