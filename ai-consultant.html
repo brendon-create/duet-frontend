@@ -57,7 +57,7 @@
             padding: 50px 60px;
             max-width: 650px;
             /* 多層陰影營造深度 */
-            box-shadow: 
+            box-shadow:
                 0 8px 32px rgba(0, 0, 0, 0.4),
                 0 2px 8px rgba(212, 175, 55, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -238,7 +238,7 @@
             overflow-y: auto;
             margin-bottom: 20px;
             /* 多層陰影 */
-            box-shadow: 
+            box-shadow:
                 0 8px 32px rgba(0, 0, 0, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
@@ -347,7 +347,7 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
         }
-        
+
         .input-area:focus-within {
             background: rgba(255, 255, 255, 0.12);
             border-color: rgba(212, 175, 55, 0.5);
@@ -647,7 +647,7 @@
         // Skip to Manual Selection
         function skipToManual() {
             localStorage.setItem('duet_skip_ai', 'true');
-            window.location.href = '/duet';
+            window.location.href = 'design-studio.html';
         }
 
         // Initialize Conversation
@@ -672,13 +672,13 @@
 
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-            
+
             // 如果是 AI 訊息，使用打字機效果
             if (role === 'assistant') {
                 bubbleDiv.textContent = '';
                 messageDiv.appendChild(bubbleDiv);
                 chatContainer.appendChild(messageDiv);
-                
+
                 // 直接顯示全部內容（移除打字機效果）
                 bubbleDiv.textContent = content;
             } else {
@@ -767,15 +767,15 @@
                 } else {
                     // 檢查 message 中是否包含 JSON（備用檢測）
                     const message = data.message;
-                    
+
                     // 嘗試從 message 中提取 JSON
                     const jsonMatch = message.match(/```json\s*([\s\S]*?)```|({[\s\S]*"recommendations"[\s\S]*})/);
-                    
+
                     if (jsonMatch) {
                         try {
                             const jsonStr = jsonMatch[1] || jsonMatch[2];
                             const parsed = JSON.parse(jsonStr.trim());
-                            
+
                             if (parsed.recommendations && parsed.letters) {
                                 console.log('✅ 前端檢測到 JSON，觸發完成畫面');
                                 showCompletionScreen(parsed);
@@ -785,7 +785,7 @@
                             console.log('⚠️ JSON 解析失敗，繼續顯示對話');
                         }
                     }
-                    
+
                     // Continue conversation
                     addMessage('assistant', message);
                     conversationHistory.push({
@@ -814,7 +814,7 @@
         // Show Completion Screen
         function showCompletionScreen(data) {
             console.log('📊 收到完整推薦資料:', data);
-            
+
             // 載入推薦字體
             const allFonts = [
                 ...data.recommendations.letter1.map(r => r.font),
