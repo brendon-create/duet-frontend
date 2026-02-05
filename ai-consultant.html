@@ -928,8 +928,9 @@
 
         // Continue to Design
         function continueToDesign() {
-            // 修正：確保回到主程式時是全螢幕跳轉，不被嵌在框架內
-            window.top.location.href = 'https://duet.brendonchen.com';
+            // 跳轉到 design-studio，AI 推薦資料已經儲存在 localStorage
+            // design-studio 會自動讀取 'duet_ai_consultation' 並預填字體
+            window.top.location.href = 'https://duet.brendonchen.com/design-studio.html?from=ai';
         }
     </script>
 </body>
