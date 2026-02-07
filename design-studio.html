@@ -4084,7 +4084,31 @@
                 console.log('📦 API 回應內容:', result);
 
                 if (result.success) {
-                    console.log('✅ 結帳成功，準備顯示綠界表單');
+                    console.log('✅ 結帳成功');
+
+                    // ✅ 檢查是否為 VIP 免費訂單
+                    if (result.vipFree) {
+                        console.log('🎁 VIP 免費訂單已確認');
+                        
+                        // 根據是否有 AI consultation 決定跳轉
+                        if (result.hasAiConsultation) {
+                            // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
+                            alert('VIP 免費訂單已確認！正在為您準備諮詢服務...');
+                            setTimeout(() => {
+                                window.location.href = `https://duet.brendonchen.com/design-studio?payment_success=true&order=${result.orderId}`;
+                            }, 1500);
+                        } else {
+                            // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
+                            alert('訂單已確認！感謝您的訂購');
+                            setTimeout(() => {
+                                window.location.href = 'https://www.brendonchen.com';
+                            }, 2000);
+                        }
+                        return; // ✅ 重要：直接返回，不執行後面的代碼
+                    }
+
+                    // 正常付款流程
+                    console.log('準備顯示綠界表單');
 
                     // 檢查是否為特殊金額狀況（優惠後 ≤ 0）
                     if (result.specialAmountCase) {
