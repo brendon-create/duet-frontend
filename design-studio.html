@@ -4418,7 +4418,29 @@
                         address: document.getElementById('shipping-address').value.trim()
                     };
 
-                    modal.remove();
+                    // ✅ 不移除 modal，改成隱藏表單並顯示 loading
+                    modal.querySelector('.modal-content').style.display = 'none';
+                    
+                    // 顯示 loading 提示
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.style.cssText = `
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        color: rgba(255,255,255,0.9);
+                    `;
+                    loadingDiv.innerHTML = `
+                        <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                        <div style="font-size: 16px; font-weight: 500;">正在處理訂單...</div>
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">請稍候，即將跳轉至付款頁面</div>
+                    `;
+                    modal.appendChild(loadingDiv);
+                    
+                    // 儲存 modal 引用，供後續移除
+                    window.userInfoModal = modal;
+                    
                     resolve(userInfo);
                 });
             });
@@ -4469,7 +4491,7 @@
                         margin: 0 0 28px 0;
                     ">
                         您的設計已完成，將很快收到訂單確認信<br>
-                        畫面即將導引至 BCAG 設計師訂製珠寶首頁
+                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
                     </p>
                     <div style="
                         color: rgba(212, 175, 55, 0.8);
@@ -4632,6 +4654,12 @@
 
         // 顯示綠界支付表單
         function displayPaymentForm(formHTML) {
+            // ✅ 移除 user-info-modal（如果存在）
+            if (window.userInfoModal) {
+                window.userInfoModal.remove();
+                window.userInfoModal = null;
+            }
+            
             // 創建遮罩層
             const overlay = document.createElement('div');
             overlay.id = 'payment-overlay';
