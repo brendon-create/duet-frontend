@@ -4819,14 +4819,9 @@
                 // 關閉 Modal
                 document.getElementById('design-story-modal').style.display = 'none';
 
-                // 檢查是否為付款成功流程
-                const urlParams = new URLSearchParams(window.location.search);
-                const isPaymentFlow = urlParams.get('payment_success') === 'true';
-
-                if (isPaymentFlow) {
-                    console.log('✅ 付款流程完成，顯示完成訊息');
-                    showPaymentCompleteModal();
-                }
+                // ✅ 設計理念確認後，顯示完成訊息並跳轉
+                console.log('✅ 設計理念流程完成，顯示感謝訊息');
+                showPaymentCompleteModal();
             });
 
             // 初始化卡片樣式
