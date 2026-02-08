@@ -1709,16 +1709,32 @@
 
                         const data = await response.json();
                         console.log('📦 收到資料:', data);
+                        console.log('📦 data.success:', data.success);
+                        console.log('📦 data.order:', data.order);
+                        console.log('📦 data.order?.items:', data.order?.items);
+                        console.log('📦 data.order?.aiConsultation:', data.order?.aiConsultation);
 
-                        if (data.success && data.items) {
-                            // 恢復購物車資料和 AI 諮詢資料
-                            window.cartItems = data.items;
+                        if (data.success && data.order && data.order.items) {
+                            const order = data.order;
+                            
+                            // 檢查是否有 AI consultation
+                            if (!order.aiConsultation) {
+                                // 沒有 AI consultation，顯示感謝訊息後跳轉
+                                showNotification('訂單已確認！感謝您的訂購', 'success');
+                                setTimeout(() => {
+                                    window.location.href = 'https://www.brendonchen.com';
+                                }, 2000);
+                                return;
+                            }
+                            
+                            // 有 AI consultation，恢復購物車資料
+                            window.cartItems = order.items;
                             window.lastOrderId = orderId;
-                            window.aiConsultationData = data.ai_data;  // ✅ 儲存 AI 諮詢資料
+                            window.aiConsultationData = order.aiConsultation;  // ✅ 儲存 AI 諮詢資料
 
                             console.log('✅ 訂單資料已載入');
-                            console.log('  - 商品數量:', data.items.length);
-                            console.log('  - AI 諮詢:', data.ai_data ? '有' : '無');
+                            console.log('  - 商品數量:', order.items.length);
+                            console.log('  - AI 諮詢:', order.aiConsultation ? '有' : '無');
 
                             // 觸發設計理念收集
                             if (typeof collectDesignStories === 'function') {
@@ -1729,9 +1745,10 @@
                         } else {
                             console.error('❌ 無法載入訂單資料');
                             console.error('  - success:', data.success);
-                            console.error('  - items:', data.items);
+                            console.error('  - order:', data.order);
+                            console.error('  - order?.items:', data.order?.items);
                             console.error('  - error:', data.error);
-                            showNotification('載入訂單資料失敗: ' + (data.error || '未知錯誤'), 'error');
+                            showNotification('載入訂單資料失敗: ' + (data.error || '訂單資料不完整'), 'error');
                         }
                     } catch (error) {
                         console.error('❌ 載入訂單時發生錯誤:', error);
@@ -4093,13 +4110,13 @@
                         // 根據是否有 AI consultation 決定跳轉
                         if (result.hasAiConsultation) {
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
-                            alert('VIP 免費訂單已確認！正在為您準備諮詢服務...');
+                            showNotification('VIP 免費訂單已確認！正在為您準備諮詢服務...', 'success');
                             setTimeout(() => {
                                 window.location.href = `https://duet.brendonchen.com/design-studio?payment_success=true&order=${result.orderId}`;
-                            }, 1500);
+                            }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
                             // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
-                            alert('訂單已確認！感謝您的訂購');
+                            showNotification('訂單已確認！感謝您的訂購', 'success');
                             setTimeout(() => {
                                 window.location.href = 'https://www.brendonchen.com';
                             }, 2000);
