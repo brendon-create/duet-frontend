@@ -1499,6 +1499,12 @@
 
             bailMesh = createBail();
             updateBailPosition();
+
+            // ✅ 隱藏 loader
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.display = 'none';
+            }
         }
 
         function getMaterial(materialType, finish, plating = 'none') {
