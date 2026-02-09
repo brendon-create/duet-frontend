@@ -4474,6 +4474,7 @@
                         charInput.value = letter1 + letter2;
                         charInput.dispatchEvent(new Event('input'));
                     }
+
                     generateModel();
                 });
             });
@@ -4573,28 +4574,29 @@
         function onResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
+        }
 
-            // 啟動
-            initScene();
-            initFontSelector();
-            setupEventListeners();
-            animate();
+        // 啟動
+        initScene();
+        initFontSelector();
+        setupEventListeners();
+        animate();
 
-            // 初始化價格顯示
-            updatePriceDisplay();
+        // 初始化價格顯示
+        updatePriceDisplay();
 
-            // 暴露關鍵函數到全局（確保 HTML onclick 可以訪問）
-            window.applyPromoCode = applyPromoCode;
-            window.removePromoCode = removePromoCode;
-            window.checkout = checkout;
+        // 暴露關鍵函數到全局（確保 HTML onclick 可以訪問）
+        window.applyPromoCode = applyPromoCode;
+        window.removePromoCode = removePromoCode;
+        window.checkout = checkout;
 
-            // 測試設計理念卡片顯示
-            window.testDesignStoryCard = function () {
-                const modal = document.getElementById('design-story-modal');
-                const content = document.getElementById('story-content');
+        // 測試設計理念卡片顯示
+        window.testDesignStoryCard = function () {
+            const modal = document.getElementById('design-story-modal');
+            const content = document.getElementById('story-content');
 
-                // 測試內容
-                content.innerHTML = `
+            // 測試內容
+            content.innerHTML = `
                 這是一個關於「L」與「J」的故事。<br><br>
                 
                 字母「L」選用了優雅的 Playfair Display 字體，<br>
@@ -4608,29 +4610,29 @@
                 共同譜寫屬於你們的獨特篇章。
             `;
 
-                modal.style.display = 'flex';
-                console.log('✅ 設計理念卡片已顯示');
-            };
+            modal.style.display = 'flex';
+            console.log('✅ 設計理念卡片已顯示');
+        };
 
-            console.log('✅ 全局函數已暴露:', {
-                applyPromoCode: typeof window.applyPromoCode,
-                removePromoCode: typeof window.removePromoCode,
-                checkout: typeof window.checkout,
-                testDesignStoryCard: typeof window.testDesignStoryCard
-            });
+        console.log('✅ 全局函數已暴露:', {
+            applyPromoCode: typeof window.applyPromoCode,
+            removePromoCode: typeof window.removePromoCode,
+            checkout: typeof window.checkout,
+            testDesignStoryCard: typeof window.testDesignStoryCard
+        });
 
-            // 載入 Google Fonts - 分批載入可用字體（使用 availableFonts）
-            function loadGoogleFonts() {
-                if (!availableFonts || availableFonts.length === 0) return;
-                const batchSize = 50;
-                for (let i = 0; i < availableFonts.length; i += batchSize) {
-                    const batch = availableFonts.slice(i, i + batchSize);
-                    const link = document.createElement('link');
-                    link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
-                    link.rel = 'stylesheet';
-                    document.head.appendChild(link);
-                }
+        // 載入 Google Fonts - 分批載入可用字體（使用 availableFonts）
+        function loadGoogleFonts() {
+            if (!availableFonts || availableFonts.length === 0) return;
+            const batchSize = 50;
+            for (let i = 0; i < availableFonts.length; i += batchSize) {
+                const batch = availableFonts.slice(i, i + batchSize);
+                const link = document.createElement('link');
+                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
             }
+        }
     </script>
     <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
     <!-- <script src="wearing-preview.js"></script> -->
