@@ -4474,101 +4474,100 @@
                         charInput.value = letter1 + letter2;
                         charInput.dispatchEvent(new Event('input'));
                     }
-                }
                     generateModel();
+                });
             });
-        });
 
-        // 材質參數改變 → 只更新材質，不重建模型（即時！）
-        ['material', 'finish', 'plating'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => {
-                updateMaterial();
+            // 材質參數改變 → 只更新材質，不重建模型（即時！）
+            ['material', 'finish', 'plating'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    updateMaterial();
+                });
             });
-        });
 
-        ['bailX', 'bailY', 'bailZ', 'bailRotation'].forEach(id => {
-            const slider = document.getElementById(id);
-            slider.addEventListener('input', (e) => {
-                const suffix = id === 'bailRotation' ? '°' : '';
-                document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
-                // 只更新位置，不重新創建
-                updateBailPosition();
+            ['bailX', 'bailY', 'bailZ', 'bailRotation'].forEach(id => {
+                const slider = document.getElementById(id);
+                slider.addEventListener('input', (e) => {
+                    const suffix = id === 'bailRotation' ? '°' : '';
+                    document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
+                    // 只更新位置，不重新創建
+                    updateBailPosition();
+                });
             });
-        });
 
-        document.getElementById('save-slot-1').addEventListener('click', () => saveToSlot(0));
-        document.getElementById('save-slot-2').addEventListener('click', () => saveToSlot(1));
+            document.getElementById('save-slot-1').addEventListener('click', () => saveToSlot(0));
+            document.getElementById('save-slot-2').addEventListener('click', () => saveToSlot(1));
 
-        // Slot 點擊召回
-        document.querySelector('[data-slot="1"]').addEventListener('click', () => {
-            if (savedVersions[0]) loadFromSlot(0);
-        });
-        document.querySelector('[data-slot="2"]').addEventListener('click', () => {
-            if (savedVersions[1]) loadFromSlot(1);
-        });
-        document.getElementById('addToCartBtn').addEventListener('click', (e) => {
-            // 如果點擊的是 View Cart 區域，只打開購物車
-            if (e.target.id === 'viewCartBtn' || e.target.closest('#viewCartBtn')) {
-                openCart();
-            } else {
-                // 否則是 Add to Cart
-                addToCart();
+            // Slot 點擊召回
+            document.querySelector('[data-slot="1"]').addEventListener('click', () => {
+                if (savedVersions[0]) loadFromSlot(0);
+            });
+            document.querySelector('[data-slot="2"]').addEventListener('click', () => {
+                if (savedVersions[1]) loadFromSlot(1);
+            });
+            document.getElementById('addToCartBtn').addEventListener('click', (e) => {
+                // 如果點擊的是 View Cart 區域，只打開購物車
+                if (e.target.id === 'viewCartBtn' || e.target.closest('#viewCartBtn')) {
+                    openCart();
+                } else {
+                    // 否則是 Add to Cart
+                    addToCart();
+                }
+            });
+            document.getElementById('continue-shopping').addEventListener('click', closeCart);
+            document.getElementById('checkout').addEventListener('click', checkout);
+
+            // 設計理念卡片切換邏輯
+            const cardStyles = [
+                { name: '經典風格', bg: '#f5f5dc', border: '3px solid #d4af37', color: '#2d2d2d' },
+                { name: '現代風格', bg: '#2d2d2d', border: '2px solid #c0c0c0', color: '#ffffff' },
+                { name: '浪漫風格', bg: '#fff5f5', border: '3px solid #dda0a0', color: '#2d2d2d' }
+            ];
+            let currentCardStyle = 0;
+
+            function updateCardStyle() {
+                const card = document.getElementById('story-card');
+                const styleName = document.getElementById('card-style-name');
+                const style = cardStyles[currentCardStyle];
+
+                card.style.background = style.bg;
+                card.style.border = style.border;
+                card.style.color = style.color;
+                styleName.textContent = style.name;
+
+                // 更新內容區域顏色
+                document.getElementById('story-content').style.color = style.color;
             }
-        });
-        document.getElementById('continue-shopping').addEventListener('click', closeCart);
-        document.getElementById('checkout').addEventListener('click', checkout);
 
-        // 設計理念卡片切換邏輯
-        const cardStyles = [
-            { name: '經典風格', bg: '#f5f5dc', border: '3px solid #d4af37', color: '#2d2d2d' },
-            { name: '現代風格', bg: '#2d2d2d', border: '2px solid #c0c0c0', color: '#ffffff' },
-            { name: '浪漫風格', bg: '#fff5f5', border: '3px solid #dda0a0', color: '#2d2d2d' }
-        ];
-        let currentCardStyle = 0;
+            document.getElementById('prev-card-style').addEventListener('click', () => {
+                currentCardStyle = (currentCardStyle - 1 + cardStyles.length) % cardStyles.length;
+                updateCardStyle();
+            });
 
-        function updateCardStyle() {
-            const card = document.getElementById('story-card');
-            const styleName = document.getElementById('card-style-name');
-            const style = cardStyles[currentCardStyle];
+            document.getElementById('next-card-style').addEventListener('click', () => {
+                currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
+                updateCardStyle();
+            });
 
-            card.style.background = style.bg;
-            card.style.border = style.border;
-            card.style.color = style.color;
-            styleName.textContent = style.name;
+            document.getElementById('confirm-story-card').addEventListener('click', () => {
+                // 獲取編輯後的設計理念
+                const editedStory = document.getElementById('story-content').textContent;
 
-            // 更新內容區域顏色
-            document.getElementById('story-content').style.color = style.color;
-        }
+                // 儲存到全局變數（供後續訂單使用）
+                window.finalDesignStory = editedStory;
 
-        document.getElementById('prev-card-style').addEventListener('click', () => {
-            currentCardStyle = (currentCardStyle - 1 + cardStyles.length) % cardStyles.length;
+                console.log('✅ 設計理念已確認:', editedStory);
+
+                // 關閉 Modal
+                document.getElementById('design-story-modal').style.display = 'none';
+
+                // ✅ 設計理念確認後，顯示完成訊息並跳轉
+                console.log('✅ 設計理念流程完成，顯示感謝訊息');
+                showPaymentCompleteModal();
+            });
+
+            // 初始化卡片樣式
             updateCardStyle();
-        });
-
-        document.getElementById('next-card-style').addEventListener('click', () => {
-            currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
-            updateCardStyle();
-        });
-
-        document.getElementById('confirm-story-card').addEventListener('click', () => {
-            // 獲取編輯後的設計理念
-            const editedStory = document.getElementById('story-content').textContent;
-
-            // 儲存到全局變數（供後續訂單使用）
-            window.finalDesignStory = editedStory;
-
-            console.log('✅ 設計理念已確認:', editedStory);
-
-            // 關閉 Modal
-            document.getElementById('design-story-modal').style.display = 'none';
-
-            // ✅ 設計理念確認後，顯示完成訊息並跳轉
-            console.log('✅ 設計理念流程完成，顯示感謝訊息');
-            showPaymentCompleteModal();
-        });
-
-        // 初始化卡片樣式
-        updateCardStyle();
         }
 
         function onResize() {
