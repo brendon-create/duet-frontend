@@ -2765,6 +2765,16 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
+            // ✅ 同步到隱藏的 font1/font2 select（供 generateModel 使用）
+            const font1Hidden = document.getElementById('font1');
+            const font2Hidden = document.getElementById('font2');
+            if (font1Hidden && document.getElementById('font1-btn').getAttribute('data-selected')) {
+                font1Hidden.value = document.getElementById('font1-btn').getAttribute('data-selected');
+            }
+            if (font2Hidden && document.getElementById('font2-btn').getAttribute('data-selected')) {
+                font2Hidden.value = document.getElementById('font2-btn').getAttribute('data-selected');
+            }
+
             generateModel();
         }
 
