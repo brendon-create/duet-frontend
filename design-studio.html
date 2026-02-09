@@ -1430,7 +1430,7 @@
         // ============================================================
         // Three.js 渲染模組（從 three-renderer.js 內聯）
         // ============================================================
-        
+
         // 模組狀態變數
         let scene, camera, renderer, controls, envMap;
         let mainMesh = null, bailMesh = null;
@@ -2125,7 +2125,7 @@
 
                         if (data.success && data.order && data.order.items) {
                             const order = data.order;
-                            
+
                             // 檢查是否有 AI consultation
                             if (!order.aiConsultation) {
                                 // 沒有 AI consultation，顯示感謝訊息後跳轉
@@ -2135,7 +2135,7 @@
                                 }, 2000);
                                 return;
                             }
-                            
+
                             // 有 AI consultation，恢復購物車資料
                             window.cartItems = order.items;
                             window.lastOrderId = orderId;
@@ -2451,7 +2451,7 @@
         };
 
         // ✅ 3D 渲染函數已移至 three-renderer.js
-
+        function updatePriceDisplay() {
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
 
@@ -3849,7 +3849,7 @@
                     // ✅ 檢查是否為 VIP 免費訂單
                     if (result.vipFree) {
                         console.log('🎁 VIP 免費訂單已確認');
-                        
+
                         // 根據是否有 AI consultation 決定跳轉
                         if (result.hasAiConsultation) {
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
@@ -4163,7 +4163,7 @@
 
                     // ✅ 不移除 modal，改成隱藏表單並顯示 loading
                     modal.querySelector('.modal-content').style.display = 'none';
-                    
+
                     // 顯示 loading 提示
                     const loadingDiv = document.createElement('div');
                     loadingDiv.style.cssText = `
@@ -4180,10 +4180,10 @@
                         <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">請稍候，即將跳轉至付款頁面</div>
                     `;
                     modal.appendChild(loadingDiv);
-                    
+
                     // 儲存 modal 引用，供後續移除
                     window.userInfoModal = modal;
-                    
+
                     resolve(userInfo);
                 });
             });
@@ -4402,7 +4402,7 @@
                 window.userInfoModal.remove();
                 window.userInfoModal = null;
             }
-            
+
             // 創建遮罩層
             const overlay = document.createElement('div');
             overlay.id = 'payment-overlay';
@@ -4575,27 +4575,27 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
 
-        // 啟動
-        initScene();
-        initFontSelector();
-        setupEventListeners();
-        animate();
+            // 啟動
+            initScene();
+            initFontSelector();
+            setupEventListeners();
+            animate();
 
-        // 初始化價格顯示
-        updatePriceDisplay();
+            // 初始化價格顯示
+            updatePriceDisplay();
 
-        // 暴露關鍵函數到全局（確保 HTML onclick 可以訪問）
-        window.applyPromoCode = applyPromoCode;
-        window.removePromoCode = removePromoCode;
-        window.checkout = checkout;
+            // 暴露關鍵函數到全局（確保 HTML onclick 可以訪問）
+            window.applyPromoCode = applyPromoCode;
+            window.removePromoCode = removePromoCode;
+            window.checkout = checkout;
 
-        // 測試設計理念卡片顯示
-        window.testDesignStoryCard = function () {
-            const modal = document.getElementById('design-story-modal');
-            const content = document.getElementById('story-content');
+            // 測試設計理念卡片顯示
+            window.testDesignStoryCard = function () {
+                const modal = document.getElementById('design-story-modal');
+                const content = document.getElementById('story-content');
 
-            // 測試內容
-            content.innerHTML = `
+                // 測試內容
+                content.innerHTML = `
                 這是一個關於「L」與「J」的故事。<br><br>
                 
                 字母「L」選用了優雅的 Playfair Display 字體，<br>
@@ -4609,29 +4609,29 @@
                 共同譜寫屬於你們的獨特篇章。
             `;
 
-            modal.style.display = 'flex';
-            console.log('✅ 設計理念卡片已顯示');
-        };
+                modal.style.display = 'flex';
+                console.log('✅ 設計理念卡片已顯示');
+            };
 
-        console.log('✅ 全局函數已暴露:', {
-            applyPromoCode: typeof window.applyPromoCode,
-            removePromoCode: typeof window.removePromoCode,
-            checkout: typeof window.checkout,
-            testDesignStoryCard: typeof window.testDesignStoryCard
-        });
+            console.log('✅ 全局函數已暴露:', {
+                applyPromoCode: typeof window.applyPromoCode,
+                removePromoCode: typeof window.removePromoCode,
+                checkout: typeof window.checkout,
+                testDesignStoryCard: typeof window.testDesignStoryCard
+            });
 
-        // 載入 Google Fonts - 分批載入可用字體（使用 availableFonts）
-        function loadGoogleFonts() {
-            if (!availableFonts || availableFonts.length === 0) return;
-            const batchSize = 50;
-            for (let i = 0; i < availableFonts.length; i += batchSize) {
-                const batch = availableFonts.slice(i, i + batchSize);
-                const link = document.createElement('link');
-                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
-                link.rel = 'stylesheet';
-                document.head.appendChild(link);
+            // 載入 Google Fonts - 分批載入可用字體（使用 availableFonts）
+            function loadGoogleFonts() {
+                if (!availableFonts || availableFonts.length === 0) return;
+                const batchSize = 50;
+                for (let i = 0; i < availableFonts.length; i += batchSize) {
+                    const batch = availableFonts.slice(i, i + batchSize);
+                    const link = document.createElement('link');
+                    link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                    link.rel = 'stylesheet';
+                    document.head.appendChild(link);
+                }
             }
-        }
     </script>
     <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
     <!-- <script src="wearing-preview.js"></script> -->
