@@ -1469,26 +1469,56 @@
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
-            const rgbeLoader = new RGBELoader();
-            const hdrUrl = 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr';
+            // ✅ HDR 載入備援機制
+            const hdrUrls = [
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_small_08_1k.hdr',  // 優先：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr'  // 備援：GitHub Raw
+            ];
             
-            console.log('🔄 開始載入 HDR:', hdrUrl);
+            let currentHdrIndex = 0;
+            let hdrLoadTimeout = null;
+            const rgbeLoader = new RGBELoader();
 
-            rgbeLoader.load(
-                hdrUrl,
-                (texture) => {
-                    texture.mapping = THREE.EquirectangularReflectionMapping;
-                    envMap = texture;
-                    scene.environment = envMap;
-                    console.log('✅ HDR 環境貼圖載入成功');
+            function loadHDRWithFallback() {
+                if (currentHdrIndex >= hdrUrls.length) {
+                    console.error('❌ 所有 HDR 來源都失敗，使用無 HDR 模式');
+                    envMap = null;
                     showInitialSphere();
-                },
-                undefined,
-                (error) => {
-                    console.error('❌ HDR 載入失敗:', error);
-                    showInitialSphere();
+                    return;
                 }
-            );
+
+                const hdrUrl = hdrUrls[currentHdrIndex];
+                const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
+                console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
+
+                // 設定 5 秒超時
+                hdrLoadTimeout = setTimeout(() => {
+                    console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
+                    currentHdrIndex++;
+                    loadHDRWithFallback();
+                }, 5000);
+
+                rgbeLoader.load(
+                    hdrUrl,
+                    (texture) => {
+                        clearTimeout(hdrLoadTimeout);
+                        texture.mapping = THREE.EquirectangularReflectionMapping;
+                        envMap = texture;
+                        scene.environment = envMap;
+                        console.log(`✅ HDR 載入成功 (${sourceName})`);
+                        showInitialSphere();
+                    },
+                    undefined,
+                    (error) => {
+                        clearTimeout(hdrLoadTimeout);
+                        console.error(`❌ HDR 載入失敗 (${sourceName}):`, error);
+                        currentHdrIndex++;
+                        loadHDRWithFallback();
+                    }
+                );
+            }
+
+            loadHDRWithFallback();
 
             window.addEventListener('resize', onResize);
         }
