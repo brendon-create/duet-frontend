@@ -877,6 +877,7 @@
                 <div class="flex-row">
                     <div><select id="letter1"></select></div>
                     <div><button class="font-select-btn" id="font1-btn">Choose Fonts</button></div>
+                    <input type="hidden" id="font1" value="">
                 </div>
             </div>
 
@@ -885,6 +886,7 @@
                 <div class="flex-row">
                     <div><select id="letter2"></select></div>
                     <div><button class="font-select-btn" id="font2-btn">Choose Fonts</button></div>
+                    <input type="hidden" id="font2" value="">
                 </div>
             </div>
         </div>
@@ -1492,6 +1494,13 @@
         }
 
         function showInitialSphere() {
+            // ✅ 確保 envMap 已載入
+            if (!envMap) {
+                console.warn('⚠️ envMap 尚未載入，延遲 100ms 重試');
+                setTimeout(showInitialSphere, 100);
+                return;
+            }
+            
             const geometry = new THREE.SphereGeometry(7.5, 64, 64);
             const material = getMaterial('silver925', 'glossy', 'none');
             mainMesh = new THREE.Mesh(geometry, material);
@@ -2461,6 +2470,9 @@
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
 
+            // 取得電鍍選項
+            const plating = document.getElementById('plating').value;
+
             // 有電鍍（任何電鍍）+400
             if (plating && plating !== 'none') {
                 price += 400;
@@ -2766,13 +2778,14 @@
             preloadSelectedFonts(selectedFonts);
 
             // ✅ 同步到隱藏的 font1/font2 select（供 generateModel 使用）
-            const font1Hidden = document.getElementById('font1');
-            const font2Hidden = document.getElementById('font2');
-            if (font1Hidden && document.getElementById('font1-btn').getAttribute('data-selected')) {
-                font1Hidden.value = document.getElementById('font1-btn').getAttribute('data-selected');
-            }
-            if (font2Hidden && document.getElementById('font2-btn').getAttribute('data-selected')) {
-                font2Hidden.value = document.getElementById('font2-btn').getAttribute('data-selected');
+            select.value = defaultFont;
+            btn.setAttribute('data-selected', defaultFont);
+            select.style.fontFamily = `"${defaultFont}", sans-serif`;
+                
+            // ✅ 立即同步到 hidden input
+            const hiddenInput = document.getElementById(target);
+            if (hiddenInput) {
+                hiddenInput.value = defaultFont;
             }
 
             generateModel();
@@ -4499,6 +4512,10 @@
             ['material', 'finish', 'plating'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     updateMaterial();
+                    // 電鍍選項改變時也要更新價格顯示
+                    if (id === 'plating') {
+                        updatePriceDisplay();
+                    }
                 });
             });
 
