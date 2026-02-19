@@ -1739,27 +1739,88 @@
         }
 
         async function loadFont(fontName) {
-            if (window.fontCache && window.fontCache[fontName]) {
-                console.log(`✅ 從快取載入字體: ${fontName}`);
-                return window.fontCache[fontName];
-            }
+            if (loadedFonts[fontName]) return loadedFonts[fontName];
 
-            try {
-                console.log(`📥 開始載入字體: ${fontName}`);
-                const fontUrl = `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@latest/assets/fonts/${fontName}.ttf`;
-                const opentypeFont = await opentype.load(fontUrl);
-                const threejsFont = convertOpentypeToThreejs(opentypeFont, fontName);
+            const loader = new FontLoader();
 
-                if (!window.fontCache) {
-                    window.fontCache = {};
+            console.log(`📥 開始載入字體: ${fontName}`);
+
+            // 將字體名稱轉換為 npm 套件名稱格式
+            const packageName = fontName.toLowerCase().replace(/ /g, '-');
+
+            // 嘗試從多個來源載入
+            const sources = [
+                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
+                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
+                `https://cdn.jsdelivr.net/gh/7dir/json-fonts/Roboto/${fontName.replace(/ /g, '_')}_Regular.json`,
+                `https://cdn.jsdelivr.net/gh/emreacar/google-fonts-as-json/fonts/${fontName.replace(/ /g, '%20')}/regular.json`,
+            ];
+
+            for (const url of sources) {
+                try {
+                    console.log(`   嘗試: ${url}`);
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const json = await response.json();
+                            if (json.glyphs || json.data) {
+                                const fontData = json.data || json;
+                                const font = loader.parse(fontData);
+                                loadedFonts[fontName] = font;
+                                console.log(`✅ 載入成功: ${fontName}`);
+                                return font;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log(`   ✗ 失敗: ${e.message}`);
                 }
-                window.fontCache[fontName] = threejsFont;
-
-                return threejsFont;
-            } catch (error) {
-                console.error(`❌ 載入字體失敗: ${fontName}`, error);
-                return null;
             }
+
+            // Fallback: opentype.js from Google Fonts
+            try {
+                const fontUrlName = fontName.replace(/ /g, '+');
+                const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
+
+                const cssResponse = await fetch(cssUrl);
+                if (cssResponse.ok) {
+                    const cssText = await cssResponse.text();
+                    const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
+
+                    if (urlMatch) {
+                        const fontFileUrl = urlMatch[1];
+                        console.log(`   嘗試 Google Fonts: ${fontFileUrl}`);
+
+                        const fontResponse = await fetch(fontFileUrl);
+                        if (fontResponse.ok) {
+                            const fontBuffer = await fontResponse.arrayBuffer();
+
+                            try {
+                                const opentypeFont = opentype.parse(fontBuffer);
+                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
+                                const font = loader.parse(typefaceData);
+                                loadedFonts[fontName] = font;
+                                console.log(`✅ 載入成功 (via opentype.js): ${fontName}`);
+                                return font;
+                            } catch (parseError) {
+                                console.log(`   ✗ 解析失敗: ${parseError.message}`);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`   Google Fonts 失敗: ${error.message}`);
+            }
+
+            // 最終備用：使用預設字體
+            console.warn(`⚠️ 使用預設字體替代: ${fontName}`);
+            return new Promise((resolve) => {
+                loader.load(
+                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                    (font) => resolve(font)
+                );
+            });
         }
 
         function createBail() {
