@@ -1785,7 +1785,9 @@
 
             try {
                 console.log(`📥 開始載入字體: ${fontName}`);
-                const fontUrl = `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@latest/assets/fonts/${fontName}.ttf`;
+                const encodedFontName = encodeURIComponent(fontName);
+                const fontUrl = `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@latest/assets/fonts/${encodedFontName}.ttf`;
+                console.log(`   URL: ${fontUrl}`);
                 const opentypeFont = await opentype.load(fontUrl);
                 const threejsFont = convertOpentypeToThreejs(opentypeFont, fontName);
 
