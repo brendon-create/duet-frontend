@@ -877,7 +877,6 @@
                 <div class="flex-row">
                     <div><select id="letter1"></select></div>
                     <div><button class="font-select-btn" id="font1-btn">Choose Fonts</button></div>
-                    <input type="hidden" id="font1" value="">
                 </div>
             </div>
 
@@ -886,7 +885,6 @@
                 <div class="flex-row">
                     <div><select id="letter2"></select></div>
                     <div><button class="font-select-btn" id="font2-btn">Choose Fonts</button></div>
-                    <input type="hidden" id="font2" value="">
                 </div>
             </div>
         </div>
@@ -1469,68 +1467,31 @@
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
-            // ✅ HDR 載入備援機制
-            const hdrUrls = [
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_small_08_1k.hdr',  // 優先：jsdelivr CDN
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr'  // 備援：GitHub Raw
-            ];
-            
-            let currentHdrIndex = 0;
-            let hdrLoadTimeout = null;
             const rgbeLoader = new RGBELoader();
+            const hdrUrl = 'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@cd8d6bc/assets/images/hdr/studio_small_08_1k.hdr';
 
-            function loadHDRWithFallback() {
-                if (currentHdrIndex >= hdrUrls.length) {
-                    console.error('❌ 所有 HDR 來源都失敗，使用無 HDR 模式');
-                    envMap = null;
+            console.log('🔄 開始載入 HDR:', hdrUrl);
+
+            rgbeLoader.load(
+                hdrUrl,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    envMap = texture;
+                    scene.environment = envMap;
+                    console.log('✅ HDR 環境貼圖載入成功');
                     showInitialSphere();
-                    return;
+                },
+                undefined,
+                (error) => {
+                    console.error('❌ HDR 載入失敗:', error);
+                    showInitialSphere();
                 }
-
-                const hdrUrl = hdrUrls[currentHdrIndex];
-                const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
-                console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
-
-                // 設定 5 秒超時
-                hdrLoadTimeout = setTimeout(() => {
-                    console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
-                    currentHdrIndex++;
-                    loadHDRWithFallback();
-                }, 5000);
-
-                rgbeLoader.load(
-                    hdrUrl,
-                    (texture) => {
-                        clearTimeout(hdrLoadTimeout);
-                        texture.mapping = THREE.EquirectangularReflectionMapping;
-                        envMap = texture;
-                        scene.environment = envMap;
-                        console.log(`✅ HDR 載入成功 (${sourceName})`);
-                        showInitialSphere();
-                    },
-                    undefined,
-                    (error) => {
-                        clearTimeout(hdrLoadTimeout);
-                        console.error(`❌ HDR 載入失敗 (${sourceName}):`, error);
-                        currentHdrIndex++;
-                        loadHDRWithFallback();
-                    }
-                );
-            }
-
-            loadHDRWithFallback();
+            );
 
             window.addEventListener('resize', onResize);
         }
 
         function showInitialSphere() {
-            // ✅ 確保 envMap 已載入
-            if (!envMap) {
-                console.warn('⚠️ envMap 尚未載入，延遲 100ms 重試');
-                setTimeout(showInitialSphere, 100);
-                return;
-            }
-            
             const geometry = new THREE.SphereGeometry(7.5, 64, 64);
             const material = getMaterial('silver925', 'glossy', 'none');
             mainMesh = new THREE.Mesh(geometry, material);
@@ -1785,9 +1746,7 @@
 
             try {
                 console.log(`📥 開始載入字體: ${fontName}`);
-                const encodedFontName = encodeURIComponent(fontName);
-                const fontUrl = `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@latest/assets/fonts/${encodedFontName}.ttf`;
-                console.log(`   URL: ${fontUrl}`);
+                const fontUrl = `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@latest/assets/fonts/${fontName}.ttf`;
                 const opentypeFont = await opentype.load(fontUrl);
                 const threejsFont = convertOpentypeToThreejs(opentypeFont, fontName);
 
@@ -2502,9 +2461,6 @@
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
 
-            // 取得電鍍選項
-            const plating = document.getElementById('plating').value;
-
             // 有電鍍（任何電鍍）+400
             if (plating && plating !== 'none') {
                 price += 400;
@@ -2788,14 +2744,7 @@
                 select.value = defaultFont;
                 btn.setAttribute('data-selected', defaultFont);
                 select.style.fontFamily = `"${defaultFont}", sans-serif`;
-                
-                // ✅ 立即同步到 hidden input
-                const hiddenInput = document.getElementById(target);
-                if (hiddenInput) {
-                    hiddenInput.value = defaultFont;
-                    console.log(`✅ 同步 ${target} = ${defaultFont}`);
-                }
-                
+
                 // 監聽下拉選單變更
                 select.onchange = function () {
                     if (this.value === 'reselect') {
@@ -2805,13 +2754,6 @@
                         btn.setAttribute('data-selected', this.value);
                         // 更新下拉選單本身的字體樣式
                         this.style.fontFamily = `"${this.value}", sans-serif`;
-                        
-                        // ✅ 同步到 hidden input
-                        const hiddenInput = document.getElementById(target);
-                        if (hiddenInput) {
-                            hiddenInput.value = this.value;
-                        }
-                        
                         // 不同步更新另一個下拉選單，允許獨立選擇
                         generateModel();
                     }
@@ -2822,6 +2764,16 @@
 
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
+
+            // ✅ 同步到隱藏的 font1/font2 select（供 generateModel 使用）
+            const font1Hidden = document.getElementById('font1');
+            const font2Hidden = document.getElementById('font2');
+            if (font1Hidden && document.getElementById('font1-btn').getAttribute('data-selected')) {
+                font1Hidden.value = document.getElementById('font1-btn').getAttribute('data-selected');
+            }
+            if (font2Hidden && document.getElementById('font2-btn').getAttribute('data-selected')) {
+                font2Hidden.value = document.getElementById('font2-btn').getAttribute('data-selected');
+            }
 
             generateModel();
         }
@@ -4547,10 +4499,6 @@
             ['material', 'finish', 'plating'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     updateMaterial();
-                    // 電鍍選項改變時也要更新價格顯示
-                    if (id === 'plating') {
-                        updatePriceDisplay();
-                    }
                 });
             });
 
