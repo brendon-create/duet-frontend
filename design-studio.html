@@ -2786,7 +2786,14 @@
                 select.value = defaultFont;
                 btn.setAttribute('data-selected', defaultFont);
                 select.style.fontFamily = `"${defaultFont}", sans-serif`;
-
+                
+                // ✅ 立即同步到 hidden input
+                const hiddenInput = document.getElementById(target);
+                if (hiddenInput) {
+                    hiddenInput.value = defaultFont;
+                    console.log(`✅ 同步 ${target} = ${defaultFont}`);
+                }
+                
                 // 監聽下拉選單變更
                 select.onchange = function () {
                     if (this.value === 'reselect') {
@@ -2796,6 +2803,13 @@
                         btn.setAttribute('data-selected', this.value);
                         // 更新下拉選單本身的字體樣式
                         this.style.fontFamily = `"${this.value}", sans-serif`;
+                        
+                        // ✅ 同步到 hidden input
+                        const hiddenInput = document.getElementById(target);
+                        if (hiddenInput) {
+                            hiddenInput.value = this.value;
+                        }
+                        
                         // 不同步更新另一個下拉選單，允許獨立選擇
                         generateModel();
                     }
@@ -2806,17 +2820,6 @@
 
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
-
-            // ✅ 同步到隱藏的 font1/font2 select（供 generateModel 使用）
-            select.value = defaultFont;
-            btn.setAttribute('data-selected', defaultFont);
-            select.style.fontFamily = `"${defaultFont}", sans-serif`;
-                
-            // ✅ 立即同步到 hidden input
-            const hiddenInput = document.getElementById(target);
-            if (hiddenInput) {
-                hiddenInput.value = defaultFont;
-            }
 
             generateModel();
         }
