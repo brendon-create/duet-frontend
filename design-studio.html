@@ -1943,6 +1943,17 @@
         // 以下是原始程式碼
         // ============================================================
 
+        // ============================================================
+        // 全域配置
+        // ============================================================
+        
+        // 🎛️ Debug 模式（false = 關閉所有 Debug 訊息以提升性能）
+        const DEBUG_MODE = false;
+        
+        // Debug 輔助函數
+        const debug = (...args) => { if (DEBUG_MODE) console.log(...args); };
+        const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
+        
         // 全域變數
         let scene, camera, renderer, controls, envMap;
         let mainMesh = null, bailMesh = null;
@@ -2070,10 +2081,11 @@
             controls.dampingFactor = 0.05;
             controls.target.set(0, 0, 0);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
+            // ⚡ 優化：提升光照亮度 20%
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);  // 1.25 → 1.5 (+20%)
             scene.add(ambientLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);  // 1.5 → 1.8 (+20%)
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
@@ -2183,10 +2195,10 @@
             const f1Name = font1Select ? font1Select.value : font1Btn.getAttribute('data-selected');
             const f2Name = font2Select ? font2Select.value : font2Btn.getAttribute('data-selected');
 
-            console.log('generateModel called:', { l1, l2, f1Name, f2Name }); // Debug
+            console.log('generateModel called:', { l1, l2, f1Name, f2Name }); // Debug → 保留這個（關鍵資訊）
 
             if (!l1 || !l2 || !f1Name || !f2Name || f1Name === 'reselect' || f2Name === 'reselect') {
-                console.log('Missing parameters, showing sphere'); // Debug
+                debug('Missing parameters, showing sphere');
                 if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
                     showInitialSphere();
                 }
@@ -2201,11 +2213,11 @@
             const oldMainMesh = mainMesh;
             const oldBailMesh = bailMesh;
 
-            console.log('Loading fonts...'); // Debug
+            debug('Loading fonts...');
             // 載入字體
             const f1 = await loadFont(f1Name);
             const f2 = await loadFont(f2Name);
-            console.log('Fonts loaded, generating geometry...'); // Debug
+            debug('Fonts loaded, generating geometry...');
 
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
@@ -2214,12 +2226,12 @@
             // 原因：scale() 會縮小所有方向，包括深度
             // 後端用 resize() 只縮放 XY，保持原始深度
             // 前端需要更大的係數來補償縮放
-            const depth = targetHeight * 20.0;  // 從 5.0 → 20.0
+            const depth = targetHeight * 18.0;  // 🎛️ 優化：從 20.0 → 18.0（減少頂點數）
             const params = {
                 font: null,
                 size: 50,
                 height: depth,
-                curveSegments: 32,  // 增加到 32（更平滑的曲線）
+                curveSegments: 28,  // 🎛️ 優化：從 32 → 28（減少 12% 面數，視覺差異不明顯）
                 bevelEnabled: false,  // 🔧 關閉 bevel 以確保前後端一致
                 bevelThickness: 2.0,
                 bevelSize: 0.8,
@@ -2234,14 +2246,10 @@
             const actualWidth1 = bbox1.max.x - bbox1.min.x;
 
             // 🔍 Debug: 原始尺寸（scale 之前）
-            console.log(`🔍 Letter 1 "${l1}" 原始尺寸（含 bevel）:`, {
-                width: actualWidth1.toFixed(3) + 'mm',
-                height: actualHeight1.toFixed(3) + 'mm',
-                depth: (bbox1.max.z - bbox1.min.z).toFixed(3) + 'mm'
-            });
+            debug('Letter 1 原始 bbox:', bbox1);
 
             const scale1 = targetHeight / actualHeight1;
-            console.log(`🔍 Letter 1 縮放比例: ${scale1.toFixed(4)} (目標高度 ${targetHeight}mm)`);
+            debug('Letter 1 scale:', scale1);
 
             geo1.scale(scale1, scale1, scale1);
             geo1.center();
@@ -2276,14 +2284,10 @@
             const actualWidth2 = bbox2.max.x - bbox2.min.x;
 
             // 🔍 Debug: 原始尺寸（scale 之前）
-            console.log(`🔍 Letter 2 "${l2}" 原始尺寸（含 bevel）:`, {
-                width: actualWidth2.toFixed(3) + 'mm',
-                height: actualHeight2.toFixed(3) + 'mm',
-                depth: (bbox2.max.z - bbox2.min.z).toFixed(3) + 'mm'
-            });
+            debug('Letter 2 原始 bbox:', bbox2);
 
             const scale2 = targetHeight / actualHeight2;
-            console.log(`🔍 Letter 2 縮放比例: ${scale2.toFixed(4)} (目標高度 ${targetHeight}mm)`);
+            debug('Letter 2 scale:', scale2);
 
             geo2.scale(scale2, scale2, scale2);
             geo2.center();
@@ -2313,12 +2317,12 @@
             const brush2 = new Brush(geo2, baseMat);
             brush2.updateMatrixWorld();
 
-            console.log('Calculating intersection...'); // Debug
+            debug('Calculating intersection...'); // Debug
 
             // 🔍 Debug: CSG 前檢查兩個 Brush 的實際範圍
             brush1.geometry.computeBoundingBox();
             brush2.geometry.computeBoundingBox();
-            console.log('🔍 Brush1 (Letter1) BBox:', {
+            debug('🔍 Brush1 (Letter1) BBox:', {
                 min: brush1.geometry.boundingBox.min,
                 max: brush1.geometry.boundingBox.max,
                 size: {
@@ -2327,7 +2331,7 @@
                     z: (brush1.geometry.boundingBox.max.z - brush1.geometry.boundingBox.min.z).toFixed(2)
                 }
             });
-            console.log('🔍 Brush2 (Letter2) BBox:', {
+            debug('🔍 Brush2 (Letter2) BBox:', {
                 min: brush2.geometry.boundingBox.min,
                 max: brush2.geometry.boundingBox.max,
                 size: {
@@ -2342,7 +2346,7 @@
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
-            console.log('🔍 CSG Result BBox:', {
+            debug('🔍 CSG Result BBox:', {
                 min: result.geometry.boundingBox.min,
                 max: result.geometry.boundingBox.max,
                 size: {
@@ -2353,11 +2357,11 @@
             });
 
             if (result.geometry.attributes.position.count === 0) {
-                console.warn('交集為空');
+                debugWarn('交集為空');
                 return;
             }
 
-            console.log('Fixing geometry...'); // Debug
+            debug('Fixing geometry...'); // Debug
             // === 修復幾何體 ===
             result.geometry = result.geometry.toNonIndexed();
             result.geometry.deleteAttribute('normal');
@@ -2401,23 +2405,23 @@
 
             // 🔍 Debug: 完整建模信息
             console.log('═══════════════════════════════════════');
-            console.log('📐 前端測量 - Letter 1 BBox (傳給後端):', {
+            debug('📐 前端測量 - Letter 1 BBox (傳給後端):', {
                 width: window.letter1BBox.width.toFixed(3) + 'mm',
                 height: window.letter1BBox.height.toFixed(3) + 'mm',
                 depth: window.letter1BBox.depth.toFixed(3) + 'mm'
             });
-            console.log('📐 前端測量 - Letter 2 BBox (傳給後端):', {
+            debug('📐 前端測量 - Letter 2 BBox (傳給後端):', {
                 width: window.letter2BBox.width.toFixed(3) + 'mm',
                 height: window.letter2BBox.height.toFixed(3) + 'mm',
                 depth: window.letter2BBox.depth.toFixed(3) + 'mm'
             });
-            console.log('🔍 Bevel 參數:', {
+            debug('🔍 Bevel 參數:', {
                 bevelEnabled: params.bevelEnabled,
                 bevelThickness: params.bevelThickness,
                 bevelSize: params.bevelSize,
                 bevelSegments: params.bevelSegments
             });
-            console.log('📏 前端 Model 最終實際尺寸 (CSG 交集後):');
+            debug('📏 前端 Model 最終實際尺寸 (CSG 交集後):');
             console.log('  寬度 (X):', modelWidth.toFixed(3), 'mm');
             console.log('  深度 (Y):', modelDepth.toFixed(3), 'mm');
             console.log('  高度 (Z):', modelHeight.toFixed(3), 'mm');
@@ -2455,10 +2459,13 @@
                 oldBailMesh.material?.dispose();
             }
 
-            console.log('Model generated, creating bail...'); // Debug
+            debug('Model generated, creating bail...'); // Debug
             createBail();
-            updateVolumeWeight();
-            console.log('Generation complete!'); // Debug
+            
+            // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
+            setTimeout(() => updateVolumeWeight(), 100);
+            
+            debug('Generation complete!'); // Debug
 
             // 隱藏重建提示
             indicator = document.getElementById('model-rebuilding-indicator');
