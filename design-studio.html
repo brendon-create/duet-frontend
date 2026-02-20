@@ -1428,482 +1428,6 @@
         window.THREE = THREE;
 
         // ============================================================
-        // Three.js 渲染模組（從 three-renderer.js 內聯）
-        // ============================================================
-
-        // 模組狀態變數
-        let scene, camera, renderer, controls, envMap;
-        let mainMesh = null, bailMesh = null;
-
-        // 場景初始化
-        function initScene() {
-            scene = new THREE.Scene();
-
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.up.set(0, 0, 1); // Z-up 系統
-            camera.position.set(60, -85, 18);
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            document.getElementById('viewport').appendChild(renderer.domElement);
-            window.renderer = renderer;
-            window.scene = scene;
-            window.camera = camera;
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.target.set(0, 0, 0);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            directionalLight.position.set(5, 5, 10);
-            scene.add(directionalLight);
-
-            const rgbeLoader = new RGBELoader();
-            const hdrUrl = 'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@cd8d6bc/assets/images/hdr/studio_small_08_1k.hdr';
-
-            console.log('🔄 開始載入 HDR:', hdrUrl);
-
-            rgbeLoader.load(
-                hdrUrl,
-                (texture) => {
-                    texture.mapping = THREE.EquirectangularReflectionMapping;
-                    envMap = texture;
-                    scene.environment = envMap;
-                    console.log('✅ HDR 環境貼圖載入成功');
-                    showInitialSphere();
-                },
-                undefined,
-                (error) => {
-                    console.error('❌ HDR 載入失敗:', error);
-                    showInitialSphere();
-                }
-            );
-
-            window.addEventListener('resize', onResize);
-        }
-
-        function showInitialSphere() {
-            const geometry = new THREE.SphereGeometry(7.5, 64, 64);
-            const material = getMaterial('silver925', 'glossy', 'none');
-            mainMesh = new THREE.Mesh(geometry, material);
-            scene.add(mainMesh);
-
-            bailMesh = createBail();
-            updateBailPosition();
-
-            // ✅ 隱藏 loader
-            const loader = document.getElementById('loader');
-            if (loader) {
-                loader.style.display = 'none';
-            }
-        }
-
-        function getMaterial(materialType, finish, plating = 'none') {
-            const materialParams = {
-                roughness: finish === 'glossy' ? 0.1 : (finish === 'matte' ? 0.6 : 0.3),
-                metalness: 1.0,
-                envMap: envMap,
-                envMapIntensity: 2.5
-            };
-
-            if (materialType === 'silver925') {
-                materialParams.color = new THREE.Color(0xe8e8e8);
-            } else if (materialType === 'gold18k') {
-                materialParams.color = new THREE.Color(0xffd700);
-            }
-
-            if (plating === 'white') {
-                materialParams.color = new THREE.Color(0xf5f5f5);
-            } else if (plating === 'rose') {
-                materialParams.color = new THREE.Color(0xffb6c1);
-            }
-
-            return new THREE.MeshStandardMaterial(materialParams);
-        }
-
-        async function generateModel() {
-            console.log('🔨 開始生成 3D 模型');
-
-            const letter1 = document.getElementById('letter1').value;
-            const letter2 = document.getElementById('letter2').value;
-            const font1Name = document.getElementById('font1').value;
-            const font2Name = document.getElementById('font2').value;
-            const size = parseFloat(document.getElementById('size').value);
-
-            if (!letter1 || !letter2 || !font1Name || !font2Name) {
-                alert('請完整選擇字母與字體');
-                return;
-            }
-
-            console.log(`📝 模型參數:`, { letter1, letter2, font1Name, font2Name, size });
-
-            try {
-                const [font1, font2] = await Promise.all([
-                    loadFont(font1Name),
-                    loadFont(font2Name)
-                ]);
-
-                if (!font1 || !font2) {
-                    alert('字體載入失敗');
-                    return;
-                }
-
-                console.log('🔤 生成字母 1:', letter1);
-                const geom1 = new THREE.TextGeometry(letter1, {
-                    font: font1,
-                    size: size,
-                    depth: 2,
-                    curveSegments: 12,
-                    bevelEnabled: false
-                });
-
-                console.log('🔤 生成字母 2:', letter2);
-                const geom2 = new THREE.TextGeometry(letter2, {
-                    font: font2,
-                    size: size,
-                    depth: 2,
-                    curveSegments: 12,
-                    bevelEnabled: false
-                });
-
-                geom1.computeBoundingBox();
-                geom2.computeBoundingBox();
-
-                const bbox1 = geom1.boundingBox;
-                const bbox2 = geom2.boundingBox;
-
-                const offset1X = -(bbox1.max.x + bbox1.min.x) / 2;
-                const offset1Y = -(bbox1.max.y + bbox1.min.y) / 2;
-                const offset2X = -(bbox2.max.x + bbox2.min.x) / 2;
-                const offset2Y = -(bbox2.max.y + bbox2.min.y) / 2;
-
-                geom1.translate(offset1X, offset1Y, 0);
-                geom2.translate(offset2X, offset2Y, 0);
-
-                const tempMesh1 = new THREE.Mesh(geom1);
-                const tempMesh2 = new THREE.Mesh(geom2);
-
-                tempMesh2.rotation.z = Math.PI / 2;
-                tempMesh2.updateMatrix();
-                geom2.applyMatrix4(tempMesh2.matrix);
-
-                console.log('🔀 執行 CSG Intersection...');
-
-                const csgEvaluator = new Evaluator();
-                csgEvaluator.useGroups = false;
-                csgEvaluator.attributes = ['position', 'normal'];
-
-                const brushA = new Brush(geom1);
-                const brushB = new Brush(geom2);
-
-                const result = csgEvaluator.evaluate(brushA, brushB, INTERSECTION);
-
-                console.log('✅ Intersection 完成');
-
-                if (!result.attributes.position || result.attributes.position.count === 0) {
-                    console.error('❌ 生成的幾何為空！');
-                    alert('字母無交集，請調整字母或字體選擇');
-                    return;
-                }
-
-                if (!result.attributes.normal) {
-                    console.log('⚠️ 缺少法向量，正在重新計算...');
-                    result.computeVertexNormals();
-                }
-
-                if (mainMesh) {
-                    scene.remove(mainMesh);
-                    mainMesh.geometry.dispose();
-                    if (Array.isArray(mainMesh.material)) {
-                        mainMesh.material.forEach(m => m.dispose());
-                    } else {
-                        mainMesh.material.dispose();
-                    }
-                }
-
-                const material = getMaterial(
-                    document.getElementById('material').value,
-                    document.getElementById('finish').value,
-                    document.getElementById('plating').value
-                );
-
-                mainMesh = new THREE.Mesh(result, material);
-                mainMesh.castShadow = true;
-                mainMesh.receiveShadow = true;
-
-                result.computeBoundingBox();
-                const finalBBox = result.boundingBox;
-
-                mainMesh.userData.boundingBox = {
-                    min: { x: finalBBox.min.x, y: finalBBox.min.y, z: finalBBox.min.z },
-                    max: { x: finalBBox.max.x, y: finalBBox.max.y, z: finalBBox.max.z },
-                    width: finalBBox.max.x - finalBBox.min.x,
-                    height: finalBBox.max.y - finalBBox.min.y,
-                    depth: finalBBox.max.z - finalBBox.min.z
-                };
-
-                scene.add(mainMesh);
-                console.log('✅ 模型已加入場景');
-
-                updateBailPosition();
-
-            } catch (error) {
-                console.error('❌ 模型生成錯誤:', error);
-                alert(`模型生成失敗: ${error.message}`);
-            }
-        }
-
-        function convertOpentypeToThreejs(opentypeFont, fontName) {
-            const scale = 100;
-            const glyphs = {};
-
-            for (let charCode = 32; charCode < 127; charCode++) {
-                const char = String.fromCharCode(charCode);
-                const glyph = opentypeFont.charToGlyph(char);
-
-                if (!glyph || !glyph.path) continue;
-
-                const shapes = [];
-                const commands = glyph.path.commands;
-
-                let currentShape = null;
-                let currentPath = null;
-
-                for (const cmd of commands) {
-                    const x = cmd.x !== undefined ? cmd.x / scale : 0;
-                    const y = cmd.y !== undefined ? cmd.y / scale : 0;
-
-                    if (cmd.type === 'M') {
-                        if (currentPath) {
-                            if (currentPath.curves.length > 0) {
-                                currentShape.holes.push(currentPath);
-                            }
-                        }
-                        currentShape = new THREE.Shape();
-                        currentPath = null;
-                        currentShape.moveTo(x, y);
-                    } else if (cmd.type === 'L') {
-                        currentShape.lineTo(x, y);
-                    } else if (cmd.type === 'Q') {
-                        const x1 = cmd.x1 / scale;
-                        const y1 = cmd.y1 / scale;
-                        currentShape.quadraticCurveTo(x1, y1, x, y);
-                    } else if (cmd.type === 'C') {
-                        const x1 = cmd.x1 / scale;
-                        const y1 = cmd.y1 / scale;
-                        const x2 = cmd.x2 / scale;
-                        const y2 = cmd.y2 / scale;
-                        currentShape.bezierCurveTo(x1, y1, x2, y2, x, y);
-                    } else if (cmd.type === 'Z') {
-                        if (currentPath) {
-                            currentShape.holes.push(currentPath);
-                            currentPath = null;
-                        }
-                    }
-                }
-
-                if (currentShape && currentShape.curves.length > 0) {
-                    shapes.push(currentShape);
-                }
-
-                const ha = glyph.advanceWidth ? glyph.advanceWidth / scale : 0;
-                glyphs[char] = { ha, o: 'n', _cachedOutline: shapes };
-            }
-
-            const fontData = {
-                glyphs: glyphs,
-                familyName: fontName,
-                ascender: opentypeFont.ascender / scale,
-                descender: opentypeFont.descender / scale,
-                underlineThickness: opentypeFont.tables.post.underlineThickness / scale,
-                boundingBox: {
-                    xMin: opentypeFont.tables.head.xMin / scale,
-                    yMin: opentypeFont.tables.head.yMin / scale,
-                    xMax: opentypeFont.tables.head.xMax / scale,
-                    yMax: opentypeFont.tables.head.yMax / scale
-                },
-                resolution: 1000,
-                original_font_information: opentypeFont.names
-            };
-
-            return new THREE.Font(fontData);
-        }
-
-        async function loadFont(fontName) {
-            if (loadedFonts[fontName]) return loadedFonts[fontName];
-
-            const loader = new FontLoader();
-
-            console.log(`📥 開始載入字體: ${fontName}`);
-
-            // 將字體名稱轉換為 npm 套件名稱格式
-            const packageName = fontName.toLowerCase().replace(/ /g, '-');
-
-            // 嘗試從多個來源載入
-            const sources = [
-                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
-                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
-                `https://cdn.jsdelivr.net/gh/7dir/json-fonts/Roboto/${fontName.replace(/ /g, '_')}_Regular.json`,
-                `https://cdn.jsdelivr.net/gh/emreacar/google-fonts-as-json/fonts/${fontName.replace(/ /g, '%20')}/regular.json`,
-            ];
-
-            for (const url of sources) {
-                try {
-                    console.log(`   嘗試: ${url}`);
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            const json = await response.json();
-                            if (json.glyphs || json.data) {
-                                const fontData = json.data || json;
-                                const font = loader.parse(fontData);
-                                loadedFonts[fontName] = font;
-                                console.log(`✅ 載入成功: ${fontName}`);
-                                return font;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log(`   ✗ 失敗: ${e.message}`);
-                }
-            }
-
-            // Fallback: opentype.js from Google Fonts
-            try {
-                const fontUrlName = fontName.replace(/ /g, '+');
-                const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
-
-                const cssResponse = await fetch(cssUrl);
-                if (cssResponse.ok) {
-                    const cssText = await cssResponse.text();
-                    const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
-
-                    if (urlMatch) {
-                        const fontFileUrl = urlMatch[1];
-                        console.log(`   嘗試 Google Fonts: ${fontFileUrl}`);
-
-                        const fontResponse = await fetch(fontFileUrl);
-                        if (fontResponse.ok) {
-                            const fontBuffer = await fontResponse.arrayBuffer();
-
-                            try {
-                                const opentypeFont = opentype.parse(fontBuffer);
-                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
-                                const font = loader.parse(typefaceData);
-                                loadedFonts[fontName] = font;
-                                console.log(`✅ 載入成功 (via opentype.js): ${fontName}`);
-                                return font;
-                            } catch (parseError) {
-                                console.log(`   ✗ 解析失敗: ${parseError.message}`);
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn(`   Google Fonts 失敗: ${error.message}`);
-            }
-
-            // 最終備用：使用預設字體
-            console.warn(`⚠️ 使用預設字體替代: ${fontName}`);
-            return new Promise((resolve) => {
-                loader.load(
-                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-                    (font) => resolve(font)
-                );
-            });
-        }
-
-        function createBail() {
-            const geometry = new THREE.CylinderGeometry(0.8, 0.8, 4, 32);
-            const material = new THREE.MeshStandardMaterial({
-                color: 0xe8e8e8,
-                metalness: 1.0,
-                roughness: 0.1,
-                envMap: envMap,
-                envMapIntensity: 2.5
-            });
-
-            const bail = new THREE.Mesh(geometry, material);
-            bail.rotation.x = Math.PI / 2;
-            scene.add(bail);
-            return bail;
-        }
-
-        function updateBailPosition() {
-            if (!bailMesh || !mainMesh) return;
-
-            const bailRelativeX = parseFloat(document.getElementById('bail-x')?.value || 0);
-            const bailRelativeY = parseFloat(document.getElementById('bail-y')?.value || 0);
-            const bailRelativeZ = parseFloat(document.getElementById('bail-z')?.value || 0);
-            const bailRotation = parseFloat(document.getElementById('bail-rotation')?.value || 0);
-
-            let topZ = 1;
-            if (mainMesh.userData.boundingBox) {
-                topZ = mainMesh.userData.boundingBox.max.z;
-            } else if (mainMesh.geometry.boundingBox) {
-                topZ = mainMesh.geometry.boundingBox.max.z;
-            }
-
-            const finalZ = topZ + bailRelativeZ;
-            bailMesh.position.set(bailRelativeX, bailRelativeY, finalZ);
-            bailMesh.rotation.z = (bailRotation * Math.PI) / 180;
-        }
-
-        function updateMaterial() {
-            if (!mainMesh) return;
-
-            const newMaterial = getMaterial(
-                document.getElementById('material').value,
-                document.getElementById('finish').value,
-                document.getElementById('plating').value
-            );
-
-            if (Array.isArray(mainMesh.material)) {
-                mainMesh.material.forEach(m => m.dispose());
-            } else {
-                mainMesh.material.dispose();
-            }
-
-            mainMesh.material = newMaterial;
-        }
-
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (controls) {
-                controls.update();
-            }
-
-            if (mainMesh && document.getElementById('auto-rotate')?.checked) {
-                mainMesh.rotation.z += 0.005;
-            }
-
-            if (bailMesh && document.getElementById('auto-rotate')?.checked) {
-                bailMesh.rotation.z += 0.005;
-            }
-
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-        }
-
-        // ============================================================
         // DUET 後端整合 - 添加於 2024
         // ============================================================
         // ========== AI 諮詢整合程式碼 (新增) ==========
@@ -2192,7 +1716,7 @@
 
                         if (data.success && data.order && data.order.items) {
                             const order = data.order;
-
+                            
                             // 檢查是否有 AI consultation
                             if (!order.aiConsultation) {
                                 // 沒有 AI consultation，顯示感謝訊息後跳轉
@@ -2202,7 +1726,7 @@
                                 }, 2000);
                                 return;
                             }
-
+                            
                             // 有 AI consultation，恢復購物車資料
                             window.cartItems = order.items;
                             window.lastOrderId = orderId;
@@ -2419,7 +1943,9 @@
         // 以下是原始程式碼
         // ============================================================
 
-        // 全域變數（3D 渲染變數已在上方 Three.js 模組中宣告）
+        // 全域變數
+        let scene, camera, renderer, controls, envMap;
+        let mainMesh = null, bailMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
         let cartItems = [];
@@ -2517,8 +2043,700 @@
             rosegold18k: 0xECC5B0   // 18K 玫瑰金色
         };
 
+        // 初始化場景（Z-up 系統）
+        function initScene() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.up.set(0, 0, 1); // Z-up 系統
+            // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
+            camera.position.set(60, -85, 18);  // 拉遠鏡頭（原: 50, -70, 15）
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            document.getElementById('viewport').appendChild(renderer.domElement);
+            // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
+            window.renderer = renderer;
+            window.scene = scene;
+            window.camera = camera;
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.set(5, 5, 10);
+            scene.add(directionalLight);
+
+            // ✅ HDR 載入備援機制
+            const hdrUrls = [
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_small_08_1k.hdr',  // 優先：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr'  // 備援：GitHub Raw
+            ];
+            
+            let currentHdrIndex = 0;
+            let hdrLoadTimeout = null;
+            const rgbeLoader = new RGBELoader();
+
+            function loadHDRWithFallback() {
+                if (currentHdrIndex >= hdrUrls.length) {
+                    console.error('❌ 所有 HDR 來源都失敗，使用無 HDR 模式');
+                    envMap = null;
+                    showInitialSphere();
+                    return;
+                }
+
+                const hdrUrl = hdrUrls[currentHdrIndex];
+                const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
+                console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
+
+                // 設定 5 秒超時
+                hdrLoadTimeout = setTimeout(() => {
+                    console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
+                    currentHdrIndex++;
+                    loadHDRWithFallback();
+                }, 5000);
+
+                rgbeLoader.load(
+                    hdrUrl,
+                    (texture) => {
+                        clearTimeout(hdrLoadTimeout);
+                        texture.mapping = THREE.EquirectangularReflectionMapping;
+                        envMap = texture;
+                        scene.environment = envMap;
+                        console.log(`✅ HDR 載入成功 (${sourceName})`);
+                        showInitialSphere();
+                    },
+                    undefined,
+                    (error) => {
+                        clearTimeout(hdrLoadTimeout);
+                        console.error(`❌ HDR 載入失敗 (${sourceName}):`, error);
+                        currentHdrIndex++;
+                        loadHDRWithFallback();
+                    }
+                );
+            }
+
+            loadHDRWithFallback();
+
+            window.addEventListener('resize', onResize);
+        }
+
+        function showInitialSphere() {
+            const geometry = new THREE.SphereGeometry(7.5, 64, 64);
+            const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
+            mainMesh = new THREE.Mesh(geometry, material);
+            scene.add(mainMesh);
+            // 暴露 mainMesh 給全局，供佩戴模擬使用
+            window.mainMesh = mainMesh;
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        function getMaterial(materialType, finish, plating = 'none') {
+            const mat = MATERIALS[materialType];
+            const roughness = mat.roughness[finish];
+
+            // 決定最終顏色：如果有電鍍，使用電鍍顏色；否則使用基礎材質顏色
+            const finalColor = PLATING_COLORS[plating] !== null
+                ? PLATING_COLORS[plating]
+                : mat.color;
+
+            const materialConfig = {
+                color: finalColor,
+                metalness: mat.metalness,
+                roughness: roughness,
+                envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
+            };
+
+            // 只在 envMap 存在時才加入（防止黑色球體）
+            if (envMap) {
+                materialConfig.envMap = envMap;
+            }
+
+            return new THREE.MeshStandardMaterial(materialConfig);
+        }
+
+        // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
+        async function generateModel() {
+            // 顯示重建提示
+            let indicator = document.getElementById('model-rebuilding-indicator');
+            if (indicator) indicator.style.display = 'block';
+
+            const l1 = document.getElementById('letter1').value;
+            const l2 = document.getElementById('letter2').value;
+
+            // 檢查字體按鈕或下拉選單是否有選擇的字體
+            const font1Select = document.getElementById('font1-select');
+            const font2Select = document.getElementById('font2-select');
+            const font1Btn = document.getElementById('font1-btn');
+            const font2Btn = document.getElementById('font2-btn');
+
+            const f1Name = font1Select ? font1Select.value : font1Btn.getAttribute('data-selected');
+            const f2Name = font2Select ? font2Select.value : font2Btn.getAttribute('data-selected');
+
+            console.log('generateModel called:', { l1, l2, f1Name, f2Name }); // Debug
+
+            if (!l1 || !l2 || !f1Name || !f2Name || f1Name === 'reselect' || f2Name === 'reselect') {
+                console.log('Missing parameters, showing sphere'); // Debug
+                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
+                    showInitialSphere();
+                }
+                // 隱藏重建提示
+                if (indicator) indicator.style.display = 'none';
+                return;
+            }
+
+            const targetHeight = parseInt(document.getElementById('size').value);
+
+            // 暫存舊物件，等新物件創建完成後再移除（避免畫面空白）
+            const oldMainMesh = mainMesh;
+            const oldBailMesh = bailMesh;
+
+            console.log('Loading fonts...'); // Debug
+            // 載入字體
+            const f1 = await loadFont(f1Name);
+            const f2 = await loadFont(f2Name);
+            console.log('Fonts loaded, generating geometry...'); // Debug
+
+            const evaluator = new Evaluator();
+            const baseMat = new THREE.MeshStandardMaterial();
+
+            // ✅ 修復截斷問題：增大 depth 係數
+            // 原因：scale() 會縮小所有方向，包括深度
+            // 後端用 resize() 只縮放 XY，保持原始深度
+            // 前端需要更大的係數來補償縮放
+            const depth = targetHeight * 20.0;  // 從 5.0 → 20.0
+            const params = {
+                font: null,
+                size: 50,
+                height: depth,
+                curveSegments: 32,  // 增加到 32（更平滑的曲線）
+                bevelEnabled: false,  // 🔧 關閉 bevel 以確保前後端一致
+                bevelThickness: 2.0,
+                bevelSize: 0.8,
+                bevelSegments: 16
+            };
+
+            // === 字母 1 (正面)：將字母平面從 XY 轉到 XZ，擠出方向從 Z 轉到 Y ===
+            const geo1 = new TextGeometry(l1, { ...params, font: f1 });
+            geo1.computeBoundingBox();
+            const bbox1 = geo1.boundingBox;
+            const actualHeight1 = bbox1.max.y - bbox1.min.y;
+            const actualWidth1 = bbox1.max.x - bbox1.min.x;
+
+            // 🔍 Debug: 原始尺寸（scale 之前）
+            console.log(`🔍 Letter 1 "${l1}" 原始尺寸（含 bevel）:`, {
+                width: actualWidth1.toFixed(3) + 'mm',
+                height: actualHeight1.toFixed(3) + 'mm',
+                depth: (bbox1.max.z - bbox1.min.z).toFixed(3) + 'mm'
+            });
+
+            const scale1 = targetHeight / actualHeight1;
+            console.log(`🔍 Letter 1 縮放比例: ${scale1.toFixed(4)} (目標高度 ${targetHeight}mm)`);
+
+            geo1.scale(scale1, scale1, scale1);
+            geo1.center();
+
+            // 保存 Letter 1 的 BBox 信息（center 之後，rotate 之前）
+            geo1.computeBoundingBox();
+            const bbox1AfterScale = geo1.boundingBox;
+            window.letter1BBox = {
+                width: bbox1AfterScale.max.x - bbox1AfterScale.min.x,
+                height: bbox1AfterScale.max.y - bbox1AfterScale.min.y,
+                depth: bbox1AfterScale.max.z - bbox1AfterScale.min.z,
+                offsetX: (bbox1AfterScale.max.x + bbox1AfterScale.min.x) / 2,
+                offsetY: (bbox1AfterScale.max.y + bbox1AfterScale.min.y) / 2,
+                offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
+            };
+
+            // === 使用全域軸旋轉（更清晰、易維護）===
+            // Letter 1: XZ 平面，沿 Y 軸 extrude
+            // Geometry 沒有 rotateOnWorldAxis，需要用旋轉矩陣
+            const rotationMatrix1 = new THREE.Matrix4();
+            rotationMatrix1.makeRotationX(Math.PI / 2);
+            geo1.applyMatrix4(rotationMatrix1);
+
+            const brush1 = new Brush(geo1, baseMat);
+            brush1.updateMatrixWorld();
+
+            // === 字母 2 (側面)：YZ 平面，沿 X 軸 extrude ===
+            const geo2 = new TextGeometry(l2, { ...params, font: f2 });
+            geo2.computeBoundingBox();
+            const bbox2 = geo2.boundingBox;
+            const actualHeight2 = bbox2.max.y - bbox2.min.y;
+            const actualWidth2 = bbox2.max.x - bbox2.min.x;
+
+            // 🔍 Debug: 原始尺寸（scale 之前）
+            console.log(`🔍 Letter 2 "${l2}" 原始尺寸（含 bevel）:`, {
+                width: actualWidth2.toFixed(3) + 'mm',
+                height: actualHeight2.toFixed(3) + 'mm',
+                depth: (bbox2.max.z - bbox2.min.z).toFixed(3) + 'mm'
+            });
+
+            const scale2 = targetHeight / actualHeight2;
+            console.log(`🔍 Letter 2 縮放比例: ${scale2.toFixed(4)} (目標高度 ${targetHeight}mm)`);
+
+            geo2.scale(scale2, scale2, scale2);
+            geo2.center();
+
+            // 保存 Letter 2 的 BBox 信息（center 之後，rotate 之前）
+            geo2.computeBoundingBox();
+            const bbox2AfterScale = geo2.boundingBox;
+            window.letter2BBox = {
+                width: bbox2AfterScale.max.x - bbox2AfterScale.min.x,
+                height: bbox2AfterScale.max.y - bbox2AfterScale.min.y,
+                depth: bbox2AfterScale.max.z - bbox2AfterScale.min.z,
+                offsetX: (bbox2AfterScale.max.x + bbox2AfterScale.min.x) / 2,
+                offsetY: (bbox2AfterScale.max.y + bbox2AfterScale.min.y) / 2,
+                offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
+            };
+
+            // === 使用全域軸旋轉（更清晰、易維護）===
+            // Letter 2: 先繞 X 軸轉 90 度，再繞 Z 軸轉 90 度
+            const rotationMatrix2X = new THREE.Matrix4();
+            rotationMatrix2X.makeRotationX(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2X);
+
+            const rotationMatrix2Z = new THREE.Matrix4();
+            rotationMatrix2Z.makeRotationZ(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2Z);
+
+            const brush2 = new Brush(geo2, baseMat);
+            brush2.updateMatrixWorld();
+
+            console.log('Calculating intersection...'); // Debug
+
+            // 🔍 Debug: CSG 前檢查兩個 Brush 的實際範圍
+            brush1.geometry.computeBoundingBox();
+            brush2.geometry.computeBoundingBox();
+            console.log('🔍 Brush1 (Letter1) BBox:', {
+                min: brush1.geometry.boundingBox.min,
+                max: brush1.geometry.boundingBox.max,
+                size: {
+                    x: (brush1.geometry.boundingBox.max.x - brush1.geometry.boundingBox.min.x).toFixed(2),
+                    y: (brush1.geometry.boundingBox.max.y - brush1.geometry.boundingBox.min.y).toFixed(2),
+                    z: (brush1.geometry.boundingBox.max.z - brush1.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
+            console.log('🔍 Brush2 (Letter2) BBox:', {
+                min: brush2.geometry.boundingBox.min,
+                max: brush2.geometry.boundingBox.max,
+                size: {
+                    x: (brush2.geometry.boundingBox.max.x - brush2.geometry.boundingBox.min.x).toFixed(2),
+                    y: (brush2.geometry.boundingBox.max.y - brush2.geometry.boundingBox.min.y).toFixed(2),
+                    z: (brush2.geometry.boundingBox.max.z - brush2.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
+
+            // 布林交集運算
+            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+
+            // 🔍 Debug: CSG 後檢查結果
+            result.geometry.computeBoundingBox();
+            console.log('🔍 CSG Result BBox:', {
+                min: result.geometry.boundingBox.min,
+                max: result.geometry.boundingBox.max,
+                size: {
+                    x: (result.geometry.boundingBox.max.x - result.geometry.boundingBox.min.x).toFixed(2),
+                    y: (result.geometry.boundingBox.max.y - result.geometry.boundingBox.min.y).toFixed(2),
+                    z: (result.geometry.boundingBox.max.z - result.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
+
+            if (result.geometry.attributes.position.count === 0) {
+                console.warn('交集為空');
+                return;
+            }
+
+            console.log('Fixing geometry...'); // Debug
+            // === 修復幾何體 ===
+            result.geometry = result.geometry.toNonIndexed();
+            result.geometry.deleteAttribute('normal');
+            result.geometry.computeVertexNormals();
+
+            const offset = 0.001;
+            const positions = result.geometry.attributes.position;
+            const normals = result.geometry.attributes.normal;
+
+            for (let i = 0; i < positions.count; i++) {
+                const nx = normals.getX(i);
+                const ny = normals.getY(i);
+                const nz = normals.getZ(i);
+
+                positions.setXYZ(
+                    i,
+                    positions.getX(i) + nx * offset,
+                    positions.getY(i) + ny * offset,
+                    positions.getZ(i) + nz * offset
+                );
+            }
+            positions.needsUpdate = true;
+
+            result.geometry.computeBoundingBox();
+            const bbox = result.geometry.boundingBox;
+
+            // ✅ 移動物件到原點（解決小物件被截斷問題）
+            const center = bbox.getCenter(new THREE.Vector3());
+            result.geometry.translate(-center.x, -center.y, -center.z);
+
+            // 重新計算 BBox（現在中心應該在原點）
+            result.geometry.computeBoundingBox();
+            const newBbox = result.geometry.boundingBox;
+            modelTopZ = newBbox.max.z; // 新的高度軸是 Z
+            modelCenter.copy(newBbox.getCenter(new THREE.Vector3()));
+
+            // 輸出實際尺寸
+            const modelWidth = newBbox.max.x - newBbox.min.x;
+            const modelDepth = newBbox.max.y - newBbox.min.y;
+            const modelHeight = newBbox.max.z - newBbox.min.z;
+
+            // 🔍 Debug: 完整建模信息
+            console.log('═══════════════════════════════════════');
+            console.log('📐 前端測量 - Letter 1 BBox (傳給後端):', {
+                width: window.letter1BBox.width.toFixed(3) + 'mm',
+                height: window.letter1BBox.height.toFixed(3) + 'mm',
+                depth: window.letter1BBox.depth.toFixed(3) + 'mm'
+            });
+            console.log('📐 前端測量 - Letter 2 BBox (傳給後端):', {
+                width: window.letter2BBox.width.toFixed(3) + 'mm',
+                height: window.letter2BBox.height.toFixed(3) + 'mm',
+                depth: window.letter2BBox.depth.toFixed(3) + 'mm'
+            });
+            console.log('🔍 Bevel 參數:', {
+                bevelEnabled: params.bevelEnabled,
+                bevelThickness: params.bevelThickness,
+                bevelSize: params.bevelSize,
+                bevelSegments: params.bevelSegments
+            });
+            console.log('📏 前端 Model 最終實際尺寸 (CSG 交集後):');
+            console.log('  寬度 (X):', modelWidth.toFixed(3), 'mm');
+            console.log('  深度 (Y):', modelDepth.toFixed(3), 'mm');
+            console.log('  高度 (Z):', modelHeight.toFixed(3), 'mm');
+            console.log('  中心點: (',
+                modelCenter.x.toFixed(3), ',',
+                modelCenter.y.toFixed(3), ',',
+                modelCenter.z.toFixed(3), ')');
+            console.log('  BBox min: (',
+                newBbox.min.x.toFixed(3), ',',
+                newBbox.min.y.toFixed(3), ',',
+                newBbox.min.z.toFixed(3), ')');
+            console.log('  BBox max: (',
+                newBbox.max.x.toFixed(3), ',',
+                newBbox.max.y.toFixed(3), ',',
+                newBbox.max.z.toFixed(3), ')');
+
+            result.material = getMaterial(
+                document.getElementById('material').value,
+                document.getElementById('finish').value,
+                document.getElementById('plating').value
+            );
+
+            mainMesh = result;
+            scene.add(mainMesh);
+
+            // 新物件已添加，現在可以安全移除舊物件
+            if (oldMainMesh) {
+                scene.remove(oldMainMesh);
+                oldMainMesh.geometry?.dispose();
+                oldMainMesh.material?.dispose();
+            }
+            if (oldBailMesh) {
+                scene.remove(oldBailMesh);
+                oldBailMesh.geometry?.dispose();
+                oldBailMesh.material?.dispose();
+            }
+
+            console.log('Model generated, creating bail...'); // Debug
+            createBail();
+            updateVolumeWeight();
+            console.log('Generation complete!'); // Debug
+
+            // 隱藏重建提示
+            indicator = document.getElementById('model-rebuilding-indicator');
+            if (indicator) indicator.style.display = 'none';
+
+            // 更新佩戴模擬預覽
+            if (window.updateWearingPreview) {
+                setTimeout(() => {
+                    console.log('🔄 商品生成完成，更新佩戴模擬');
+                    window.updateWearingPreview();
+                }, 300);
+            }
+        }
+
+        // 從 opentype.js 字體轉換為 Three.js typeface 格式
+        function convertOpentypeToThreejs(opentypeFont, fontName) {
+            const glyphs = {};
+            const resolution = 1000;
+            const scale = resolution / opentypeFont.unitsPerEm;
+
+            // 獲取所有需要的字符
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+            for (const char of chars) {
+                const glyph = opentypeFont.charToGlyph(char);
+                if (!glyph || glyph.index === 0) continue;
+
+                // 使用原始單位獲取路徑，然後手動縮放
+                const path = glyph.getPath(0, 0, opentypeFont.unitsPerEm);
+                const commands = [];
+
+                for (const cmd of path.commands) {
+                    switch (cmd.type) {
+                        case 'M':
+                            commands.push({ type: 'm', args: [cmd.x * scale, cmd.y * scale] });
+                            break;
+                        case 'L':
+                            commands.push({ type: 'l', args: [cmd.x * scale, cmd.y * scale] });
+                            break;
+                        case 'Q':
+                            commands.push({ type: 'q', args: [cmd.x1 * scale, cmd.y1 * scale, cmd.x * scale, cmd.y * scale] });
+                            break;
+                        case 'C':
+                            commands.push({ type: 'b', args: [cmd.x1 * scale, cmd.y1 * scale, cmd.x2 * scale, cmd.y2 * scale, cmd.x * scale, cmd.y * scale] });
+                            break;
+                        case 'Z':
+                            commands.push({ type: 'z', args: [] });
+                            break;
+                    }
+                }
+
+                // 將 commands 轉換為 'o' 格式（Three.js typeface 格式）
+                let o = '';
+                for (const cmd of commands) {
+                    o += cmd.type;
+                    if (cmd.args.length > 0) {
+                        o += ' ' + cmd.args.map(n => Math.round(n)).join(' ') + ' ';
+                    }
+                }
+
+                glyphs[char] = {
+                    ha: Math.round((glyph.advanceWidth || opentypeFont.unitsPerEm * 0.5) * scale),
+                    x_min: Math.round((glyph.xMin || 0) * scale),
+                    x_max: Math.round((glyph.xMax || glyph.advanceWidth || opentypeFont.unitsPerEm * 0.5) * scale),
+                    o: o.trim()
+                };
+            }
+
+            return {
+                glyphs: glyphs,
+                familyName: fontName,
+                ascender: Math.round(opentypeFont.ascender * scale),
+                descender: Math.round(opentypeFont.descender * scale),
+                underlinePosition: Math.round((opentypeFont.tables.post?.underlinePosition || -100) * scale),
+                underlineThickness: Math.round((opentypeFont.tables.post?.underlineThickness || 50) * scale),
+                boundingBox: {
+                    xMin: Math.round((opentypeFont.tables.head?.xMin || 0) * scale),
+                    yMin: Math.round((opentypeFont.tables.head?.yMin || 0) * scale),
+                    xMax: Math.round((opentypeFont.tables.head?.xMax || 1000) * scale),
+                    yMax: Math.round((opentypeFont.tables.head?.yMax || 1000) * scale)
+                },
+                resolution: resolution,
+                original_font_information: {
+                    format: 0,
+                    copyright: '',
+                    fontFamily: fontName,
+                    fontSubfamily: 'Regular',
+                    uniqueID: fontName,
+                    fullName: fontName,
+                    version: '1.0',
+                    postScriptName: fontName.replace(/ /g, '')
+                }
+            };
+        }
+
+        async function loadFont(fontName) {
+            if (loadedFonts[fontName]) return loadedFonts[fontName];
+
+            const loader = new FontLoader();
+
+            console.log(`Loading font: ${fontName}`);
+
+            // 將字體名稱轉換為 npm 套件名稱格式
+            // 例如：'Playfair Display' -> 'playfair-display'
+            const packageName = fontName.toLowerCase().replace(/ /g, '-');
+
+            // 嘗試從多個來源載入
+            const sources = [
+                // 1. @compai/font-* 套件 (esm.sh CDN)
+                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
+                // 2. components-ai/typefaces GitHub (jsDelivr)
+                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
+                // 3. 7dir/json-fonts GitHub
+                `https://cdn.jsdelivr.net/gh/7dir/json-fonts/Roboto/${fontName.replace(/ /g, '_')}_Regular.json`,
+                // 4. emreacar/google-fonts-as-json GitHub  
+                `https://cdn.jsdelivr.net/gh/emreacar/google-fonts-as-json/fonts/${fontName.replace(/ /g, '%20')}/regular.json`,
+            ];
+
+            for (const url of sources) {
+                try {
+                    console.log(`Trying: ${url}`);
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const json = await response.json();
+                            // 檢查是否是有效的 typeface 格式
+                            if (json.glyphs || json.data) {
+                                const fontData = json.data || json;
+                                const font = loader.parse(fontData);
+                                loadedFonts[fontName] = font;
+                                console.log(`✓ Loaded ${fontName} from ${url}`);
+                                return font;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log(`✗ Failed: ${url}`, e.message);
+                }
+            }
+
+            // 如果 CDN 都失敗，嘗試用 opentype.js 從 Google Fonts 解析
+            try {
+                const fontUrlName = fontName.replace(/ /g, '+');
+                const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
+
+                const cssResponse = await fetch(cssUrl);
+                if (cssResponse.ok) {
+                    const cssText = await cssResponse.text();
+                    const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
+
+                    if (urlMatch) {
+                        const fontFileUrl = urlMatch[1];
+                        console.log(`Trying Google Fonts: ${fontFileUrl}`);
+
+                        const fontResponse = await fetch(fontFileUrl);
+                        if (fontResponse.ok) {
+                            const fontBuffer = await fontResponse.arrayBuffer();
+
+                            try {
+                                const opentypeFont = opentype.parse(fontBuffer);
+                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
+                                const font = loader.parse(typefaceData);
+                                loadedFonts[fontName] = font;
+                                console.log(`✓ Loaded ${fontName} via opentype.js`);
+                                return font;
+                            } catch (parseError) {
+                                console.log(`✗ Parse failed (likely woff2): ${parseError.message}`);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`Failed Google Fonts: ${error.message}`);
+            }
+
+            // 最終備用：使用預設字體
+            console.warn(`⚠ Using Helvetiker for: ${fontName}`);
+            return new Promise((resolve) => {
+                loader.load(
+                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                    (font) => resolve(font)
+                );
+            });
+        }
+
+        function createBail() {
+            // 先移除舊的 bailMesh
+            if (bailMesh) {
+                scene.remove(bailMesh);
+                bailMesh.geometry?.dispose();
+                bailMesh.material?.dispose();
+                bailMesh = null;
+                // 暴露給佩戴模擬（用於截取墜飾）
+                window.bailMesh = null;
+            }
+
+            if (!mainMesh) return;
+
+            const innerRadius = 1.5;   // 內直徑 3mm
+            const tubeRadius = 0.35;   // 管半徑 0.35mm，直徑 0.7mm
+            const geometry = new THREE.TorusGeometry(innerRadius + tubeRadius, tubeRadius, 16, 32);
+
+            // 將 Torus 從 XY 平面轉到 XZ 平面 (站立)
+            geometry.rotateX(Math.PI / 2);
+            // 繞新的高度軸 Z 旋轉 90 度
+            geometry.rotateZ(Math.PI / 2);
+
+            const material = getMaterial(
+                document.getElementById('material').value,
+                document.getElementById('finish').value,
+                document.getElementById('plating').value
+            );
+            bailMesh = new THREE.Mesh(geometry, material);
+            scene.add(bailMesh);
+            // 暴露給佩戴模擬（用於截取墜飾）
+            window.bailMesh = bailMesh;
+
+            updateBailPosition();
+        }
+
+        function updateBailPosition() {
+            if (!bailMesh) return;
+            const x = parseFloat(document.getElementById('bailX').value);
+            // bailY 對應 UI 的 Position Y (Depth)
+            const y_depth_adj = parseFloat(document.getElementById('bailY').value);
+            // bailZ 對應 UI 的 Position Z (Height)
+            const z_height_adj = parseFloat(document.getElementById('bailZ').value);
+            const rotation = parseFloat(document.getElementById('bailRotation').value);
+
+            const baseZ = modelTopZ + 2.0; // 在 Z (高度) 軸上定位
+
+            // 調整：X 不變, Y 軸為 modelCenter.y + 深度調整, Z 軸為 baseZ + 高度調整
+            bailMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
+
+            // 旋轉以 Z 軸為軸心
+            bailMesh.rotation.z = (rotation * Math.PI) / 180;
+
+            // 🔍 Debug: 墜頭位置
+            console.log('🔍 墜頭絕對位置:', {
+                x: bailMesh.position.x.toFixed(3),
+                y: bailMesh.position.y.toFixed(3),
+                z: bailMesh.position.z.toFixed(3),
+                rotation: rotation + '°'
+            });
+            console.log('🔍 模型中心:', {
+                x: modelCenter.x.toFixed(3),
+                y: modelCenter.y.toFixed(3),
+                z: modelCenter.z.toFixed(3)
+            });
+            console.log('🔍 模型頂部 Z:', modelTopZ.toFixed(3));
+            console.log('═══════════════════════════════════════');
+        }
+
+        // 只更新材質，不重建模型（即時切換！）
+        function updateMaterial() {
+            if (!mainMesh || !bailMesh) return;
+
+            const materialType = document.getElementById('material').value;
+            const finish = document.getElementById('finish').value;
+            const plating = document.getElementById('plating').value;
+            const newMaterial = getMaterial(materialType, finish, plating);
+
+            // 更換主體和墜頭的材質
+            mainMesh.material = newMaterial;
+            bailMesh.material = newMaterial.clone();
+
+            // 更新重量顯示（密度改變了）
+            updateVolumeWeight();
+
+            // 更新價格顯示
+            updatePriceDisplay();
+        }
+
         // 更新價格顯示
         function updatePriceDisplay() {
+            const plating = document.getElementById('plating').value;
+
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
 
@@ -2805,6 +3023,12 @@
                 select.value = defaultFont;
                 btn.setAttribute('data-selected', defaultFont);
                 select.style.fontFamily = `"${defaultFont}", sans-serif`;
+                
+                // ✅ 立即同步到 hidden input
+                const hiddenInput = document.getElementById(target);
+                if (hiddenInput) {
+                    hiddenInput.value = defaultFont;
+                }
 
                 // 監聽下拉選單變更
                 select.onchange = function () {
@@ -2815,6 +3039,13 @@
                         btn.setAttribute('data-selected', this.value);
                         // 更新下拉選單本身的字體樣式
                         this.style.fontFamily = `"${this.value}", sans-serif`;
+                        
+                        // ✅ 同步到 hidden input
+                        const hiddenInput = document.getElementById(target);
+                        if (hiddenInput) {
+                            hiddenInput.value = this.value;
+                        }
+                        
                         // 不同步更新另一個下拉選單，允許獨立選擇
                         generateModel();
                     }
@@ -2825,16 +3056,6 @@
 
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
-
-            // ✅ 同步到隱藏的 font1/font2 select（供 generateModel 使用）
-            const font1Hidden = document.getElementById('font1');
-            const font2Hidden = document.getElementById('font2');
-            if (font1Hidden && document.getElementById('font1-btn').getAttribute('data-selected')) {
-                font1Hidden.value = document.getElementById('font1-btn').getAttribute('data-selected');
-            }
-            if (font2Hidden && document.getElementById('font2-btn').getAttribute('data-selected')) {
-                font2Hidden.value = document.getElementById('font2-btn').getAttribute('data-selected');
-            }
 
             generateModel();
         }
@@ -3926,7 +4147,7 @@
                     // ✅ 檢查是否為 VIP 免費訂單
                     if (result.vipFree) {
                         console.log('🎁 VIP 免費訂單已確認');
-
+                        
                         // 根據是否有 AI consultation 決定跳轉
                         if (result.hasAiConsultation) {
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
@@ -4240,7 +4461,7 @@
 
                     // ✅ 不移除 modal，改成隱藏表單並顯示 loading
                     modal.querySelector('.modal-content').style.display = 'none';
-
+                    
                     // 顯示 loading 提示
                     const loadingDiv = document.createElement('div');
                     loadingDiv.style.cssText = `
@@ -4257,10 +4478,10 @@
                         <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">請稍候，即將跳轉至付款頁面</div>
                     `;
                     modal.appendChild(loadingDiv);
-
+                    
                     // 儲存 modal 引用，供後續移除
                     window.userInfoModal = modal;
-
+                    
                     resolve(userInfo);
                 });
             });
@@ -4479,7 +4700,7 @@
                 window.userInfoModal.remove();
                 window.userInfoModal = null;
             }
-
+            
             // 創建遮罩層
             const overlay = document.createElement('div');
             overlay.id = 'payment-overlay';
@@ -4646,6 +4867,31 @@
 
             // 初始化卡片樣式
             updateCardStyle();
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // 同步 Slot 相機位置和渲染
+            if (slot1Camera && slot1Renderer && slot1Scene) {
+                slot1Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
+                slot1Camera.lookAt(0, 0, 0);
+                slot1Renderer.render(slot1Scene, slot1Camera);
+            }
+            if (slot2Camera && slot2Renderer && slot2Scene) {
+                slot2Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
+                slot2Camera.lookAt(0, 0, 0);
+                slot2Renderer.render(slot2Scene, slot2Camera);
+            }
+
+            renderer.render(scene, camera);
         }
 
         // 啟動
