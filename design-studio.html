@@ -5028,25 +5028,11 @@
             }
 
             // Step 3: 準備參數
-            // 計算墜頭相對位置（和加入購物車相同的邏輯）
-            const modelCenter = mainMesh ? new THREE.Vector3(
-                (mainMesh.geometry.boundingBox.max.x + mainMesh.geometry.boundingBox.min.x) / 2,
-                (mainMesh.geometry.boundingBox.max.y + mainMesh.geometry.boundingBox.min.y) / 2,
-                (mainMesh.geometry.boundingBox.max.z + mainMesh.geometry.boundingBox.min.z) / 2
-            ) : new THREE.Vector3(0, 0, 0);
-            
-            console.log('🔍 模型中心:', {
-                x: modelCenter.x.toFixed(3),
-                y: modelCenter.y.toFixed(3),
-                z: modelCenter.z.toFixed(3)
-            });
+            // 使用全域的 modelCenter（和加入購物車一樣）
+            console.log('🔍 模型中心: x=' + modelCenter.x.toFixed(3) + ', y=' + modelCenter.y.toFixed(3) + ', z=' + modelCenter.z.toFixed(3));
             
             if (bailMesh) {
-                console.log('🔍 墜頭絕對位置:', {
-                    x: bailMesh.position.x.toFixed(3),
-                    y: bailMesh.position.y.toFixed(3),
-                    z: bailMesh.position.z.toFixed(3)
-                });
+                console.log('🔍 墜頭絕對位置: x=' + bailMesh.position.x.toFixed(3) + ', y=' + bailMesh.position.y.toFixed(3) + ', z=' + bailMesh.position.z.toFixed(3));
             }
             
             const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
@@ -5054,12 +5040,7 @@
             const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
             const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
             
-            console.log('🔍 墜頭相對位置:', {
-                x: bailRelativeX.toFixed(3),
-                y: bailRelativeY.toFixed(3),
-                z: bailRelativeZ.toFixed(3),
-                rotation: bailRot.toFixed(1)
-            });
+            console.log('🔍 墜頭相對位置: x=' + bailRelativeX.toFixed(3) + ', y=' + bailRelativeY.toFixed(3) + ', z=' + bailRelativeZ.toFixed(3) + ', rotation=' + bailRot.toFixed(1) + '°');
             
             const params = {
                 letter1: letter1,
@@ -5073,47 +5054,73 @@
                 bailRotation: bailRot
             };
 
-            console.log('📤 請求 STL:', params);
+            console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
             console.log('🔍 墜頭位置:', { bailRelativeX, bailRelativeY, bailRelativeZ, bailRot });
 
-            // Step 4: 呼叫後端
-            try {
-                console.log('🌐 呼叫後端:', `${BACKEND_URL}/api/generate-stl`);
-                
-                const response = await fetch(`${BACKEND_URL}/api/generate-stl`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
+            // Step 4: 呼叫後端（帶重試機制）
+            console.log('🌐 呼叫後端:', `${BACKEND_URL}/api/generate-stl`);
+            
+            let retryCount = 0;
+            const maxRetries = 2;
+            
+            while (retryCount <= maxRetries) {
+                try {
+                    if (retryCount > 0) {
+                        console.log(`🔄 重試第 ${retryCount} 次...`);
+                        // 等待 2 秒後重試
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                    
+                    const response = await fetch(`${BACKEND_URL}/api/generate-stl`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(params)
+                    });
 
-                console.log('📡 後端回應狀態:', response.status);
+                    console.log('📡 後端回應狀態:', response.status);
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ 後端錯誤:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    if (!response.ok) {
+                        if (response.status === 502 && retryCount < maxRetries) {
+                            console.warn('⚠️ 後端暫時無法回應 (502)，將重試...');
+                            retryCount++;
+                            continue; // 重試
+                        }
+                        
+                        const errorText = await response.text();
+                        console.error('❌ 後端錯誤:', errorText);
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+
+                    // Step 5: 下載 STL
+                    console.log('💾 開始下載 STL...');
+                    const blob = await response.blob();
+                    console.log('📦 Blob 大小:', blob.size, 'bytes');
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `DUET_${letter1}${letter2}_${font1.replace(/ /g, '_')}_${font2.replace(/ /g, '_')}.stl`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+
+                    console.log('✅ STL 下載完成');
+                    alert('✅ STL 檔案已下載');
+                    break; // 成功，跳出重試迴圈
+
+                } catch (error) {
+                    if (retryCount < maxRetries && (error.message.includes('502') || error.message.includes('Load failed'))) {
+                        console.warn('⚠️ 請求失敗，將重試...', error.message);
+                        retryCount++;
+                        continue; // 重試
+                    }
+                    
+                    // 重試次數用完或其他錯誤
+                    console.error('❌ STL 生成失敗:', error);
+                    alert(`❌ STL 生成失敗: ${error.message}\n\n建議：請稍後再試，或聯繫客服`);
+                    break;
                 }
-
-                // Step 5: 下載 STL
-                console.log('💾 開始下載 STL...');
-                const blob = await response.blob();
-                console.log('📦 Blob 大小:', blob.size, 'bytes');
-                
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `DUET_${letter1}${letter2}_${font1.replace(/ /g, '_')}_${font2.replace(/ /g, '_')}.stl`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-
-                console.log('✅ STL 下載完成');
-                alert('✅ STL 檔案已下載');
-
-            } catch (error) {
-                console.error('❌ STL 生成失敗:', error);
-                alert(`❌ STL 生成失敗: ${error.message}`);
             }
         });
         
