@@ -5035,10 +5035,31 @@
                 (mainMesh.geometry.boundingBox.max.z + mainMesh.geometry.boundingBox.min.z) / 2
             ) : new THREE.Vector3(0, 0, 0);
             
+            console.log('🔍 模型中心:', {
+                x: modelCenter.x.toFixed(3),
+                y: modelCenter.y.toFixed(3),
+                z: modelCenter.z.toFixed(3)
+            });
+            
+            if (bailMesh) {
+                console.log('🔍 墜頭絕對位置:', {
+                    x: bailMesh.position.x.toFixed(3),
+                    y: bailMesh.position.y.toFixed(3),
+                    z: bailMesh.position.z.toFixed(3)
+                });
+            }
+            
             const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
             const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
             const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
             const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+            
+            console.log('🔍 墜頭相對位置:', {
+                x: bailRelativeX.toFixed(3),
+                y: bailRelativeY.toFixed(3),
+                z: bailRelativeZ.toFixed(3),
+                rotation: bailRot.toFixed(1)
+            });
             
             const params = {
                 letter1: letter1,
