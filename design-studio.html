@@ -4986,18 +4986,33 @@
             }
         }
 
-        // 🧪 測試用：直接下載 STL
-        document.getElementById('downloadStlBtn').addEventListener('click', async () => {
-            // Step 1: 密碼驗證
-            const password = prompt('請輸入測試密碼：');
-            if (!password) return;
-
-            // 驗證密碼（使用折扣碼 Google Sheets）
-            const isValid = await verifyTestPassword(password);
-            if (!isValid) {
-                alert('❌ 密碼錯誤');
+        // 🧪 測試用：直接下載 STL（確保 DOM 載入後綁定）
+        window.addEventListener('DOMContentLoaded', () => {
+            const downloadBtn = document.getElementById('downloadStlBtn');
+            
+            if (!downloadBtn) {
+                console.error('❌ 找不到下載 STL 按鈕');
                 return;
             }
+            
+            downloadBtn.addEventListener('click', async () => {
+                console.log('🧪 點擊下載 STL 按鈕');
+                
+                // Step 1: 密碼驗證
+                const password = prompt('請輸入測試密碼：');
+                if (!password) {
+                    console.log('❌ 未輸入密碼');
+                    return;
+                }
+
+                console.log('🔐 驗證密碼中...');
+                
+                // 驗證密碼（使用折扣碼 Google Sheets）
+                const isValid = await verifyTestPassword(password);
+                if (!isValid) {
+                    alert('❌ 密碼錯誤');
+                    return;
+                }
 
             // Step 2: 檢查是否有生成模型
             const letter1 = document.getElementById('letter1').value;
@@ -5013,19 +5028,32 @@
             }
 
             // Step 3: 準備參數
+            // 計算墜頭相對位置（和加入購物車相同的邏輯）
+            const modelCenter = mainMesh ? new THREE.Vector3(
+                (mainMesh.geometry.boundingBox.max.x + mainMesh.geometry.boundingBox.min.x) / 2,
+                (mainMesh.geometry.boundingBox.max.y + mainMesh.geometry.boundingBox.min.y) / 2,
+                (mainMesh.geometry.boundingBox.max.z + mainMesh.geometry.boundingBox.min.z) / 2
+            ) : new THREE.Vector3(0, 0, 0);
+            
+            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
+            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
+            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
+            const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+            
             const params = {
                 letter1: letter1,
                 letter2: letter2,
                 font1: font1,
                 font2: font2,
                 size: parseInt(document.getElementById('size').value),
-                bailRelativeX: window.bailRelativeX || 0,
-                bailRelativeY: window.bailRelativeY || 0,
-                bailRelativeZ: 0,
-                bailRotation: 0
+                bailRelativeX: bailRelativeX,
+                bailRelativeY: bailRelativeY,
+                bailRelativeZ: bailRelativeZ,
+                bailRotation: bailRot
             };
 
             console.log('📤 請求 STL:', params);
+            console.log('🔍 墜頭位置:', { bailRelativeX, bailRelativeY, bailRelativeZ, bailRot });
 
             // Step 4: 呼叫後端
             try {
