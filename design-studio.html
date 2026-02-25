@@ -5029,18 +5029,27 @@
 
             // Step 4: 呼叫後端
             try {
-                const response = await fetch('https://duet-backend.onrender.com/api/generate-stl', {
+                console.log('🌐 呼叫後端:', `${BACKEND_URL}/api/generate-stl`);
+                
+                const response = await fetch(`${BACKEND_URL}/api/generate-stl`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
                 });
 
+                console.log('📡 後端回應狀態:', response.status);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('❌ 後端錯誤:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
                 // Step 5: 下載 STL
+                console.log('💾 開始下載 STL...');
                 const blob = await response.blob();
+                console.log('📦 Blob 大小:', blob.size, 'bytes');
+                
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -5055,7 +5064,7 @@
 
             } catch (error) {
                 console.error('❌ STL 生成失敗:', error);
-                alert('❌ STL 生成失敗，請稍後再試');
+                alert(`❌ STL 生成失敗: ${error.message}`);
             }
         });
 
