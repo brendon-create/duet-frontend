@@ -5059,19 +5059,25 @@
             }
         });
 
-        // 驗證測試密碼（使用折扣碼 Google Sheets）
+        // 驗證測試密碼（使用後端折扣碼 API）
         async function verifyTestPassword(password) {
             try {
-                const response = await fetch(
-                    `https://script.google.com/macros/s/AKfycbzn6JKMc9_Lp5B0h_Y7bZYdlR5xTGrH0SgT_YmQxK0nR3BfFWAQxNpVEFdw-xdZ0Y0/exec?code=${encodeURIComponent(password)}`
-                );
+                const response = await fetch(`${BACKEND_URL}/api/validate-promo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        promoCode: password.trim().toUpperCase(),
+                        total: 1000  // 隨便一個金額，只是要驗證碼是否存在
+                    })
+                });
+
                 const data = await response.json();
+                console.log('🔑 密碼驗證結果:', data);
                 
                 // 如果是有效的折扣碼，就允許下載
-                // 或者可以在 Sheet 中專門設一欄標記為 "test_password"
                 return data.valid === true;
             } catch (error) {
-                console.error('密碼驗證失敗:', error);
+                console.error('❌ 密碼驗證失敗:', error);
                 return false;
             }
         }
