@@ -5019,10 +5019,10 @@
                 font1: font1,
                 font2: font2,
                 size: parseInt(document.getElementById('size').value),
-                letter1_bbox: window.letter1BBox,
-                letter2_bbox: window.letter2BBox,
-                bail_relative_x: window.bailRelativeX || 0,
-                bail_relative_y: window.bailRelativeY || 0
+                bailRelativeX: window.bailRelativeX || 0,
+                bailRelativeY: window.bailRelativeY || 0,
+                bailRelativeZ: 0,
+                bailRotation: 0
             };
 
             console.log('📤 請求 STL:', params);
