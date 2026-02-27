@@ -854,6 +854,153 @@
             content: '';
             animation: dots 1.5s infinite;
         }
+
+        /* 🧹 Toggle Switch 樣式 */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+        }
+
+        .toggle-checkbox {
+            display: none;
+        }
+
+        .toggle-label {
+            display: block;
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .toggle-button {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-checkbox:checked + .toggle-label {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: rgba(212, 175, 55, 0.5);
+        }
+
+        .toggle-checkbox:checked + .toggle-label .toggle-button {
+            left: 22px;
+            background: #d4af37;
+        }
+
+        .toggle-checkbox:disabled + .toggle-label {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toggle-label:hover:not(.toggle-checkbox:disabled + .toggle-label) {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Liquid Glass 確認對話框 */
+        .cleanup-confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .cleanup-confirm-overlay.show {
+            opacity: 1;
+        }
+
+        .cleanup-confirm-dialog {
+            background: rgba(20, 20, 30, 0.95);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .cleanup-confirm-overlay.show .cleanup-confirm-dialog {
+            transform: scale(1);
+        }
+
+        .cleanup-confirm-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #d4af37;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .cleanup-confirm-message {
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .cleanup-confirm-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .cleanup-confirm-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .cleanup-confirm-btn.confirm {
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: #d4af37;
+        }
+
+        .cleanup-confirm-btn.confirm:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: rgba(212, 175, 55, 0.6);
+        }
+
+        .cleanup-confirm-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .cleanup-confirm-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
     </style>
 </head>
 
@@ -930,20 +1077,6 @@
 
         <div class="divider"></div>
 
-        <div class="control-group">
-            <label>模型優化</label>
-            <button id="cleanup-fragments-btn" 
-                    style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;"
-                    onmouseover="this.style.background='#357abd'"
-                    onmouseout="this.style.background='#4a90e2'"
-                    disabled>
-                清除零碎部件
-            </button>
-            <div id="cleanup-status" style="margin-top: 8px; font-size: 12px; color: #666; text-align: center;"></div>
-        </div>
-
-        <div class="divider"></div>
-
         <div class="section-title">Bail Position</div>
 
         <div class="control-group">
@@ -964,6 +1097,21 @@
         <div class="control-group">
             <label>Rotation <span class="slider-value" id="bailRotation-val">0°</span></label>
             <input type="range" id="bailRotation" min="0" max="90" step="1" value="0">
+        </div>
+
+        <!-- 🧹 清理零碎部件開關 -->
+        <div class="control-group" style="margin-top: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品零碎部件</label>
+                
+                <!-- Toggle Switch -->
+                <div class="toggle-switch" id="cleanup-toggle-container">
+                    <input type="checkbox" id="cleanup-toggle" class="toggle-checkbox" disabled>
+                    <label for="cleanup-toggle" class="toggle-label">
+                        <span class="toggle-button"></span>
+                    </label>
+                </div>
+            </div>
         </div>
 
         <div class="divider"></div>
@@ -2138,8 +2286,8 @@
 
             // ✅ HDR 載入備援機制
             const hdrUrls = [
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/jewelry_box_r2.hdr',  // 優先：jsdelivr CDN
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/jewelry_box_r2.hdr'  // 備援：GitHub Raw
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：GitHub Raw
             ];
             
             let currentHdrIndex = 0;
@@ -2518,17 +2666,21 @@
             indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'none';
 
-            // 🧹 啟用清理按鈕 + 重置清理狀態
-            const cleanupBtn = document.getElementById('cleanup-fragments-btn');
-            const cleanupStatus = document.getElementById('cleanup-status');
-            if (cleanupBtn) {
-                cleanupBtn.disabled = false;
-                cleanupBtn.style.opacity = '1';
+            // 🧹 啟用清理 toggle + 重置狀態
+            const cleanupToggle = document.getElementById('cleanup-toggle');
+            const cleanupLabel = document.getElementById('cleanup-label');
+            
+            if (cleanupToggle) {
+                cleanupToggle.disabled = false;  // 啟用 toggle
+                cleanupToggle.checked = false;   // 重置為 OFF
             }
-            if (cleanupStatus) {
-                cleanupStatus.textContent = '';
+            
+            if (cleanupLabel) {
+                cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
+                cleanupLabel.style.color = '';  // 重置顏色
             }
-            modelNeedsCleanup = false;  // 重新生成模型後，重置清理狀態
+            
+            modelNeedsCleanup = false;  // 重置清理狀態
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
@@ -2539,7 +2691,7 @@
             }
         }
 
-        // 🧹 清除零碎部件（呼叫後端 API + STLLoader）
+        // 🧹 清除零碎部件（用於 Toggle 開關）
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
@@ -2548,14 +2700,14 @@
             }
 
             isCleanupInProgress = true;
-            const cleanupBtn = document.getElementById('cleanup-fragments-btn');
-            const cleanupStatus = document.getElementById('cleanup-status');
+            const cleanupLabel = document.getElementById('cleanup-label');
+            const cleanupToggle = document.getElementById('cleanup-toggle');
             
-            // 更新按鈕狀態
-            cleanupBtn.disabled = true;
-            cleanupBtn.style.opacity = '0.6';
-            cleanupStatus.textContent = '⏳ 正在清理...';
-            cleanupStatus.style.color = '#4a90e2';
+            // 更新 label 狀態
+            if (cleanupLabel) {
+                cleanupLabel.textContent = '⏳ 正在清理...';
+                cleanupLabel.style.color = '#4a90e2';
+            }
 
             try {
                 console.log('🧹 開始清理零碎部件...');
@@ -2614,21 +2766,30 @@
                 // 6. 設定標記：訂單需要清理
                 modelNeedsCleanup = true;
 
-                // 更新狀態顯示
-                cleanupStatus.textContent = '✅ 已清除零碎部件';
-                cleanupStatus.style.color = '#4caf50';
-                cleanupBtn.style.background = '#4caf50';
-                cleanupBtn.textContent = '已清除零碎部件';
+                // 更新 label 顯示
+                if (cleanupLabel) {
+                    cleanupLabel.textContent = '零碎部件已清理';
+                    cleanupLabel.style.color = '#4caf50';
+                }
 
                 // 更新體積重量（清理後可能改變）
                 setTimeout(() => updateVolumeWeight(), 100);
 
             } catch (error) {
                 console.error('❌ 清理失敗:', error);
-                cleanupStatus.textContent = '❌ 清理失敗：' + error.message;
-                cleanupStatus.style.color = '#f44336';
-                cleanupBtn.disabled = false;
-                cleanupBtn.style.opacity = '1';
+                
+                // 清理失敗時，關閉 toggle
+                if (cleanupToggle) {
+                    cleanupToggle.checked = false;
+                }
+                
+                if (cleanupLabel) {
+                    cleanupLabel.textContent = '清理作品零碎部件';
+                    cleanupLabel.style.color = '';
+                }
+                
+                alert('清理失敗：' + error.message);
+                
             } finally {
                 isCleanupInProgress = false;
             }
@@ -5117,10 +5278,50 @@
 
         // 🧪 測試用：直接下載 STL（確保 DOM 載入後綁定）
         window.addEventListener('DOMContentLoaded', () => {
-            // 🧹 綁定清理按鈕
-            const cleanupBtn = document.getElementById('cleanup-fragments-btn');
-            if (cleanupBtn) {
-                cleanupBtn.addEventListener('click', cleanupFragments);
+            // 🧹 綁定清理 Toggle 開關
+            const cleanupToggle = document.getElementById('cleanup-toggle');
+            const confirmOverlay = document.getElementById('cleanup-confirm-overlay');
+            const confirmBtn = document.getElementById('cleanup-confirm-btn');
+            const cancelBtn = document.getElementById('cleanup-cancel-btn');
+            
+            if (cleanupToggle && confirmOverlay && confirmBtn && cancelBtn) {
+                // Toggle 點擊時顯示確認對話框
+                cleanupToggle.addEventListener('change', function(e) {
+                    if (this.checked) {
+                        // 開啟 toggle 時，顯示確認對話框
+                        confirmOverlay.style.display = 'flex';
+                        setTimeout(() => confirmOverlay.classList.add('show'), 10);
+                    }
+                });
+                
+                // 確認按鈕
+                confirmBtn.addEventListener('click', () => {
+                    // 關閉對話框
+                    confirmOverlay.classList.remove('show');
+                    setTimeout(() => confirmOverlay.style.display = 'none', 300);
+                    
+                    // 執行清理
+                    cleanupFragments();
+                });
+                
+                // 取消按鈕
+                cancelBtn.addEventListener('click', () => {
+                    // 關閉對話框
+                    confirmOverlay.classList.remove('show');
+                    setTimeout(() => confirmOverlay.style.display = 'none', 300);
+                    
+                    // 取消 toggle
+                    cleanupToggle.checked = false;
+                });
+                
+                // 點擊遮罩也關閉
+                confirmOverlay.addEventListener('click', (e) => {
+                    if (e.target === confirmOverlay) {
+                        confirmOverlay.classList.remove('show');
+                        setTimeout(() => confirmOverlay.style.display = 'none', 300);
+                        cleanupToggle.checked = false;
+                    }
+                });
             }
 
             const downloadBtn = document.getElementById('downloadStlBtn');
@@ -5286,6 +5487,20 @@
     </script>
     <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
     <!-- <script src="wearing-preview.js"></script> -->
+    <!-- 🧹 清理確認對話框 -->
+    <div class="cleanup-confirm-overlay" id="cleanup-confirm-overlay">
+        <div class="cleanup-confirm-dialog">
+            <div class="cleanup-confirm-title">清理零碎部件</div>
+            <div class="cleanup-confirm-message">
+                此功能運算約需 3-5 分鐘，為避免浪費您的時間，請先確認作品中有與主體分離的零碎物件，才需開啟此功能。
+            </div>
+            <div class="cleanup-confirm-buttons">
+                <button class="cleanup-confirm-btn cancel" id="cleanup-cancel-btn">取消</button>
+                <button class="cleanup-confirm-btn confirm" id="cleanup-confirm-btn">確認</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
