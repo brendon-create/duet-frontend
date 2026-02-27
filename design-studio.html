@@ -2810,13 +2810,9 @@
                 // 清理舊 geometry
                 oldGeometry.dispose();
                 
-                // 🔧 移除舊墜頭（因為新 STL 已包含墜頭）
+                // ✅ 保留舊墜頭（後端 STL 不含墜頭，保持用戶調整的位置）
                 if (bailMesh) {
-                    console.log(`${timestamp()} 🗑️ 移除舊墜頭... ${elapsed()}`);
-                    scene.remove(bailMesh);
-                    bailMesh.geometry?.dispose();
-                    bailMesh.material?.dispose();
-                    bailMesh = null;
+                    console.log(`${timestamp()} ✅ 保留舊墜頭（位置: x=${bailMesh.position.x.toFixed(2)}, y=${bailMesh.position.y.toFixed(2)}, z=${bailMesh.position.z.toFixed(2)}, rot=${(bailMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
                 }
                 
                 console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
