@@ -2722,15 +2722,25 @@
                 
                 console.log(`${timestamp()} 🧹 開始清理零碎部件`);
 
-                // 1. 取得當前參數
+                // 1. 取得當前參數（包含墜頭位置）
+                // 計算墜頭相對於模型中心的位置
+                const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
+                const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
+                const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
+                const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+                
                 const params = {
                     letter1: document.getElementById('letter1').value,
                     letter2: document.getElementById('letter2').value,
                     font1: document.getElementById('font1-btn')?.getAttribute('data-selected') || 'Alex Brush',
                     font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
-                    size: parseInt(document.getElementById('size').value)
+                    size: parseInt(document.getElementById('size').value),
+                    bailRelativeX: bailRelativeX,
+                    bailRelativeY: bailRelativeY,
+                    bailRelativeZ: bailRelativeZ,
+                    bailRotation: bailRot
                 };
-                console.log(`${timestamp()} 📋 參數準備完成 ${elapsed()}`);
+                console.log(`${timestamp()} 📋 參數準備完成 (墜頭: x=${bailRelativeX.toFixed(2)}, y=${bailRelativeY.toFixed(2)}, z=${bailRelativeZ.toFixed(2)}, rot=${bailRot.toFixed(1)}°) ${elapsed()}`);
 
                 // 2. 請求後端生成乾淨的 STL
                 console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
@@ -2749,19 +2759,40 @@
                 const { token, expires_in } = await response1.json();
                 console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
 
-                // 3. 用 token 下載 STL
+                // 3. 用 token 下載 STL（帶重試機制）
                 console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
-                const response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
-                console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
                 
-                if (!response2.ok) {
-                    const error = await response2.json();
-                    throw new Error(error.error || '下載失敗');
-                }
+                let response2;
+                let arrayBuffer;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (retryCount <= maxRetries) {
+                    try {
+                        response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
+                        console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
+                        
+                        if (!response2.ok) {
+                            const error = await response2.json();
+                            throw new Error(error.error || '下載失敗');
+                        }
 
-                console.log(`${timestamp()} 📦 讀取 ArrayBuffer... ${elapsed()}`);
-                const arrayBuffer = await response2.arrayBuffer();
-                console.log(`${timestamp()} ✅ STL 下載完成 (大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB) ${elapsed()}`);
+                        console.log(`${timestamp()} 📦 讀取 ArrayBuffer... ${elapsed()}`);
+                        arrayBuffer = await response2.arrayBuffer();
+                        console.log(`${timestamp()} ✅ STL 下載完成 (大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB) ${elapsed()}`);
+                        
+                        break; // 成功，跳出迴圈
+                        
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount > maxRetries) {
+                            console.error(`${timestamp()} ❌ 下載失敗（已重試 ${maxRetries} 次）: ${error.message}`);
+                            throw new Error(`網路連線失敗，請檢查網路後重試`);
+                        }
+                        console.warn(`${timestamp()} ⚠️ 下載失敗，重試 ${retryCount}/${maxRetries}...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒後重試
+                    }
+                }
 
                 // 4. 用 STLLoader 解析
                 console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
@@ -2778,6 +2809,16 @@
                 
                 // 清理舊 geometry
                 oldGeometry.dispose();
+                
+                // 🔧 移除舊墜頭（因為新 STL 已包含墜頭）
+                if (bailMesh) {
+                    console.log(`${timestamp()} 🗑️ 移除舊墜頭... ${elapsed()}`);
+                    scene.remove(bailMesh);
+                    bailMesh.geometry?.dispose();
+                    bailMesh.material?.dispose();
+                    bailMesh = null;
+                }
+                
                 console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
 
                 const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
