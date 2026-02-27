@@ -2710,8 +2710,11 @@
             }
 
             try {
-                console.log('🧹 開始清理零碎部件...');
-                const startTime = Date.now();
+                const t0 = Date.now();
+                const timestamp = () => `[${new Date().toISOString().slice(11,23)}]`;
+                const elapsed = () => `(+${((Date.now()-t0)/1000).toFixed(2)}s)`;
+                
+                console.log(`${timestamp()} 🧹 開始清理零碎部件`);
 
                 // 1. 取得當前參數
                 const params = {
@@ -2721,47 +2724,58 @@
                     font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
                     size: parseInt(document.getElementById('size').value)
                 };
+                console.log(`${timestamp()} 📋 參數準備完成 ${elapsed()}`);
 
                 // 2. 請求後端生成乾淨的 STL
+                console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
                 const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
                 });
+                console.log(`${timestamp()} 📡 後端回應收到 ${elapsed()}`);
 
                 if (!response1.ok) {
                     throw new Error(`後端請求失敗: ${response1.status}`);
                 }
 
+                console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
                 const { token, expires_in } = await response1.json();
-                console.log(`   ✅ 取得 token (有效期: ${expires_in}秒)`);
+                console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
 
                 // 3. 用 token 下載 STL
+                console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
                 const response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
+                console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
                 
                 if (!response2.ok) {
                     const error = await response2.json();
                     throw new Error(error.error || '下載失敗');
                 }
 
+                console.log(`${timestamp()} 📦 讀取 ArrayBuffer... ${elapsed()}`);
                 const arrayBuffer = await response2.arrayBuffer();
-                console.log(`   ✅ STL 下載完成 (大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB)`);
+                console.log(`${timestamp()} ✅ STL 下載完成 (大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB) ${elapsed()}`);
 
                 // 4. 用 STLLoader 解析
+                console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
                 const loader = new STLLoader();
                 const cleanGeometry = loader.parse(arrayBuffer);
+                console.log(`${timestamp()} 🔧 計算 normals... ${elapsed()}`);
                 cleanGeometry.computeVertexNormals();
-                console.log(`   ✅ STL 解析完成`);
+                console.log(`${timestamp()} ✅ STL 解析完成 ${elapsed()}`);
 
                 // 5. 替換場景中的模型
+                console.log(`${timestamp()} 🔄 替換場景模型... ${elapsed()}`);
                 const oldGeometry = mainMesh.geometry;
                 mainMesh.geometry = cleanGeometry;
                 
                 // 清理舊 geometry
                 oldGeometry.dispose();
+                console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
 
-                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-                console.log(`✅ 清理完成 (耗時: ${elapsedTime}秒)`);
+                const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
+                console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
 
                 // 6. 設定標記：訂單需要清理
                 modelNeedsCleanup = true;
