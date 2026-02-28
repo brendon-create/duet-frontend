@@ -2810,9 +2810,32 @@
                 // 清理舊 geometry
                 oldGeometry.dispose();
                 
+                // 🔧 強制移到原點（與 generateModel 保持一致）
+                cleanGeometry.computeBoundingBox();
+                const cleanBbox = cleanGeometry.boundingBox;
+                const cleanCenter = cleanBbox.getCenter(new THREE.Vector3());
+                
+                console.log(`${timestamp()} 📐 清理後的原始中心: (${cleanCenter.x.toFixed(3)}, ${cleanCenter.y.toFixed(3)}, ${cleanCenter.z.toFixed(3)}) ${elapsed()}`);
+                
+                // 移到原點
+                cleanGeometry.translate(-cleanCenter.x, -cleanCenter.y, -cleanCenter.z);
+                
+                // 重新計算 BBox（現在中心應該在原點）
+                cleanGeometry.computeBoundingBox();
+                const newBbox = cleanGeometry.boundingBox;
+                modelTopZ = newBbox.max.z;
+                modelCenter.set(0, 0, 0);  // 強制設為原點（與後端 OpenSCAD 一致）
+                
+                console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
+                console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
+                
                 // ✅ 保留舊墜頭（後端 STL 不含墜頭，保持用戶調整的位置）
                 if (bailMesh) {
                     console.log(`${timestamp()} ✅ 保留舊墜頭（位置: x=${bailMesh.position.x.toFixed(2)}, y=${bailMesh.position.y.toFixed(2)}, z=${bailMesh.position.z.toFixed(2)}, rot=${(bailMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
+                    
+                    // 🔧 重新調整墜頭位置（相對於新的模型中心 = 原點）
+                    updateBailPosition();
+                    console.log(`${timestamp()} 🔧 墜頭位置已更新: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)}) ${elapsed()}`);
                 }
                 
                 console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
@@ -3593,6 +3616,64 @@
         }
 
         // 購物車
+        // 📸 生成三視圖（前視、側視、俯視）
+        function captureThreeViews() {
+            const views = [];
+            
+            // 儲存原始相機狀態
+            const originalCamera = {
+                position: camera.position.clone(),
+                rotation: camera.rotation.clone()
+            };
+            
+            // 計算模型的 BBox 中心和大小
+            mainMesh.geometry.computeBoundingBox();
+            const bbox = mainMesh.geometry.boundingBox;
+            const center = bbox.getCenter(new THREE.Vector3());
+            const size = bbox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const distance = maxDim * 3;  // 適當的距離
+            
+            // 前視圖 (Front View - 從 -Z 看向 +Z)
+            camera.position.set(center.x, center.y, center.z - distance);
+            camera.lookAt(center);
+            controls.update();
+            renderer.render(scene, camera);
+            views.push({
+                name: 'front',
+                dataURL: renderer.domElement.toDataURL('image/png')
+            });
+            
+            // 側視圖 (Side View - 從 +X 看向 -X)
+            camera.position.set(center.x + distance, center.y, center.z);
+            camera.lookAt(center);
+            controls.update();
+            renderer.render(scene, camera);
+            views.push({
+                name: 'side',
+                dataURL: renderer.domElement.toDataURL('image/png')
+            });
+            
+            // 俯視圖 (Top View - 從 +Z 看向 -Z)
+            camera.position.set(center.x, center.y, center.z + distance);
+            camera.lookAt(center);
+            controls.update();
+            renderer.render(scene, camera);
+            views.push({
+                name: 'top',
+                dataURL: renderer.domElement.toDataURL('image/png')
+            });
+            
+            // 恢復原始視角
+            camera.position.copy(originalCamera.position);
+            camera.rotation.copy(originalCamera.rotation);
+            controls.update();
+            renderer.render(scene, camera);
+            
+            console.log('📸 三視圖已生成');
+            return views;
+        }
+
         function addToCart() {
             if (!mainMesh) return;
 
@@ -3601,6 +3682,9 @@
                 alert('購物車最多只能加入 3 個商品\n如需訂購更多，請分批結帳');
                 return;
             }
+            
+            // 📸 生成三視圖
+            const threeViews = captureThreeViews();
 
             // 獲取當前選擇的字體名稱
             const font1Select = document.getElementById('font1-select');
@@ -3688,7 +3772,9 @@
                 // ✅ 儲存縮略圖（用於購物車預覽）
                 thumbnail: thumbnailDataURL,
                 // 🧹 儲存是否需要清理碎片
-                cleanFragments: modelNeedsCleanup
+                cleanFragments: modelNeedsCleanup,
+                // 📸 儲存三視圖（用於 Email 附件）
+                threeViews: threeViews
             };
 
             cartItems.push(item);
