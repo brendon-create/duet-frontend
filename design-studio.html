@@ -1061,9 +1061,15 @@
             line-height: 1.5;
         }
     </style>
+    
+    <!-- 🔧 開發者功能模組 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/brendonchen/duet-frontend@main/product-photo-studio.css">
 </head>
 
 <body>
+    <!-- 🔧 開發者功能模組 JS -->
+    <script src="https://cdn.jsdelivr.net/gh/brendonchen/duet-frontend@main/product-photo-studio.js"></script>
+    
     <div id="loader">
         <div class="spinner"></div>
         <div class="loading-text">LOADING STUDIO...</div>
@@ -1232,6 +1238,7 @@
 
         <!-- 🧪 測試用：直接下載 STL -->
         <button id="downloadStlBtn" style="
+            display: none;
             width: 100%;
             padding: 12px 20px;
             margin-top: 12px;
@@ -1662,6 +1669,16 @@
     </script>
 
     <script type="module">
+        // ==========================================
+        // 🔧 開發者功能初始化
+        // ==========================================
+        // 檢查 URL 參數 ?dev=true 或程式碼設定
+        DevFeatures.init();
+        // DevFeatures.enabled = true;  // 或直接在這裡啟用
+        
+        // ==========================================
+        // Three.js 模組引入
+        // ==========================================
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { FontLoader } from 'three/addons/loaders/FontLoader.js';
@@ -2396,6 +2413,11 @@
             loadHDRWithFallback();
 
             window.addEventListener('resize', onResize);
+            
+            // ==========================================
+            // 🔧 初始化產品攝影模組
+            // ==========================================
+            ProductPhotoStudio.init(scene, camera, renderer, controls);
         }
 
         function showInitialSphere() {
@@ -2749,6 +2771,11 @@
                     window.updateWearingPreview();
                 }, 300);
             }
+            
+            // ==========================================
+            // 🔧 更新產品攝影模組的 mesh 引用
+            // ==========================================
+            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, gridHelper, axesHelper);
         }
 
         // 🧹 清除零碎部件（用於 Toggle 開關）
@@ -5509,6 +5536,11 @@
 
         // 🧪 測試用：直接下載 STL（確保 DOM 載入後綁定）
         window.addEventListener('DOMContentLoaded', () => {
+            // ==========================================
+            // 🔧 控制開發者功能按鈕顯示
+            // ==========================================
+            DevFeatures.toggleElement('downloadStlBtn');
+            
             // 🧹 綁定清理 Toggle 開關
             const cleanupToggle = document.getElementById('cleanup-toggle');
             const confirmOverlay = document.getElementById('cleanup-confirm-overlay');
