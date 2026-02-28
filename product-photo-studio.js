@@ -91,15 +91,7 @@ const ProductPhotoStudio = {
         // 檢查是否已存在
         if (document.getElementById('photo-studio-panel')) return;
         
-        // 創建觸發按鈕
-        const triggerBtn = document.createElement('button');
-        triggerBtn.id = 'open-photo-studio-btn';
-        triggerBtn.className = 'dev-feature-btn';
-        triggerBtn.innerHTML = '📸 產品攝影';
-        triggerBtn.onclick = () => this.open();
-        document.body.appendChild(triggerBtn);
-        
-        // 創建面板
+        // 創建面板（不創建觸發按鈕，改用整合在控制面板的按鈕）
         const panel = document.createElement('div');
         panel.id = 'photo-studio-panel';
         panel.className = 'photo-studio-panel';
@@ -199,7 +191,11 @@ const ProductPhotoStudio = {
      * 核心：匯出產品照片
      */
     exportProductPhoto(angle = 'current') {
-        if (!this.mainMesh) {
+        // 從 window 讀取（因為 design-studio 有暴露）
+        const mainMesh = window.mainMesh || this.mainMesh;
+        const bailMesh = window.bailMesh || this.bailMesh;
+        
+        if (!mainMesh) {
             this.showToast('請先生成作品');
             return;
         }
@@ -230,9 +226,9 @@ const ProductPhotoStudio = {
             if (this.gridHelper) this.gridHelper.visible = false;
             if (this.axesHelper) this.axesHelper.visible = false;
             
-            // 4. 設定角度
+            // 4. 設定角度（使用區域變數 mainMesh）
             if (angle !== 'current') {
-                this.setProductAngle(angle);
+                this.setProductAngle(angle, mainMesh);
             }
             
             // 5. 渲染
@@ -274,9 +270,13 @@ const ProductPhotoStudio = {
     /**
      * 設定產品角度
      */
-    setProductAngle(angle) {
-        this.mainMesh.geometry.computeBoundingBox();
-        const bbox = this.mainMesh.geometry.boundingBox;
+    setProductAngle(angle, mainMesh) {
+        // 使用傳入的 mainMesh 或從 window 讀取
+        const mesh = mainMesh || window.mainMesh || this.mainMesh;
+        if (!mesh) return;
+        
+        mesh.geometry.computeBoundingBox();
+        const bbox = mesh.geometry.boundingBox;
         const center = bbox.getCenter(new THREE.Vector3());
         const size = bbox.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
@@ -320,7 +320,8 @@ const ProductPhotoStudio = {
      * 批量匯出所有角度
      */
     async captureAllAngles() {
-        if (!this.mainMesh) {
+        const mainMesh = window.mainMesh || this.mainMesh;
+        if (!mainMesh) {
             this.showToast('請先生成作品');
             return;
         }

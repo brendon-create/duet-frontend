@@ -2,6 +2,12 @@
  * DUET 產品攝影模組 - 樣式
  */
 
+/* 開發者功能按鈕容器 */
+#devFeaturesContainer {
+    display: flex;
+    gap: 8px;
+}
+
 /* 產品攝影面板 */
 .photo-studio-panel {
     display: none;
