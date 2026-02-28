@@ -2680,7 +2680,7 @@
             result.geometry.computeBoundingBox();
             const newBbox = result.geometry.boundingBox;
             modelTopZ = newBbox.max.z; // 新的高度軸是 Z
-            modelCenter.copy(newBbox.getCenter(new THREE.Vector3()));
+            modelCenter.set(0, 0, 0);  // ✅ 強制設為原點（與後端 OpenSCAD 一致，避免浮點誤差）
 
             // 輸出實際尺寸
             const modelWidth = newBbox.max.x - newBbox.min.x;

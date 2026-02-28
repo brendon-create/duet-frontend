@@ -341,13 +341,22 @@ const ProductPhotoStudio = {
     },
     
     /**
-     * 顯示提示（使用現有的 showToast 或 alert）
+     * 顯示提示（使用 design-studio 的 Toast）
      */
     showToast(message) {
         if (typeof showToast === 'function') {
             showToast(message);
         } else {
-            alert(message);
+            // 備援：如果 showToast 不存在，直接在頁面上顯示
+            const toast = document.getElementById('custom-toast');
+            if (toast) {
+                const messageEl = toast.querySelector('.custom-toast-message');
+                messageEl.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            } else {
+                console.log(message);
+            }
         }
     }
 };
