@@ -3701,7 +3701,7 @@
         }
 
         // 購物車
-        // 📸 生成三視圖（Letter1 面向、Letter2 面向、俯視）
+        // 📸 生成三視圖（正視、側視、俯視）
         function captureThreeViews() {
             const views = [];
             
@@ -3719,29 +3719,29 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const distance = maxDim * 3;  // 適當的距離
             
-            // Letter 1 面向 (從 +X 看向 -X，看到 Letter 1 正面)
-            camera.position.set(center.x + distance, center.y, center.z);
+            // 正視圖 (Letter 1 正面 - 從 -Y 看向 +Y，看到 XZ 平面)
+            camera.position.set(center.x, center.y - distance, center.z);
             camera.lookAt(center);
             controls.update();
             renderer.render(scene, camera);
             views.push({
                 name: 'letter1_view',
-                label: 'Letter 1 View',
+                label: 'Front View (Letter 1)',
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
-            // Letter 2 面向 (從 +Y 看向 -Y，看到 Letter 2 正面)
-            camera.position.set(center.x, center.y + distance, center.z);
+            // 側視圖 (Letter 2 正面 - 從 +X 看向 -X，看到 YZ 平面)
+            camera.position.set(center.x + distance, center.y, center.z);
             camera.lookAt(center);
             controls.update();
             renderer.render(scene, camera);
             views.push({
                 name: 'letter2_view',
-                label: 'Letter 2 View',
+                label: 'Side View (Letter 2)',
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
-            // 俯視圖 (從 +Z 看向 -Z，從上往下看)
+            // 上視圖 (從 +Z 看向 -Z，看到 XY 平面)
             camera.position.set(center.x, center.y, center.z + distance);
             camera.lookAt(center);
             controls.update();
@@ -3758,7 +3758,7 @@
             controls.update();
             renderer.render(scene, camera);
             
-            console.log('📸 三視圖已生成（Letter1、Letter2、俯視）');
+            console.log('📸 三視圖已生成（正視/側視/俯視）');
             return views;
         }
 
