@@ -1007,6 +1007,18 @@
         .cleanup-confirm-btn.cancel:hover {
             background: rgba(255, 255, 255, 0.15);
         }
+        
+        /* 脈衝動畫 - 用於提示生成按鈕 */
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+            }
+        }
     </style>
 </head>
 
@@ -3459,7 +3471,18 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            generateModel();
+            // 提示用戶選擇字體後生成模型
+            const generateBtn = document.getElementById('generate-btn');
+            if (generateBtn) {
+                // 閃爍提示
+                generateBtn.style.animation = 'pulse 1s ease-in-out 3';
+                setTimeout(() => {
+                    generateBtn.style.animation = '';
+                }, 3000);
+            }
+            
+            // 顯示友善提示
+            alert('✅ 字體清單已更新！\n\n請在下拉選單中選擇您喜歡的字體，然後點擊「生成 3D 模型」按鈕。');
         }
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
@@ -3616,7 +3639,7 @@
         }
 
         // 購物車
-        // 📸 生成三視圖（前視、側視、俯視）
+        // 📸 生成三視圖（Letter1 面向、Letter2 面向、俯視）
         function captureThreeViews() {
             const views = [];
             
@@ -3634,33 +3657,36 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const distance = maxDim * 3;  // 適當的距離
             
-            // 前視圖 (Front View - 從 -Z 看向 +Z)
-            camera.position.set(center.x, center.y, center.z - distance);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'front',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 側視圖 (Side View - 從 +X 看向 -X)
+            // Letter 1 面向 (從 +X 看向 -X，看到 Letter 1 正面)
             camera.position.set(center.x + distance, center.y, center.z);
             camera.lookAt(center);
             controls.update();
             renderer.render(scene, camera);
             views.push({
-                name: 'side',
+                name: 'letter1_view',
+                label: 'Letter 1 View',
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
-            // 俯視圖 (Top View - 從 +Z 看向 -Z)
+            // Letter 2 面向 (從 +Y 看向 -Y，看到 Letter 2 正面)
+            camera.position.set(center.x, center.y + distance, center.z);
+            camera.lookAt(center);
+            controls.update();
+            renderer.render(scene, camera);
+            views.push({
+                name: 'letter2_view',
+                label: 'Letter 2 View',
+                dataURL: renderer.domElement.toDataURL('image/png')
+            });
+            
+            // 俯視圖 (從 +Z 看向 -Z，從上往下看)
             camera.position.set(center.x, center.y, center.z + distance);
             camera.lookAt(center);
             controls.update();
             renderer.render(scene, camera);
             views.push({
-                name: 'top',
+                name: 'top_view',
+                label: 'Top View',
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
@@ -3670,7 +3696,7 @@
             controls.update();
             renderer.render(scene, camera);
             
-            console.log('📸 三視圖已生成');
+            console.log('📸 三視圖已生成（Letter1、Letter2、俯視）');
             return views;
         }
 
