@@ -1019,6 +1019,47 @@
                 box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
             }
         }
+        
+        /* 低調的 Toast 提示 */
+        .custom-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(40, 40, 40, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            max-width: 90%;
+        }
+        
+        .custom-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        
+        .custom-toast-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .custom-toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .custom-toast-message {
+            font-size: 14px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 
@@ -2167,6 +2208,7 @@
         let mainMesh = null, bailMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
+        let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
         let savedVersions = [null, null];
         let slot1Scene, slot2Scene, slot1Renderer, slot2Renderer, slot1Camera, slot2Camera;
@@ -2713,7 +2755,7 @@
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
-                alert('請先生成作品');
+                showToast('請先生成作品');
                 return;
             }
 
@@ -3362,6 +3404,19 @@
             });
         }
 
+        // 顯示低調的 Toast 提示
+        function showToast(message, duration = 4000) {
+            const toast = document.getElementById('custom-toast');
+            const messageEl = toast.querySelector('.custom-toast-message');
+            
+            messageEl.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
         function confirmFontSelection() {
             if (checkedFonts.size === 0) {
                 alert('Please select at least one font!');
@@ -3447,6 +3502,7 @@
                 // 監聽下拉選單變更
                 select.onchange = function () {
                     if (this.value === 'reselect') {
+                        isReselect = true;  // 設定為重新選擇
                         openFontSelector();
                         this.value = btn.getAttribute('data-selected') || selectedFonts[0];
                     } else {
@@ -3471,18 +3527,24 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 提示用戶選擇字體後生成模型
-            const generateBtn = document.getElementById('generate-btn');
-            if (generateBtn) {
-                // 閃爍提示
-                generateBtn.style.animation = 'pulse 1s ease-in-out 3';
-                setTimeout(() => {
-                    generateBtn.style.animation = '';
-                }, 3000);
+            // 根據是否為重新選擇決定行為
+            if (isReselect) {
+                // 重新選擇：不自動生成，顯示低調提示
+                const generateBtn = document.getElementById('generate-btn');
+                if (generateBtn) {
+                    generateBtn.style.animation = 'pulse 1s ease-in-out 3';
+                    setTimeout(() => {
+                        generateBtn.style.animation = '';
+                    }, 3000);
+                }
+                
+                // 顯示低調的 Toast 提示
+                showToast('字體清單已更新，請在下拉選單中選擇字體後生成模型');
+                isReselect = false;  // 重置標記
+            } else {
+                // 第一次選擇：自動生成模型（不顯示提示）
+                generateModel();
             }
-            
-            // 顯示友善提示
-            alert('✅ 字體清單已更新！\n\n請在下拉選單中選擇您喜歡的字體，然後點擊「生成 3D 模型」按鈕。');
         }
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
@@ -3705,7 +3767,7 @@
 
             // ✅ 限制購物車最多 3 個物件
             if (cartItems.length >= 3) {
-                alert('購物車最多只能加入 3 個商品\n如需訂購更多，請分批結帳');
+                showToast('購物車最多只能加入 3 個商品，如需訂購更多請分批結帳');
                 return;
             }
             
@@ -5528,7 +5590,7 @@
                          document.getElementById('font2-btn')?.getAttribute('data-selected');
 
             if (!letter1 || !letter2 || !font1 || !font2 || font1 === 'reselect' || font2 === 'reselect') {
-                alert('請先選擇字母和字體並生成 3D 模型');
+                showToast('請先選擇字母和字體並生成 3D 模型');
                 return;
             }
 
@@ -5611,7 +5673,7 @@
                     window.URL.revokeObjectURL(url);
 
                     console.log('✅ STL 下載完成');
-                    alert('✅ STL 檔案已下載');
+                    showToast('✅ STL 檔案已下載');
                     break; // 成功，跳出重試迴圈
 
                 } catch (error) {
@@ -5667,6 +5729,14 @@
                 <button class="cleanup-confirm-btn cancel" id="cleanup-cancel-btn">取消</button>
                 <button class="cleanup-confirm-btn confirm" id="cleanup-confirm-btn">確認</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 自訂提示（低調風格） -->
+    <div id="custom-toast" class="custom-toast">
+        <div class="custom-toast-content">
+            <span class="custom-toast-icon">✨</span>
+            <span class="custom-toast-message"></span>
         </div>
     </div>
 
