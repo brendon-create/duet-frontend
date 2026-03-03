@@ -4,12 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <!-- 🔄 防止瀏覽器快取（確保更新後立即生效） -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
     <title>DUET by BCAG</title>
 
     <!-- Google Fonts: 中文鋼筆字體 -->
@@ -30,7 +24,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
             background-color: #000;
             /* 先設定黑色背景，避免白色閃爍 */
-            background-image: url('https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/backgrounds/Toscana.png');
+            background-image: url('https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/backgrounds/LuxuryWoodBackground.png');
             background-position: center;
             background-size: cover;
             background-repeat: no-repeat;
@@ -860,216 +854,10 @@
             content: '';
             animation: dots 1.5s infinite;
         }
-
-        /* 🧹 Toggle Switch 樣式 */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-        }
-
-        .toggle-checkbox {
-            display: none;
-        }
-
-        .toggle-label {
-            display: block;
-            width: 44px;
-            height: 24px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .toggle-button {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 18px;
-            height: 18px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .toggle-checkbox:checked + .toggle-label {
-            background: rgba(212, 175, 55, 0.3);
-            border-color: rgba(212, 175, 55, 0.5);
-        }
-
-        .toggle-checkbox:checked + .toggle-label .toggle-button {
-            left: 22px;
-            background: #d4af37;
-        }
-
-        .toggle-checkbox:disabled + .toggle-label {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .toggle-label:hover:not(.toggle-checkbox:disabled + .toggle-label) {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* Liquid Glass 確認對話框 */
-        .cleanup-confirm-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .cleanup-confirm-overlay.show {
-            opacity: 1;
-        }
-
-        .cleanup-confirm-dialog {
-            background: rgba(20, 20, 30, 0.95);
-            backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 32px;
-            max-width: 400px;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
-
-        .cleanup-confirm-overlay.show .cleanup-confirm-dialog {
-            transform: scale(1);
-        }
-
-        .cleanup-confirm-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #d4af37;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .cleanup-confirm-message {
-            font-size: 14px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .cleanup-confirm-buttons {
-            display: flex;
-            gap: 12px;
-        }
-
-        .cleanup-confirm-btn {
-            flex: 1;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .cleanup-confirm-btn.confirm {
-            background: rgba(212, 175, 55, 0.2);
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            color: #d4af37;
-        }
-
-        .cleanup-confirm-btn.confirm:hover {
-            background: rgba(212, 175, 55, 0.3);
-            border-color: rgba(212, 175, 55, 0.6);
-        }
-
-        .cleanup-confirm-btn.cancel {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .cleanup-confirm-btn.cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        /* 脈衝動畫 - 用於提示生成按鈕 */
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
-            }
-        }
-        
-        /* 低調的 Toast 提示 */
-        .custom-toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: rgba(40, 40, 40, 0.95);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            z-index: 10000;
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: none;
-            max-width: 90%;
-        }
-        
-        .custom-toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-            pointer-events: auto;
-        }
-        
-        .custom-toast-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .custom-toast-icon {
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-        
-        .custom-toast-message {
-            font-size: 14px;
-            line-height: 1.5;
-        }
     </style>
-    
-    <!-- 🔧 開發者功能模組 -->
-    <link rel="stylesheet" href="product-photo-studio.css">
 </head>
 
 <body>
-    <!-- 🔧 開發者功能模組 JS -->
-    <script src="product-photo-studio.js"></script>
-    
     <div id="loader">
         <div class="spinner"></div>
         <div class="loading-text">LOADING STUDIO...</div>
@@ -1164,21 +952,6 @@
             <input type="range" id="bailRotation" min="0" max="90" step="1" value="0">
         </div>
 
-        <!-- 🧹 清理零碎部件開關 -->
-        <div class="control-group" style="margin-top: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品零碎部件</label>
-                
-                <!-- Toggle Switch -->
-                <div class="toggle-switch" id="cleanup-toggle-container">
-                    <input type="checkbox" id="cleanup-toggle" class="toggle-checkbox" disabled>
-                    <label for="cleanup-toggle" class="toggle-label">
-                        <span class="toggle-button"></span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
         <div class="divider"></div>
 
         <div class="info-box">
@@ -1235,41 +1008,6 @@
                 <span style="margin-top: 2px;">View Cart</span>
             </div>
         </button>
-
-        <!-- 🧪 開發者功能按鈕組 -->
-        <div id="devFeaturesContainer" style="display: none; margin-top: 12px; gap: 8px; display: none;">
-            <button id="downloadStlBtn" style="
-                flex: 1;
-                padding: 10px;
-                background: rgba(212, 175, 55, 0.15);
-                border: 1.5px dashed rgba(212, 175, 55, 0.5);
-                border-radius: 12px;
-                color: #d4af37;
-                font-size: 12px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(212, 175, 55, 0.25)'" 
-               onmouseout="this.style.background='rgba(212, 175, 55, 0.15)'">
-                📥 STL
-            </button>
-            
-            <button id="productPhotoBtn" onclick="ProductPhotoStudio.open()" style="
-                flex: 1;
-                padding: 10px;
-                background: rgba(102, 126, 234, 0.15);
-                border: 1.5px dashed rgba(102, 126, 234, 0.5);
-                border-radius: 12px;
-                color: #667eea;
-                font-size: 12px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(102, 126, 234, 0.25)'" 
-               onmouseout="this.style.background='rgba(102, 126, 234, 0.15)'">
-                📸 攝影
-            </button>
-        </div>
 
         <!-- AI 諮詢連結 -->
         <div class="ai-consultant-link">
@@ -1676,40 +1414,11 @@
     </script>
 
     <script type="module">
-        // ==========================================
-        // 🔧 開發者功能初始化
-        // ==========================================
-        // 檢查 URL 參數 ?dev=true 或程式碼設定
-        DevFeatures.init();
-        // DevFeatures.enabled = true;  // 或直接在這裡啟用
-
-        // ==========================================
-        // 🔥 後端 Warm-up（防止 Render 閒置休眠）
-        // ==========================================
-        function warmUpBackend() {
-            const backendUrl = window.BACKEND_URL || 'https://duet-backend-wlw8.onrender.com';
-            fetch(`${backendUrl}/health`)
-                .then(res => {
-                    if (res.ok) {
-                        console.log('🔥 Backend warm-up 完成');
-                    }
-                })
-                .catch(err => console.log('🔥 Backend warm-up 失敗:', err));
-        }
-        // 頁面載入時 warm-up（延遲 2 秒確保 BACKEND_URL 已設定）
-        setTimeout(warmUpBackend, 2000);
-        // 每 5 分鐘 warm-up 一次（防止長時間閒置）
-        setInterval(warmUpBackend, 5 * 60 * 1000);
-        
-        // ==========================================
-        // Three.js 模組引入
-        // ==========================================
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { FontLoader } from 'three/addons/loaders/FontLoader.js';
         import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
         import { STLExporter } from 'three/addons/exporters/STLExporter.js';
-        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
@@ -2250,7 +1959,6 @@
         let mainMesh = null, bailMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
-        let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
         let savedVersions = [null, null];
         let slot1Scene, slot2Scene, slot1Renderer, slot2Renderer, slot1Camera, slot2Camera;
@@ -2338,11 +2046,6 @@
             platinum: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 21.4 }
         };
 
-        // 🧹 碎片清理相關變數
-        let modelNeedsCleanup = false;  // 標記：訂單是否需要清理碎片
-        let isCleanupInProgress = false; // 防止重複點擊
-
-
         // 電鍍顏色定義
         const PLATING_COLORS = {
             none: null,  // 無電鍍，使用基礎材質顏色
@@ -2388,8 +2091,8 @@
 
             // ✅ HDR 載入備援機制
             const hdrUrls = [
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：jsdelivr CDN
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：GitHub Raw
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_small_08_1k.hdr',  // 優先：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr'  // 備援：GitHub Raw
             ];
             
             let currentHdrIndex = 0;
@@ -2438,11 +2141,6 @@
             loadHDRWithFallback();
 
             window.addEventListener('resize', onResize);
-            
-            // ==========================================
-            // 🔧 初始化產品攝影模組
-            // ==========================================
-            ProductPhotoStudio.init(scene, camera, renderer, controls);
         }
 
         function showInitialSphere() {
@@ -2698,7 +2396,7 @@
             result.geometry.computeBoundingBox();
             const newBbox = result.geometry.boundingBox;
             modelTopZ = newBbox.max.z; // 新的高度軸是 Z
-            modelCenter.set(0, 0, 0);  // ✅ 強制設為原點（與後端 OpenSCAD 一致，避免浮點誤差）
+            modelCenter.copy(newBbox.getCenter(new THREE.Vector3()));
 
             // 輸出實際尺寸
             const modelWidth = newBbox.max.x - newBbox.min.x;
@@ -2773,211 +2471,12 @@
             indicator = document.getElementById('model-rebuilding-indicator');
             if (indicator) indicator.style.display = 'none';
 
-            // 🧹 啟用清理 toggle + 重置狀態
-            const cleanupToggle = document.getElementById('cleanup-toggle');
-            const cleanupLabel = document.getElementById('cleanup-label');
-            
-            if (cleanupToggle) {
-                cleanupToggle.disabled = false;  // 啟用 toggle
-                cleanupToggle.checked = false;   // 重置為 OFF
-            }
-            
-            if (cleanupLabel) {
-                cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
-                cleanupLabel.style.color = '';  // 重置顏色
-            }
-            
-            modelNeedsCleanup = false;  // 重置清理狀態
-
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
                 setTimeout(() => {
                     console.log('🔄 商品生成完成，更新佩戴模擬');
                     window.updateWearingPreview();
                 }, 300);
-            }
-            
-            // ==========================================
-            // 🔧 更新產品攝影模組的 mesh 引用
-            // ==========================================
-            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, gridHelper, axesHelper);
-        }
-
-        // 🧹 清除零碎部件（用於 Toggle 開關）
-        async function cleanupFragments() {
-            if (isCleanupInProgress) return;
-            if (!mainMesh) {
-                showToast('請先生成作品');
-                return;
-            }
-
-            isCleanupInProgress = true;
-            const cleanupLabel = document.getElementById('cleanup-label');
-            const cleanupToggle = document.getElementById('cleanup-toggle');
-            
-            // 更新 label 狀態
-            if (cleanupLabel) {
-                cleanupLabel.textContent = '⏳ 正在清理...';
-                cleanupLabel.style.color = '#4a90e2';
-            }
-
-            try {
-                const t0 = Date.now();
-                const timestamp = () => `[${new Date().toISOString().slice(11,23)}]`;
-                const elapsed = () => `(+${((Date.now()-t0)/1000).toFixed(2)}s)`;
-                
-                console.log(`${timestamp()} 🧹 開始清理零碎部件`);
-
-                // 1. 取得當前參數（包含墜頭位置）
-                // 計算墜頭相對於模型中心的位置
-                const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
-                const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
-                const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
-                const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
-                
-                const params = {
-                    letter1: document.getElementById('letter1').value,
-                    letter2: document.getElementById('letter2').value,
-                    font1: document.getElementById('font1-btn')?.getAttribute('data-selected') || 'Alex Brush',
-                    font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
-                    size: parseInt(document.getElementById('size').value),
-                    bailRelativeX: bailRelativeX,
-                    bailRelativeY: bailRelativeY,
-                    bailRelativeZ: bailRelativeZ,
-                    bailRotation: bailRot
-                };
-                console.log(`${timestamp()} 📋 參數準備完成 (墜頭: x=${bailRelativeX.toFixed(2)}, y=${bailRelativeY.toFixed(2)}, z=${bailRelativeZ.toFixed(2)}, rot=${bailRot.toFixed(1)}°) ${elapsed()}`);
-
-                // 2. 請求後端生成乾淨的 STL
-                console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
-                const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
-                console.log(`${timestamp()} 📡 後端回應收到 ${elapsed()}`);
-
-                if (!response1.ok) {
-                    throw new Error(`後端請求失敗: ${response1.status}`);
-                }
-
-                console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
-                const { token, expires_in } = await response1.json();
-                console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
-
-                // 3. 用 token 下載 STL（帶重試機制）
-                console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
-                
-                let response2;
-                let arrayBuffer;
-                let retryCount = 0;
-                const maxRetries = 3;
-                
-                while (retryCount <= maxRetries) {
-                    try {
-                        response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
-                        console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
-                        
-                        if (!response2.ok) {
-                            const error = await response2.json();
-                            throw new Error(error.error || '下載失敗');
-                        }
-
-                        console.log(`${timestamp()} 📦 讀取 ArrayBuffer... ${elapsed()}`);
-                        arrayBuffer = await response2.arrayBuffer();
-                        console.log(`${timestamp()} ✅ STL 下載完成 (大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB) ${elapsed()}`);
-                        
-                        break; // 成功，跳出迴圈
-                        
-                    } catch (error) {
-                        retryCount++;
-                        if (retryCount > maxRetries) {
-                            console.error(`${timestamp()} ❌ 下載失敗（已重試 ${maxRetries} 次）: ${error.message}`);
-                            throw new Error(`網路連線失敗，請檢查網路後重試`);
-                        }
-                        console.warn(`${timestamp()} ⚠️ 下載失敗，重試 ${retryCount}/${maxRetries}...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒後重試
-                    }
-                }
-
-                // 4. 用 STLLoader 解析
-                console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
-                const loader = new STLLoader();
-                const cleanGeometry = loader.parse(arrayBuffer);
-                console.log(`${timestamp()} 🔧 計算 normals... ${elapsed()}`);
-                cleanGeometry.computeVertexNormals();
-                console.log(`${timestamp()} ✅ STL 解析完成 ${elapsed()}`);
-
-                // 5. 替換場景中的模型
-                console.log(`${timestamp()} 🔄 替換場景模型... ${elapsed()}`);
-                const oldGeometry = mainMesh.geometry;
-                mainMesh.geometry = cleanGeometry;
-                
-                // 清理舊 geometry
-                oldGeometry.dispose();
-                
-                // 🔧 強制移到原點（與 generateModel 保持一致）
-                cleanGeometry.computeBoundingBox();
-                const cleanBbox = cleanGeometry.boundingBox;
-                const cleanCenter = cleanBbox.getCenter(new THREE.Vector3());
-                
-                console.log(`${timestamp()} 📐 清理後的原始中心: (${cleanCenter.x.toFixed(3)}, ${cleanCenter.y.toFixed(3)}, ${cleanCenter.z.toFixed(3)}) ${elapsed()}`);
-                
-                // 移到原點
-                cleanGeometry.translate(-cleanCenter.x, -cleanCenter.y, -cleanCenter.z);
-                
-                // 重新計算 BBox（現在中心應該在原點）
-                cleanGeometry.computeBoundingBox();
-                const newBbox = cleanGeometry.boundingBox;
-                modelTopZ = newBbox.max.z;
-                modelCenter.set(0, 0, 0);  // 強制設為原點（與後端 OpenSCAD 一致）
-                
-                console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
-                console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
-                
-                // ✅ 保留舊墜頭（後端 STL 不含墜頭，保持用戶調整的位置）
-                if (bailMesh) {
-                    console.log(`${timestamp()} ✅ 保留舊墜頭（位置: x=${bailMesh.position.x.toFixed(2)}, y=${bailMesh.position.y.toFixed(2)}, z=${bailMesh.position.z.toFixed(2)}, rot=${(bailMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
-                    
-                    // 🔧 重新調整墜頭位置（相對於新的模型中心 = 原點）
-                    updateBailPosition();
-                    console.log(`${timestamp()} 🔧 墜頭位置已更新: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)}) ${elapsed()}`);
-                }
-                
-                console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
-
-                const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
-                console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
-
-                // 6. 設定標記：訂單需要清理
-                modelNeedsCleanup = true;
-
-                // 更新 label 顯示
-                if (cleanupLabel) {
-                    cleanupLabel.textContent = '零碎部件已清理';
-                    cleanupLabel.style.color = '#4caf50';
-                }
-
-                // 更新體積重量（清理後可能改變）
-                setTimeout(() => updateVolumeWeight(), 100);
-
-            } catch (error) {
-                console.error('❌ 清理失敗:', error);
-                
-                // 清理失敗時，關閉 toggle
-                if (cleanupToggle) {
-                    cleanupToggle.checked = false;
-                }
-                
-                if (cleanupLabel) {
-                    cleanupLabel.textContent = '清理作品零碎部件';
-                    cleanupLabel.style.color = '';
-                }
-                
-                alert('清理失敗：' + error.message);
-                
-            } finally {
-                isCleanupInProgress = false;
             }
         }
 
@@ -3456,19 +2955,6 @@
             });
         }
 
-        // 顯示低調的 Toast 提示
-        function showToast(message, duration = 4000) {
-            const toast = document.getElementById('custom-toast');
-            const messageEl = toast.querySelector('.custom-toast-message');
-            
-            messageEl.textContent = message;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, duration);
-        }
-
         function confirmFontSelection() {
             if (checkedFonts.size === 0) {
                 alert('Please select at least one font!');
@@ -3519,18 +3005,10 @@
                     select.appendChild(option);
                 });
 
-                // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
-                if (selectedFonts.length === 1) {
-                    const regenerateOption = document.createElement('option');
-                    regenerateOption.value = '__regenerate__';
-                    regenerateOption.textContent = '⟳ 重新生成模型';
-                    select.appendChild(regenerateOption);
-                }
-
                 // 添加 Re-select 選項
                 const reselectOption = document.createElement('option');
                 reselectOption.value = 'reselect';
-                reselectOption.textContent = '↻ 重新選擇字體';
+                reselectOption.textContent = '↻ Re-select Fonts';
                 select.appendChild(reselectOption);
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
@@ -3562,24 +3040,8 @@
                 // 監聽下拉選單變更
                 select.onchange = function () {
                     if (this.value === 'reselect') {
-                        isReselect = true;  // 設定為重新選擇
                         openFontSelector();
                         this.value = btn.getAttribute('data-selected') || selectedFonts[0];
-                    } else if (this.value === '__regenerate__') {
-                        // 用戶點擊「重新生成模型」選項，強制重新生成
-                        const currentFont = btn.getAttribute('data-selected') || selectedFonts[0];
-                        this.value = currentFont;
-                        btn.setAttribute('data-selected', currentFont);
-                        this.style.fontFamily = `"${currentFont}", sans-serif`;
-                        
-                        // 同步到 hidden input
-                        const hiddenInput = document.getElementById(target);
-                        if (hiddenInput) {
-                            hiddenInput.value = currentFont;
-                        }
-                        
-                        // 重新生成模型
-                        generateModel();
                     } else {
                         btn.setAttribute('data-selected', this.value);
                         // 更新下拉選單本身的字體樣式
@@ -3602,24 +3064,7 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 根據是否為重新選擇決定行為
-            if (isReselect) {
-                // 重新選擇：不自動生成，顯示低調提示
-                const generateBtn = document.getElementById('generate-btn');
-                if (generateBtn) {
-                    generateBtn.style.animation = 'pulse 1s ease-in-out 3';
-                    setTimeout(() => {
-                        generateBtn.style.animation = '';
-                    }, 3000);
-                }
-                
-                // 顯示低調的 Toast 提示
-                showToast('字體清單已更新，請在下拉選單中選擇字體後生成模型');
-                isReselect = false;  // 重置標記
-            } else {
-                // 第一次選擇：自動生成模型（不顯示提示）
-                generateModel();
-            }
+            generateModel();
         }
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
@@ -3776,93 +3221,14 @@
         }
 
         // 購物車
-        // 📸 生成三視圖（正視、側視、俯視）
-        function captureThreeViews() {
-            const views = [];
-            
-            // 儲存原始相機狀態
-            const originalCamera = {
-                position: camera.position.clone(),
-                rotation: camera.rotation.clone()
-            };
-            
-            // 計算模型的 BBox 中心和大小
-            mainMesh.geometry.computeBoundingBox();
-            const bbox = mainMesh.geometry.boundingBox;
-            const center = bbox.getCenter(new THREE.Vector3());
-            const size = bbox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const distance = maxDim * 3;  // 適當的距離
-            
-            // 正視圖 (Letter 1 正面 - 從 -Y 看向 +Y，看到 XZ 平面)
-            camera.position.set(center.x, center.y - distance, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'letter1_view',
-                label: 'Front View (Letter 1)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 側視圖 (Letter 2 正面 - 從 +X 看向 -X，看到 YZ 平面)
-            camera.position.set(center.x + distance, center.y, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'letter2_view',
-                label: 'Side View (Letter 2)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 上視圖 (從 +Z 看向 -Z，看到 XY 平面)
-            camera.position.set(center.x, center.y, center.z + distance);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'top_view',
-                label: 'Top View',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // Hero 視角 (45度角) - 與 product-photo-studio.js 一致
-            camera.position.set(
-                center.x + distance * 0.8,
-                center.y - distance * 1.2,
-                center.z + distance * 0.6
-            );
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'hero_view',
-                label: 'Hero View (45°)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 恢復原始視角
-            camera.position.copy(originalCamera.position);
-            camera.rotation.copy(originalCamera.rotation);
-            controls.update();
-            renderer.render(scene, camera);
-            
-            console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
-            return views;
-        }
-
         function addToCart() {
             if (!mainMesh) return;
 
             // ✅ 限制購物車最多 3 個物件
             if (cartItems.length >= 3) {
-                showToast('購物車最多只能加入 3 個商品，如需訂購更多請分批結帳');
+                alert('購物車最多只能加入 3 個商品\n如需訂購更多，請分批結帳');
                 return;
             }
-            
-            // 📸 生成三視圖
-            const threeViews = captureThreeViews();
 
             // 獲取當前選擇的字體名稱
             const font1Select = document.getElementById('font1-select');
@@ -3948,11 +3314,7 @@
                 // ✅ 儲存設計理念
                 designStory: window.finalDesignStory || '',
                 // ✅ 儲存縮略圖（用於購物車預覽）
-                thumbnail: thumbnailDataURL,
-                // 🧹 儲存是否需要清理碎片
-                cleanFragments: modelNeedsCleanup,
-                // 📸 儲存三視圖（用於 Email 附件）
-                threeViews: threeViews
+                thumbnail: thumbnailDataURL
             };
 
             cartItems.push(item);
@@ -5596,245 +4958,9 @@
                 document.head.appendChild(link);
             }
         }
-
-        // 🧪 測試用：直接下載 STL（確保 DOM 載入後綁定）
-        window.addEventListener('DOMContentLoaded', () => {
-            // ==========================================
-            // 🔧 控制開發者功能按鈕顯示
-            // ==========================================
-            DevFeatures.toggleElement('devFeaturesContainer');
-            
-            // 🧹 綁定清理 Toggle 開關
-            const cleanupToggle = document.getElementById('cleanup-toggle');
-            const confirmOverlay = document.getElementById('cleanup-confirm-overlay');
-            const confirmBtn = document.getElementById('cleanup-confirm-btn');
-            const cancelBtn = document.getElementById('cleanup-cancel-btn');
-            
-            if (cleanupToggle && confirmOverlay && confirmBtn && cancelBtn) {
-                // Toggle 點擊時顯示確認對話框
-                cleanupToggle.addEventListener('change', function(e) {
-                    if (this.checked) {
-                        // 開啟 toggle 時，顯示確認對話框
-                        confirmOverlay.style.display = 'flex';
-                        setTimeout(() => confirmOverlay.classList.add('show'), 10);
-                    }
-                });
-                
-                // 確認按鈕
-                confirmBtn.addEventListener('click', () => {
-                    // 關閉對話框
-                    confirmOverlay.classList.remove('show');
-                    setTimeout(() => confirmOverlay.style.display = 'none', 300);
-                    
-                    // 執行清理
-                    cleanupFragments();
-                });
-                
-                // 取消按鈕
-                cancelBtn.addEventListener('click', () => {
-                    // 關閉對話框
-                    confirmOverlay.classList.remove('show');
-                    setTimeout(() => confirmOverlay.style.display = 'none', 300);
-                    
-                    // 取消 toggle
-                    cleanupToggle.checked = false;
-                });
-                
-                // 點擊遮罩也關閉
-                confirmOverlay.addEventListener('click', (e) => {
-                    if (e.target === confirmOverlay) {
-                        confirmOverlay.classList.remove('show');
-                        setTimeout(() => confirmOverlay.style.display = 'none', 300);
-                        cleanupToggle.checked = false;
-                    }
-                });
-            }
-
-            const downloadBtn = document.getElementById('downloadStlBtn');
-            
-            if (!downloadBtn) {
-                console.error('❌ 找不到下載 STL 按鈕');
-                return;
-            }
-            
-            downloadBtn.addEventListener('click', async () => {
-                console.log('🧪 點擊下載 STL 按鈕');
-                
-                // Step 1: 密碼驗證
-                const password = prompt('請輸入測試密碼：');
-                if (!password) {
-                    console.log('❌ 未輸入密碼');
-                    return;
-                }
-
-                console.log('🔐 驗證密碼中...');
-                
-                // 驗證密碼（使用折扣碼 Google Sheets）
-                const isValid = await verifyTestPassword(password);
-                if (!isValid) {
-                    alert('❌ 密碼錯誤');
-                    return;
-                }
-
-            // Step 2: 檢查是否有生成模型
-            const letter1 = document.getElementById('letter1').value;
-            const letter2 = document.getElementById('letter2').value;
-            const font1 = document.getElementById('font1-select')?.value || 
-                         document.getElementById('font1-btn')?.getAttribute('data-selected');
-            const font2 = document.getElementById('font2-select')?.value || 
-                         document.getElementById('font2-btn')?.getAttribute('data-selected');
-
-            if (!letter1 || !letter2 || !font1 || !font2 || font1 === 'reselect' || font2 === 'reselect') {
-                showToast('請先選擇字母和字體並生成 3D 模型');
-                return;
-            }
-
-            // Step 3: 準備參數
-            // 使用全域的 modelCenter（和加入購物車一樣）
-            console.log('🔍 模型中心: x=' + modelCenter.x.toFixed(3) + ', y=' + modelCenter.y.toFixed(3) + ', z=' + modelCenter.z.toFixed(3));
-            
-            if (bailMesh) {
-                console.log('🔍 墜頭絕對位置: x=' + bailMesh.position.x.toFixed(3) + ', y=' + bailMesh.position.y.toFixed(3) + ', z=' + bailMesh.position.z.toFixed(3));
-            }
-            
-            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
-            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
-            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
-            const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
-            
-            console.log('🔍 墜頭相對位置: x=' + bailRelativeX.toFixed(3) + ', y=' + bailRelativeY.toFixed(3) + ', z=' + bailRelativeZ.toFixed(3) + ', rotation=' + bailRot.toFixed(1) + '°');
-            
-            const params = {
-                letter1: letter1,
-                letter2: letter2,
-                font1: font1,
-                font2: font2,
-                size: parseInt(document.getElementById('size').value),
-                bailRelativeX: bailRelativeX,
-                bailRelativeY: bailRelativeY,
-                bailRelativeZ: bailRelativeZ,
-                bailRotation: bailRot
-            };
-
-            console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
-            console.log('🔍 墜頭位置:', { bailRelativeX, bailRelativeY, bailRelativeZ, bailRot });
-
-            // Step 4: 呼叫後端（帶重試機制）
-            console.log('🌐 呼叫後端:', `${BACKEND_URL}/api/generate-stl`);
-            
-            let retryCount = 0;
-            const maxRetries = 2;
-            
-            while (retryCount <= maxRetries) {
-                try {
-                    if (retryCount > 0) {
-                        console.log(`🔄 重試第 ${retryCount} 次...`);
-                        // 等待 2 秒後重試
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                    
-                    const response = await fetch(`${BACKEND_URL}/api/generate-stl`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(params)
-                    });
-
-                    console.log('📡 後端回應狀態:', response.status);
-
-                    if (!response.ok) {
-                        if (response.status === 502 && retryCount < maxRetries) {
-                            console.warn('⚠️ 後端暫時無法回應 (502)，將重試...');
-                            retryCount++;
-                            continue; // 重試
-                        }
-                        
-                        const errorText = await response.text();
-                        console.error('❌ 後端錯誤:', errorText);
-                        throw new Error(`HTTP ${response.status}: ${errorText}`);
-                    }
-
-                    // Step 5: 下載 STL
-                    console.log('💾 開始下載 STL...');
-                    const blob = await response.blob();
-                    console.log('📦 Blob 大小:', blob.size, 'bytes');
-                    
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `DUET_${letter1}${letter2}_${font1.replace(/ /g, '_')}_${font2.replace(/ /g, '_')}.stl`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-
-                    console.log('✅ STL 下載完成');
-                    showToast('✅ STL 檔案已下載');
-                    break; // 成功，跳出重試迴圈
-
-                } catch (error) {
-                    if (retryCount < maxRetries && (error.message.includes('502') || error.message.includes('Load failed'))) {
-                        console.warn('⚠️ 請求失敗，將重試...', error.message);
-                        retryCount++;
-                        continue; // 重試
-                    }
-                    
-                    // 重試次數用完或其他錯誤
-                    console.error('❌ STL 生成失敗:', error);
-                    alert(`❌ STL 生成失敗: ${error.message}\n\n建議：請稍後再試，或聯繫客服`);
-                    break;
-                }
-            }
-        });
-        
-        }); // 結束 DOMContentLoaded
-
-        // 驗證測試密碼（使用後端折扣碼 API）
-        async function verifyTestPassword(password) {
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/validate-promo`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        promoCode: password.trim().toUpperCase(),
-                        total: 1000  // 隨便一個金額，只是要驗證碼是否存在
-                    })
-                });
-
-                const data = await response.json();
-                console.log('🔑 密碼驗證結果:', data);
-                
-                // 如果是有效的折扣碼，就允許下載
-                return data.valid === true;
-            } catch (error) {
-                console.error('❌ 密碼驗證失敗:', error);
-                return false;
-            }
-        }
     </script>
     <!-- 佩戴模擬預覽模組 - Temporarily Disabled -->
     <!-- <script src="wearing-preview.js"></script> -->
-    <!-- 🧹 清理確認對話框 -->
-    <div class="cleanup-confirm-overlay" id="cleanup-confirm-overlay">
-        <div class="cleanup-confirm-dialog">
-            <div class="cleanup-confirm-title">清理零碎部件</div>
-            <div class="cleanup-confirm-message">
-                此功能運算約需 3-5 分鐘，為避免浪費您的時間，請先確認作品中有與主體分離的零碎物件，才需開啟此功能。
-            </div>
-            <div class="cleanup-confirm-buttons">
-                <button class="cleanup-confirm-btn cancel" id="cleanup-cancel-btn">取消</button>
-                <button class="cleanup-confirm-btn confirm" id="cleanup-confirm-btn">確認</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 自訂提示（低調風格） -->
-    <div id="custom-toast" class="custom-toast">
-        <div class="custom-toast-content">
-            <span class="custom-toast-icon">✨</span>
-            <span class="custom-toast-message"></span>
-        </div>
-    </div>
-
 </body>
 
 </html>

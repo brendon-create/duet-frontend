@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET 字體測試工具 (含 Fillet)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* 左側控制面板 */
+        .control-panel {
+            width: 350px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #d4af37;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        select option {
+            background: #2a2a2a;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #d4af37;
+            border: none;
+            border-radius: 6px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #f0c040;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            text-transform: none;
+            color: #d4af37;
+            font-size: 13px;
+        }
+        
+        /* 右側 3D 顯示區 */
+        .viewer {
+            flex: 1;
+            position: relative;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .info-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .info-overlay div {
+            margin-bottom: 5px;
+        }
+        
+        .info-overlay strong {
+            color: #d4af37;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .section-title {
+            font-size: 13px;
+            color: #d4af37;
+            margin: 20px 0 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h1>🧪 DUET 字體測試工具</h1>
+        
+        <div class="control-group">
+            <label>Letter 1</label>
+            <input type="text" id="letter1" value="A" maxlength="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Letter 2</label>
+            <input type="text" id="letter2" value="B" maxlength="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Font 1</label>
+            <select id="font1">
+                <option value="">Loading fonts...</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Font 2</label>
+            <select id="font2">
+                <option value="">Loading fonts...</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Height (mm)</label>
+            <select id="size">
+                <option value="12">12mm</option>
+                <option value="15" selected>15mm</option>
+                <option value="18">18mm</option>
+                <option value="20">20mm</option>
+            </select>
+        </div>
+        
+        <div class="section-title">🧪 實驗功能</div>
+        
+        <div class="control-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-fillet">
+                <label for="enable-fillet">啟用倒圓角 (Fillet)</label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Fillet Radius (mm)</label>
+            <select id="fillet-radius">
+                <option value="0.3">0.3mm (細)</option>
+                <option value="0.5" selected>0.5mm (中)</option>
+                <option value="0.8">0.8mm (粗)</option>
+                <option value="1.0">1.0mm (很粗)</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-cleanup">
+                <label for="enable-cleanup">清理分離碎片</label>
+            </div>
+        </div>
+        
+        <button onclick="generateModel()">🔨 生成 3D 模型</button>
+        
+        <div class="section-title">📊 幾何資訊</div>
+        <div id="geo-info" style="font-size: 11px; color: rgba(255,255,255,0.6); line-height: 1.6;">
+            尚未生成模型
+        </div>
+    </div>
+    
+    <div class="viewer">
+        <div id="canvas-container"></div>
+        <div class="info-overlay">
+            <div><strong>控制：</strong></div>
+            <div>滑鼠左鍵 = 旋轉</div>
+            <div>滑鼠右鍵 = 平移</div>
+            <div>滾輪 = 縮放</div>
+        </div>
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>生成中...</div>
+        </div>
+    </div>
+
+    <!-- Three.js 核心庫 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.0/build/index.module.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        console.log('🚀 腳本開始載入...', new Date().toISOString());
+        
+        import * as THREE from 'three';
+        console.log('✅ Three.js 載入完成');
+        
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+        console.log('✅ Three.js 附加元件載入完成');
+        
+        // 使用完整的 CDN URL 載入 three-bvh-csg
+        console.log('⏳ 載入 three-bvh-csg...');
+        const { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } = await import('https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.16/build/index.module.min.js');
+        console.log('✅ three-bvh-csg 載入完成');
+
+        // 全域變數
+        let scene, camera, renderer, controls, envMap;
+        let mainMesh = null;
+        let loadedFonts = {};
+
+        // 初始化場景
+        function initScene() {
+            console.log('🎬 初始化場景...');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            // 相機
+            camera = new THREE.PerspectiveCamera(
+                45,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, -30, 30);
+            camera.up.set(0, 0, 1);
+
+            // 渲染器
+            const container = document.getElementById('canvas-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            container.appendChild(renderer.domElement);
+
+            // 控制器
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // 增強光照
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+            directionalLight1.position.set(5, 5, 10);
+            scene.add(directionalLight1);
+
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight2.position.set(-5, -5, 8);
+            scene.add(directionalLight2);
+
+            // 載入 HDR 環境貼圖（用於金屬反射）
+            const rgbeLoader = new RGBELoader();
+            const hdrUrls = [
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_small_08_1k.hdr',
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_small_08_1k.hdr'
+            ];
+            
+            let currentHdrIndex = 0;
+            
+            function loadHDRWithFallback() {
+                if (currentHdrIndex >= hdrUrls.length) {
+                    console.log('⚠️ HDR 載入失敗，使用程序化環境貼圖');
+                    createProceduralEnvMap();
+                    showInitialSphere();
+                    return;
+                }
+
+                const hdrUrl = hdrUrls[currentHdrIndex];
+                console.log(`🔄 嘗試載入 HDR: ${hdrUrl}`);
+
+                const timeout = setTimeout(() => {
+                    console.log('⏱️ HDR 超時，切換備援');
+                    currentHdrIndex++;
+                    loadHDRWithFallback();
+                }, 5000);
+
+                rgbeLoader.load(
+                    hdrUrl,
+                    (texture) => {
+                        clearTimeout(timeout);
+                        texture.mapping = THREE.EquirectangularReflectionMapping;
+                        envMap = texture;
+                        scene.environment = envMap;
+                        console.log('✅ HDR 載入成功');
+                        showInitialSphere();
+                    },
+                    undefined,
+                    (error) => {
+                        clearTimeout(timeout);
+                        console.log(`❌ HDR 載入失敗: ${error.message}`);
+                        currentHdrIndex++;
+                        loadHDRWithFallback();
+                    }
+                );
+            }
+
+            loadHDRWithFallback();
+
+            // 視窗調整
+            window.addEventListener('resize', onResize);
+
+            // 動畫循環
+            animate();
+        }
+
+        // 創建程序化環境貼圖（HDR 失敗時的備援）
+        function createProceduralEnvMap() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 創建漸層（模擬攝影棚光線）
+            const gradient = ctx.createLinearGradient(0, 0, 0, size);
+            gradient.addColorStop(0, '#ffffff');    // 頂部白色（天光）
+            gradient.addColorStop(0.5, '#cccccc');  // 中間灰色
+            gradient.addColorStop(1, '#666666');    // 底部深灰（地面）
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // 添加一些高光點（模擬攝影棚燈具）
+            ctx.fillStyle = '#ffffff';
+            const lights = [
+                { x: size * 0.25, y: size * 0.2, r: 40 },
+                { x: size * 0.75, y: size * 0.2, r: 40 },
+                { x: size * 0.5, y: size * 0.4, r: 30 }
+            ];
+
+            lights.forEach(light => {
+                const lightGradient = ctx.createRadialGradient(
+                    light.x, light.y, 0,
+                    light.x, light.y, light.r
+                );
+                lightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                lightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = lightGradient;
+                ctx.fillRect(0, 0, size, size);
+            });
+
+            // 轉換為 Texture
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            envMap = texture;
+            scene.environment = envMap;
+
+            console.log('✅ 使用程序化環境貼圖');
+        }
+
+        function showInitialSphere() {
+            if (mainMesh) {
+                scene.remove(mainMesh);
+                mainMesh.geometry?.dispose();
+                mainMesh.material?.dispose();
+            }
+
+            const geometry = new THREE.SphereGeometry(7.5, 64, 64);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                metalness: 1.0,
+                roughness: 0.1,
+                envMap: envMap,
+                envMapIntensity: 2.0
+            });
+            mainMesh = new THREE.Mesh(geometry, material);
+            scene.add(mainMesh);
+        }
+
+        function onResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 字體載入（完全保留原始邏輯）
+        async function loadFont(fontName) {
+            if (loadedFonts[fontName]) return loadedFonts[fontName];
+
+            const loader = new FontLoader();
+            console.log(`📥 載入字體: ${fontName}`);
+
+            const packageName = fontName.toLowerCase().replace(/ /g, '-');
+
+            const sources = [
+                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
+                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
+                `https://cdn.jsdelivr.net/gh/7dir/json-fonts/Roboto/${fontName.replace(/ /g, '_')}_Regular.json`,
+                `https://cdn.jsdelivr.net/gh/emreacar/google-fonts-as-json/fonts/${fontName.replace(/ /g, '%20')}/regular.json`,
+            ];
+
+            for (const url of sources) {
+                try {
+                    console.log(`   嘗試: ${url}`);
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const json = await response.json();
+                            if (json.glyphs || json.data) {
+                                const fontData = json.data || json;
+                                const font = loader.parse(fontData);
+                                loadedFonts[fontName] = font;
+                                console.log(`✅ 成功: ${fontName}`);
+                                return font;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log(`   ✗ 失敗: ${e.message}`);
+                }
+            }
+
+            console.warn(`⚠️ 使用預設字體替代: ${fontName}`);
+            return new Promise((resolve) => {
+                loader.load(
+                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                    (font) => resolve(font)
+                );
+            });
+        }
+
+        // 🧹 移除分離的碎片（呼叫後端 + STLLoader）
+        async function removeSeparatedPieces(geometry) {
+            console.log('🧹 清理分離物件...');
+            console.log('   呼叫後端生成乾淨預覽...');
+            
+            try {
+                const startTime = Date.now();
+                
+                // 1. 請求後端生成乾淨的 STL 並取得 token
+                const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        letter1: document.getElementById('letter1').value,
+                        letter2: document.getElementById('letter2').value,
+                        font1: document.getElementById('font1').value,
+                        font2: document.getElementById('font2').value,
+                        size: parseInt(document.getElementById('size').value)
+                    })
+                });
+                
+                if (!response1.ok) {
+                    console.error('❌ 請求失敗:', response1.status);
+                    return geometry;
+                }
+                
+                const { token, expires_in } = await response1.json();
+                console.log(`   ✅ 取得 token (有效期: ${expires_in}秒)`);
+                
+                // 2. 用 token 下載乾淨的 STL
+                const response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
+                
+                if (!response2.ok) {
+                    const error = await response2.json();
+                    console.error('❌ 下載失敗:', error.error);
+                    return geometry;
+                }
+                
+                const arrayBuffer = await response2.arrayBuffer();
+                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`   ✅ STL 下載完成 (耗時: ${elapsedTime}秒, 大小: ${(arrayBuffer.byteLength/1024).toFixed(1)}KB)`);
+                
+                // 3. 用 STLLoader 解析
+                const loader = new STLLoader();
+                const cleanGeometry = loader.parse(arrayBuffer);
+                console.log(`   ✅ STL 解析完成`);
+                console.log(`   清理前頂點數: ${geometry.attributes.position.count}`);
+                console.log(`   清理後頂點數: ${cleanGeometry.attributes.position.count}`);
+                
+                // 4. 計算 normals
+                cleanGeometry.computeVertexNormals();
+                
+                console.log('   ✅ 清理完成');
+                return cleanGeometry;
+                
+            } catch (error) {
+                console.error('❌ 清理失敗:', error);
+                console.log('   保留原始 geometry');
+                return geometry;
+            }
+        }
+
+        // 🎯 局部 Laplacian Smoothing：只平滑尖銳邊緣
+        function applyFilletToGeometry(geometry, radius) {
+            console.log(`🔬 局部平滑尖銳邊緣（< 100°），半徑: ${radius}mm`);
+            
+            const startTime = performance.now();
+            const position = geometry.attributes.position;
+            const normal = geometry.attributes.normal;
+            
+            // Step 1: 建立頂點鄰接關係
+            console.log('   Step 1/4: 建立鄰接圖...');
+            const neighbors = buildNeighborGraph(geometry);
+            
+            // Step 2: 找出所有尖銳邊緣（< 100°）
+            console.log('   Step 2/4: 偵測尖銳邊緣...');
+            const sharpEdges = detectSharpEdges(geometry, 100); // 100度閾值
+            
+            if (sharpEdges.length === 0) {
+                console.log('   ⚠️ 未找到尖銳邊緣');
+                return geometry;
+            }
+            
+            console.log(`   找到 ${sharpEdges.length} 條尖銳邊緣`);
+            
+            // Step 3: 標記需要平滑的頂點（尖銳邊緣 + N層鄰居）
+            console.log('   Step 3/4: 標記影響區域...');
+            const smoothLayers = Math.max(1, Math.ceil(radius / 0.5)); // 半徑越大，影響層數越多
+            const verticesToSmooth = markSmoothRegion(sharpEdges, neighbors, smoothLayers);
+            
+            console.log(`   影響 ${verticesToSmooth.size} 個頂點（${smoothLayers} 層鄰居）`);
+            
+            // Step 4: 只對標記的頂點做 Laplacian Smoothing
+            console.log('   Step 4/4: 局部平滑...');
+            const iterations = Math.max(3, Math.ceil(radius / 0.3)); // 半徑越大，迭代越多
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                localLaplacianSmooth(geometry, verticesToSmooth, neighbors, 0.5);
+            }
+            
+            console.log(`   平滑迭代 ${iterations} 次完成`);
+            
+            // 重新計算法線
+            geometry.computeVertexNormals();
+            
+            const endTime = performance.now();
+            console.log(`✅ 局部平滑完成，耗時: ${(endTime - startTime).toFixed(0)}ms`);
+            console.log(`   頂點總數: ${position.count.toLocaleString()}`);
+            console.log(`   修改頂點: ${verticesToSmooth.size.toLocaleString()} (${(verticesToSmooth.size / position.count * 100).toFixed(1)}%)`);
+            
+            return geometry;
+        }
+        
+        // 建立頂點鄰接圖
+        function buildNeighborGraph(geometry) {
+            const position = geometry.attributes.position;
+            const neighbors = Array.from({ length: position.count }, () => new Set());
+            
+            // 遍歷所有三角形
+            for (let i = 0; i < position.count; i += 3) {
+                const i0 = i;
+                const i1 = i + 1;
+                const i2 = i + 2;
+                
+                // 三條邊的鄰接關係
+                neighbors[i0].add(i1);
+                neighbors[i0].add(i2);
+                neighbors[i1].add(i0);
+                neighbors[i1].add(i2);
+                neighbors[i2].add(i0);
+                neighbors[i2].add(i1);
+            }
+            
+            return neighbors;
+        }
+        
+        // 偵測尖銳邊緣（夾角 < threshold）
+        function detectSharpEdges(geometry, angleDegrees) {
+            const position = geometry.attributes.position;
+            const normal = geometry.attributes.normal;
+            const edgeMap = new Map();
+            
+            // 遍歷所有三角形，記錄每條邊的相鄰面
+            for (let i = 0; i < position.count; i += 3) {
+                const i0 = i, i1 = i + 1, i2 = i + 2;
+                
+                // 計算這個三角形的平均法線
+                const n0 = new THREE.Vector3().fromBufferAttribute(normal, i0);
+                const n1 = new THREE.Vector3().fromBufferAttribute(normal, i1);
+                const n2 = new THREE.Vector3().fromBufferAttribute(normal, i2);
+                const faceNormal = new THREE.Vector3().add(n0).add(n1).add(n2).normalize();
+                
+                // 三條邊
+                const edges = [
+                    [i0, i1],
+                    [i1, i2],
+                    [i2, i0]
+                ];
+                
+                edges.forEach(([v0, v1]) => {
+                    const key = v0 < v1 ? `${v0}-${v1}` : `${v1}-${v0}`;
+                    
+                    if (!edgeMap.has(key)) {
+                        edgeMap.set(key, { vertices: [v0, v1], normals: [] });
+                    }
+                    edgeMap.get(key).normals.push(faceNormal);
+                });
+            }
+            
+            console.log(`      總共 ${edgeMap.size} 條唯一邊`);
+            
+            // 統計邊的類型
+            const edgeStats = { border: 0, shared2: 0, sharedMore: 0 };
+            const angleDistribution = [];
+            
+            for (const [key, edge] of edgeMap) {
+                if (edge.normals.length === 1) edgeStats.border++;
+                else if (edge.normals.length === 2) edgeStats.shared2++;
+                else edgeStats.sharedMore++;
+                
+                if (edge.normals.length === 2) {
+                    const angle = edge.normals[0].angleTo(edge.normals[1]);
+                    const degrees = THREE.MathUtils.radToDeg(angle);
+                    angleDistribution.push(degrees);
+                }
+            }
+            
+            console.log(`      邊統計: 邊界=${edgeStats.border}, 共享2面=${edgeStats.shared2}, 共享>2面=${edgeStats.sharedMore}`);
+            
+            if (angleDistribution.length > 0) {
+                angleDistribution.sort((a, b) => a - b);
+                const min = angleDistribution[0];
+                const max = angleDistribution[angleDistribution.length - 1];
+                const median = angleDistribution[Math.floor(angleDistribution.length / 2)];
+                console.log(`      角度範圍: 最小=${min.toFixed(1)}°, 中位數=${median.toFixed(1)}°, 最大=${max.toFixed(1)}°`);
+                
+                // 顯示角度分布
+                const bins = [0, 30, 60, 90, 120, 150, 180];
+                const counts = Array(bins.length - 1).fill(0);
+                angleDistribution.forEach(a => {
+                    for (let i = 0; i < bins.length - 1; i++) {
+                        if (a >= bins[i] && a < bins[i + 1]) {
+                            counts[i]++;
+                            break;
+                        }
+                    }
+                });
+                console.log(`      角度分布:`);
+                for (let i = 0; i < counts.length; i++) {
+                    if (counts[i] > 0) {
+                        console.log(`         ${bins[i]}-${bins[i+1]}°: ${counts[i]} 條邊 (${(counts[i]/angleDistribution.length*100).toFixed(1)}%)`);
+                    }
+                }
+            }
+            
+            // 找出尖銳邊緣
+            const sharpEdges = [];
+            
+            for (const [key, edge] of edgeMap) {
+                if (edge.normals.length === 2) {
+                    const angle = edge.normals[0].angleTo(edge.normals[1]);
+                    const degrees = THREE.MathUtils.radToDeg(angle);
+                    
+                    // 🔧 調整：夾角 > 5° 且 < threshold
+                    if (degrees > 5 && degrees < angleDegrees) {
+                        sharpEdges.push({
+                            vertices: edge.vertices,
+                            angle: degrees
+                        });
+                    }
+                }
+            }
+            
+            if (sharpEdges.length > 0) {
+                const avgAngle = sharpEdges.reduce((sum, e) => sum + e.angle, 0) / sharpEdges.length;
+                console.log(`      平均尖銳角度: ${avgAngle.toFixed(1)}°`);
+            }
+            
+            return sharpEdges;
+        }
+        
+        // 標記需要平滑的頂點區域（尖銳邊 + N層鄰居）
+        function markSmoothRegion(sharpEdges, neighbors, layers) {
+            const marked = new Set();
+            
+            // 初始：標記所有尖銳邊的頂點
+            for (const edge of sharpEdges) {
+                marked.add(edge.vertices[0]);
+                marked.add(edge.vertices[1]);
+            }
+            
+            // 擴展 N 層鄰居
+            for (let layer = 0; layer < layers; layer++) {
+                const toAdd = new Set();
+                
+                for (const v of marked) {
+                    for (const neighbor of neighbors[v]) {
+                        toAdd.add(neighbor);
+                    }
+                }
+                
+                for (const v of toAdd) {
+                    marked.add(v);
+                }
+            }
+            
+            return marked;
+        }
+        
+        // 局部 Laplacian Smoothing（只動指定的頂點）
+        function localLaplacianSmooth(geometry, verticesToSmooth, neighbors, lambda) {
+            const position = geometry.attributes.position;
+            const newPositions = new Float32Array(position.count * 3);
+            
+            // 複製所有頂點位置
+            for (let i = 0; i < position.count; i++) {
+                newPositions[i * 3] = position.getX(i);
+                newPositions[i * 3 + 1] = position.getY(i);
+                newPositions[i * 3 + 2] = position.getZ(i);
+            }
+            
+            // 只對標記的頂點做平滑
+            for (const i of verticesToSmooth) {
+                const v = new THREE.Vector3().fromBufferAttribute(position, i);
+                
+                if (neighbors[i].size === 0) continue;
+                
+                // 計算鄰居的平均位置
+                const avg = new THREE.Vector3();
+                for (const ni of neighbors[i]) {
+                    avg.add(new THREE.Vector3().fromBufferAttribute(position, ni));
+                }
+                avg.divideScalar(neighbors[i].size);
+                
+                // 加權混合：原位置 + lambda * (平均位置 - 原位置)
+                const newV = v.clone().lerp(avg, lambda);
+                
+                newPositions[i * 3] = newV.x;
+                newPositions[i * 3 + 1] = newV.y;
+                newPositions[i * 3 + 2] = newV.z;
+            }
+            
+            // 更新幾何
+            geometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+        }
+
+        // 3D 建模（完全保留原始邏輯）
+        async function generateModel() {
+            const loadingDiv = document.getElementById('loading');
+            const loadingText = loadingDiv.querySelector('div:last-child');
+            loadingDiv.style.display = 'block';
+            loadingText.textContent = '生成中...';
+            
+            const l1 = document.getElementById('letter1').value;
+            const l2 = document.getElementById('letter2').value;
+            const f1Name = document.getElementById('font1').value;
+            const f2Name = document.getElementById('font2').value;
+            const targetHeight = parseInt(document.getElementById('size').value);
+            const enableFillet = document.getElementById('enable-fillet').checked;
+            const filletRadius = parseFloat(document.getElementById('fillet-radius').value);
+
+            if (!l1 || !l2 || !f1Name || !f2Name) {
+                alert('請填寫所有欄位');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            console.log('🔨 開始生成:', { l1, l2, f1Name, f2Name, targetHeight });
+
+            // 移除舊物件
+            if (mainMesh) {
+                scene.remove(mainMesh);
+                mainMesh.geometry?.dispose();
+                mainMesh.material?.dispose();
+            }
+
+            // 載入字體
+            const f1 = await loadFont(f1Name);
+            const f2 = await loadFont(f2Name);
+
+            const evaluator = new Evaluator();
+            const baseMat = new THREE.MeshStandardMaterial();
+
+            // ✅ 保留原始參數
+            const depth = targetHeight * 18.0;
+            const params = {
+                font: null,
+                size: 50,
+                height: depth,
+                curveSegments: 28,
+                bevelEnabled: false,
+                bevelThickness: 2.0,
+                bevelSize: 0.8,
+                bevelSegments: 16
+            };
+
+            // === Letter 1 (正面) ===
+            const geo1 = new TextGeometry(l1, { ...params, font: f1 });
+            geo1.computeBoundingBox();
+            const bbox1 = geo1.boundingBox;
+            const actualHeight1 = bbox1.max.y - bbox1.min.y;
+            const scale1 = targetHeight / actualHeight1;
+
+            geo1.scale(scale1, scale1, scale1);
+            geo1.center();
+
+            // 旋轉到 Z-up
+            geo1.rotateX(Math.PI / 2);
+
+            const brush1 = new Brush(geo1, baseMat);
+            brush1.updateMatrixWorld();
+
+            // === Letter 2 (側面) ===
+            const geo2 = new TextGeometry(l2, { ...params, font: f2 });
+            geo2.computeBoundingBox();
+            const bbox2 = geo2.boundingBox;
+            const actualHeight2 = bbox2.max.y - bbox2.min.y;
+            const scale2 = targetHeight / actualHeight2;
+
+            geo2.scale(scale2, scale2, scale2);
+            geo2.center();
+
+            // 旋轉到 Z-up 並側面
+            geo2.rotateX(Math.PI / 2);
+            geo2.rotateZ(Math.PI / 2);
+
+            const brush2 = new Brush(geo2, baseMat);
+            brush2.updateMatrixWorld();
+
+            console.log('🔄 執行 CSG 交集運算...');
+            console.warn('⚠️ 複雜字體可能需要 10-60 秒，請耐心等待...');
+            loadingText.textContent = 'CSG 交集運算中...（複雜字體可能需要 30-60 秒）';
+            
+            // 讓 UI 有機會更新
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.time('CSG 交集耗時');
+
+            // CSG 交集
+            let result;
+            try {
+                result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+                console.timeEnd('CSG 交集耗時');
+                console.log(`   ✅ CSG 完成！結果頂點數: ${result.geometry.attributes.position.count}`);
+            } catch (error) {
+                console.error('❌ CSG 運算失敗:', error);
+                alert('CSG 運算失敗，請嘗試其他字體組合');
+                document.getElementById('loading').style.display = 'none';
+                showInitialSphere();
+                return;
+            }
+
+            if (result.geometry.attributes.position.count === 0) {
+                alert('交集為空！請選擇其他字母或字體');
+                document.getElementById('loading').style.display = 'none';
+                showInitialSphere();
+                return;
+            }
+
+            // 修復幾何體
+            result.geometry = result.geometry.toNonIndexed();
+            result.geometry.deleteAttribute('normal');
+            result.geometry.computeVertexNormals();
+
+            // 🧹 清理碎片（如果啟用）
+            const enableCleanup = document.getElementById('enable-cleanup').checked;
+            if (enableCleanup) {
+                console.log('🧹 清理分離物件...');
+                result.geometry = await removeSeparatedPieces(result.geometry);
+            }
+
+            // 🧪 實驗：倒圓角
+            if (enableFillet) {
+                console.log('🧪 啟用倒圓角功能');
+                result.geometry = applyFilletToGeometry(result.geometry, filletRadius);
+            }
+
+            // 輕微膨脹修正（保留原始邏輯）
+            const offset = 0.001;
+            const positions = result.geometry.attributes.position;
+            const normals = result.geometry.attributes.normal;
+
+            for (let i = 0; i < positions.count; i++) {
+                const nx = normals.getX(i);
+                const ny = normals.getY(i);
+                const nz = normals.getZ(i);
+
+                positions.setXYZ(
+                    i,
+                    positions.getX(i) + nx * offset,
+                    positions.getY(i) + ny * offset,
+                    positions.getZ(i) + nz * offset
+                );
+            }
+            positions.needsUpdate = true;
+
+            // 材質
+            result.material = new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                metalness: 1.0,
+                roughness: 0.1,
+                envMap: envMap,
+                envMapIntensity: 2.0
+            });
+
+            mainMesh = result;
+            scene.add(mainMesh);
+
+            // 顯示幾何資訊
+            result.geometry.computeBoundingBox();
+            const bbox = result.geometry.boundingBox;
+            const vertexCount = result.geometry.attributes.position.count;
+            const triangleCount = vertexCount / 3;
+
+            document.getElementById('geo-info').innerHTML = `
+                <strong>頂點數:</strong> ${vertexCount.toLocaleString()}<br>
+                <strong>三角形數:</strong> ${triangleCount.toLocaleString()}<br>
+                <strong>尺寸:</strong><br>
+                  X: ${(bbox.max.x - bbox.min.x).toFixed(2)}mm<br>
+                  Y: ${(bbox.max.y - bbox.min.y).toFixed(2)}mm<br>
+                  Z: ${(bbox.max.z - bbox.min.z).toFixed(2)}mm<br>
+                <strong>清理碎片:</strong> ${enableCleanup ? '✅ 啟用' : '⊗ 關閉'}<br>
+                <strong>Fillet:</strong> ${enableFillet ? `✅ 啟用 (${filletRadius}mm)` : '⊗ 關閉'}
+            `;
+
+            console.log('✅ 生成完成！');
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // 載入字體清單（從 fonts.json 或內建清單）
+        async function loadFontList() {
+            let fonts = [];
+            
+            // 嘗試從 GitHub 載入完整字體清單
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/brendon-create/duet-frontend/main/fonts.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    fonts = data.fonts || [];
+                    console.log(`✅ 從 GitHub 載入 ${fonts.length} 種字體`);
+                }
+            } catch (e) {
+                console.log('⚠️ 無法從 GitHub 載入，使用內建字體清單');
+            }
+            
+            // Fallback: 使用內建字體清單
+            if (fonts.length === 0) {
+                fonts = [
+                    "Abel", "Abril Fatface", "Alegreya", "Alex Brush", "Alfa Slab One",
+                    "Alice", "Allura", "Amatic SC", "Amiri", "Anton",
+                    "Audiowide", "Bangers", "Bebas Neue", "Bitter", "Bree Serif",
+                    "Cabin", "Cinzel", "Comfortaa", "Cookie", "Dancing Script",
+                    "EB Garamond", "Fjalla One", "Great Vibes", "Indie Flower", "Lobster",
+                    "Merriweather", "Montserrat", "Nunito", "Oswald", "Pacifico",
+                    "Playfair Display", "Poppins", "Quicksand", "Raleway", "Righteous",
+                    "Roboto", "Rubik", "Sacramento", "Shadows Into Light", "Tangerine",
+                    "Ubuntu", "Varela Round", "Vollkorn"
+                ];
+            }
+
+            const select1 = document.getElementById('font1');
+            const select2 = document.getElementById('font2');
+
+            // 清空並重新填入
+            select1.innerHTML = '';
+            select2.innerHTML = '';
+
+            fonts.forEach(font => {
+                const option1 = document.createElement('option');
+                option1.value = font;
+                option1.textContent = font;
+                select1.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = font;
+                option2.textContent = font;
+                select2.appendChild(option2);
+            });
+
+            // 預設選擇
+            select1.value = "Playfair Display";
+            select2.value = "Montserrat";
+            
+            console.log(`✅ 字體清單載入完成，共 ${fonts.length} 種`);
+        }
+
+        // 初始化
+        initScene();
+        loadFontList();
+
+        // 暴露給全域
+        window.generateModel = generateModel;
+    </script>
+</body>
+</html>

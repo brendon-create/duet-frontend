@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET Fillet Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #control-panel {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            width: 280px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            z-index: 100;
+        }
+        
+        h1 { font-size: 24px; margin-bottom: 4px; color: #d4af37; }
+        .subtitle { font-size: 11px; color: #888; letter-spacing: 2px; margin-bottom: 20px; }
+        
+        .control-group { margin-bottom: 16px; }
+        label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; }
+        
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .font-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            color: #d4af37;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        
+        .font-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            color: #d4af37;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        
+        .font-dropdown {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .font-dropdown select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            appearance: none;
+        }
+        
+        .font-dropdown::after {
+            content: '▼';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #d4af37;
+            pointer-events: none;
+            font-size: 10px;
+        }
+        
+        .font-option {
+            padding: 8px;
+            background: #1a1a2e;
+        }
+        
+        .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
+        
+        #viewport {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+        }
+        
+        /* Fillet Controls */
+        .fillet-section {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .fillet-section h3 {
+            color: #d4af37;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        
+        .fillet-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .fillet-row label { flex: 1; margin: 0; }
+        
+        input[type="range"] {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #d4af37;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .value-display { color: #d4af37; font-weight: 600; min-width: 40px; text-align: right; }
+        
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #d4af37;
+            cursor: pointer;
+        }
+        
+        #render-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #d4af37, #aa8a2e);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        
+        #render-btn:hover { transform: translateY(-2px); }
+        
+        /* Loading */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 40px; height: 40px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: #666; font-size: 12px; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+        <div class="loading-text">LOADING...</div>
+    </div>
+    
+    <div id="viewport"></div>
+    
+    <div id="control-panel">
+        <h1>DUET</h1>
+        <div class="subtitle">FILLET TEST</div>
+        
+        <div class="control-group">
+            <label>Letter 1</label>
+            <select id="letter1"></select>
+            <div class="font-dropdown">
+                <select id="font1">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Merriweather">Merriweather</option>
+                    <option value="Nunito">Nunito</option>
+                    <option value="Raleway">Raleway</option>
+                    <option value="Oswald">Oswald</option>
+                    <option value="Source Sans Pro">Source Sans Pro</option>
+                    <option value="Slabo 27px">Slabo 27px</option>
+                    <option value="PT Sans">PT Sans</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Letter 2</label>
+            <select id="letter2"></select>
+            <div class="font-dropdown">
+                <select id="font2">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Merriweather">Merriweather</option>
+                    <option value="Nunito">Nunito</option>
+                    <option value="Raleway">Raleway</option>
+                    <option value="Oswald">Oswald</option>
+                    <option value="Source Sans Pro">Source Sans Pro</option>
+                    <option value="Slabo 27px">Slabo 27px</option>
+                    <option value="PT Sans">PT Sans</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="control-group">
+            <label>Size (mm)</label>
+            <select id="size">
+                <option value="8">8 mm</option>
+                <option value="10">10 mm</option>
+                <option value="12">12 mm</option>
+                <option value="15" selected>15 mm</option>
+                <option value="18">18 mm</option>
+            </select>
+        </div>
+        
+        <!-- Fillet Test Controls -->
+        <div class="fillet-section">
+            <h3>🎯 Fillet Test</h3>
+            <div style="font-size: 10px; color: #888; margin-bottom: 10px; line-height: 1.4;">
+                None: 無倒角<br>
+                Corner: 角落模式（負空間模具）<br>
+                Edge: 邊緣模式（負空間模具）<br>
+                Minkowski: 頂點偏移圓角<br>
+                Laplacian: 平滑化圓角
+            </div>
+            <div class="fillet-row">
+                <label>Mode</label>
+                <select id="fillet-mode" style="flex:1">
+                    <option value="none">None (Original)</option>
+                    <option value="corner">Corner (角落模式)</option>
+                    <option value="edge">Edge (邊緣模式)</option>
+                    <option value="minkowski">Minkowski (頂點偏移)</option>
+                    <option value="laplacian">Laplacian (平滑圓角)</option>
+                </select>
+            </div>
+            <div class="fillet-row">
+                <label>Radius</label>
+                <input type="range" id="fillet-radius" min="0" max="3" step="0.1" value="0">
+                <span class="value-display" id="fillet-radius-val">0</span>
+            </div>
+            <div class="fillet-row">
+                <label>Auto Radius</label>
+                <input type="checkbox" id="fillet-auto-radius" checked style="width:auto;">
+            </div>
+            <div id="generating" style="display:none; text-align:center; padding:8px; color:#d4af37; font-size:12px; background:rgba(212,175,55,0.1); border-radius:6px; margin-bottom:8px;">
+                Generating<span class="dots">...</span>
+            </div>
+            <button id="render-btn">Render with Fillet</button>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div style="font-size: 11px; color: #666;">
+            <p>Use mouse to rotate/zoom</p>
+        </div>
+    </div>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://esm.sh/three@0.160.0",
+            "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
+            "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
+            "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3",
+            "opentype": "https://esm.sh/opentype.js@1.3.4"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        // Global error handler
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('🔴 Global error:', msg, 'line:', line);
+            document.getElementById('loader').style.display = 'none';
+            alert('Error: ' + msg);
+        };
+        
+        // Test if script is running
+        console.log('🔶 Script started');
+        
+        import * as THREE from 'three';
+        console.log('🔶 THREE imported');
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        console.log('🔶 OrbitControls imported');
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+        console.log('🔶 TextGeometry imported');
+        import { Evaluator, Brush, INTERSECTION, DIFFERENCE } from 'three-bvh-csg';
+        console.log('🔶 All imports done');
+        
+        // === Global Variables ===
+        let scene, camera, renderer, controls, envMap;
+        let mainMesh = null;
+        let loadedFonts = {};
+        let currentFont1 = 'Arial';
+        let currentFont2 = 'Arial';
+        
+        // === Initialize Scene ===
+        function init() {
+            const viewport = document.getElementById('viewport');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // Camera - looking at the model from an angle
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(20, -30, 20);  // Angled view
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            viewport.appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lights - 增加更多光源讓模型更清晰
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            // 主光源
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            directionalLight.position.set(30, 30, 30);
+            scene.add(directionalLight);
+            
+            // 側面光
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight2.position.set(-20, 10, 20);
+            scene.add(directionalLight2);
+            
+            // 背面光
+            const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight3.position.set(0, -20, -20);
+            scene.add(directionalLight3);
+            
+            // 底部光（讓陰影不明顯）
+            const directionalLight4 = new THREE.DirectionalLight(0xffffff, 0.3);
+            directionalLight4.position.set(0, -10, 5);
+            scene.add(directionalLight4);
+            
+            // Environment Map (simple)
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            envMap = pmremGenerator.fromScene(new THREE.Scene()).texture;
+            scene.environment = envMap;
+            
+            // Resize handler
+            window.addEventListener('resize', onWindowResize);
+            
+            // Animation loop
+            animate();
+            
+            console.log('✅ Scene initialized');
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // === Font Loading ===
+        async function loadFont(fontName) {
+            if (loadedFonts[fontName]) return loadedFonts[fontName];
+            
+            const loader = new FontLoader();
+            const packageName = fontName.toLowerCase().replace(/ /g, '-');
+            
+            const sources = [
+                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
+                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
+            ];
+            
+            for (const url of sources) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const json = await response.json();
+                        const fontData = json.data || json;
+                        const font = loader.parse(fontData);
+                        loadedFonts[fontName] = font;
+                        console.log(`✓ Loaded: ${fontName}`);
+                        return font;
+                    }
+                } catch (e) {
+                    console.log(`✗ Failed: ${url}`);
+                }
+            }
+            
+            // Fallback
+            console.warn(`⚠ Using fallback for: ${fontName}`);
+            return new Promise((resolve) => {
+                loader.load(
+                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                    (font) => resolve(font)
+                );
+            });
+        }
+        
+        // === 3D Modeling Core ===
+        async function createModel() {
+            const letter1 = document.getElementById('letter1').value;
+            const letter2 = document.getElementById('letter2').value;
+            const targetHeight = parseInt(document.getElementById('size').value);
+            const filletRadius = parseFloat(document.getElementById('fillet-radius').value);
+            const filletMode = document.getElementById('fillet-mode').value;
+            
+            console.log(`📐 Creating model: ${letter1} × ${letter2}, height: ${targetHeight}mm, fillet: ${filletRadius}mm (${filletMode})`);
+            
+            // Show generating indicator
+            document.getElementById('generating').style.display = 'block';
+            document.getElementById('render-btn').disabled = true;
+            
+            // Remove old mesh properly
+            if (mainMesh) {
+                scene.remove(mainMesh);
+                mainMesh.geometry.dispose();
+                if (mainMesh.material) {
+                    if (Array.isArray(mainMesh.material)) {
+                        mainMesh.material.forEach(m => m.dispose());
+                    } else {
+                        mainMesh.material.dispose();
+                    }
+                }
+            }
+            
+            // Load fonts
+            const f1 = await loadFont(currentFont1);
+            const f2 = await loadFont(currentFont2);
+            
+            const evaluator = new Evaluator();
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            // TextGeometry parameters
+            const depth = targetHeight * 18.0;
+            const params = {
+                font: null,
+                size: 50,
+                height: depth,
+                curveSegments: 28,
+                bevelEnabled: false,
+                bevelThickness: 2.0,
+                bevelSize: 0.8,
+                bevelSegments: 16
+            };
+            
+            // === Letter 1 (XZ plane) - 旋轉 90 度讓字母站起來 ===
+            const geo1 = new TextGeometry(letter1, { ...params, font: f1 });
+            geo1.computeBoundingBox();
+            const bbox1 = geo1.boundingBox;
+            const actualHeight1 = bbox1.max.y - bbox1.min.y;
+            const scale1 = targetHeight / actualHeight1;
+            geo1.scale(scale1, scale1, scale1);
+            geo1.center();
+            
+            // 保存 Letter 1 的 BBox 信息
+            geo1.computeBoundingBox();
+            const bbox1AfterScale = geo1.boundingBox;
+            window.letter1BBox = {
+                width: bbox1AfterScale.max.x - bbox1AfterScale.min.x,
+                height: bbox1AfterScale.max.y - bbox1AfterScale.min.y,
+                depth: bbox1AfterScale.max.z - bbox1AfterScale.min.z,
+                offsetX: (bbox1AfterScale.max.x + bbox1AfterScale.min.x) / 2,
+                offsetY: (bbox1AfterScale.max.y + bbox1AfterScale.min.y) / 2,
+                offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
+            };
+            
+            // === 使用全域軸旋轉（與 design-studio 相同）===
+            // Letter 1: XZ 平面，沿 Y 軸 extrude
+            const rotationMatrix1 = new THREE.Matrix4();
+            rotationMatrix1.makeRotationX(Math.PI / 2);
+            geo1.applyMatrix4(rotationMatrix1);
+            
+            const brush1 = new Brush(geo1, baseMat);
+            brush1.updateMatrixWorld();
+            
+            // === Letter 2 (YZ plane) ===
+            const geo2 = new TextGeometry(letter2, { ...params, font: f2 });
+            geo2.computeBoundingBox();
+            const actualHeight2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+            const scale2 = targetHeight / actualHeight2;
+            geo2.scale(scale2, scale2, scale2);
+            geo2.center();
+            
+            // 保存 Letter 2 的 BBox 信息
+            geo2.computeBoundingBox();
+            const bbox2AfterScale = geo2.boundingBox;
+            window.letter2BBox = {
+                width: bbox2AfterScale.max.x - bbox2AfterScale.min.x,
+                height: bbox2AfterScale.max.y - bbox2AfterScale.min.y,
+                depth: bbox2AfterScale.max.z - bbox2AfterScale.min.z,
+                offsetX: (bbox2AfterScale.max.x + bbox2AfterScale.min.x) / 2,
+                offsetY: (bbox2AfterScale.max.y + bbox2AfterScale.min.y) / 2,
+                offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
+            };
+            
+            // === 使用全域軸旋轉（與 design-studio 相同）===
+            // Letter 2: 先繞 X 軸轉 90 度，再繞 Z 軸轉 90 度
+            const rotationMatrix2X = new THREE.Matrix4();
+            rotationMatrix2X.makeRotationX(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2X);
+            
+            const rotationMatrix2Z = new THREE.Matrix4();
+            rotationMatrix2Z.makeRotationZ(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2Z);
+            
+            const brush2 = new Brush(geo2, baseMat);
+            brush2.updateMatrixWorld();
+            
+            // === CSG Intersection ===
+            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+            
+            // === Apply Fillet (if enabled) ===
+            const autoRadius = document.getElementById('fillet-auto-radius').checked;
+            
+            if (filletMode !== 'none') {
+                console.log(`🔧 Applying fillet: ${filletRadius}mm using ${filletMode}, autoRadius=${autoRadius}`);
+                const filletBrush = new Brush(result.geometry.clone(), baseMat);
+                filletBrush.updateMatrixWorld();
+                result = applyFillet(filletBrush, filletRadius, filletMode, autoRadius);
+            }
+            
+            // Fix geometry
+            result.geometry = result.geometry.toNonIndexed();
+            result.geometry.deleteAttribute('normal');
+            result.geometry.computeVertexNormals();
+            
+            // Center
+            result.geometry.computeBoundingBox();
+            const bbox = result.geometry.boundingBox;
+            const center = bbox.getCenter(new THREE.Vector3());
+            result.geometry.translate(-center.x, -center.y, -center.z);
+            
+            // 旋轉讓模型立起來（Z-up 系統）
+            // Letter1 旋轉 X: -90度，Letter2 已經複雜旋轉
+            // 最終結果需要再旋轉才能正常顯示
+            const finalRotation = new THREE.Matrix4();
+            finalRotation.makeRotationX(-Math.PI / 2);
+            result.geometry.applyMatrix4(finalRotation);
+            
+            // Create mesh
+            mainMesh = result;
+            scene.add(mainMesh);
+            
+            // Hide generating indicator
+            document.getElementById('generating').style.display = 'none';
+            document.getElementById('render-btn').disabled = false;
+            
+            console.log('✅ Model created');
+        }
+        
+        // === Fillet Implementation ===
+        function applyFillet(result, radius, mode, autoRadius) {
+            console.log(`🔧 Fillet: radius=${radius}mm, mode=${mode}, autoRadius=${autoRadius}`);
+            
+            if (mode === 'none' || radius === 0) {
+                console.log('⚠ No fillet applied');
+                return result;
+            }
+            
+            const evaluator = new Evaluator();
+            const filletMat = new THREE.MeshStandardMaterial();
+            
+            // 1. 先取得模型邊界
+            result.geometry.computeBoundingBox();
+            const bbox = result.geometry.boundingBox;
+            const sizeX = bbox.max.x - bbox.min.x;
+            const sizeY = bbox.max.y - bbox.min.y;
+            const sizeZ = bbox.max.z - bbox.min.z;
+            
+            console.log(`📐 Model bbox: X[${bbox.min.x.toFixed(1)}, ${bbox.max.x.toFixed(1)}] Y[${bbox.min.y.toFixed(1)}, ${bbox.max.y.toFixed(1)}] Z[${bbox.min.z.toFixed(1)}, ${bbox.max.z.toFixed(1)}]`);
+            
+            // 2. 使用射線投射找出真正的邊緣位置
+            const edgeInfo = findIntersectionEdges(result);
+            
+            console.log(`📍 Edge at X=0: Y range [${edgeInfo.edgeAtX.min.toFixed(2)}, ${edgeInfo.edgeAtX.max.toFixed(2)}]`);
+            console.log(`📍 Edge at Y=0: X range [${edgeInfo.edgeAtY.min.toFixed(2)}, ${edgeInfo.edgeAtY.max.toFixed(2)}]`);
+            
+            if (mode === 'corner') {
+                // === 角落模式：只在 90 度交角處 fillet ===
+                console.log(`🔨 實作 Corner Mode fillet: 半徑 ${radius}mm`);
+                
+                // 3. 找出交集角落（邊緣重疊區域）
+                const corners = findIntersectionCorners(edgeInfo);
+                
+                console.log(`📍 Found ${corners.length} corners to fillet`);
+                
+                // 4. 測量每個角落的邊長並計算動態半徑
+                let finalResult = result;
+                
+                for (let i = 0; i < corners.length; i++) {
+                    const corner = corners[i];
+                    
+                    // 測量邊長
+                    const edgeLengthX = measureEdgeLengthAtCorner(corner, 'x', edgeInfo);
+                    const edgeLengthY = measureEdgeLengthAtCorner(corner, 'y', edgeInfo);
+                    
+                    console.log(`📏 Corner ${i+1} at (${corner.x.toFixed(1)}, ${corner.y.toFixed(1)}): edgeX=${edgeLengthX.toFixed(2)}, edgeY=${edgeLengthY.toFixed(2)}`);
+                    
+                    // 計算半徑：如果啟用自動半徑，則取較短邊的一半
+                    let actualRadius = radius;
+                    if (autoRadius) {
+                        actualRadius = Math.min(edgeLengthX, edgeLengthY) / 2;
+                        console.log(`📐 Auto radius: min(${edgeLengthX.toFixed(2)}, ${edgeLengthY.toFixed(2)}) / 2 = ${actualRadius.toFixed(2)}`);
+                    }
+                    
+                    if (actualRadius <= 0.1) continue;
+                    
+                    console.log(`🔨 Creating corner fillet at (${corner.x.toFixed(1)}, ${corner.y.toFixed(1)}) with radius ${actualRadius.toFixed(2)}mm`);
+                    
+                    // 建立 L 型倒角工具（正方形減圓柱）
+                    // 演算法：
+                    // 1. 建立 R×R 正方形
+                    // 2. 在 L 型內角建立半徑 R 的圓形
+                    // 3. 正方形 - 圓形 = L 型工具
+                    const squareSize = actualRadius * 2;
+                    
+                    // 建立正方形
+                    const squareGeo = new THREE.BoxGeometry(squareSize, squareSize, sizeZ + 2);
+                    const squareBrush = new Brush(squareGeo, filletMat);
+                    
+                    // 根據角落位置調整正方形位置
+                    // L 型工具的內角應該對齊 corner
+                    const offsetX = corner.x >= 0 ? -squareSize/2 + actualRadius : squareSize/2 - actualRadius;
+                    const offsetY = corner.y >= 0 ? -squareSize/2 + actualRadius : squareSize/2 - actualRadius;
+                    squareBrush.position.set(corner.x + offsetX, corner.y + offsetY, 0);
+                    squareBrush.updateMatrixWorld();
+                    
+                    // 建立圓柱（放在 L 型內角）
+                    const cylGeo = new THREE.CylinderGeometry(actualRadius, actualRadius, sizeZ + 3, 16);
+                    const cylBrush = new Brush(cylGeo, filletMat);
+                    
+                    // 圓柱中心位置：角落 + 半徑（在正確的方向）
+                    const cylX = corner.x >= 0 ? corner.x + actualRadius : corner.x - actualRadius;
+                    const cylY = corner.y >= 0 ? corner.y + actualRadius : corner.y - actualRadius;
+                    cylBrush.position.set(cylX, cylY, 0);
+                    cylBrush.updateMatrixWorld();
+                    
+                    // 正方形減圓柱 = L型
+                    let filletTool;
+                    try {
+                        filletTool = evaluator.evaluate(squareBrush, cylBrush, DIFFERENCE);
+                        filletTool.updateMatrixWorld();
+                        
+                        // 執行減法
+                        const newResult = evaluator.evaluate(finalResult, filletTool, DIFFERENCE);
+                        newResult.updateMatrixWorld();
+                        finalResult = newResult;
+                        
+                        console.log(`✅ Corner fillet applied at (${corner.x.toFixed(1)}, ${corner.y.toFixed(1)})`);
+                    } catch (e) {
+                        console.log(`⚠ Corner fillet failed:`, e.message);
+                    }
+                }
+                
+                return finalResult;
+                
+            } else if (mode === 'edge') {
+                // === 邊緣模式：整個 Z 軸方向交介面 fillet ===
+                console.log(`🔨 實作 Edge Mode fillet: 半徑 ${radius}mm`);
+                
+                let finalResult = result;
+                
+                // 計算實際半徑
+                let actualRadius = radius;
+                if (autoRadius) {
+                    const minEdge = Math.min(sizeX, sizeY);
+                    actualRadius = minEdge / 2;
+                    console.log(`📐 Auto radius: min(${sizeX.toFixed(2)}, ${sizeY.toFixed(2)}) / 2 = ${actualRadius.toFixed(2)}`);
+                }
+                
+                // 在 X=0 處的邊緣進行 fillet
+                if (edgeInfo.edgeAtX.max - edgeInfo.edgeAtX.min > actualRadius * 2) {
+                    console.log(`🔨 Creating edge fillet at X=0`);
+                    
+                    // 建立 L 型工具沿著 Y 方向
+                    const toolWidth = edgeInfo.edgeAtX.max - edgeInfo.edgeAtX.min + actualRadius * 4;
+                    const toolHeight = actualRadius;
+                    
+                    // 上邊
+                    const topToolGeo = new THREE.BoxGeometry(toolWidth, toolHeight, sizeZ + 2);
+                    const topTool = new Brush(topToolGeo, filletMat);
+                    topTool.position.set(0, edgeInfo.edgeAtX.max - toolHeight/2, 0);
+                    topTool.updateMatrixWorld();
+                    
+                    // 下邊
+                    const bottomToolGeo = new THREE.BoxGeometry(toolWidth, toolHeight, sizeZ + 2);
+                    const bottomTool = new Brush(bottomToolGeo, filletMat);
+                    bottomTool.position.set(0, edgeInfo.edgeAtX.min + toolHeight/2, 0);
+                    bottomTool.updateMatrixWorld();
+                    
+                    // 合併為一個工具
+                    let edgeTool = evaluator.evaluate(topTool, bottomTool, DIFFERENCE);
+                    edgeTool.updateMatrixWorld();
+                    
+                    // 執行減法
+                    try {
+                        const newResult = evaluator.evaluate(finalResult, edgeTool, DIFFERENCE);
+                        newResult.updateMatrixWorld();
+                        finalResult = newResult;
+                        console.log(`✅ Edge fillet applied at X=0`);
+                    } catch (e) {
+                        console.log(`⚠ Edge fillet failed:`, e.message);
+                    }
+                }
+                
+                // 在 Y=0 處的邊緣進行 fillet
+                if (edgeInfo.edgeAtY.max - edgeInfo.edgeAtY.min > actualRadius * 2) {
+                    console.log(`🔨 Creating edge fillet at Y=0`);
+                    
+                    // 建立 L 型工具沿著 X 方向
+                    const toolWidth = actualRadius;
+                    const toolHeight = edgeInfo.edgeAtY.max - edgeInfo.edgeAtY.min + actualRadius * 4;
+                    
+                    // 右邊
+                    const rightToolGeo = new THREE.BoxGeometry(toolWidth, toolHeight, sizeZ + 2);
+                    const rightTool = new Brush(rightToolGeo, filletMat);
+                    rightTool.position.set(edgeInfo.edgeAtY.max - toolWidth/2, 0, 0);
+                    rightTool.updateMatrixWorld();
+                    
+                    // 左邊
+                    const leftToolGeo = new THREE.BoxGeometry(toolWidth, toolHeight, sizeZ + 2);
+                    const leftTool = new Brush(leftToolGeo, filletMat);
+                    leftTool.position.set(edgeInfo.edgeAtY.min + toolWidth/2, 0, 0);
+                    leftTool.updateMatrixWorld();
+                    
+                    // 合併為一個工具
+                    let edgeTool = evaluator.evaluate(rightTool, leftTool, DIFFERENCE);
+                    edgeTool.updateMatrixWorld();
+                    
+                    // 執行減法
+                    try {
+                        const newResult = evaluator.evaluate(finalResult, edgeTool, DIFFERENCE);
+                        newResult.updateMatrixWorld();
+                        finalResult = newResult;
+                        console.log(`✅ Edge fillet applied at Y=0`);
+                    } catch (e) {
+                        console.log(`⚠ Edge fillet failed:`, e.message);
+                    }
+                }
+                
+                return finalResult;
+            }
+            
+            if (mode === 'minkowski') {
+                // === Minkowski 圓角模式 ===
+                // 使用球體膨脹方式：將模型與球體進行 Minkowski Sum
+                console.log(`🔨 實作 Minkowski 圓角: 半徑 ${radius}mm`);
+                
+                const geometry = result.geometry;
+                geometry.computeBoundingBox();
+                const bbox = geometry.boundingBox;
+                
+                // 計算實際半徑 - 使用更大的值
+                let actualRadius = radius;
+                if (autoRadius || radius === 0) {
+                    const minEdge = Math.min(
+                        edgeInfo.edgeAtX.max - edgeInfo.edgeAtX.min,
+                        edgeInfo.edgeAtY.max - edgeInfo.edgeAtY.min
+                    );
+                    actualRadius = minEdge * 0.4; // 使用 40%
+                    console.log(`📐 Auto radius: ${actualRadius.toFixed(2)}`);
+                }
+                
+                console.log(`🔧 Using radius: ${actualRadius.toFixed(2)}mm`);
+                
+                try {
+                    // 方法：膨脹原始模型，然後與原始模型交集
+                    const expandedPositions = geometry.attributes.position.array.slice();
+                    const normals = geometry.attributes.normal;
+                    
+                    // 使用更大的偏移量
+                    for (let i = 0; i < normals.count; i++) {
+                        const nx = normals.getX(i);
+                        const ny = normals.getY(i);
+                        const nz = normals.getZ(i);
+                        const offset = actualRadius; // 直接使用半徑
+                        
+                        expandedPositions[i * 3] += nx * offset;
+                        expandedPositions[i * 3 + 1] += ny * offset;
+                        expandedPositions[i * 3 + 2] += nz * offset;
+                    }
+                    
+                    const expandedGeo = new THREE.BufferGeometry();
+                    expandedGeo.setAttribute('position', new THREE.BufferAttribute(expandedPositions, 3));
+                    expandedGeo.computeVertexNormals();
+                    
+                    const expandedBrush = new Brush(expandedGeo, filletMat);
+                    expandedBrush.updateMatrixWorld();
+                    
+                    // 交集運算
+                    const minkowskiResult = evaluator.evaluate(result, expandedBrush, INTERSECTION);
+                    minkowskiResult.updateMatrixWorld();
+                    
+                    console.log('✅ Minkowski 圓角 applied');
+                    return minkowskiResult;
+                } catch (e) {
+                    console.log(`⚠ Minkowski failed:`, e.message);
+                }
+                
+                return result;
+            }
+            
+            if (mode === 'laplacian') {
+                // === Laplacian Smoothing 圓角模式 ===
+                // 強化版本：對靠近邊緣的頂點進行更強的平滑化
+                console.log(`🔨 實作 Laplacian Smoothing 圓角: 半徑 ${radius}mm`);
+                
+                let geometry = result.geometry;
+                
+                // 確保是 non-indexed
+                if (geometry.index) {
+                    geometry = geometry.toNonIndexed();
+                }
+                geometry.deleteAttribute('normal');
+                
+                const positions = geometry.attributes.position;
+                const count = positions.count;
+                const originalPositions = positions.array;
+                
+                // 計算實際半徑
+                let smoothingRadius = radius;
+                if (autoRadius || radius === 0) {
+                    const minEdge = Math.min(
+                        edgeInfo.edgeAtX.max - edgeInfo.edgeAtX.min,
+                        edgeInfo.edgeAtY.max - edgeInfo.edgeAtY.min
+                    );
+                    smoothingRadius = minEdge * 0.35;
+                    console.log(`📐 Smoothing radius: ${smoothingRadius.toFixed(2)}`);
+                }
+                
+                console.log(`🔧 Using smoothing radius: ${smoothingRadius.toFixed(2)}mm`);
+                
+                // 複製位置數據
+                const newPositions = new Float32Array(originalPositions);
+                
+                // 找出在邊緣附近的頂點（靠近 X=0 或 Y=0）
+                const edgeThreshold = smoothingRadius * 1.5;
+                const edgeVertices = new Set();
+                
+                for (let i = 0; i < count; i++) {
+                    const x = originalPositions[i * 3];
+                    const y = originalPositions[i * 3 + 1];
+                    
+                    // 檢查是否靠近邊緣
+                    if (Math.abs(x) < edgeThreshold || Math.abs(y) < edgeThreshold) {
+                        edgeVertices.add(i);
+                    }
+                }
+                
+                console.log(`📍 Found ${edgeVertices.size} vertices near edges (threshold: ${edgeThreshold.toFixed(2)})`);
+                
+                if (edgeVertices.size > 0) {
+                    // 對邊緣頂點進行 Laplacian 平滑化 - 更強的效果
+                    const iterations = 5;
+                    const strength = 0.4;
+                    
+                    for (let iter = 0; iter < iterations; iter++) {
+                        for (let i = 0; i < count; i++) {
+                            if (!edgeVertices.has(i)) continue;
+                            
+                            // 找附近的頂點（位置接近的）
+                            const x = newPositions[i * 3];
+                            const y = newPositions[i * 3 + 1];
+                            const z = newPositions[i * 3 + 2];
+                            
+                            // 找同面或其他靠近的頂點
+                            let avgX = 0, avgY = 0, avgZ = 0, count2 = 0;
+                            const nearbyThreshold = smoothingRadius * 0.8;
+                            
+                            for (let j = 0; j < count; j++) {
+                                if (i === j) continue;
+                                
+                                const dx = newPositions[j * 3] - x;
+                                const dy = newPositions[j * 3 + 1] - y;
+                                const dz = newPositions[j * 3 + 2] - z;
+                                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                                
+                                if (dist < nearbyThreshold) {
+                                    avgX += newPositions[j * 3];
+                                    avgY += newPositions[j * 3 + 1];
+                                    avgZ += newPositions[j * 3 + 2];
+                                    count2++;
+                                }
+                            }
+                            
+                            if (count2 > 0) {
+                                avgX /= count2;
+                                avgY /= count2;
+                                avgZ /= count2;
+                                
+                                // 平滑化
+                                newPositions[i * 3] = newPositions[i * 3] * (1 - strength) + avgX * strength;
+                                newPositions[i * 3 + 1] = newPositions[i * 3 + 1] * (1 - strength) + avgY * strength;
+                                newPositions[i * 3 + 2] = newPositions[i * 3 + 2] * (1 - strength) + avgZ * strength;
+                            }
+                        }
+                    }
+                    
+                    // 更新幾何體
+                    geometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+                    geometry.computeVertexNormals();
+                    
+                    console.log('✅ Laplacian Smoothing 圓角 applied');
+                    return result;
+                }
+                
+                return result;
+            }
+            
+            return result;
+        }
+        
+        // === 測量角落的邊長 ===
+        function measureEdgeLengthAtCorner(corner, direction, edgeInfo) {
+            if (direction === 'x') {
+                // 測量 X 方向的邊長
+                const edgeX = edgeInfo.edgeAtX;
+                return edgeX.max - edgeX.min;
+            } else {
+                // 測量 Y 方向的邊長
+                const edgeY = edgeInfo.edgeAtY;
+                return edgeY.max - edgeY.min;
+            }
+        }
+        
+        // === 構建頂點鄰居關係 ===
+        function buildVertexNeighbors(geometry) {
+            const positions = geometry.attributes.position;
+            const vertexNeighbors = new Array(positions.count).fill(null).map(() => []);
+            
+            // 獲取索引
+            const index = geometry.index;
+            
+            if (index) {
+                // 索引幾何體
+                const indices = index.array;
+                for (let i = 0; i < indices.length; i += 3) {
+                    const a = indices[i];
+                    const b = indices[i + 1];
+                    const c = indices[i + 2];
+                    
+                    // 添加鄰居關係
+                    addNeighbor(vertexNeighbors, a, b);
+                    addNeighbor(vertexNeighbors, b, c);
+                    addNeighbor(vertexNeighbors, c, a);
+                }
+            } else {
+                // 非索引幾何體 - 每三個頂點是一個面
+                for (let i = 0; i < positions.count; i += 3) {
+                    const a = i;
+                    const b = i + 1;
+                    const c = i + 2;
+                    
+                    addNeighbor(vertexNeighbors, a, b);
+                    addNeighbor(vertexNeighbors, b, c);
+                    addNeighbor(vertexNeighbors, c, a);
+                }
+            }
+            
+            return vertexNeighbors;
+        }
+        
+        function addNeighbor(neighbors, a, b) {
+            if (!neighbors[a].includes(b)) neighbors[a].push(b);
+            if (!neighbors[b].includes(a)) neighbors[b].push(a);
+        }
+        
+        // === 找出尖銳邊緣上的頂點 ===
+        function findSharpEdgeVertices(geometry, thresholdAngle) {
+            const positions = geometry.attributes.position;
+            const sharpEdgeVertices = new Set();
+            
+            // 獲取索引
+            const index = geometry.index;
+            const indices = index ? index.array : null;
+            
+            // 收集所有面
+            const faces = [];
+            if (indices) {
+                for (let i = 0; i < indices.length; i += 3) {
+                    faces.push([indices[i], indices[i + 1], indices[i + 2]]);
+                }
+            } else {
+                for (let i = 0; i < positions.count; i += 3) {
+                    faces.push([i, i + 1, i + 2]);
+                }
+            }
+            
+            // 計算每個面的法向量
+            const faceNormals = [];
+            for (const [a, b, c] of faces) {
+                const ax = positions.getX(a), ay = positions.getY(a), az = positions.getZ(a);
+                const bx = positions.getX(b), by = positions.getY(b), bz = positions.getZ(b);
+                const cx = positions.getX(c), cy = positions.getY(c), cz = positions.getZ(c);
+                
+                // 計算邊向量
+                const ux = bx - ax, uy = by - ay, uz = bz - az;
+                const vx = cx - ax, vy = cy - ay, vz = cz - az;
+                
+                // 叉積
+                const nx = uy * vz - uz * vy;
+                const ny = uz * vx - ux * vz;
+                const nz = ux * vy - uy * vx;
+                
+                // 標準化
+                const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+                faceNormals.push([nx / len, ny / len, nz / len]);
+            }
+            
+            // 找出共享邊的面，計算夾角
+            const edgeFaces = new Map(); // edge -> [faceIndex1, faceIndex2]
+            
+            for (let i = 0; i < faces.length; i++) {
+                const [a, b, c] = faces[i];
+                const edges = [[a, b], [b, c], [c, a]];
+                
+                for (const [v1, v2] of edges) {
+                    const key = v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
+                    if (!edgeFaces.has(key)) {
+                        edgeFaces.set(key, []);
+                    }
+                    edgeFaces.get(key).push(i);
+                }
+            }
+            
+            // 檢查每條邊的夾角
+            for (const [key, faceIdx] of edgeFaces) {
+                if (faceIdx.length < 2) continue;
+                
+                const n1 = faceNormals[faceIdx[0]];
+                const n2 = faceNormals[faceIdx[1]];
+                
+                // 計算法向量夾角
+                const dot = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+                const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+                
+                // 如果夾角小於閾值，這條邊是尖銳邊緣
+                if (angle < thresholdAngle) {
+                    const [v1, v2] = key.split('-').map(Number);
+                    sharpEdgeVertices.add(v1);
+                    sharpEdgeVertices.add(v2);
+                }
+            }
+            
+            return sharpEdgeVertices;
+        }
+        
+        // === 輔助函數：找邊緣 ===
+        function findIntersectionEdges(brush) {
+            const geometry = brush.geometry;
+            geometry.computeBoundingBox();
+            const bbox = geometry.boundingBox;
+            
+            // 使用射線投射找出 X=0 處的邊緣範圍
+            const edgeAtX = findEdgeAtX(brush, 0, 30);
+            
+            // 使用射線投射找出 Y=0 處的邊緣範圍
+            const edgeAtY = findEdgeAtY(brush, 0, 30);
+            
+            return { edgeAtX, edgeAtY };
+        }
+        
+        function findEdgeAtX(brush, targetY, samples) {
+            const geometry = brush.geometry;
+            geometry.computeBoundingBox();
+            const bbox = geometry.boundingBox;
+            
+            let minX = bbox.max.x;
+            let maxX = bbox.min.x;
+            
+            // 在 Y=targetY 處採樣多個 X 點
+            for (let i = 0; i <= samples; i++) {
+                const x = bbox.min.x + (bbox.max.x - bbox.min.x) * (i / samples);
+                const hasGeom = testPointInMesh(brush, x, targetY, 0);
+                
+                if (hasGeom) {
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                }
+            }
+            
+            return { min: minX, max: maxX };
+        }
+        
+        function findEdgeAtY(brush, targetX, samples) {
+            const geometry = brush.geometry;
+            geometry.computeBoundingBox();
+            const bbox = geometry.boundingBox;
+            
+            let minY = bbox.max.y;
+            let maxY = bbox.min.y;
+            
+            // 在 X=targetX 處採樣多個 Y 點
+            for (let i = 0; i <= samples; i++) {
+                const y = bbox.min.y + (bbox.max.y - bbox.min.y) * (i / samples);
+                const hasGeom = testPointInMesh(brush, targetX, y, 0);
+                
+                if (hasGeom) {
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+            
+            return { min: minY, max: maxY };
+        }
+        
+        // 找出交集角落
+        function findIntersectionCorners(edgeInfo) {
+            const corners = [];
+            const edgeX = edgeInfo.edgeAtX;
+            const edgeY = edgeInfo.edgeAtY;
+            
+            // 四個可能的角落區域
+            // 左下：X 在 edgeY 範圍內，Y 在 edgeX 範圍內
+            if (edgeY.min <= 0 && edgeY.max >= 0 && edgeX.min <= 0 && edgeX.max >= 0) {
+                corners.push({ x: 0, y: 0 });
+            }
+            
+            // 如果邊緣延伸超過原點，分別在四個象限尋找
+            // 第一象限 (+X, +Y)
+            if (edgeY.max > 0 && edgeX.max > 0) {
+                corners.push({ x: Math.min(edgeY.max, edgeX.max) * 0.7, y: Math.min(edgeY.max, edgeX.max) * 0.7 });
+            }
+            // 第二象限 (-X, +Y)  
+            if (edgeY.max > 0 && edgeX.min < 0) {
+                corners.push({ x: Math.max(edgeY.max, edgeX.min) * -0.7, y: Math.min(edgeY.max, edgeX.max) * 0.7 });
+            }
+            // 第三象限 (-X, -Y)
+            if (edgeY.min < 0 && edgeX.min < 0) {
+                corners.push({ x: Math.max(edgeY.min, edgeX.min) * -0.7, y: Math.max(edgeY.min, edgeX.min) * -0.7 });
+            }
+            // 第四象限 (+X, -Y)
+            if (edgeY.min < 0 && edgeX.max > 0) {
+                corners.push({ x: Math.min(edgeY.max, edgeX.max) * 0.7, y: Math.max(edgeY.min, edgeX.min) * -0.7 });
+            }
+            
+            return corners;
+        }
+        
+        // 測試點是否在網格內
+        function testPointInMesh(brush, x, y, z) {
+            const raycaster = new THREE.Raycaster();
+            const origin = new THREE.Vector3(x, y, z - 10);
+            const direction = new THREE.Vector3(0, 0, 1);
+            
+            raycaster.set(origin, direction);
+            
+            const intersects = raycaster.intersectObject(brush, true);
+            return intersects.length > 0;
+        }
+        
+        // === UI Setup ===
+        function setupUI() {
+            // Letters
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const select1 = document.getElementById('letter1');
+            const select2 = document.getElementById('letter2');
+            
+            letters.forEach(l => {
+                select1.add(new Option(l, l));
+                select2.add(new Option(l, l));
+            });
+            
+            select1.value = 'A';
+            select2.value = 'B';
+            
+            // Font dropdowns - style options with their fonts
+            const font1Select = document.getElementById('font1');
+            const font2Select = document.getElementById('font2');
+            
+            font1Select.value = 'Playfair Display';
+            font2Select.value = 'Playfair Display';
+            currentFont1 = 'Playfair Display';
+            currentFont2 = 'Playfair Display';
+            
+            // Apply font family to each option
+            font1Select.addEventListener('change', (e) => {
+                currentFont1 = e.target.value;
+                createModel();
+            });
+            
+            font2Select.addEventListener('change', (e) => {
+                currentFont2 = e.target.value;
+                createModel();
+            });
+            
+            // Load Google Fonts for preview - load on demand when font changes
+            // For now, just set basic styles for dropdown
+            
+            // Letter selection triggers model update
+            select1.addEventListener('change', createModel);
+            select2.addEventListener('change', createModel);
+            
+            // Size
+            document.getElementById('size').addEventListener('change', createModel);
+            
+            // Fillet controls
+            const radiusSlider = document.getElementById('fillet-radius');
+            const radiusVal = document.getElementById('fillet-radius-val');
+            radiusSlider.addEventListener('input', () => {
+                radiusVal.textContent = radiusSlider.value;
+            });
+            
+            // Mode selection
+            document.getElementById('fillet-mode').addEventListener('change', createModel);
+            
+            // Auto radius checkbox
+            document.getElementById('fillet-auto-radius').addEventListener('change', createModel);
+            
+            // Render button
+            document.getElementById('render-btn').addEventListener('click', createModel);
+        }
+        
+        // === Start ===
+        console.log('🚀 Starting DUET Fillet Test...');
+        
+        // 確保 loader 被隱藏
+        document.getElementById('loader').style.display = 'none';
+        
+        // 立即初始化
+        try {
+            init();
+            setupUI();
+            console.log('✅ Init complete, creating model...');
+            createModel();
+        } catch (e) {
+            console.error('❌ Startup error:', e);
+            alert('Error: ' + e.message);
+        }
+    </script>
+</body>
+</html>
