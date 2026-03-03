@@ -1682,6 +1682,24 @@
         // 檢查 URL 參數 ?dev=true 或程式碼設定
         DevFeatures.init();
         // DevFeatures.enabled = true;  // 或直接在這裡啟用
+
+        // ==========================================
+        // 🔥 後端 Warm-up（防止 Render 閒置休眠）
+        // ==========================================
+        function warmUpBackend() {
+            const backendUrl = window.BACKEND_URL || 'https://duet-backend-wlw8.onrender.com';
+            fetch(`${backendUrl}/health`)
+                .then(res => {
+                    if (res.ok) {
+                        console.log('🔥 Backend warm-up 完成');
+                    }
+                })
+                .catch(err => console.log('🔥 Backend warm-up 失敗:', err));
+        }
+        // 頁面載入時 warm-up（延遲 2 秒確保 BACKEND_URL 已設定）
+        setTimeout(warmUpBackend, 2000);
+        // 每 5 分鐘 warm-up 一次（防止長時間閒置）
+        setInterval(warmUpBackend, 5 * 60 * 1000);
         
         // ==========================================
         // Three.js 模組引入
@@ -3786,13 +3804,28 @@
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
+            // Hero 視角 (45度角) - 與 product-photo-studio.js 一致
+            camera.position.set(
+                center.x + distance * 0.8,
+                center.y - distance * 1.2,
+                center.z + distance * 0.6
+            );
+            camera.lookAt(center);
+            controls.update();
+            renderer.render(scene, camera);
+            views.push({
+                name: 'hero_view',
+                label: 'Hero View (45°)',
+                dataURL: renderer.domElement.toDataURL('image/png')
+            });
+            
             // 恢復原始視角
             camera.position.copy(originalCamera.position);
             camera.rotation.copy(originalCamera.rotation);
             controls.update();
             renderer.render(scene, camera);
             
-            console.log('📸 三視圖已生成（正視/側視/俯視）');
+            console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
         }
 
