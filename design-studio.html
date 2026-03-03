@@ -3519,10 +3519,18 @@
                     select.appendChild(option);
                 });
 
+                // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
+                if (selectedFonts.length === 1) {
+                    const regenerateOption = document.createElement('option');
+                    regenerateOption.value = '__regenerate__';
+                    regenerateOption.textContent = '⟳ 重新生成模型';
+                    select.appendChild(regenerateOption);
+                }
+
                 // 添加 Re-select 選項
                 const reselectOption = document.createElement('option');
                 reselectOption.value = 'reselect';
-                reselectOption.textContent = '↻ Re-select Fonts';
+                reselectOption.textContent = '↻ 重新選擇字體';
                 select.appendChild(reselectOption);
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
@@ -3557,6 +3565,21 @@
                         isReselect = true;  // 設定為重新選擇
                         openFontSelector();
                         this.value = btn.getAttribute('data-selected') || selectedFonts[0];
+                    } else if (this.value === '__regenerate__') {
+                        // 用戶點擊「重新生成模型」選項，強制重新生成
+                        const currentFont = btn.getAttribute('data-selected') || selectedFonts[0];
+                        this.value = currentFont;
+                        btn.setAttribute('data-selected', currentFont);
+                        this.style.fontFamily = `"${currentFont}", sans-serif`;
+                        
+                        // 同步到 hidden input
+                        const hiddenInput = document.getElementById(target);
+                        if (hiddenInput) {
+                            hiddenInput.value = currentFont;
+                        }
+                        
+                        // 重新生成模型
+                        generateModel();
                     } else {
                         btn.setAttribute('data-selected', this.value);
                         // 更新下拉選單本身的字體樣式
