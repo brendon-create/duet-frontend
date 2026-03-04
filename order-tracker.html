@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>訂單查詢 - DUET</title>
+    <link rel="stylesheet" href="assets/css/landing.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .nav {
+            padding: 20px 40px;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+        
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #d4af37;
+        }
+        
+        .logo-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 2px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #d4af37;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: #000;
+            padding: 10px 24px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+        }
+        
+        .hero {
+            padding: 160px 40px 80px;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, #d4af37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        
+        .search-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .search-box label {
+            display: block;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        
+        .search-input-group {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .search-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 16px;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            border-color: #d4af37;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .search-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: #000;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+        }
+        
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result-container {
+            max-width: 600px;
+            margin: 40px auto 0;
+            display: none;
+        }
+        
+        .result-container.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .order-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: left;
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .order-id {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: #d4af37;
+        }
+        
+        .order-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+        
+        .status-paid {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+        }
+        
+        .status-processing {
+            background: rgba(33, 150, 243, 0.1);
+            color: #2196f3;
+        }
+        
+        .status-completed {
+            background: rgba(212, 175, 55, 0.1);
+            color: #d4af37;
+        }
+        
+        .status-failed, .status-stl_failed {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+        
+        .order-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .order-detail:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+        }
+        
+        .detail-value {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .error-message {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            color: #f44336;
+            text-align: center;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(212, 175, 55, 0.1);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            margin-top: 80px;
+            padding: 40px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 24px;
+            color: #d4af37;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-text">DUET</span>
+                <span class="logo-subtitle">by BCAG</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">首頁</a>
+                <a href="index.html#how-it-works">如何運作</a>
+                <a href="index.html#faq">常見問題</a>
+                <a href="design-studio.html" class="btn-primary">開始設計</a>
+            </div>
+        </div>
+    </nav>
+    
+    <section class="hero">
+        <h1>查詢你的訂單</h1>
+        <p>輸入訂單編號，追蹤你的專屬珠寶製作進度</p>
+        
+        <div class="search-box">
+            <label for="order-id">訂單編號</label>
+            <div class="search-input-group">
+                <input type="text" id="order-id" class="search-input" placeholder="例如：DUET_20260215_ABC123" />
+                <button type="button" id="search-btn" class="search-btn">查詢</button>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在查詢訂單...</p>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="result-container" id="result-container">
+            <div class="order-card" id="order-card"></div>
+        </div>
+        
+        <a href="index.html" class="back-link">← 返回首頁</a>
+    </section>
+    
+    <footer class="footer">
+        <p>&copy; 2026 DUET by BCAG. All rights reserved.</p>
+    </footer>
+    
+    <script>
+        const BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
+        
+        // 訂單狀態對應文字
+        const statusMap = {
+            'pending': '待付款',
+            'paid': '已付款',
+            'processing': '製作中',
+            'completed': '已完成',
+            'failed': '支付失敗',
+            'stl_failed': '製作異常',
+            'payment_failed': '支付失敗'
+        };
+        
+        // 格式化日期
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('zh-TW', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 格式化金額
+        function formatPrice(price) {
+            if (!price) return '-';
+            return 'NT$ ' + parseInt(price).toLocaleString();
+        }
+        
+        // 查詢訂單
+        async function searchOrder() {
+            const orderId = document.getElementById('order-id').value.trim();
+            const searchBtn = document.getElementById('search-btn');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const resultContainer = document.getElementById('result-container');
+            
+            // 隱藏之前的結果
+            errorMessage.classList.remove('show');
+            resultContainer.classList.remove('show');
+            
+            if (!orderId) {
+                showError('請輸入訂單編號');
+                return;
+            }
+            
+            // 禁用按鈕，顯示 loading
+            searchBtn.disabled = true;
+            loading.classList.add('show');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/order/${encodeURIComponent(orderId)}`);
+                const data = await response.json();
+                
+                loading.classList.remove('show');
+                searchBtn.disabled = false;
+                
+                if (data.success) {
+                    displayOrder(data.order);
+                } else {
+                    showError(data.error || '找不到此訂單');
+                }
+            } catch (error) {
+                loading.classList.remove('show');
+                searchBtn.disabled = false;
+                showError('查詢失敗，請稍後再試');
+                console.error('查詢錯誤:', error);
+            }
+        }
+        
+        // 顯示錯誤訊息
+        function showError(message) {
+            const errorMessage = document.getElementById('error-message');
+            const resultContainer = document.getElementById('result-container');
+            
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            resultContainer.classList.remove('show');
+        }
+        
+        // 顯示訂單資料
+        function displayOrder(order) {
+            const resultContainer = document.getElementById('result-container');
+            const orderCard = document.getElementById('order-card');
+            
+            const status = order.status || 'unknown';
+            const statusText = statusMap[status] || status;
+            
+            // 訂單項目
+            const items = order.items || [];
+            const itemDetails = items.map(item => {
+                return `${item.letter1} × ${item.letter2} | ${item.font1 || 'Alex Brush'} + ${item.font2 || 'Alex Brush'}`;
+            }).join('<br>');
+            
+            orderCard.innerHTML = `
+                <div class="order-header">
+                    <div class="order-id">${order.orderId || order.orderId || '-'}</div>
+                    <div class="order-status status-${status}">${statusText}</div>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">訂單日期</span>
+                    <span class="detail-value">${formatDate(order.timestamp || order.createdAt)}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">設計內容</span>
+                    <span class="detail-value">${itemDetails || '-'}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">材質</span>
+                    <span class="detail-value">${order.material || '-'}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">電鍍</span>
+                    <span class="detail-value">${order.plating || '-'}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">表面處理</span>
+                    <span class="detail-value">${order.finish || '-'}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">訂單金額</span>
+                    <span class="detail-value">${formatPrice(order.total)}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">付款狀態</span>
+                    <span class="detail-value">${order.paymentStatus === 'paid' ? '已付款' : '待付款'}</span>
+                </div>
+                
+                <div class="order-detail">
+                    <span class="detail-label">物流追蹤</span>
+                    <span class="detail-value">${order.trackingNumber || '製作完成後寄出'}</span>
+                </div>
+            `;
+            
+            resultContainer.classList.add('show');
+        }
+        
+        // 綁定事件
+        document.getElementById('search-btn').addEventListener('click', searchOrder);
+        document.getElementById('order-id').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchOrder();
+            }
+        });
+        
+        // 檢查 URL 參數
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderIdParam = urlParams.get('orderId');
+        if (orderIdParam) {
+            document.getElementById('order-id').value = orderIdParam;
+            searchOrder();
+        }
+    </script>
+</body>
+</html>
