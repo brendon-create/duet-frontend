@@ -1096,7 +1096,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                ⚙️ 設計重新製作中...
+                ⚙️ 作品模型重新製作中...
             </div>
             
             <div class="control-group">
@@ -1206,7 +1206,7 @@
             color: #d4af37;
             text-align: center;
         ">
-            ⚙️ 設計重新製作中...
+            ⚙️ 作品模型重新製作中...
         </div>
 
         <div class="divider"></div>
@@ -1250,7 +1250,7 @@
             text-align: center;
             font-style: italic;
         ">
-            ⚙️ Re-constructing 3D model<span class="dots-animation"></span>
+            ⚙️ 作品模型重新製作中...
         </div>
 
         <button class="btn-primary" id="addToCartBtn">
@@ -2814,16 +2814,18 @@
             
             debug('Generation complete!'); // Debug
 
-            // 隱藏重建提示（全部三個 indicator）
-            const indicatorsToHide2 = [
-                'model-rebuilding-indicator',
-                'model-rebuilding-indicator-top',
-                'model-rebuilding-indicator-cleanup'
-            ];
-            indicatorsToHide2.forEach(id => {
-                const ind = document.getElementById(id);
-                if (ind) ind.style.display = 'none';
-            });
+            // 隱藏重建提示（延遲 1.5 秒讓使用者能看到）
+            setTimeout(() => {
+                const indicatorsToHide2 = [
+                    'model-rebuilding-indicator',
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicatorsToHide2.forEach(id => {
+                    const ind = document.getElementById(id);
+                    if (ind) ind.style.display = 'none';
+                });
+            }, 1500);
 
             // 🧹 啟用清理 toggle + 重置狀態
             const cleanupToggle = document.getElementById('cleanup-toggle');
