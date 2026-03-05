@@ -1084,6 +1084,21 @@
         </div>
 
         <div class="section">
+            <!-- 3D 模型重建提示 - Letter1 上方 -->
+            <div id="model-rebuilding-indicator-top" style="
+                display: none;
+                margin-bottom: 8px;
+                padding: 8px 12px;
+                background: rgba(212, 175, 55, 0.1);
+                border: 1px solid rgba(212, 175, 55, 0.3);
+                border-radius: 6px;
+                font-size: 12px;
+                color: #d4af37;
+                text-align: center;
+            ">
+                ⚙️ 設計重新製作中...
+            </div>
+            
             <div class="control-group">
                 <label>Letter 1</label>
                 <div class="flex-row">
@@ -1177,6 +1192,21 @@
                     </label>
                 </div>
             </div>
+        </div>
+
+        <!-- 3D 模型重建提示 - 清理零碎部件下方 -->
+        <div id="model-rebuilding-indicator-cleanup" style="
+            display: none;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 6px;
+            font-size: 12px;
+            color: #d4af37;
+            text-align: center;
+        ">
+            ⚙️ 設計重新製作中...
         </div>
 
         <div class="divider"></div>
@@ -2481,9 +2511,16 @@
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
-            // 顯示重建提示
-            let indicator = document.getElementById('model-rebuilding-indicator');
-            if (indicator) indicator.style.display = 'block';
+            // 顯示重建提示（全部三個 indicator）
+            const indicators = [
+                'model-rebuilding-indicator',
+                'model-rebuilding-indicator-top',
+                'model-rebuilding-indicator-cleanup'
+            ];
+            indicators.forEach(id => {
+                const indicator = document.getElementById(id);
+                if (indicator) indicator.style.display = 'block';
+            });
 
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
@@ -2504,8 +2541,16 @@
                 if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
                     showInitialSphere();
                 }
-                // 隱藏重建提示
-                if (indicator) indicator.style.display = 'none';
+                // 隱藏重建提示（全部三個 indicator）
+                const indicatorsToHide = [
+                    'model-rebuilding-indicator',
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicatorsToHide.forEach(id => {
+                    const ind = document.getElementById(id);
+                    if (ind) ind.style.display = 'none';
+                });
                 return;
             }
 
@@ -2769,9 +2814,16 @@
             
             debug('Generation complete!'); // Debug
 
-            // 隱藏重建提示
-            indicator = document.getElementById('model-rebuilding-indicator');
-            if (indicator) indicator.style.display = 'none';
+            // 隱藏重建提示（全部三個 indicator）
+            const indicatorsToHide2 = [
+                'model-rebuilding-indicator',
+                'model-rebuilding-indicator-top',
+                'model-rebuilding-indicator-cleanup'
+            ];
+            indicatorsToHide2.forEach(id => {
+                const ind = document.getElementById(id);
+                if (ind) ind.style.display = 'none';
+            });
 
             // 🧹 啟用清理 toggle + 重置狀態
             const cleanupToggle = document.getElementById('cleanup-toggle');
