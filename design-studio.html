@@ -3555,18 +3555,8 @@
                 });
 
                 // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
-                if (selectedFonts.length === 1) {
-                    const regenerateOption = document.createElement('option');
-                    regenerateOption.value = '__regenerate__';
-                    regenerateOption.textContent = '⟳ 重新生成模型';
-                    select.appendChild(regenerateOption);
-                }
-
-                // 添加 Re-select 選項
-                const reselectOption = document.createElement('option');
-                reselectOption.value = 'reselect';
-                reselectOption.textContent = '↻ 重新選擇字體';
-                select.appendChild(reselectOption);
+                // 不再添加「重新生成模型」和「重新選擇字體」選項
+                // 選擇字體後會自動使用第一個字體並生成模型
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
                 let defaultFont = selectedFonts[0];
@@ -3594,41 +3584,22 @@
                     hiddenInput.value = defaultFont;
                 }
 
-                // 監聽下拉選單變更
+                // 監聽下拉選單變更 - 選擇字體後自動生成模型
                 select.onchange = function () {
-                    if (this.value === 'reselect') {
-                        isReselect = true;  // 設定為重新選擇
-                        openFontSelector();
-                        this.value = btn.getAttribute('data-selected') || selectedFonts[0];
-                    } else if (this.value === '__regenerate__') {
-                        // 用戶點擊「重新生成模型」選項，強制重新生成
-                        const currentFont = btn.getAttribute('data-selected') || selectedFonts[0];
-                        this.value = currentFont;
-                        btn.setAttribute('data-selected', currentFont);
-                        this.style.fontFamily = `"${currentFont}", sans-serif`;
-                        
-                        // 同步到 hidden input
-                        const hiddenInput = document.getElementById(target);
-                        if (hiddenInput) {
-                            hiddenInput.value = currentFont;
-                        }
-                        
-                        // 重新生成模型
-                        generateModel();
-                    } else {
-                        btn.setAttribute('data-selected', this.value);
-                        // 更新下拉選單本身的字體樣式
-                        this.style.fontFamily = `"${this.value}", sans-serif`;
-                        
-                        // ✅ 同步到 hidden input
-                        const hiddenInput = document.getElementById(target);
-                        if (hiddenInput) {
-                            hiddenInput.value = this.value;
-                        }
-                        
-                        // 不同步更新另一個下拉選單，允許獨立選擇
-                        generateModel();
+                    // 使用選擇的字體並生成模型
+                    const selectedFont = this.value;
+                    btn.setAttribute('data-selected', selectedFont);
+                    // 更新下拉選單本身的字體樣式
+                    this.style.fontFamily = `"${selectedFont}", sans-serif`;
+                    
+                    // 同步到 hidden input
+                    const hiddenInput = document.getElementById(target);
+                    if (hiddenInput) {
+                        hiddenInput.value = selectedFont;
                     }
+                    
+                    // 生成模型
+                    generateModel();
                 };
             });
 
@@ -3637,24 +3608,9 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 根據是否為重新選擇決定行為
-            if (isReselect) {
-                // 重新選擇：不自動生成，顯示低調提示
-                const generateBtn = document.getElementById('generate-btn');
-                if (generateBtn) {
-                    generateBtn.style.animation = 'pulse 1s ease-in-out 3';
-                    setTimeout(() => {
-                        generateBtn.style.animation = '';
-                    }, 3000);
-                }
-                
-                // 顯示低調的 Toast 提示
-                showToast('字體清單已更新，請在下拉選單中選擇字體後生成模型');
-                isReselect = false;  // 重置標記
-            } else {
-                // 第一次選擇：自動生成模型（不顯示提示）
-                generateModel();
-            }
+            // 選擇字體後自動使用第一個字體並生成模型
+            generateModel();
+            isReselect = false;  // 重置標記
         }
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
