@@ -1096,7 +1096,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                作品模型重新製作中...
+                作品模型重新製作中<span class="dots-animation"></span>
             </div>
             
             <div class="control-group">
@@ -1206,7 +1206,7 @@
             color: #d4af37;
             text-align: center;
         ">
-            作品模型重新製作中...
+            作品模型重新製作中<span class="dots-animation"></span>
         </div>
 
         <div class="divider"></div>
@@ -2062,7 +2062,7 @@
                         console.error('  - Error stack:', error.stack);
                         showNotification('載入訂單資料失敗: ' + error.message, 'error');
                     }
-                }, 1500);
+                }, 500);
 
                 return true;
             }
@@ -2093,7 +2093,7 @@
                         if (typeof showAIIntroModal === 'function') {
                             showAIIntroModal();
                         }
-                    }, 1500);
+                    }, 500);
                 } else {
                     console.log('⚠️ 訂單尚未完成付款');
                     showNotification('訂單處理中，請稍候...', 'info');
@@ -2806,7 +2806,7 @@
                     const ind = document.getElementById(id);
                     if (ind) ind.style.display = 'none';
                 });
-            }, 1500);
+            }, 500);
 
             // 🧹 啟用清理 toggle + 重置狀態
             const cleanupToggle = document.getElementById('cleanup-toggle');
@@ -2852,7 +2852,7 @@
             
             // 更新 label 狀態
             if (cleanupLabel) {
-                cleanupLabel.textContent = '⏳ 正在清理...';
+                cleanupLabel.innerHTML = '正在清理<span class="dots-animation"></span>';
                 cleanupLabel.style.color = '#4a90e2';
             }
 
@@ -5373,7 +5373,7 @@
                     form.target = '_top';
                     form.submit();
                 }
-            }, 1500);
+            }, 500);
         }
 
         // 事件監聽
