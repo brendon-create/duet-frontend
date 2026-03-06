@@ -484,6 +484,7 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('orders')">訂單管理</button>
                 <button class="tab" onclick="switchTab('users')">員工管理</button>
+                <button class="tab" onclick="switchTab('system')">系統監控</button>
             </div>
             
             <!-- Orders Tab -->
@@ -537,6 +538,35 @@
                 </div>
                 <div id="usersList">
                     <div class="loading">載入中...</div>
+                </div>
+            </div>
+            
+            <!-- System Tab -->
+            <div id="systemTab" style="display: none;">
+                <div class="stats-row">
+                    <div class="stat-card"><div class="stat-number" id="avgMemory">-</div><div class="stat-label">平均記憶體 (MB)</div></div>
+                    <div class="stat-card"><div class="stat-number" id="maxMemory">-</div><div class="stat-label">最大記憶體 (MB)</div></div>
+                    <div class="stat-card"><div class="stat-number" id="totalRecords">-</div><div class="stat-label">總記錄筆數</div></div>
+                </div>
+                
+                <div class="filter-bar">
+                    <button class="btn btn-secondary" onclick="loadMemoryStats()">重新整理</button>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>訂單編號</th>
+                                <th>記憶體 (MB)</th>
+                                <th>CPU (%)</th>
+                                <th>記錄時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memoryTableBody">
+                            <tr><td colspan="4" class="loading">載入中...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -656,8 +686,48 @@
             
             document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
             document.getElementById('usersTab').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('systemTab').style.display = tab === 'system' ? 'block' : 'none';
             
             if (tab === 'users') loadUsers();
+            if (tab === 'system') loadMemoryStats();
+        }
+        
+        // Memory Stats
+        async function loadMemoryStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/memory-stats?limit=50`, {
+                    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 更新摘要
+                    const summary = data.summary;
+                    document.getElementById('avgMemory').textContent = summary.avg_memory_mb ? summary.avg_memory_mb.toFixed(1) : '-';
+                    document.getElementById('maxMemory').textContent = summary.max_memory_mb ? summary.max_memory_mb.toFixed(1) : '-';
+                    document.getElementById('totalRecords').textContent = summary.total_records || 0;
+                    
+                    // 更新表格
+                    const tbody = document.getElementById('memoryTableBody');
+                    if (!data.stats.length) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="loading">尚無記錄</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.stats.map(stat => `
+                        <tr>
+                            <td>${stat.order_id || '-'}</td>
+                            <td>${stat.memory_mb ? stat.memory_mb.toFixed(1) : '-'}</td>
+                            <td>${stat.cpu_percent ? stat.cpu_percent.toFixed(1) : '-'}</td>
+                            <td>${stat.created_at ? new Date(stat.created_at).toLocaleString('zh-TW') : '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    document.getElementById('memoryTableBody').innerHTML = '<tr><td colspan="4" class="loading">載入失敗</td></tr>';
+                }
+            } catch (err) {
+                document.getElementById('memoryTableBody').innerHTML = '<tr><td colspan="4" class="loading">載入失敗</td></tr>';
+            }
         }
         
         // Orders
