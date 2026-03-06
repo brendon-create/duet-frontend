@@ -3547,6 +3547,15 @@
 
                 // 清空並填入字體選項
                 select.innerHTML = '';
+                
+                // 添加「重新選擇字體」選項
+                const reselectOption = document.createElement('option');
+                reselectOption.value = 'reselect';
+                reselectOption.textContent = '🔄 重新選擇字體...';
+                reselectOption.style.fontFamily = 'Noto Sans TC, sans-serif';
+                reselectOption.style.fontWeight = '500';
+                select.appendChild(reselectOption);
+                
                 selectedFonts.forEach(font => {
                     const option = document.createElement('option');
                     option.value = font;
@@ -3554,10 +3563,6 @@
                     option.style.fontFamily = `"${font}", sans-serif`;
                     select.appendChild(option);
                 });
-
-                // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
-                // 不再添加「重新生成模型」和「重新選擇字體」選項
-                // 選擇字體後會自動使用第一個字體並生成模型
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
                 let defaultFont = selectedFonts[0];
@@ -3587,8 +3592,18 @@
 
                 // 監聽下拉選單變更 - 選擇字體後自動生成模型
                 select.onchange = function () {
-                    // 使用選擇的字體並生成模型
                     const selectedFont = this.value;
+                    
+                    // 如果選擇「重新選擇字體」，打開字體選擇視窗
+                    if (selectedFont === 'reselect') {
+                        // 打開字體選擇器
+                        openFontSelector();
+                        // 恢復選擇當前使用的字體
+                        this.value = btn.getAttribute('data-selected') || defaultFont;
+                        return;
+                    }
+                    
+                    // 使用選擇的字體並生成模型
                     btn.setAttribute('data-selected', selectedFont);
                     // 更新下拉選單本身的字體樣式
                     this.style.fontFamily = `"${selectedFont}", sans-serif`;
