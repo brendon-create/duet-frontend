@@ -508,6 +508,15 @@
                         <option value="shipped">已出貨</option>
                         <option value="delivered">已簽收</option>
                     </select>
+                    <select id="dateRangeFilter" onchange="handleDateRangeChange()">
+                        <option value="">全部日期</option>
+                        <option value="today">今天</option>
+                        <option value="week">本週</option>
+                        <option value="month">本月</option>
+                        <option value="custom">自訂範圍</option>
+                    </select>
+                    <input type="date" id="dateFrom" style="display:none" onchange="filterOrders()">
+                    <input type="date" id="dateTo" style="display:none" onchange="filterOrders()">
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                 </div>
                 
@@ -790,14 +799,66 @@
             }).join('');
         }
         
+        function handleDateRangeChange() {
+            const range = document.getElementById('dateRangeFilter').value;
+            const dateFrom = document.getElementById('dateFrom');
+            const dateTo = document.getElementById('dateTo');
+
+            if (range === 'custom') {
+                dateFrom.style.display = 'inline-block';
+                dateTo.style.display = 'inline-block';
+            } else {
+                dateFrom.style.display = 'none';
+                dateTo.style.display = 'none';
+                // Set default dates based on range
+                const today = new Date();
+                let fromDate = new Date();
+                let toDate = new Date();
+
+                if (range === 'today') {
+                    fromDate = today;
+                    toDate = today;
+                } else if (range === 'week') {
+                    fromDate.setDate(today.getDate() - 7);
+                } else if (range === 'month') {
+                    fromDate.setMonth(today.getMonth() - 1);
+                }
+
+                dateFrom.value = fromDate.toISOString().split('T')[0];
+                dateTo.value = toDate.toISOString().split('T')[0];
+            }
+            filterOrders();
+        }
+
         function filterOrders() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const status = document.getElementById('statusFilter').value;
+            const dateRange = document.getElementById('dateRangeFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+
             const filtered = allOrders.filter(o => {
                 const matchSearch = !search || o.orderId.toLowerCase().includes(search) ||
                     (o.userInfo?.name || '').toLowerCase().includes(search);
                 const matchStatus = !status || o.status === status;
-                return matchSearch && matchStatus;
+
+                // Date filtering
+                let matchDate = true;
+                if (dateFrom || dateTo) {
+                    const orderDate = o.timestamp ? new Date(o.timestamp) : null;
+                    if (orderDate) {
+                        const from = dateFrom ? new Date(dateFrom) : null;
+                        const to = dateTo ? new Date(dateTo) : null;
+                        if (to) to.setDate(to.getDate() + 1); // Include the entire end day
+
+                        if (from && orderDate < from) matchDate = false;
+                        if (to && orderDate > to) matchDate = false;
+                    } else {
+                        matchDate = false;
+                    }
+                }
+
+                return matchSearch && matchStatus && matchDate;
             });
             renderOrders(filtered);
         }
