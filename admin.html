@@ -506,7 +506,7 @@
             <div id="ordersTab">
                 <div class="stats-row">
                     <div class="stat-card"><div class="stat-number" id="countPending">0</div><div class="stat-label">待付款</div></div>
-                    <div class="stat-card"><div class="stat-number" id="countPaid">0</div><div class="stat-label">已付款</div></div>
+                    <div class="stat-card"><div class="stat-number" id="countPaid">0</div><div class="stat-label">待製作</div></div>
                     <div class="stat-card"><div class="stat-number" id="countProcessing">0</div><div class="stat-label">製作中</div></div>
                     <div class="stat-card"><div class="stat-number" id="countCompleted">0</div><div class="stat-label">已完成</div></div>
                     <div class="stat-card"><div class="stat-number" id="countShipped">0</div><div class="stat-label">已出貨</div></div>
@@ -524,7 +524,7 @@
                     </div>
                     <div class="stat-card" style="background: linear-gradient(135deg, #472a1a 0%, #5a3d2d 100%);">
                         <div class="stat-number" id="paidOrders" style="color: #fb923c;">0</div>
-                        <div class="stat-label">已付款訂單</div>
+                        <div class="stat-label">已收款訂單</div>
                     </div>
                     <div class="stat-card" style="background: linear-gradient(135deg, #3d1a47 0%, #4a2d5a 100%); cursor: pointer;" onclick="showProductStats()">
                         <div class="stat-number" id="topProduct" style="color: #c084fc;">-</div>
@@ -593,22 +593,31 @@
                     <div class="stats-row">
                         <div class="stat-card">
                             <div class="stat-number" id="totalCustomers">0</div>
-                            <div class="stat-label">總客戶數</div>
+                            <div class="stat-label">符合篩選條件的客戶</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-number" id="repeatCustomers">0</div>
-                            <div class="stat-label">回購客戶</div>
+                            <div class="stat-label">回購客戶 (≥2次)</div>
                         </div>
                     </div>
                     <div class="filter-bar">
                         <select id="customerDateFilter" onchange="handleCustomerDateFilter()">
-                            <option value="">全部客戶</option>
-                            <option value="today">今天首次購買</option>
-                            <option value="week">本週首次購買</option>
-                            <option value="month">本月首次購買</option>
+                            <option value="">全部區間</option>
+                            <option value="today">今天</option>
+                            <option value="week">本週</option>
+                            <option value="month">本月</option>
+                            <option value="custom">自訂範圍</option>
                         </select>
                         <input type="date" id="customerDateFrom" style="display:none" onchange="renderCustomerStats()">
                         <input type="date" id="customerDateTo" style="display:none" onchange="renderCustomerStats()">
+                        <select id="customerOrderCountFilter" onchange="renderCustomerStats()">
+                            <option value="0">不限購買次數</option>
+                            <option value="1">1次以上</option>
+                            <option value="2">2次以上</option>
+                            <option value="3">3次以上</option>
+                            <option value="4">4次以上</option>
+                            <option value="5">5次以上</option>
+                        </select>
                     </div>
                     <div class="table-container" style="margin-top: 16px;">
                         <table>
@@ -1041,6 +1050,18 @@
         }
 
         function renderCustomerStats() {
+            // 先計算每個客戶的所有訂單（用於總購買次數篩選）
+            const customerOrderCounts = {};
+            allOrders.forEach(o => {
+                const u = o.userInfo || {};
+                const email = (u.email || u.buyerEmail || '').toLowerCase();
+                if (!email) return;
+                if (!customerOrderCounts[email]) {
+                    customerOrderCounts[email] = 0;
+                }
+                customerOrderCounts[email]++;
+            });
+
             const customers = {};
             allOrders.forEach(o => {
                 const u = o.userInfo || {};
@@ -1058,7 +1079,8 @@
                         orderCount: 0,
                         totalSpent: 0,
                         lastOrder: o.timestamp,
-                        firstOrder: o.timestamp  // 追蹤首次購買日期
+                        firstOrder: o.timestamp,
+                        orderDates: []  // 追蹤所有訂單日期
                     };
                 }
                 customers[email].orderCount++;
@@ -1071,6 +1093,10 @@
                 if (o.timestamp && (!customers[email].firstOrder || o.timestamp < customers[email].firstOrder)) {
                     customers[email].firstOrder = o.timestamp;
                 }
+                // 記錄訂單日期
+                if (o.timestamp) {
+                    customers[email].orderDates.push(new Date(o.timestamp));
+                }
             });
 
             let customerList = Object.values(customers);
@@ -1079,33 +1105,47 @@
             const dateFilter = document.getElementById('customerDateFilter')?.value || '';
             const dateFrom = document.getElementById('customerDateFrom')?.value;
             const dateTo = document.getElementById('customerDateTo')?.value;
+            const orderCountFilter = parseInt(document.getElementById('customerOrderCountFilter')?.value || '0');
             
-            // 套用首次購買日期篩選
+            // 套用購買次數篩選（從系統成立以來的總購買次數）
+            if (orderCountFilter > 0) {
+                customerList = customerList.filter(c => {
+                    const totalOrders = customerOrderCounts[c.email] || 0;
+                    return totalOrders >= orderCountFilter;
+                });
+            }
+            
+            // 套用日期區間篩選（篩選在該期間有購買記錄的客戶）
             if (dateFilter || dateFrom || dateTo) {
                 customerList = customerList.filter(c => {
-                    if (!c.firstOrder) return false;
-                    const firstDate = new Date(c.firstOrder);
-                    
-                    if (dateFilter === 'today') {
+                    // 檢查客戶是否在該期間有任何購買記錄
+                    const hasOrderInRange = c.orderDates.some(orderDate => {
+                        let from = null;
+                        let to = null;
                         const today = new Date();
-                        return firstDate.toDateString() === today.toDateString();
-                    } else if (dateFilter === 'week') {
-                        const weekAgo = new Date();
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return firstDate >= weekAgo;
-                    } else if (dateFilter === 'month') {
-                        const monthAgo = new Date();
-                        monthAgo.setMonth(monthAgo.getMonth() - 1);
-                        return firstDate >= monthAgo;
-                    } else if (dateFrom || dateTo) {
-                        const from = dateFrom ? new Date(dateFrom) : null;
-                        const to = dateTo ? new Date(dateTo) : null;
-                        if (to) to.setDate(to.getDate() + 1);
-                        if (from && firstDate < from) return false;
-                        if (to && firstDate > to) return false;
+                        
+                        if (dateFilter === 'today') {
+                            return orderDate.toDateString() === today.toDateString();
+                        } else if (dateFilter === 'week') {
+                            const weekAgo = new Date();
+                            weekAgo.setDate(today.getDate() - 7);
+                            return orderDate >= weekAgo;
+                        } else if (dateFilter === 'month') {
+                            const monthAgo = new Date();
+                            monthAgo.setMonth(today.getMonth() - 1);
+                            return orderDate >= monthAgo;
+                        } else if (dateFrom || dateTo) {
+                            from = dateFrom ? new Date(dateFrom) : null;
+                            to = dateTo ? new Date(dateTo) : null;
+                            if (to) to.setDate(to.getDate() + 1);
+                            if (from && orderDate < from) return false;
+                            if (to && orderDate > to) return false;
+                            return true;
+                        }
                         return true;
-                    }
-                    return true;
+                    });
+                    
+                    return hasOrderInRange;
                 });
             }
 
