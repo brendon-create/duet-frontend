@@ -525,6 +525,22 @@
                         <div class="stat-number" id="paidOrders" style="color: #fb923c;">0</div>
                         <div class="stat-label">已付款訂單</div>
                     </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #3d1a47 0%, #4a2d5a 100%); cursor: pointer;" onclick="showProductStats()">
+                        <div class="stat-number" id="topProduct" style="color: #c084fc;">-</div>
+                        <div class="stat-label">熱銷商品 ▼</div>
+                    </div>
+                </div>
+
+                <!-- 暢銷商品分析 -->
+                <div class="stats-row" id="productStats" style="margin-top: 16px; display: none;">
+                    <div class="stat-card" style="flex: 1; min-width: 300px;">
+                        <div class="stat-label">熱銷字母組合 (Top 5)</div>
+                        <div id="topLetterCombos" style="margin-top: 10px; font-size: 13px; line-height: 1.8;"></div>
+                    </div>
+                    <div class="stat-card" style="flex: 1; min-width: 300px;">
+                        <div class="stat-label">熱銷字體 (Top 5)</div>
+                        <div id="topFonts" style="margin-top: 10px; font-size: 13px; line-height: 1.8;"></div>
+                    </div>
                 </div>
                 
                 <div class="filter-bar">
@@ -836,6 +852,44 @@
             const avgValue = paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0;
             document.getElementById('avgOrderValue').textContent = `NT$ ${avgValue.toLocaleString()}`;
             document.getElementById('paidOrders').textContent = paidOrdersCount;
+
+            // 計算熱銷商品
+            const letterCombos = {};
+            const fonts = {};
+            allOrders.forEach(o => {
+                if (o.items) {
+                    o.items.forEach(item => {
+                        const combo = (item.letter1 || '') + (item.letter2 || '');
+                        if (combo) {
+                            letterCombos[combo] = (letterCombos[combo] || 0) + 1;
+                        }
+                        if (item.font1) {
+                            fonts[item.font1] = (fonts[item.font1] || 0) + 1;
+                        }
+                        if (item.font2) {
+                            fonts[item.font2] = (fonts[item.font2] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            // 找出 Top 5
+            const topCombos = Object.entries(letterCombos).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const topFontList = Object.entries(fonts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            document.getElementById('topProduct').textContent = topCombos[0] ? topCombos[0][0] : '-';
+
+            document.getElementById('topLetterCombos').innerHTML = topCombos.length > 0
+                ? topCombos.map(([combo, count], i) => `${i+1}. ${combo}: ${count} 筆`).join('<br>')
+                : '無資料';
+            document.getElementById('topFonts').innerHTML = topFontList.length > 0
+                ? topFontList.map(([font, count], i) => `${i+1}. ${font}: ${count} 次`).join('<br>')
+                : '無資料';
+        }
+
+        function showProductStats() {
+            const el = document.getElementById('productStats');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
         }
         
         function renderOrders(orders) {
