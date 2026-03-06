@@ -677,6 +677,13 @@
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
             loadOrders();
+            
+            // 自動每 30 秒刷新訂單
+            setInterval(() => {
+                if (document.getElementById('ordersTab').style.display !== 'none') {
+                    loadOrders();
+                }
+            }, 30000);
         }
         
         // Tabs
