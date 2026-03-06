@@ -510,6 +510,22 @@
                     <div class="stat-card"><div class="stat-number" id="countCompleted">0</div><div class="stat-label">已完成</div></div>
                     <div class="stat-card"><div class="stat-number" id="countShipped">0</div><div class="stat-label">已出貨</div></div>
                 </div>
+
+                <!-- 營收統計 -->
+                <div class="stats-row" style="margin-top: 16px;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);">
+                        <div class="stat-number" id="totalRevenue" style="color: #4ade80;">NT$ 0</div>
+                        <div class="stat-label">總營收</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6a 100%);">
+                        <div class="stat-number" id="avgOrderValue" style="color: #60a5fa;">NT$ 0</div>
+                        <div class="stat-label">平均訂單金額</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #472a1a 0%, #5a3d2d 100%);">
+                        <div class="stat-number" id="paidOrders" style="color: #fb923c;">0</div>
+                        <div class="stat-label">已付款訂單</div>
+                    </div>
+                </div>
                 
                 <div class="filter-bar">
                     <input type="text" id="searchInput" placeholder="搜尋訂單編號或客戶..." oninput="filterOrders()">
@@ -795,12 +811,30 @@
         
         function updateStats() {
             const counts = { pending: 0, paid: 0, processing: 0, completed: 0, shipped: 0 };
-            allOrders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+            let totalRevenue = 0;
+            let paidOrdersCount = 0;
+
+            allOrders.forEach(o => {
+                if (counts[o.status] !== undefined) counts[o.status]++;
+                // 只計算已付款訂單的營收
+                if (o.status === 'paid' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
+                    const orderTotal = o.total || o.originalTotal || 0;
+                    totalRevenue += orderTotal;
+                    paidOrdersCount++;
+                }
+            });
+
             document.getElementById('countPending').textContent = counts.pending;
             document.getElementById('countPaid').textContent = counts.paid;
             document.getElementById('countProcessing').textContent = counts.processing;
             document.getElementById('countCompleted').textContent = counts.completed;
             document.getElementById('countShipped').textContent = counts.shipped;
+
+            // 營收統計
+            document.getElementById('totalRevenue').textContent = `NT$ ${totalRevenue.toLocaleString()}`;
+            const avgValue = paidOrdersCount > 0 ? Math.round(totalRevenue / paidOrdersCount) : 0;
+            document.getElementById('avgOrderValue').textContent = `NT$ ${avgValue.toLocaleString()}`;
+            document.getElementById('paidOrders').textContent = paidOrdersCount;
         }
         
         function renderOrders(orders) {
