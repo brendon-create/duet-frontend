@@ -858,12 +858,13 @@
             }
         }
         
-        function updateStats() {
+        function updateStats(ordersToUse) {
+            const orders = ordersToUse || allOrders;
             const counts = { pending: 0, paid: 0, processing: 0, completed: 0, shipped: 0 };
             let totalRevenue = 0;
             let paidOrdersCount = 0;
 
-            allOrders.forEach(o => {
+            orders.forEach(o => {
                 if (counts[o.status] !== undefined) counts[o.status]++;
                 // 只計算已付款訂單的營收
                 if (o.status === 'paid' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
@@ -888,7 +889,7 @@
             // 計算熱銷商品
             const letterCombos = {};
             const fonts = {};
-            allOrders.forEach(o => {
+            orders.forEach(o => {
                 if (o.items) {
                     o.items.forEach(item => {
                         const combo = (item.letter1 || '') + (item.letter2 || '');
@@ -1087,6 +1088,8 @@
                 return matchSearch && matchStatus && matchDate;
             });
             renderOrders(filtered);
+            // 更新營收統計（根據篩選後的訂單）
+            updateStats(filtered);
         }
 
         function exportOrders() {
