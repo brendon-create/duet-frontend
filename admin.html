@@ -498,6 +498,7 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('orders')">訂單管理</button>
                 <button class="tab" onclick="switchTab('users')">員工管理</button>
+                <button class="tab" onclick="switchTab('promos')">優惠券管理</button>
                 <button class="tab" onclick="switchTab('system')">系統監控</button>
             </div>
             
@@ -599,6 +600,16 @@
                             <div class="stat-label">回購客戶</div>
                         </div>
                     </div>
+                    <div class="filter-bar">
+                        <select id="customerDateFilter" onchange="handleCustomerDateFilter()">
+                            <option value="">全部客戶</option>
+                            <option value="today">今天首次購買</option>
+                            <option value="week">本週首次購買</option>
+                            <option value="month">本月首次購買</option>
+                        </select>
+                        <input type="date" id="customerDateFrom" style="display:none" onchange="renderCustomerStats()">
+                        <input type="date" id="customerDateTo" style="display:none" onchange="renderCustomerStats()">
+                    </div>
                     <div class="table-container" style="margin-top: 16px;">
                         <table>
                             <thead>
@@ -637,6 +648,53 @@
                 </div>
                 <div id="usersList">
                     <div class="loading">載入中...</div>
+                </div>
+            </div>
+            
+            <!-- Promos Tab -->
+            <div id="promosTab" style="display: none;">
+                <div class="stats-row">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);">
+                        <div class="stat-number" id="promoTotalUsage" style="color: #4ade80;">0</div>
+                        <div class="stat-label">總使用次數</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #472a1a 0%, #5a3d2d 100%);">
+                        <div class="stat-number" id="promoTotalDiscount" style="color: #fb923c;">NT$ 0</div>
+                        <div class="stat-label">總折扣金額</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6a 100%);">
+                        <div class="stat-number" id="promoTotalRevenue" style="color: #60a5fa;">NT$ 0</div>
+                        <div class="stat-label">優惠碼帶來營收</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="promoCount">0</div>
+                        <div class="stat-label">優惠碼數量</div>
+                    </div>
+                </div>
+                
+                <div class="filter-bar">
+                    <button class="btn btn-primary" onclick="showAddPromoModal()">+ 新增優惠碼</button>
+                    <button class="btn btn-secondary" onclick="loadPromoCodes()">重新整理</button>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>優惠碼</th>
+                                <th>類型</th>
+                                <th>折扣</th>
+                                <th>最低消費</th>
+                                <th>有效期</th>
+                                <th>使用次數</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promoTableBody">
+                            <tr><td colspan="8" class="loading">載入中...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
@@ -704,6 +762,61 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">建立帳號</button>
             </form>
+        </div>
+    </div>
+    
+    <!-- Add Promo Modal -->
+    <div class="modal-overlay" id="addPromoModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">新增優惠碼</h2>
+                <button class="modal-close" onclick="closeAddPromoModal()">&times;</button>
+            </div>
+            <form onsubmit="handleAddPromo(event)">
+                <div class="form-group">
+                    <label>優惠碼</label>
+                    <input type="text" id="promoCode" required placeholder="例如: SUMMER2024" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>優惠類型</label>
+                    <select id="promoType">
+                        <option value="percentage">折扣百分比 (%)</option>
+                        <option value="fixed">固定金額 (NT$)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>折扣值</label>
+                    <input type="number" id="promoValue" required min="1" placeholder="10 表示 10% 或 NT$10">
+                </div>
+                <div class="form-group">
+                    <label>最低消費金額 (NT$)</label>
+                    <input type="number" id="promoMinAmount" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>有效期至</label>
+                    <input type="date" id="promoValidUntil">
+                </div>
+                <div class="form-group">
+                    <label>使用次數限制 (留空表示無限制)</label>
+                    <input type="number" id="promoUsageLimit" min="1">
+                </div>
+                <div class="form-group">
+                    <label>說明</label>
+                    <input type="text" id="promoDescription" placeholder="優惠碼說明">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">建立優惠碼</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Customer Detail Modal -->
+    <div class="modal-overlay" id="customerDetailModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">客戶詳情</h2>
+                <button class="modal-close" onclick="closeCustomerDetailModal()">&times;</button>
+            </div>
+            <div id="customerDetailContent"></div>
         </div>
     </div>
     
@@ -795,9 +908,11 @@
             
             document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
             document.getElementById('usersTab').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('promosTab').style.display = tab === 'promos' ? 'block' : 'none';
             document.getElementById('systemTab').style.display = tab === 'system' ? 'block' : 'none';
             
             if (tab === 'users') loadUsers();
+            if (tab === 'promos') loadPromoCodes();
             if (tab === 'system') loadMemoryStats();
         }
         
@@ -942,17 +1057,58 @@
                         phone,
                         orderCount: 0,
                         totalSpent: 0,
-                        lastOrder: o.timestamp
+                        lastOrder: o.timestamp,
+                        firstOrder: o.timestamp  // 追蹤首次購買日期
                     };
                 }
                 customers[email].orderCount++;
                 customers[email].totalSpent += o.total || o.originalTotal || 0;
+                // 更新最後購買日期
                 if (o.timestamp && (!customers[email].lastOrder || o.timestamp > customers[email].lastOrder)) {
                     customers[email].lastOrder = o.timestamp;
                 }
+                // 更新首次購買日期
+                if (o.timestamp && (!customers[email].firstOrder || o.timestamp < customers[email].firstOrder)) {
+                    customers[email].firstOrder = o.timestamp;
+                }
             });
 
-            const customerList = Object.values(customers);
+            let customerList = Object.values(customers);
+            
+            // 取得篩選條件
+            const dateFilter = document.getElementById('customerDateFilter')?.value || '';
+            const dateFrom = document.getElementById('customerDateFrom')?.value;
+            const dateTo = document.getElementById('customerDateTo')?.value;
+            
+            // 套用首次購買日期篩選
+            if (dateFilter || dateFrom || dateTo) {
+                customerList = customerList.filter(c => {
+                    if (!c.firstOrder) return false;
+                    const firstDate = new Date(c.firstOrder);
+                    
+                    if (dateFilter === 'today') {
+                        const today = new Date();
+                        return firstDate.toDateString() === today.toDateString();
+                    } else if (dateFilter === 'week') {
+                        const weekAgo = new Date();
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        return firstDate >= weekAgo;
+                    } else if (dateFilter === 'month') {
+                        const monthAgo = new Date();
+                        monthAgo.setMonth(monthAgo.getMonth() - 1);
+                        return firstDate >= monthAgo;
+                    } else if (dateFrom || dateTo) {
+                        const from = dateFrom ? new Date(dateFrom) : null;
+                        const to = dateTo ? new Date(dateTo) : null;
+                        if (to) to.setDate(to.getDate() + 1);
+                        if (from && firstDate < from) return false;
+                        if (to && firstDate > to) return false;
+                        return true;
+                    }
+                    return true;
+                });
+            }
+
             const repeatCustomers = customerList.filter(c => c.orderCount > 1).length;
 
             document.getElementById('totalCustomers').textContent = customerList.length;
@@ -965,13 +1121,47 @@
             tbody.innerHTML = customerList.slice(0, 20).map(c => `
                 <tr>
                     <td>${c.name}</td>
-                    <td>${c.email}</td>
+                    <td><a href="#" onclick="showCustomerDetail('${c.email}'); return false;" style="color: var(--primary); text-decoration: underline;">${c.email}</a></td>
                     <td>${c.phone || '-'}</td>
                     <td>${c.orderCount}</td>
                     <td>NT$ ${c.totalSpent.toLocaleString()}</td>
                     <td>${c.lastOrder ? new Date(c.lastOrder).toLocaleDateString('zh-TW') : '-'}</td>
                 </tr>
             `).join('');
+        }
+        
+        function handleCustomerDateFilter() {
+            const range = document.getElementById('customerDateFilter').value;
+            const dateFrom = document.getElementById('customerDateFrom');
+            const dateTo = document.getElementById('customerDateTo');
+
+            if (range === 'custom') {
+                dateFrom.style.display = 'inline-block';
+                dateTo.style.display = 'inline-block';
+            } else {
+                dateFrom.style.display = 'none';
+                dateTo.style.display = 'none';
+                
+                // Set default dates based on range
+                const today = new Date();
+                let fromDate = new Date();
+                let toDate = new Date();
+
+                if (range === 'today') {
+                    fromDate = today;
+                    toDate = today;
+                } else if (range === 'week') {
+                    fromDate.setDate(today.getDate() - 7);
+                } else if (range === 'month') {
+                    fromDate.setMonth(today.getMonth() - 1);
+                }
+
+                if (range) {
+                    dateFrom.value = fromDate.toISOString().split('T')[0];
+                    dateTo.value = toDate.toISOString().split('T')[0];
+                }
+            }
+            renderCustomerStats();
         }
         
         function renderOrders(orders) {
@@ -1326,6 +1516,205 @@
                     alert(data.error || '刪除失敗');
                 }
             } catch (err) { alert('網路錯誤'); }
+        }
+        
+        // ========== 優惠券管理 ==========
+        async function loadPromoCodes() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/promo-codes`, {
+                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderPromoCodes(data.promo_codes);
+                    // 取得使用統計
+                    loadPromoStats();
+                }
+            } catch (err) {
+                document.getElementById('promoTableBody').innerHTML = '<tr><td colspan="8" class="loading">載入失敗</td></tr>';
+            }
+        }
+        
+        async function loadPromoStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/promo-codes/stats`, {
+                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('promoTotalUsage').textContent = data.summary.total_usage || 0;
+                    document.getElementById('promoTotalDiscount').textContent = `NT$ ${(data.summary.total_discount || 0).toLocaleString()}`;
+                    document.getElementById('promoTotalRevenue').textContent = `NT$ ${(data.summary.total_revenue || 0).toLocaleString()}`;
+                    document.getElementById('promoCount').textContent = data.stats.length || 0;
+                }
+            } catch (err) {
+                console.error('載入優惠券統計失敗:', err);
+            }
+        }
+        
+        function renderPromoCodes(promos) {
+            const tbody = document.getElementById('promoTableBody');
+            if (!promos || !promos.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無優惠碼</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = promos.map(p => {
+                const validUntil = p.valid_until ? new Date(p.valid_until).toLocaleDateString('zh-TW') : '無限期';
+                const discount = p.promo_type === 'percentage' ? `${p.value}%` : `NT$ ${p.value}`;
+                const usageLimit = p.usage_limit || '無限制';
+                const status = p.active ? '<span class="status-badge paid">啟用</span>' : '<span class="status-badge pending">停用</span>';
+                
+                return `<tr>
+                    <td><strong>${p.code}</strong><br><small style="color:var(--text-muted)">${p.description || ''}</small></td>
+                    <td>${p.promo_type === 'percentage' ? '折扣%' : '固定金額'}</td>
+                    <td>${discount}</td>
+                    <td>NT$ ${p.min_amount || 0}</td>
+                    <td>${validUntil}</td>
+                    <td>${p.usage_count || 0} / ${usageLimit}</td>
+                    <td>${status}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="togglePromo('${p.code}', ${p.active ? 0 : 1})">${p.active ? '停用' : '啟用'}</button>
+                        <button class="btn btn-secondary btn-sm" onclick="deletePromo('${p.code}')">刪除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+        
+        function showAddPromoModal() {
+            document.getElementById('addPromoModal').classList.add('active');
+        }
+        
+        function closeAddPromoModal() {
+            document.getElementById('addPromoModal').classList.remove('active');
+        }
+        
+        async function handleAddPromo(e) {
+            e.preventDefault();
+            const promoData = {
+                code: document.getElementById('promoCode').value.toUpperCase(),
+                promo_type: document.getElementById('promoType').value,
+                value: parseFloat(document.getElementById('promoValue').value),
+                min_amount: parseFloat(document.getElementById('promoMinAmount').value) || 0,
+                valid_until: document.getElementById('promoValidUntil').value || null,
+                usage_limit: document.getElementById('promoUsageLimit').value ? parseInt(document.getElementById('promoUsageLimit').value) : null,
+                description: document.getElementById('promoDescription').value
+            };
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/promo-codes`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': 'duet-admin-2024'
+                    },
+                    body: JSON.stringify(promoData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('優惠碼建立成功！');
+                    closeAddPromoModal();
+                    loadPromoCodes();
+                    // 清空表單
+                    e.target.reset();
+                } else {
+                    alert(data.error || '建立失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+        
+        async function togglePromo(code, active) {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/promo-codes/${code}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': 'duet-admin-2024'
+                    },
+                    body: JSON.stringify({ active: active })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadPromoCodes();
+                } else {
+                    alert(data.error || '操作失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+        
+        async function deletePromo(code) {
+            if (!confirm(`確定要刪除優惠碼 ${code} 嗎？`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/promo-codes/${code}`, {
+                    method: 'DELETE',
+                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('刪除成功');
+                    loadPromoCodes();
+                } else {
+                    alert(data.error || '刪除失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+        
+        // ========== 客戶詳情 ==========
+        function showCustomerDetail(email) {
+            // 找出該客戶的所有訂單
+            const customerOrders = allOrders.filter(o => {
+                const u = o.userInfo || {};
+                return (u.email || u.buyerEmail || '').toLowerCase() === email.toLowerCase();
+            });
+            
+            // 計算客戶資料
+            const firstOrder = customerOrders.reduce(( earliest, o) => {
+                if (!earliest || (o.timestamp && o.timestamp < earliest.timestamp)) return o;
+                return earliest;
+            }, null);
+            
+            const totalSpent = customerOrders.reduce((sum, o) => sum + (o.total || o.originalTotal || 0), 0);
+            
+            const u = customerOrders[0]?.userInfo || {};
+            const name = u.name || u.buyerName || '未知';
+            const phone = u.phone || u.buyerPhone || '-';
+            
+            let content = `
+                <div class="detail-section">
+                    <h3>基本資訊</h3>
+                    <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${name}</span></div>
+                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${email}</span></div>
+                    <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${phone}</span></div>
+                    <div class="detail-row"><span class="detail-label">首次購買</span><span class="detail-value">${firstOrder?.timestamp ? new Date(firstOrder.timestamp).toLocaleDateString('zh-TW') : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">訂單數</span><span class="detail-value">${customerOrders.length}</span></div>
+                    <div class="detail-row"><span class="detail-label">總消費</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${totalSpent.toLocaleString()}</span></div>
+                </div>
+                <div class="detail-section">
+                    <h3>購買歷史 (${customerOrders.length} 筆)</h3>
+                    ${customerOrders.map(o => `
+                        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                <strong>${o.orderId}</strong>
+                                <span class="status-badge ${statusMap[o.status]?.class || ''}">${statusMap[o.status]?.text || o.status}</span>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-muted)">
+                                ${(o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ') || '-'} | 
+                                NT$ ${(o.total || 0).toLocaleString()} | 
+                                ${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : '-'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('customerDetailContent').innerHTML = content;
+            document.getElementById('customerDetailModal').classList.add('active');
+        }
+        
+        function closeCustomerDetailModal() {
+            document.getElementById('customerDetailModal').classList.remove('active');
         }
     </script>
 </body>
