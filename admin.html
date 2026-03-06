@@ -230,6 +230,20 @@
         }
         
         .filter-bar input { flex: 1; min-width: 180px; }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        #pageInfo {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
         
         /* Table */
         .table-container {
@@ -538,6 +552,18 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- 分頁控制 -->
+                <div class="pagination" id="pagination">
+                    <button class="btn btn-secondary btn-sm" id="prevPage" onclick="changePage(-1)">上一頁</button>
+                    <span id="pageInfo">第 1 頁</span>
+                    <button class="btn btn-secondary btn-sm" id="nextPage" onclick="changePage(1)">下一頁</button>
+                    <select id="pageSize" onchange="changePageSize()" style="margin-left:10px">
+                        <option value="20">20 筆/頁</option>
+                        <option value="50">50 筆/頁</option>
+                        <option value="100">100 筆/頁</option>
+                    </select>
+                </div>
             </div>
             
             <!-- Users Tab -->
@@ -624,6 +650,9 @@
         // State
         let currentUser = null;
         let allOrders = [];
+        let currentPage = 1;
+        let pageSize = 20;
+        let filteredOrders = [];
         
         // Status mapping
         const statusMap = {
@@ -775,18 +804,26 @@
         }
         
         function renderOrders(orders) {
+            filteredOrders = orders;
+            const totalPages = Math.ceil(orders.length / pageSize);
+            if (currentPage > totalPages) currentPage = 1;
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageOrders = orders.slice(start, end);
+
             const tbody = document.getElementById('ordersTableBody');
-            if (!orders.length) {
+            if (!pageOrders.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
-            tbody.innerHTML = orders.map(order => {
+            tbody.innerHTML = pageOrders.map(order => {
                 const u = order.userInfo || {};
                 const items = order.items || [];
                 const total = order.total || 0;
                 const status = statusMap[order.status] || { text: order.status, class: '' };
                 const date = order.timestamp ? new Date(order.timestamp).toLocaleDateString('zh-TW') : '-';
-                
+
                 return `<tr>
                     <td><strong>${order.orderId}</strong></td>
                     <td>${u.name || '-'}<br><small style="color:var(--text-muted)">${u.email || '-'}</small></td>
@@ -797,6 +834,25 @@
                     <td><button class="btn btn-secondary btn-sm" onclick="viewOrder('${order.orderId}')">查看</button></td>
                 </tr>`;
             }).join('');
+
+            // Update pagination controls
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 頁 (共 ${orders.length} 筆)`;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredOrders.length / pageSize);
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderOrders(filteredOrders);
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('pageSize').value);
+            currentPage = 1;
+            renderOrders(filteredOrders);
         }
         
         function handleDateRangeChange() {
