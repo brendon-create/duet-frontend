@@ -2836,7 +2836,8 @@
             // ==========================================
             // 🔧 更新產品攝影模組的 mesh 引用
             // ==========================================
-            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, gridHelper, axesHelper);
+            // gridHelper 和 axesHelper 未定義，傳入 null 避免錯誤
+            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, null, null);
         }
 
         // 🧹 清除零碎部件（用於 Toggle 開關）
@@ -5424,6 +5425,16 @@
                         charInput.value = letter1 + letter2;
                         charInput.dispatchEvent(new Event('input'));
                     }
+
+                    // ✅ 立即顯示重建提示（在 generateModel 之前！）
+                    const indicators = [
+                        'model-rebuilding-indicator-top',
+                        'model-rebuilding-indicator-cleanup'
+                    ];
+                    indicators.forEach(indId => {
+                        const indicator = document.getElementById(indId);
+                        if (indicator) indicator.style.display = 'block';
+                    });
 
                     generateModel();
                 });
