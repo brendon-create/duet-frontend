@@ -586,6 +586,37 @@
                     </table>
                 </div>
 
+                <!-- 客戶管理 -->
+                <div style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">客戶管理</h3>
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalCustomers">0</div>
+                            <div class="stat-label">總客戶數</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="repeatCustomers">0</div>
+                            <div class="stat-label">回購客戶</div>
+                        </div>
+                    </div>
+                    <div class="table-container" style="margin-top: 16px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>客戶姓名</th>
+                                    <th>Email</th>
+                                    <th>電話</th>
+                                    <th>訂單數</th>
+                                    <th>總消費</th>
+                                    <th>最後購買</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- 分頁控制 -->
                 <div class="pagination" id="pagination">
                     <button class="btn btn-secondary btn-sm" id="prevPage" onclick="changePage(-1)">上一頁</button>
@@ -820,6 +851,7 @@
                     allOrders = data.orders;
                     updateStats();
                     renderOrders(allOrders);
+                    renderCustomerStats();
                 }
             } catch (err) {
                 document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
@@ -890,6 +922,55 @@
         function showProductStats() {
             const el = document.getElementById('productStats');
             el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function renderCustomerStats() {
+            const customers = {};
+            allOrders.forEach(o => {
+                const u = o.userInfo || {};
+                const email = (u.email || u.buyerEmail || '').toLowerCase();
+                const name = u.name || u.buyerName || '未知';
+                const phone = u.phone || u.buyerPhone || '';
+
+                if (!email) return;
+
+                if (!customers[email]) {
+                    customers[email] = {
+                        name,
+                        email,
+                        phone,
+                        orderCount: 0,
+                        totalSpent: 0,
+                        lastOrder: o.timestamp
+                    };
+                }
+                customers[email].orderCount++;
+                customers[email].totalSpent += o.total || o.originalTotal || 0;
+                if (o.timestamp && (!customers[email].lastOrder || o.timestamp > customers[email].lastOrder)) {
+                    customers[email].lastOrder = o.timestamp;
+                }
+            });
+
+            const customerList = Object.values(customers);
+            const repeatCustomers = customerList.filter(c => c.orderCount > 1).length;
+
+            document.getElementById('totalCustomers').textContent = customerList.length;
+            document.getElementById('repeatCustomers').textContent = repeatCustomers;
+
+            // 按消費金額排序
+            customerList.sort((a, b) => b.totalSpent - a.totalSpent);
+
+            const tbody = document.getElementById('customersTableBody');
+            tbody.innerHTML = customerList.slice(0, 20).map(c => `
+                <tr>
+                    <td>${c.name}</td>
+                    <td>${c.email}</td>
+                    <td>${c.phone || '-'}</td>
+                    <td>${c.orderCount}</td>
+                    <td>NT$ ${c.totalSpent.toLocaleString()}</td>
+                    <td>${c.lastOrder ? new Date(c.lastOrder).toLocaleDateString('zh-TW') : '-'}</td>
+                </tr>
+            `).join('');
         }
         
         function renderOrders(orders) {
