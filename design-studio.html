@@ -163,11 +163,13 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-align: left;
+            pointer-events: auto;
         }
 
         /* 字體下拉選單中的選項以各自字體顯示 */
         select.font-select-btn {
             font-family: inherit;
+            pointer-events: auto;
         }
 
         select.font-select-btn option {
@@ -5561,6 +5563,11 @@
         initScene();
         initFontSelector();
         setupEventListeners();
+
+        // 確保字體按鈕可點擊（解決第一次需按兩次的問題）
+        document.getElementById('font1-btn').style.pointerEvents = 'auto';
+        document.getElementById('font2-btn').style.pointerEvents = 'auto';
+
         animate();
 
         // 初始化價格顯示
