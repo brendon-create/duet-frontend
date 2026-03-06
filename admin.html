@@ -548,6 +548,7 @@
                     <input type="date" id="dateFrom" style="display:none" onchange="filterOrders()">
                     <input type="date" id="dateTo" style="display:none" onchange="filterOrders()">
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
+                    <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                 </div>
                 
                 <div class="table-container">
@@ -952,7 +953,50 @@
             });
             renderOrders(filtered);
         }
-        
+
+        function exportOrders() {
+            // 使用目前篩選後的訂單
+            const orders = filteredOrders.length > 0 ? filteredOrders : allOrders;
+            if (orders.length === 0) {
+                alert('沒有訂單可匯出');
+                return;
+            }
+
+            // CSV 標題
+            const headers = ['訂單編號', '客戶姓名', '客戶Email', '電話', '商品', '金額', '狀態', '日期'];
+
+            // CSV 資料
+            const rows = orders.map(o => {
+                const u = o.userInfo || {};
+                const items = (o.items || []).map(i => i.letter1 + i.letter2).join(', ');
+                return [
+                    o.orderId,
+                    u.name || u.buyerName || '',
+                    u.email || u.buyerEmail || '',
+                    u.phone || u.buyerPhone || '',
+                    items,
+                    o.total || o.originalTotal || 0,
+                    o.status,
+                    o.timestamp ? new Date(o.timestamp).toLocaleString('zh-TW') : ''
+                ];
+            });
+
+            // 產生 CSV
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+            });
+
+            // 下載
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `duet-orders-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         // Order Detail
         async function viewOrder(orderId) {
             try {
