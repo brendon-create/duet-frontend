@@ -2842,7 +2842,7 @@
             ProductPhotoStudio.setMeshes(mainMesh, bailMesh, null, null);
         }
 
-        // 🧹 清除零碎部件（用於 Toggle 開關）
+        // 🧹 清除零碎部件（用於 Toggle 開關）- 佇列版本
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
@@ -2865,7 +2865,7 @@
                 const timestamp = () => `[${new Date().toISOString().slice(11,23)}]`;
                 const elapsed = () => `(+${((Date.now()-t0)/1000).toFixed(2)}s)`;
                 
-                console.log(`${timestamp()} 🧹 開始清理零碎部件`);
+                console.log(`${timestamp()} 🧹 開始清理零碎部件（佇列版本）`);
 
                 // 1. 取得當前參數（包含墜頭位置）
                 // 計算墜頭相對於模型中心的位置
@@ -2887,8 +2887,8 @@
                 };
                 console.log(`${timestamp()} 📋 參數準備完成 (墜頭: x=${bailRelativeX.toFixed(2)}, y=${bailRelativeY.toFixed(2)}, z=${bailRelativeZ.toFixed(2)}, rot=${bailRot.toFixed(1)}°) ${elapsed()}`);
 
-                // 2. 請求後端生成乾淨的 STL
-                console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
+                // 2. 請求後端加入預覽佇列
+                console.log(`${timestamp()} 📡 發送後端請求（加入佇列）... ${elapsed()}`);
                 const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2901,10 +2901,43 @@
                 }
 
                 console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
-                const { token, expires_in } = await response1.json();
-                console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
+                const { task_id } = await response1.json();
+                console.log(`${timestamp()} ✅ 取得 task_id: ${task_id} ${elapsed()}`);
 
-                // 3. 用 token 下載 STL（帶重試機制）
+                // 3. 輪詢等待任務完成
+                console.log(`${timestamp()} ⏳ 開始輪詢任務狀態... ${elapsed()}`);
+                let token = null;
+                let pollCount = 0;
+                const maxPollCount = 60; // 最多輪詢 60 次（約 30 秒）
+                const pollInterval = 500; // 500ms 輪詢一次
+                
+                while (pollCount < maxPollCount) {
+                    await new Promise(resolve => setTimeout(resolve, pollInterval));
+                    
+                    const statusResponse = await fetch(`https://duet-backend-wlw8.onrender.com/api/request-preview-status/${task_id}`);
+                    const statusData = await statusResponse.json();
+                    
+                    pollCount++;
+                    
+                    if (statusData.status === 'completed') {
+                        token = statusData.token;
+                        console.log(`${timestamp()} ✅ 任務完成，取得 token ${elapsed()}`);
+                        break;
+                    } else if (statusData.status === 'failed') {
+                        throw new Error(statusData.error || 'STL 生成失敗');
+                    } else {
+                        // pending 或 processing，繼續輪詢
+                        if (pollCount % 10 === 0) {
+                            console.log(`${timestamp()} ⏳ 任務狀態: ${statusData.status} (${pollCount}/${maxPollCount}) ${elapsed()}`);
+                        }
+                    }
+                }
+                
+                if (!token) {
+                    throw new Error('等待超時，請重試');
+                }
+
+                // 4. 用 token 下載 STL（帶重試機制）
                 console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
                 
                 let response2;
@@ -2939,7 +2972,7 @@
                     }
                 }
 
-                // 4. 用 STLLoader 解析
+                // 5. 用 STLLoader 解析
                 console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
                 const loader = new STLLoader();
                 const cleanGeometry = loader.parse(arrayBuffer);
