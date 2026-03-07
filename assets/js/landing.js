@@ -1,5 +1,29 @@
 // DUET Landing Page - Interactive Features
 
+// === Mobile Navigation Toggle ===
+function toggleMobileNav() {
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('nav-links');
+    
+    hamburger.classList.toggle('active');
+    navLinks.classList.toggle('mobile-open');
+}
+
+// 點擊導航連結後關閉選單
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.getElementById('nav-links');
+    const links = navLinks.querySelectorAll('a');
+    
+    links.forEach(link => {
+        link.addEventListener('click', () => {
+            const hamburger = document.getElementById('hamburger');
+            const navLinks = document.getElementById('nav-links');
+            hamburger.classList.remove('active');
+            navLinks.classList.remove('mobile-open');
+        });
+    });
+});
+
 // === FAQ Toggle ===
 document.addEventListener('DOMContentLoaded', function() {
     const faqItems = document.querySelectorAll('.faq-item');
