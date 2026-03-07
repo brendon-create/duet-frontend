@@ -1113,8 +1113,8 @@
             }
             
             .version-slot {
-                width: 90px;
-                height: 70px;
+                width: 150px !important;
+                height: 110px !important;
                 background: rgba(0, 0, 0, 0.5) !important;
             }
             
@@ -1123,7 +1123,7 @@
                 padding: 4px;
             }
             
-            /* 3D 視窗區域 - 中間，減少控制面板高度讓背景可見 */
+            /* 3D 視窗區域 - 中間，往上移動讓背景可見 */
             #viewport {
                 order: 2 !important;
                 position: relative !important;
@@ -1131,6 +1131,7 @@
                 min-height: 0;
                 width: 100% !important;
                 height: auto !important;
+                margin-top: -15vh !important;
                 z-index: 1 !important;
                 top: auto !important;
                 left: auto !important;
@@ -1143,7 +1144,7 @@
             body {
                 background-attachment: scroll !important;
                 background-size: cover !important;
-                background-position: center center !important;
+                background-position: center 20% !important;
             }
             
             /* 控制面板 - 在最下方，可滑動，減少高度 */
@@ -1156,9 +1157,9 @@
                 bottom: 0 !important;
                 width: 100% !important;
                 height: auto !important;
-                max-height: 35vh !important;
+                max-height: 30vh !important;
                 border-radius: 20px 20px 0 0 !important;
-                padding: 10px !important;
+                padding: 8px !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
                 z-index: 50 !important;
@@ -3991,9 +3992,11 @@
             slotScene.environment = envMap;
 
             const meshClone = mainMesh.clone();
+            meshClone.name = 'mainMesh';
             slotScene.add(meshClone);
             if (bailMesh) {
                 const bailClone = bailMesh.clone();
+                bailClone.name = 'bailMesh';
                 slotScene.add(bailClone);
             }
 
@@ -5847,15 +5850,41 @@
             requestAnimationFrame(animate);
             controls.update();
 
-            // 同步 Slot 相機位置和渲染
-            if (slot1Camera && slot1Renderer && slot1Scene) {
-                slot1Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
+            // 同步 Slot 模型的位置、旋轉和縮放
+            if (slot1Camera && slot1Renderer && slot1Scene && mainMesh) {
+                slot1Camera.position.copy(camera.position).multiplyScalar(0.5);
                 slot1Camera.lookAt(0, 0, 0);
+                // 同步 mesh 和 bailMesh 位置、旋轉、縮放
+                slot1Scene.children.forEach(child => {
+                    if (child.isMesh && child.name === 'mainMesh') {
+                        child.position.copy(mainMesh.position);
+                        child.rotation.copy(mainMesh.rotation);
+                        child.scale.copy(mainMesh.scale);
+                    }
+                    if (child.isMesh && child.name === 'bailMesh' && bailMesh) {
+                        child.position.copy(bailMesh.position);
+                        child.rotation.copy(bailMesh.rotation);
+                        child.scale.copy(bailMesh.scale);
+                    }
+                });
                 slot1Renderer.render(slot1Scene, slot1Camera);
             }
-            if (slot2Camera && slot2Renderer && slot2Scene) {
-                slot2Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
+            if (slot2Camera && slot2Renderer && slot2Scene && mainMesh) {
+                slot2Camera.position.copy(camera.position).multiplyScalar(0.5);
                 slot2Camera.lookAt(0, 0, 0);
+                // 同步 mesh 和 bailMesh 位置、旋轉、縮放
+                slot2Scene.children.forEach(child => {
+                    if (child.isMesh && child.name === 'mainMesh') {
+                        child.position.copy(mainMesh.position);
+                        child.rotation.copy(mainMesh.rotation);
+                        child.scale.copy(mainMesh.scale);
+                    }
+                    if (child.isMesh && child.name === 'bailMesh' && bailMesh) {
+                        child.position.copy(bailMesh.position);
+                        child.rotation.copy(bailMesh.rotation);
+                        child.scale.copy(bailMesh.scale);
+                    }
+                });
                 slot2Renderer.render(slot2Scene, slot2Camera);
             }
 
