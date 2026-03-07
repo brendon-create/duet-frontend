@@ -350,6 +350,22 @@
             bottom: 0;
             z-index: 0;
         }
+        
+        /* 確保控制面板可以正常接收事件 */
+        #control-panel {
+            pointer-events: auto;
+        }
+        
+        #control-panel * {
+            pointer-events: auto;
+        }
+        
+        /* 確保 select 和 input 元素可以接收事件 */
+        #control-panel select,
+        #control-panel input,
+        #control-panel button {
+            pointer-events: auto;
+        }
 
         /* Font Selector Modal */
         #font-selector-modal {
@@ -1061,6 +1077,101 @@
         .custom-toast-message {
             font-size: 14px;
             line-height: 1.5;
+        }
+        
+        /* =========================================
+           手機 RWD 佈局 (< 768px)
+           ========================================= */
+        @media (max-width: 768px) {
+            /* 行動版佈局：垂直堆疊 */
+            body {
+                flex-direction: column;
+                overflow: hidden;
+            }
+            
+            /* 3D 視窗區域 - 佔 40% 高度 */
+            #viewport {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 40vh;
+                z-index: 1;
+            }
+            
+            /* Saved Versions (Slot 1/2) - 在視窗下方 */
+            #saved-versions {
+                position: fixed;
+                top: 40vh;
+                left: 0;
+                right: 0;
+                display: flex;
+                justify-content: center;
+                gap: 12px;
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 50;
+            }
+            
+            .version-slot {
+                width: 100px;
+                height: 80px;
+            }
+            
+            .version-label {
+                font-size: 9px;
+                padding: 4px;
+            }
+            
+            /* 控制面板 - 在 Slots 下方，可滑動 */
+            #control-panel {
+                top: calc(40vh + 104px);
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                max-height: none;
+                border-radius: 20px 20px 0 0;
+                padding: 16px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .panel-header {
+                margin-bottom: 16px;
+                padding-bottom: 12px;
+            }
+            
+            .panel-header h1 {
+                font-size: 20px;
+            }
+            
+            .control-group {
+                margin-bottom: 12px;
+            }
+            
+            /* 調整字體選擇按鈕寬度 */
+            .flex-row > div:first-child,
+            .flex-row > div:last-child {
+                flex: 1;
+            }
+            
+            /* 調整按鈕 */
+            .btn-primary {
+                padding: 12px;
+                font-size: 13px;
+            }
+            
+            /* 隱藏某些不重要的元素 */
+            .ai-consultant-link {
+                display: none;
+            }
+            
+            /* 確保字體預載入狀態在小螢幕上可見 */
+            #font-preload-status {
+                font-size: 10px;
+                padding: 8px;
+            }
         }
     </style>
     
@@ -2384,6 +2495,7 @@
             renderer.toneMappingExposure = 1.2;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.getElementById('viewport').appendChild(renderer.domElement);
+            
             // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
             window.renderer = renderer;
             window.scene = scene;
@@ -2454,6 +2566,7 @@
             loadHDRWithFallback();
 
             window.addEventListener('resize', onResize);
+            window.addEventListener('orientationchange', onResize);
             
             // ==========================================
             // 🔧 初始化產品攝影模組
@@ -5568,9 +5681,23 @@
         }
 
         function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const viewport = document.getElementById('viewport');
+            let width, height;
+            
+            // 檢查是否為手機版（viewport 高度小於 window 高度）
+            if (viewport && viewport.offsetHeight < window.innerHeight) {
+                // 手機版：使用 viewport 元素的實際尺寸
+                width = viewport.offsetWidth;
+                height = viewport.offsetHeight;
+            } else {
+                // 電腦版：使用 window 尺寸
+                width = window.innerWidth;
+                height = window.innerHeight;
+            }
+            
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(width, height);
         }
 
         function animate() {
