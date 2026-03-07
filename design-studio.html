@@ -1095,7 +1095,7 @@
                 flex-direction: column;
             }
             
-            /* Saved Versions (Slot 1/2) - 在最上方 */
+            /* Saved Versions (Slot 1/2) - 在最上方，改為透明背景顯示背景圖 */
             #saved-versions {
                 order: 1 !important;
                 position: relative !important;
@@ -1108,13 +1108,14 @@
                 justify-content: center;
                 gap: 12px;
                 padding: 10px;
-                background: rgba(0, 0, 0, 0.95) !important;
+                background: transparent !important;
                 z-index: 100 !important;
             }
             
             .version-slot {
                 width: 90px;
                 height: 70px;
+                background: rgba(0, 0, 0, 0.5) !important;
             }
             
             .version-label {
@@ -1122,7 +1123,7 @@
                 padding: 4px;
             }
             
-            /* 3D 視窗區域 - 中間 */
+            /* 3D 視窗區域 - 中間，減少控制面板高度讓背景可見 */
             #viewport {
                 order: 2 !important;
                 position: relative !important;
@@ -1135,9 +1136,17 @@
                 left: auto !important;
                 right: auto !important;
                 bottom: auto !important;
+                background: transparent !important;
             }
             
-            /* 控制面板 - 在最下方，可滑動 */
+            /* 確保 body 背景在所有區塊下都可見 */
+            body {
+                background-attachment: scroll !important;
+                background-size: cover !important;
+                background-position: center center !important;
+            }
+            
+            /* 控制面板 - 在最下方，可滑動，減少高度 */
             #control-panel {
                 order: 3 !important;
                 position: relative !important;
@@ -1147,9 +1156,9 @@
                 bottom: 0 !important;
                 width: 100% !important;
                 height: auto !important;
-                max-height: 50vh !important;
+                max-height: 35vh !important;
                 border-radius: 20px 20px 0 0 !important;
-                padding: 12px !important;
+                padding: 10px !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
                 z-index: 50 !important;
@@ -1224,8 +1233,16 @@
             
             /* 字體顯示區域 */
             #font-selector-modal .font-display-area {
-                padding: 20px !important;
+                padding: 15px !important;
                 width: 100% !important;
+                min-height: 200px !important;
+                flex: 1 !important;
+                overflow-y: auto !important;
+            }
+            
+            /* 字體預覽卡確保可見 */
+            #font-selector-modal .font-preview-card {
+                min-height: 80px !important;
             }
             
             /* 關閉按鈕 */
@@ -1247,6 +1264,57 @@
             #font-selector-modal .confirm-btn {
                 padding: 12px 24px !important;
                 font-size: 12px !important;
+            }
+            
+            /* 購物車項目在手機上的布局 */
+            .cart-item {
+                flex-wrap: wrap !important;
+                padding: 12px !important;
+                gap: 10px !important;
+            }
+            
+            .cart-item-image {
+                width: 60px !important;
+                height: 60px !important;
+            }
+            
+            .cart-item-info {
+                flex: 1 1 60% !important;
+                min-width: 0 !important;
+            }
+            
+            .cart-item-info h3 {
+                font-size: 14px !important;
+                margin-bottom: 4px !important;
+            }
+            
+            .cart-item-details {
+                font-size: 11px !important;
+            }
+            
+            .cart-item-price {
+                font-size: 16px !important;
+                margin-right: 10px !important;
+            }
+            
+            .cart-item-quantity {
+                gap: 6px !important;
+            }
+            
+            .quantity-input {
+                width: 40px !important;
+                padding: 4px !important;
+                font-size: 12px !important;
+            }
+            
+            .quantity-btns {
+                gap: 2px !important;
+            }
+            
+            .qty-btn {
+                width: 20px !important;
+                height: 16px !important;
+                font-size: 10px !important;
             }
         }
     </style>
