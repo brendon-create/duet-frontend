@@ -1081,41 +1081,39 @@
         
         /* =========================================
            手機 RWD 佈局 (< 768px)
+           說明：Slot 在最上方，中間 3D 視窗，下方控制面板
            ========================================= */
         @media (max-width: 768px) {
-            /* 行動版佈局：垂直堆疊 */
-            body {
-                flex-direction: column;
+            /* 行動版佈局 */
+            html, body {
+                height: 100%;
                 overflow: hidden;
             }
             
-            /* 3D 視窗區域 - 佔 40% 高度 */
-            #viewport {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 40vh;
-                z-index: 1;
+            body {
+                display: flex;
+                flex-direction: column;
             }
             
-            /* Saved Versions (Slot 1/2) - 在視窗下方 */
+            /* Saved Versions (Slot 1/2) - 在最上方 */
             #saved-versions {
-                position: fixed;
-                top: 40vh;
-                left: 0;
-                right: 0;
-                display: flex;
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
+                bottom: auto !important;
+                flex-shrink: 0;
+                display: flex !important;
                 justify-content: center;
                 gap: 12px;
-                padding: 12px;
-                background: rgba(0, 0, 0, 0.8);
-                z-index: 50;
+                padding: 10px;
+                background: rgba(0, 0, 0, 0.95) !important;
+                z-index: 100 !important;
             }
             
             .version-slot {
-                width: 100px;
-                height: 80px;
+                width: 90px;
+                height: 70px;
             }
             
             .version-label {
@@ -1123,31 +1121,48 @@
                 padding: 4px;
             }
             
-            /* 控制面板 - 在 Slots 下方，可滑動 */
+            /* 3D 視窗區域 - 中間 */
+            #viewport {
+                position: relative !important;
+                flex: 1;
+                min-height: 0;
+                width: 100% !important;
+                height: auto !important;
+                z-index: 1 !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
+                bottom: auto !important;
+            }
+            
+            /* 控制面板 - 在最下方，可滑動 */
             #control-panel {
-                top: calc(40vh + 104px);
-                left: 0;
-                right: 0;
-                bottom: 0;
-                width: 100%;
-                max-height: none;
-                border-radius: 20px 20px 0 0;
-                padding: 16px;
-                overflow-y: auto;
+                position: relative !important;
+                top: auto !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                max-height: 50vh !important;
+                border-radius: 20px 20px 0 0 !important;
+                padding: 12px !important;
+                overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
+                z-index: 50 !important;
             }
             
             .panel-header {
-                margin-bottom: 16px;
-                padding-bottom: 12px;
+                margin-bottom: 12px;
+                padding-bottom: 8px;
             }
             
             .panel-header h1 {
-                font-size: 20px;
+                font-size: 18px;
             }
             
             .control-group {
-                margin-bottom: 12px;
+                margin-bottom: 10px;
             }
             
             /* 調整字體選擇按鈕寬度 */
@@ -1164,13 +1179,34 @@
             
             /* 隱藏某些不重要的元素 */
             .ai-consultant-link {
-                display: none;
+                display: none !important;
             }
             
             /* 確保字體預載入狀態在小螢幕上可見 */
             #font-preload-status {
                 font-size: 10px;
                 padding: 8px;
+            }
+            
+            /* 字體選擇 modal 確保在最上層 */
+            #font-selector-modal {
+                position: fixed !important;
+                z-index: 99999 !important;
+                top: 5vh !important;
+                left: 5vw !important;
+                right: 5vw !important;
+                bottom: 5vh !important;
+                width: auto !important;
+                height: auto !important;
+                max-height: 90vh !important;
+                max-width: none !important;
+            }
+            
+            /* 字體選擇 modal 內容也能正確顯示 */
+            #font-selector-modal > div {
+                max-height: 90vh !important;
+                overflow-y: auto !important;
+                height: 100% !important;
             }
         }
     </style>
@@ -5684,13 +5720,12 @@
             const viewport = document.getElementById('viewport');
             let width, height;
             
-            // 檢查是否為手機版（viewport 高度小於 window 高度）
-            if (viewport && viewport.offsetHeight < window.innerHeight) {
-                // 手機版：使用 viewport 元素的實際尺寸
+            if (viewport) {
+                // 使用 viewport 元素的實際尺寸
                 width = viewport.offsetWidth;
                 height = viewport.offsetHeight;
             } else {
-                // 電腦版：使用 window 尺寸
+                // Fallback: 使用 window 尺寸
                 width = window.innerWidth;
                 height = window.innerHeight;
             }
