@@ -5709,30 +5709,67 @@
             document.getElementById('confirm-btn').addEventListener('click', confirmFontSelection);
 
             // 結構參數改變 → 重建模型
-            ['letter1', 'letter2', 'size'].forEach(id => {
-                document.getElementById(id).addEventListener('change', () => {
-                    // 如果字體選擇視窗開著，同步字母到視窗
-                    const modal = document.getElementById('font-selector-modal');
-                    if (modal.classList.contains('active')) {
-                        const letter1 = document.getElementById('letter1').value;
-                        const letter2 = document.getElementById('letter2').value;
-                        const charInput = document.getElementById('char-input');
-                        charInput.value = letter1 + letter2;
-                        charInput.dispatchEvent(new Event('input'));
-                    }
+            // letter1/letter2 使用 input 事件（輸入時立即觸發），size 使用 change 事件
+            document.getElementById('letter1').addEventListener('input', () => {
+                // 如果字體選擇視窗開著，同步字母到視窗
+                const modal = document.getElementById('font-selector-modal');
+                if (modal.classList.contains('active')) {
+                    const letter1 = document.getElementById('letter1').value;
+                    const letter2 = document.getElementById('letter2').value;
+                    const charInput = document.getElementById('char-input');
+                    charInput.value = letter1 + letter2;
+                    charInput.dispatchEvent(new Event('input'));
+                }
 
-                    // ✅ 立即顯示重建提示（在 generateModel 之前！）
-                    const indicators = [
-                        'model-rebuilding-indicator-top',
-                        'model-rebuilding-indicator-cleanup'
-                    ];
-                    indicators.forEach(indId => {
-                        const indicator = document.getElementById(indId);
-                        if (indicator) indicator.style.display = 'block';
-                    });
-
-                    generateModel();
+                // ✅ 立即顯示重建提示
+                const indicators = [
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicators.forEach(indId => {
+                    const indicator = document.getElementById(indId);
+                    if (indicator) indicator.style.display = 'block';
                 });
+
+                generateModel();
+            });
+
+            document.getElementById('letter2').addEventListener('input', () => {
+                // 如果字體選擇視窗開著，同步字母到視窗
+                const modal = document.getElementById('font-selector-modal');
+                if (modal.classList.contains('active')) {
+                    const letter1 = document.getElementById('letter1').value;
+                    const letter2 = document.getElementById('letter2').value;
+                    const charInput = document.getElementById('char-input');
+                    charInput.value = letter1 + letter2;
+                    charInput.dispatchEvent(new Event('input'));
+                }
+
+                // ✅ 立即顯示重建提示
+                const indicators = [
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicators.forEach(indId => {
+                    const indicator = document.getElementById(indId);
+                    if (indicator) indicator.style.display = 'block';
+                });
+
+                generateModel();
+            });
+
+            document.getElementById('size').addEventListener('change', () => {
+                // ✅ 立即顯示重建提示
+                const indicators = [
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicators.forEach(indId => {
+                    const indicator = document.getElementById(indId);
+                    if (indicator) indicator.style.display = 'block';
+                });
+
+                generateModel();
             });
 
             // 材質參數改變 → 只更新材質，不重建模型（即時！）
