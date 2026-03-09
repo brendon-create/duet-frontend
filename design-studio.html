@@ -2815,8 +2815,8 @@
             // ✅ 修復截斷問題：增大 depth 係數
             // 原因：scale() 會縮小所有方向，包括深度
             // 後端用 resize() 只縮放 XY，保持原始深度
-            // 前端需要更大的係數來補償縮放
-            const depth = targetHeight * 18.0;  // 🎛️ 優化：從 20.0 → 18.0（減少頂點數）
+            // 前端深度，與後端一致（3倍）
+            const depth = targetHeight * 3.0;  // 與後端 scad_generator.py 一致
             const params = {
                 font: null,
                 size: 50,
