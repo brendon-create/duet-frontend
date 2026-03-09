@@ -929,7 +929,7 @@
         async function loadMemoryStats() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/memory-stats?limit=50`, {
-                    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
                 });
                 const data = await response.json();
                 
