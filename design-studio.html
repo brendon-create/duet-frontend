@@ -163,13 +163,11 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-align: left;
-            pointer-events: auto;
         }
 
         /* 字體下拉選單中的選項以各自字體顯示 */
         select.font-select-btn {
             font-family: inherit;
-            pointer-events: auto;
         }
 
         select.font-select-btn option {
@@ -349,22 +347,6 @@
             right: 0;
             bottom: 0;
             z-index: 0;
-        }
-        
-        /* 確保控制面板可以正常接收事件 */
-        #control-panel {
-            pointer-events: auto;
-        }
-        
-        #control-panel * {
-            pointer-events: auto;
-        }
-        
-        /* 確保 select 和 input 元素可以接收事件 */
-        #control-panel select,
-        #control-panel input,
-        #control-panel button {
-            pointer-events: auto;
         }
 
         /* Font Selector Modal */
@@ -1078,246 +1060,6 @@
             font-size: 14px;
             line-height: 1.5;
         }
-        
-        /* =========================================
-           手機 RWD 佈局 (< 768px)
-           說明：Slot 在最上方，中間 3D 視窗，下方控制面板
-           ========================================= */
-        @media (max-width: 768px) {
-            /* 行動版佈局 */
-            html, body {
-                height: 100%;
-                overflow: hidden;
-            }
-            
-            body {
-                display: flex;
-                flex-direction: column;
-            }
-            
-            /* Saved Versions (Slot 1/2) - 在最上方，改為透明背景顯示背景圖 */
-            #saved-versions {
-                order: 1 !important;
-                position: relative !important;
-                top: auto !important;
-                left: auto !important;
-                right: auto !important;
-                bottom: auto !important;
-                flex-shrink: 0;
-                display: flex !important;
-                justify-content: center;
-                gap: 12px;
-                padding: 10px;
-                background: transparent !important;
-                z-index: 100 !important;
-            }
-            
-            .version-slot {
-                width: 150px !important;
-                height: 110px !important;
-                background: rgba(0, 0, 0, 0.5) !important;
-            }
-            
-            .version-label {
-                font-size: 9px;
-                padding: 4px;
-            }
-            
-            /* 3D 視窗區域 - 中間，往上移動讓背景可見 */
-            #viewport {
-                order: 2 !important;
-                position: relative !important;
-                flex: 1;
-                min-height: 0;
-                width: 100% !important;
-                height: auto !important;
-                margin-top: -15vh !important;
-                z-index: 1 !important;
-                top: auto !important;
-                left: auto !important;
-                right: auto !important;
-                bottom: auto !important;
-                background: transparent !important;
-            }
-            
-            /* 確保 body 背景在所有區塊下都可見 */
-            body {
-                background-attachment: scroll !important;
-                background-size: cover !important;
-                background-position: center 20% !important;
-            }
-            
-            /* 控制面板 - 在最下方，可滑動，減少高度 */
-            #control-panel {
-                order: 3 !important;
-                position: relative !important;
-                top: auto !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100% !important;
-                height: auto !important;
-                max-height: 30vh !important;
-                border-radius: 20px 20px 0 0 !important;
-                padding: 8px !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch;
-                z-index: 50 !important;
-            }
-            
-            .panel-header {
-                margin-bottom: 12px;
-                padding-bottom: 8px;
-            }
-            
-            .panel-header h1 {
-                font-size: 18px;
-            }
-            
-            .control-group {
-                margin-bottom: 10px;
-            }
-            
-            /* 調整字體選擇按鈕寬度 */
-            .flex-row > div:first-child,
-            .flex-row > div:last-child {
-                flex: 1;
-            }
-            
-            /* 調整按鈕 */
-            .btn-primary {
-                padding: 12px;
-                font-size: 13px;
-            }
-            
-            /* 隱藏某些不重要的元素 */
-            .ai-consultant-link {
-                display: none !important;
-            }
-            
-            /* 確保字體預載入狀態在小螢幕上可見 */
-            #font-preload-status {
-                font-size: 10px;
-                padding: 8px;
-            }
-            
-            /* 字體選擇 modal 確保在最上層 */
-            #font-selector-modal {
-                position: fixed !important;
-                z-index: 99999 !important;
-                top: 5vh !important;
-                left: 5vw !important;
-                right: 5vw !important;
-                bottom: 5vh !important;
-                width: auto !important;
-                height: auto !important;
-                max-height: 90vh !important;
-                max-width: none !important;
-            }
-            
-            /* 字體選擇 modal 內容也能正確顯示 */
-            #font-selector-modal .modal-layout {
-                height: calc(100% - 60px) !important;
-                flex-direction: column !important;
-            }
-            
-            /* 字體側邊欄改為水平排列 */
-            #font-selector-modal .font-sidebar {
-                width: 100% !important;
-                min-width: auto !important;
-                flex-direction: row !important;
-                flex-wrap: wrap !important;
-                padding: 10px !important;
-                border-right: none !important;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-            }
-            
-            /* 字體顯示區域 */
-            #font-selector-modal .font-display-area {
-                padding: 15px !important;
-                width: 100% !important;
-                min-height: 200px !important;
-                flex: 1 !important;
-                overflow-y: auto !important;
-            }
-            
-            /* 字體預覽卡確保可見 */
-            #font-selector-modal .font-preview-card {
-                min-height: 80px !important;
-            }
-            
-            /* 關閉按鈕 */
-            #font-selector-modal .close-modal-btn {
-                position: absolute !important;
-                top: 10px !important;
-                right: 10px !important;
-                z-index: 99999 !important;
-            }
-            
-            /* 確認按鈕 - 改為浮動在右下角 */
-            #font-selector-modal .confirm-container {
-                position: fixed !important;
-                bottom: 20px !important;
-                right: 20px !important;
-                z-index: 99999 !important;
-            }
-            
-            #font-selector-modal .confirm-btn {
-                padding: 12px 24px !important;
-                font-size: 12px !important;
-            }
-            
-            /* 購物車項目在手機上的布局 */
-            .cart-item {
-                flex-wrap: wrap !important;
-                padding: 12px !important;
-                gap: 10px !important;
-            }
-            
-            .cart-item-image {
-                width: 60px !important;
-                height: 60px !important;
-            }
-            
-            .cart-item-info {
-                flex: 1 1 60% !important;
-                min-width: 0 !important;
-            }
-            
-            .cart-item-info h3 {
-                font-size: 14px !important;
-                margin-bottom: 4px !important;
-            }
-            
-            .cart-item-details {
-                font-size: 11px !important;
-            }
-            
-            .cart-item-price {
-                font-size: 16px !important;
-                margin-right: 10px !important;
-            }
-            
-            .cart-item-quantity {
-                gap: 6px !important;
-            }
-            
-            .quantity-input {
-                width: 40px !important;
-                padding: 4px !important;
-                font-size: 12px !important;
-            }
-            
-            .quantity-btns {
-                gap: 2px !important;
-            }
-            
-            .qty-btn {
-                width: 20px !important;
-                height: 16px !important;
-                font-size: 10px !important;
-            }
-        }
     </style>
     
     <!-- 🔧 開發者功能模組 -->
@@ -1354,7 +1096,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                設計正在製作中<span class="dots-animation"></span>
+                作品模型重新製作中<span class="dots-animation"></span>
             </div>
             
             <div class="control-group">
@@ -2640,7 +2382,6 @@
             renderer.toneMappingExposure = 1.2;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.getElementById('viewport').appendChild(renderer.domElement);
-            
             // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
             window.renderer = renderer;
             window.scene = scene;
@@ -2661,8 +2402,8 @@
 
             // ✅ HDR 載入備援機制
             const hdrUrls = [
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/jewelry_box_r2.hdr',  // 優先：jsdelivr CDN
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/jewelry_box_r2.hdr'  // 備援：GitHub Raw
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：GitHub Raw
             ];
             
             let currentHdrIndex = 0;
@@ -2711,7 +2452,6 @@
             loadHDRWithFallback();
 
             window.addEventListener('resize', onResize);
-            window.addEventListener('orientationchange', onResize);
             
             // ==========================================
             // 🔧 初始化產品攝影模組
@@ -2742,8 +2482,7 @@
                 color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
-                envMapIntensity: finish === 'glossy' ? 2.0 : 1.0,
-                flatShading: false
+                envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
             };
 
             // 只在 envMap 存在時才加入（防止黑色球體）
@@ -2815,8 +2554,8 @@
             // ✅ 修復截斷問題：增大 depth 係數
             // 原因：scale() 會縮小所有方向，包括深度
             // 後端用 resize() 只縮放 XY，保持原始深度
-            // 前端深度，與後端一致（3倍）
-            const depth = targetHeight * 3.0;  // 與後端 scad_generator.py 一致
+            // 前端需要更大的係數來補償縮放
+            const depth = targetHeight * 18.0;  // 🎛️ 優化：從 20.0 → 18.0（減少頂點數）
             const params = {
                 font: null,
                 size: 50,
@@ -3096,11 +2835,10 @@
             // ==========================================
             // 🔧 更新產品攝影模組的 mesh 引用
             // ==========================================
-            // gridHelper 和 axesHelper 未定義，傳入 null 避免錯誤
-            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, null, null);
+            ProductPhotoStudio.setMeshes(mainMesh, bailMesh, gridHelper, axesHelper);
         }
 
-        // 🧹 清除零碎部件（用於 Toggle 開關）- 佇列版本
+        // 🧹 清除零碎部件（用於 Toggle 開關）
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
@@ -3123,7 +2861,7 @@
                 const timestamp = () => `[${new Date().toISOString().slice(11,23)}]`;
                 const elapsed = () => `(+${((Date.now()-t0)/1000).toFixed(2)}s)`;
                 
-                console.log(`${timestamp()} 🧹 開始清理零碎部件（佇列版本）`);
+                console.log(`${timestamp()} 🧹 開始清理零碎部件`);
 
                 // 1. 取得當前參數（包含墜頭位置）
                 // 計算墜頭相對於模型中心的位置
@@ -3145,8 +2883,8 @@
                 };
                 console.log(`${timestamp()} 📋 參數準備完成 (墜頭: x=${bailRelativeX.toFixed(2)}, y=${bailRelativeY.toFixed(2)}, z=${bailRelativeZ.toFixed(2)}, rot=${bailRot.toFixed(1)}°) ${elapsed()}`);
 
-                // 2. 請求後端加入預覽佇列
-                console.log(`${timestamp()} 📡 發送後端請求（加入佇列）... ${elapsed()}`);
+                // 2. 請求後端生成乾淨的 STL
+                console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
                 const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3159,43 +2897,10 @@
                 }
 
                 console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
-                const { task_id } = await response1.json();
-                console.log(`${timestamp()} ✅ 取得 task_id: ${task_id} ${elapsed()}`);
+                const { token, expires_in } = await response1.json();
+                console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
 
-                // 3. 輪詢等待任務完成
-                console.log(`${timestamp()} ⏳ 開始輪詢任務狀態... ${elapsed()}`);
-                let token = null;
-                let pollCount = 0;
-                const maxPollCount = 60; // 最多輪詢 60 次（約 30 秒）
-                const pollInterval = 500; // 500ms 輪詢一次
-                
-                while (pollCount < maxPollCount) {
-                    await new Promise(resolve => setTimeout(resolve, pollInterval));
-                    
-                    const statusResponse = await fetch(`https://duet-backend-wlw8.onrender.com/api/request-preview-status/${task_id}`);
-                    const statusData = await statusResponse.json();
-                    
-                    pollCount++;
-                    
-                    if (statusData.status === 'completed') {
-                        token = statusData.token;
-                        console.log(`${timestamp()} ✅ 任務完成，取得 token ${elapsed()}`);
-                        break;
-                    } else if (statusData.status === 'failed') {
-                        throw new Error(statusData.error || 'STL 生成失敗');
-                    } else {
-                        // pending 或 processing，繼續輪詢
-                        if (pollCount % 10 === 0) {
-                            console.log(`${timestamp()} ⏳ 任務狀態: ${statusData.status} (${pollCount}/${maxPollCount}) ${elapsed()}`);
-                        }
-                    }
-                }
-                
-                if (!token) {
-                    throw new Error('等待超時，請重試');
-                }
-
-                // 4. 用 token 下載 STL（帶重試機制）
+                // 3. 用 token 下載 STL（帶重試機制）
                 console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
                 
                 let response2;
@@ -3230,7 +2935,7 @@
                     }
                 }
 
-                // 5. 用 STLLoader 解析
+                // 4. 用 STLLoader 解析
                 console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
                 const loader = new STLLoader();
                 const cleanGeometry = loader.parse(arrayBuffer);
@@ -3841,15 +3546,6 @@
 
                 // 清空並填入字體選項
                 select.innerHTML = '';
-                
-                // 添加「重新選擇字體」選項
-                const reselectOption = document.createElement('option');
-                reselectOption.value = 'reselect';
-                reselectOption.textContent = '🔄 重新選擇字體...';
-                reselectOption.style.fontFamily = 'Noto Sans TC, sans-serif';
-                reselectOption.style.fontWeight = '500';
-                select.appendChild(reselectOption);
-                
                 selectedFonts.forEach(font => {
                     const option = document.createElement('option');
                     option.value = font;
@@ -3857,6 +3553,10 @@
                     option.style.fontFamily = `"${font}", sans-serif`;
                     select.appendChild(option);
                 });
+
+                // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
+                // 不再添加「重新生成模型」和「重新選擇字體」選項
+                // 選擇字體後會自動使用第一個字體並生成模型
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
                 let defaultFont = selectedFonts[0];
@@ -3886,18 +3586,8 @@
 
                 // 監聽下拉選單變更 - 選擇字體後自動生成模型
                 select.onchange = function () {
-                    const selectedFont = this.value;
-                    
-                    // 如果選擇「重新選擇字體」，打開字體選擇視窗
-                    if (selectedFont === 'reselect') {
-                        // 打開字體選擇器
-                        openFontSelector();
-                        // 恢復選擇當前使用的字體
-                        this.value = btn.getAttribute('data-selected') || defaultFont;
-                        return;
-                    }
-                    
                     // 使用選擇的字體並生成模型
+                    const selectedFont = this.value;
                     btn.setAttribute('data-selected', selectedFont);
                     // 更新下拉選單本身的字體樣式
                     this.style.fontFamily = `"${selectedFont}", sans-serif`;
@@ -3992,11 +3682,9 @@
             slotScene.environment = envMap;
 
             const meshClone = mainMesh.clone();
-            meshClone.name = 'mainMesh';
             slotScene.add(meshClone);
             if (bailMesh) {
                 const bailClone = bailMesh.clone();
-                bailClone.name = 'bailMesh';
                 slotScene.add(bailClone);
             }
 
@@ -5709,67 +5397,20 @@
             document.getElementById('confirm-btn').addEventListener('click', confirmFontSelection);
 
             // 結構參數改變 → 重建模型
-            // letter1/letter2 使用 input 事件（輸入時立即觸發），size 使用 change 事件
-            document.getElementById('letter1').addEventListener('input', () => {
-                // 如果字體選擇視窗開著，同步字母到視窗
-                const modal = document.getElementById('font-selector-modal');
-                if (modal.classList.contains('active')) {
-                    const letter1 = document.getElementById('letter1').value;
-                    const letter2 = document.getElementById('letter2').value;
-                    const charInput = document.getElementById('char-input');
-                    charInput.value = letter1 + letter2;
-                    charInput.dispatchEvent(new Event('input'));
-                }
+            ['letter1', 'letter2', 'size'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    // 如果字體選擇視窗開著，同步字母到視窗
+                    const modal = document.getElementById('font-selector-modal');
+                    if (modal.classList.contains('active')) {
+                        const letter1 = document.getElementById('letter1').value;
+                        const letter2 = document.getElementById('letter2').value;
+                        const charInput = document.getElementById('char-input');
+                        charInput.value = letter1 + letter2;
+                        charInput.dispatchEvent(new Event('input'));
+                    }
 
-                // ✅ 立即顯示重建提示
-                const indicators = [
-                    'model-rebuilding-indicator-top',
-                    'model-rebuilding-indicator-cleanup'
-                ];
-                indicators.forEach(indId => {
-                    const indicator = document.getElementById(indId);
-                    if (indicator) indicator.style.display = 'block';
+                    generateModel();
                 });
-
-                generateModel();
-            });
-
-            document.getElementById('letter2').addEventListener('input', () => {
-                // 如果字體選擇視窗開著，同步字母到視窗
-                const modal = document.getElementById('font-selector-modal');
-                if (modal.classList.contains('active')) {
-                    const letter1 = document.getElementById('letter1').value;
-                    const letter2 = document.getElementById('letter2').value;
-                    const charInput = document.getElementById('char-input');
-                    charInput.value = letter1 + letter2;
-                    charInput.dispatchEvent(new Event('input'));
-                }
-
-                // ✅ 立即顯示重建提示
-                const indicators = [
-                    'model-rebuilding-indicator-top',
-                    'model-rebuilding-indicator-cleanup'
-                ];
-                indicators.forEach(indId => {
-                    const indicator = document.getElementById(indId);
-                    if (indicator) indicator.style.display = 'block';
-                });
-
-                generateModel();
-            });
-
-            document.getElementById('size').addEventListener('change', () => {
-                // ✅ 立即顯示重建提示
-                const indicators = [
-                    'model-rebuilding-indicator-top',
-                    'model-rebuilding-indicator-cleanup'
-                ];
-                indicators.forEach(indId => {
-                    const indicator = document.getElementById(indId);
-                    if (indicator) indicator.style.display = 'block';
-                });
-
-                generateModel();
             });
 
             // 材質參數改變 → 只更新材質，不重建模型（即時！）
@@ -5865,63 +5506,24 @@
         }
 
         function onResize() {
-            const viewport = document.getElementById('viewport');
-            let width, height;
-            
-            if (viewport) {
-                // 使用 viewport 元素的實際尺寸
-                width = viewport.offsetWidth;
-                height = viewport.offsetHeight;
-            } else {
-                // Fallback: 使用 window 尺寸
-                width = window.innerWidth;
-                height = window.innerHeight;
-            }
-            
-            camera.aspect = width / height;
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
 
-            // 同步 Slot 模型的位置、旋轉和縮放
-            if (slot1Camera && slot1Renderer && slot1Scene && mainMesh) {
-                slot1Camera.position.copy(camera.position).multiplyScalar(0.5);
+            // 同步 Slot 相機位置和渲染
+            if (slot1Camera && slot1Renderer && slot1Scene) {
+                slot1Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
                 slot1Camera.lookAt(0, 0, 0);
-                // 同步 mesh 和 bailMesh 位置、旋轉、縮放
-                slot1Scene.children.forEach(child => {
-                    if (child.isMesh && child.name === 'mainMesh') {
-                        child.position.copy(mainMesh.position);
-                        child.rotation.copy(mainMesh.rotation);
-                        child.scale.copy(mainMesh.scale);
-                    }
-                    if (child.isMesh && child.name === 'bailMesh' && bailMesh) {
-                        child.position.copy(bailMesh.position);
-                        child.rotation.copy(bailMesh.rotation);
-                        child.scale.copy(bailMesh.scale);
-                    }
-                });
                 slot1Renderer.render(slot1Scene, slot1Camera);
             }
-            if (slot2Camera && slot2Renderer && slot2Scene && mainMesh) {
-                slot2Camera.position.copy(camera.position).multiplyScalar(0.5);
+            if (slot2Camera && slot2Renderer && slot2Scene) {
+                slot2Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
                 slot2Camera.lookAt(0, 0, 0);
-                // 同步 mesh 和 bailMesh 位置、旋轉、縮放
-                slot2Scene.children.forEach(child => {
-                    if (child.isMesh && child.name === 'mainMesh') {
-                        child.position.copy(mainMesh.position);
-                        child.rotation.copy(mainMesh.rotation);
-                        child.scale.copy(mainMesh.scale);
-                    }
-                    if (child.isMesh && child.name === 'bailMesh' && bailMesh) {
-                        child.position.copy(bailMesh.position);
-                        child.rotation.copy(bailMesh.rotation);
-                        child.scale.copy(bailMesh.scale);
-                    }
-                });
                 slot2Renderer.render(slot2Scene, slot2Camera);
             }
 
@@ -5932,11 +5534,6 @@
         initScene();
         initFontSelector();
         setupEventListeners();
-
-        // 確保字體按鈕可點擊（解決第一次需按兩次的問題）
-        document.getElementById('font1-btn').style.pointerEvents = 'auto';
-        document.getElementById('font2-btn').style.pointerEvents = 'auto';
-
         animate();
 
         // 初始化價格顯示
