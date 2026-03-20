@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET | 鑄造永恆的交織 (Studio Desktop)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@300;500;700&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #f4f1ec;
+            --pencil: #1a1a1a;
+            --accent: #b03a2e;
+            --tape: rgba(210, 180, 140, 0.4);
+        }
+
+        body {
+            background-color: #d1cfca; /* 桌面底色 */
+            color: var(--pencil);
+            font-family: 'Noto Serif TC', serif;
+            overflow-x: hidden;
+        }
+
+        /* 紋理疊加 */
+        .texture-overlay {
+            position: fixed; inset: 0; pointer-events: none; z-index: 100;
+            background-image: url("https://www.transparenttextures.com/patterns/dust.png");
+            opacity: 0.3;
+        }
+
+        /* 主要畫布：一張巨大的畫紙 */
+        .main-canvas {
+            background-color: var(--paper);
+            min-height: 200vh;
+            width: 95vw;
+            margin: 40px auto;
+            position: relative;
+            box-shadow: 20px 20px 60px rgba(0,0,0,0.15);
+            padding: 5% 8%;
+            background-image: radial-gradient(var(--pencil) 0.5px, transparent 0.5px);
+            background-size: 30px 30px;
+            background-position: center;
+        }
+
+        .handwriting { font-family: 'Caveat', 'Zhi Mang XIng', cursive; }
+
+        /* 紙膠帶裝飾 */
+        .tape {
+            position: absolute;
+            background: var(--tape);
+            width: 120px;
+            height: 35px;
+            transform: rotate(-5deg);
+            backdrop-filter: blur(1px);
+            border-left: 2px dashed rgba(0,0,0,0.1);
+            border-right: 2px dashed rgba(0,0,0,0.1);
+            z-index: 20;
+        }
+
+        /* 真正的打破框架：絕對定位的裝飾元素 */
+        .floating-note {
+            position: absolute;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.05);
+            transform: rotate(2deg);
+            max-width: 250px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        /* 文字排版 */
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            line-height: 1.1;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .ink-stain {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* SVG 動畫 */
+        @keyframes dash {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+        .draw-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 5s linear forwards;
+        }
+
+        /* 客製化捲軸 */
+        ::-webkit-scrollbar { width: 0; }
+    </style>
+</head>
+<body>
+    <div class="texture-overlay"></div>
+
+    <main class="main-canvas">
+        <!-- 裝飾：紙膠帶與小紙條 -->
+        <div class="tape top-[-10px] left-[10%]"></div>
+        <div class="tape bottom-[2%] right-[5%] rotate-12"></div>
+        
+        <div class="floating-note top-[150px] right-[-30px] hidden lg:block">
+            <p class="handwriting text-xl text-red-800">Note: 45° 角度是交織美感的黃金比例，確保兩個字母在重疊時仍具識別度。</p>
+        </div>
+
+        <!-- Header -->
+        <header class="flex justify-between items-start mb-32">
+            <div class="space-y-1">
+                <h1 class="text-4xl font-bold tracking-widest">DUET</h1>
+                <p class="handwriting text-xl opacity-60 italic">Metalsmith & Design Studio</p>
+            </div>
+            <nav class="handwriting text-2xl flex gap-10">
+                <a href="#concept" class="hover:underline">Concept</a>
+                <a href="#process" class="hover:underline">Process</a>
+                <a href="design-studio.html" class="bg-black text-white px-6 py-2 rotate-2 hover:rotate-0 transition-transform">Start Creation</a>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="relative">
+            <div class="relative z-10">
+                <span class="handwriting text-3xl text-accent block mb-4">The Art of Intersection —</span>
+                <h2 class="hero-title">
+                    為你的故事，<br>
+                    <span class="relative">
+                        鑄造永恆的交織
+                        <svg class="absolute -bottom-4 left-0 w-full h-4" viewBox="0 0 500 20">
+                            <path d="M5,15 C100,5 400,25 495,10" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                </h2>
+                <div class="mt-16 flex flex-col md:flex-row gap-12 items-end">
+                    <p class="max-w-md text-lg leading-relaxed opacity-80">
+                        DUET 是一個將「姓名幾何」轉化為實體珠寶的實驗室。我們相信，當兩個人的名字在空間中重疊，那不僅是線條的交會，更是靈魂的共振。
+                    </p>
+                    <div class="handwriting text-2xl border-l-2 border-black pl-6 py-2 mb-2 italic">
+                        "Two souls, one geometry."
+                    </div>
+                </div>
+            </div>
+
+            <!-- 大型背景插圖：B&R 交織草圖 -->
+            <div class="absolute top-[-50px] right-[-5%] w-full max-w-[700px] opacity-20 pointer-events-none lg:opacity-100 lg:block">
+                <svg viewBox="0 0 800 800" class="w-full h-auto">
+                    <!-- 繪製網格輔助線 -->
+                    <g stroke="rgba(0,0,0,0.1)" stroke-width="1">
+                        <line x1="0" y1="400" x2="800" y2="400" />
+                        <line x1="400" y1="0" x2="400" y2="800" />
+                        <circle cx="400" cy="400" r="300" fill="none" />
+                    </g>
+                    <!-- 字母 B 草稿 -->
+                    <path class="draw-line" d="M300,200 L300,600 M300,200 C450,200 500,350 350,400 C500,450 550,600 300,600" 
+                          fill="none" stroke="black" stroke-width="2" />
+                    <!-- 字母 R 草稿 -->
+                    <path class="draw-line" style="animation-delay: 1s;" d="M350,250 L350,650 M350,250 C500,250 500,450 350,450 L550,650" 
+                          fill="none" stroke="var(--accent)" stroke-width="2" />
+                    <!-- 指引標註 -->
+                    <line x1="400" y1="400" x2="600" y2="200" stroke="black" stroke-width="0.5" stroke-dasharray="5" />
+                    <text x="610" y="190" class="handwriting text-xl fill-black">Golden Intersection Point</text>
+                </svg>
+            </div>
+        </section>
+
+        <!-- 如何運作 Section：改用「設計圖解」排版 -->
+        <section id="process" class="mt-60 relative">
+            <div class="ink-stain top-0 left-[-50px]"></div>
+            <h3 class="text-3xl font-bold mb-20 tracking-tighter uppercase italic border-b border-black inline-block">Workflow / 製作流程</h3>
+            
+            <div class="relative h-[800px] md:h-[500px]">
+                <!-- 流程 1 -->
+                <div class="absolute top-0 left-0 w-full md:w-1/4 group">
+                    <div class="bg-white p-6 shadow-xl border border-zinc-200 rotate-[-2deg] group-hover:rotate-0 transition-transform">
+                        <span class="handwriting text-5xl text-accent opacity-30">01</span>
+                        <h4 class="text-xl font-bold mt-2">設計輸入</h4>
+                        <p class="text-sm mt-4 opacity-70 leading-relaxed">輸入您的專屬字母，演算法將分析字體的骨架，尋找美學上的連結可能性。</p>
+                        <div class="mt-4 h-1 w-full bg-zinc-100 overflow-hidden">
+                            <div class="h-full bg-accent w-1/3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 箭頭導引線 -->
+                <svg class="absolute top-[100px] left-[20%] w-[15%] h-20 hidden md:block">
+                    <path d="M0,0 Q50,50 100,10" fill="none" stroke="black" stroke-width="1" stroke-dasharray="4" />
+                </svg>
+
+                <!-- 流程 2 -->
+                <div class="absolute top-[250px] md:top-[150px] md:left-[30%] w-full md:w-1/4 group">
+                    <div class="bg-white p-6 shadow-xl border border-zinc-200 rotate-[3deg] group-hover:rotate-0 transition-transform">
+                        <span class="handwriting text-5xl text-accent opacity-30">02</span>
+                        <h4 class="text-xl font-bold mt-2">立體演繹</h4>
+                        <p class="text-sm mt-4 opacity-70 leading-relaxed">調整 45 度視角下的光影與深度。您可以在螢幕上感受金屬折射的細膩質感。</p>
+                    </div>
+                </div>
+
+                <!-- 流程 3 -->
+                <div class="absolute top-[500px] md:top-[40px] md:left-[60%] w-full md:w-1/4 group">
+                    <div class="bg-black text-white p-6 shadow-2xl rotate-[-1deg] group-hover:rotate-0 transition-transform">
+                        <span class="handwriting text-5xl text-white/30">03</span>
+                        <h4 class="text-xl font-bold mt-2 text-white">實體鑄造</h4>
+                        <p class="text-sm mt-4 opacity-80 leading-relaxed font-light">一旦確認設計，職人將採用「失蠟法」進行鑄造，並經過 12 道手工拋光程序。</p>
+                        <div class="mt-6 flex justify-between items-center text-[10px] tracking-widest opacity-50">
+                            <span>PLATINUM</span>
+                            <span>18K GOLD</span>
+                            <span>SILVER</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 客戶故事：像是一疊散亂的照片與明信片 -->
+        <section class="mt-40">
+            <h3 class="handwriting text-5xl text-center mb-20 opacity-80">Stories from the Wearers...</h3>
+            <div class="flex flex-wrap justify-center gap-10">
+                <!-- 故事 A -->
+                <div class="w-72 bg-[#fff] p-4 shadow-lg rotate-2 hover:z-10 transition-all hover:scale-105">
+                    <div class="bg-zinc-200 aspect-square mb-4 flex items-center justify-center overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1515562141207-7a18b5ce7142?auto=format&fit=crop&q=80&w=400" alt="Wedding Rings" class="grayscale hover:grayscale-0 transition-all">
+                    </div>
+                    <p class="handwriting text-lg leading-tight">「我們將名字的縮寫交疊，變成了這枚婚戒。它提醒我們，愛是彼此的嵌入。」— <span class="text-accent">M & K</span></p>
+                </div>
+                <!-- 故事 B -->
+                <div class="w-72 bg-[#fff] p-4 shadow-lg -rotate-3 hover:z-10 transition-all hover:scale-105">
+                    <div class="bg-zinc-200 aspect-square mb-4 flex items-center justify-center overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1611085583191-a3b1a30a5af4?auto=format&fit=crop&q=80&w=400" alt="Silver Jewelry" class="grayscale hover:grayscale-0 transition-all">
+                    </div>
+                    <p class="handwriting text-lg leading-tight">「這不只是飾品，更像是一件小型的雕塑。每天戴著它，感覺很有力量。」— <span class="text-accent">Alex L.</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 常見問題與聯絡：改為表格草圖風格 -->
+        <section class="mt-60 grid md:grid-cols-2 gap-20">
+            <div class="space-y-10">
+                <h3 class="text-4xl font-bold">Studio FAQ</h3>
+                <div class="space-y-6">
+                    <details class="group border-b border-black/10 pb-4">
+                        <summary class="list-none text-xl font-bold cursor-pointer flex justify-between items-center">
+                            <span>客製化需要多長的時間？</span>
+                            <span class="handwriting text-3xl group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p class="mt-4 text-sm opacity-60">由於每件作品都需要獨立進行 3D 建模與手工拋光，標準製作週期為 15 個工作天。</p>
+                    </details>
+                    <details class="group border-b border-black/10 pb-4">
+                        <summary class="list-none text-xl font-bold cursor-pointer flex justify-between items-center">
+                            <span>材質會過敏嗎？</span>
+                            <span class="handwriting text-3xl group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p class="mt-4 text-sm opacity-60">我們僅使用高純度的 925 純銀與 18K 金，不含鎳，適合敏感肌膚長期配戴。</p>
+                    </details>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900 text-white p-10 rotate-1 shadow-2xl relative">
+                <div class="tape top-[-20px] left-[30%] opacity-20"></div>
+                <h3 class="text-3xl font-bold mb-8">Contact Studio</h3>
+                <form class="space-y-6">
+                    <div>
+                        <label class="handwriting text-xl opacity-50 block mb-2">Subject</label>
+                        <input type="text" placeholder="Design Inquiry" class="w-full bg-transparent border-b border-white/20 py-2 focus:outline-none focus:border-accent transition-colors">
+                    </div>
+                    <div>
+                        <label class="handwriting text-xl opacity-50 block mb-2">Email</label>
+                        <input type="email" placeholder="your@email.com" class="w-full bg-transparent border-b border-white/20 py-2 focus:outline-none focus:border-accent transition-colors">
+                    </div>
+                    <button class="w-full mt-8 border border-white/20 py-4 hover:bg-white hover:text-black transition-all uppercase tracking-widest text-sm">
+                        Send Message
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-60 flex flex-col items-center gap-6 opacity-40">
+            <div class="text-2xl font-bold tracking-widest">DUET BY BCAG</div>
+            <div class="flex gap-8 text-sm">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Studio Address</a>
+            </div>
+            <p class="handwriting text-lg mt-4 italic">Hand-sketched and coded with soul.</p>
+        </footer>
+    </main>
+
+    <script>
+        // 簡單的視差效果
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const floatingNote = document.querySelector('.floating-note');
+            if(floatingNote) {
+                floatingNote.style.transform = `translateY(${scrolled * 0.1}px) rotate(2deg)`;
+            }
+        });
+
+        // 監聽 Details 開啟
+        document.querySelectorAll('details').forEach((detail) => {
+            detail.addEventListener('toggle', (e) => {
+                if (detail.open) {
+                    document.querySelectorAll('details').forEach((d) => {
+                        if (d !== detail) d.open = false;
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

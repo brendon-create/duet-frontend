@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET | 為你的故事，鑄造永恆的交織</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #f8f9fa;
+            --layer-1: #e9ecef;
+            --layer-2: #dee2e6;
+            --ocean-dark: #1a3a5f;
+            --ocean-mid: #3d5a80;
+            --ocean-light: #98c1d9;
+            --accent: #ee6c4d;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            font-family: 'Outfit', sans-serif;
+            color: var(--ocean-dark);
+            overflow-x: hidden;
+        }
+
+        h1, h2, .serif { font-family: 'Playfair Display', serif; }
+
+        /* 紙雕背景層疊效果 */
+        .paper-cut-container {
+            position: fixed;
+            top: 0; right: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .wave-layer {
+            position: absolute;
+            right: -10%;
+            top: 0;
+            height: 100%;
+            width: 60%;
+            fill: var(--ocean-light);
+            filter: drop-shadow(-10px 0 15px rgba(0,0,0,0.08));
+        }
+
+        /* 打破格狀的流動布局 */
+        .flow-section {
+            position: relative;
+            padding: 100px 0;
+        }
+
+        .floating-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .floating-card:hover { transform: translateY(-10px); }
+
+        /* 導覽列：半透明磨砂 */
+        nav {
+            background: rgba(248, 249, 250, 0.7);
+            backdrop-filter: saturate(180%) blur(20px);
+        }
+
+        /* 裝飾性線條 */
+        .path-guide {
+            position: absolute;
+            z-index: -1;
+            stroke: var(--ocean-mid);
+            stroke-dasharray: 5 5;
+            opacity: 0.2;
+        }
+
+        /* 按鈕風格 */
+        .btn-glass {
+            background: var(--ocean-dark);
+            color: white;
+            padding: 12px 32px;
+            border-radius: 100px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-glass:hover {
+            background: var(--accent);
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(238, 108, 77, 0.3);
+        }
+
+        /* 步驟數字裝飾 */
+        .step-num {
+            font-size: 8rem;
+            font-weight: 700;
+            color: var(--ocean-mid);
+            opacity: 0.05;
+            position: absolute;
+            top: -40px;
+            left: -20px;
+        }
+
+        /* 手機選單 */
+        #mobile-menu {
+            transition: transform 0.5s cubic-bezier(0.77,0.2,0.05,1.0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 紙雕背景層次 (仿截圖風格) -->
+    <div class="paper-cut-container">
+        <svg viewBox="0 0 800 1200" preserveAspectRatio="none" class="h-full w-full">
+            <!-- 最深層 -->
+            <path d="M800,0 L500,0 C550,200 400,400 550,600 C700,800 450,1000 500,1200 L800,1200 Z" fill="#d1e3f0" />
+            <!-- 中間層 -->
+            <path d="M800,0 L600,0 C650,250 500,450 650,650 C800,850 550,1050 600,1200 L800,1200 Z" fill="#e3eff7" filter="drop-shadow(-5px 0 10px rgba(0,0,0,0.05))" />
+            <!-- 最淺層 -->
+            <path d="M800,0 L700,0 C750,300 650,550 750,750 C850,950 700,1150 750,1200 L800,1200 Z" fill="#f8fbfe" filter="drop-shadow(-5px 0 10px rgba(0,0,0,0.02))" />
+        </svg>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex flex-col">
+                <span class="text-2xl font-bold tracking-tighter text-blue-900">DUET</span>
+                <span class="text-[8px] tracking-[0.4em] uppercase opacity-50">By BCAG Studio</span>
+            </div>
+            
+            <div class="hidden md:flex gap-10 text-sm font-medium items-center">
+                <a href="#how-it-works" class="hover:text-orange-500 transition-colors">如何運作</a>
+                <a href="#stories" class="hover:text-orange-500 transition-colors">作品故事</a>
+                <a href="#faq" class="hover:text-orange-500 transition-colors">常見問題</a>
+                <a href="design-studio.html" class="btn-glass">開始設計</a>
+            </div>
+
+            <!-- Mobile Toggle -->
+            <button class="md:hidden p-2" onclick="toggleMenu()">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center gap-8 translate-x-full">
+        <button class="absolute top-8 right-8" onclick="toggleMenu()">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <a href="#how-it-works" class="text-3xl font-bold" onclick="toggleMenu()">如何運作</a>
+        <a href="#stories" class="text-3xl font-bold" onclick="toggleMenu()">作品故事</a>
+        <a href="design-studio.html" class="text-3xl font-bold text-orange-500" onclick="toggleMenu()">立即開始</a>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-6 pt-40 pb-20">
+        
+        <!-- Hero Section -->
+        <section class="min-h-[70vh] flex flex-col lg:flex-row items-center justify-between gap-16">
+            <div class="lg:w-1/2 space-y-8">
+                <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold tracking-widest uppercase">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    AI 對話式珠寶設計
+                </div>
+                <h1 class="hero-title text-6xl md:text-8xl leading-[1.1] font-bold text-slate-900">
+                    每一個交織，<br>
+                    <span class="italic text-blue-800">都是一段故事</span>
+                </h1>
+                <p class="text-xl text-slate-500 max-w-lg leading-relaxed">
+                    兩個字母，承載著你們的故事。透過與 AI 的暖心對話，我們將抽象的連結轉化為實體的藝術。
+                </p>
+                <div class="flex flex-wrap gap-4 pt-4">
+                    <a href="design-studio.html" class="btn-glass text-lg">
+                        開始你的故事之旅
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </a>
+                    <a href="#how-it-works" class="px-8 py-4 rounded-full border border-slate-200 hover:bg-white transition-all">了解更多</a>
+                </div>
+            </div>
+
+            <!-- 視覺區：紙雕風的產品呈現 -->
+            <div class="lg:w-1/2 relative">
+                <div class="relative w-full aspect-square max-w-lg mx-auto">
+                    <!-- 仿紙雕層疊的產品容器 -->
+                    <div class="absolute inset-0 rounded-[60px] bg-white shadow-2xl overflow-hidden group">
+                        <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&q=80" alt="DUET Pendant" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-blue-900/60 to-transparent"></div>
+                        <div class="absolute bottom-8 left-8 text-white">
+                            <span class="text-xs uppercase tracking-[0.3em] opacity-70">Customized Masterpiece</span>
+                            <h3 class="text-3xl font-bold">精選純銀系列</h3>
+                            <p class="text-sm opacity-80 mt-1">NT$ 2,980 起</p>
+                        </div>
+                    </div>
+                    <!-- 裝飾小卡 -->
+                    <div class="absolute -top-6 -right-6 w-32 h-32 bg-orange-500 rounded-3xl shadow-xl flex items-center justify-center rotate-12">
+                        <span class="text-white font-bold text-center leading-tight">5-7天<br>快速製作</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 如何運作 Section：流動、非對齊路徑 -->
+        <section id="how-it-works" class="flow-section mt-40">
+            <div class="text-center mb-32 space-y-4">
+                <h2 class="text-5xl font-bold">簡單五步驟</h2>
+                <p class="text-slate-400">從故事出發，到指尖的觸感</p>
+            </div>
+
+            <div class="relative space-y-40">
+                <!-- 背景流動引導線 -->
+                <svg class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.05] pointer-events-none hidden md:block">
+                    <path d="M500,0 Q600,200 400,400 T500,800 T400,1200" fill="none" stroke="black" stroke-width="2" stroke-dasharray="10" />
+                </svg>
+
+                <!-- 步驟 01 -->
+                <div class="flex flex-col md:flex-row items-center gap-12 group">
+                    <div class="md:w-1/2 relative">
+                        <span class="step-num italic">01</span>
+                        <div class="floating-card p-10 space-y-4">
+                            <h3 class="text-2xl font-bold">AI 對話諮詢</h3>
+                            <p class="text-slate-500">透過溫暖的對話，分享你們的故事。我們的 AI 設計師會仔細聆聽，理解這份禮物對你的獨特意義。</p>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <div class="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步驟 02 (反向) -->
+                <div class="flex flex-col md:flex-row-reverse items-center gap-12 group">
+                    <div class="md:w-1/2 relative">
+                        <span class="step-num italic text-right right-0 left-auto">02</span>
+                        <div class="floating-card p-10 space-y-4 md:translate-x-10">
+                            <h3 class="text-2xl font-bold">選擇字型組合</h3>
+                            <p class="text-slate-500">根據你的故事基調，我們推薦最適合的字型組合。你也可以在 100+ 種精選字體中探索你的風格。</p>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <div class="w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shadow-inner">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步驟 03 -->
+                <div class="flex flex-col md:flex-row items-center gap-12">
+                    <div class="md:w-1/2 relative">
+                        <span class="step-num italic">03</span>
+                        <div class="floating-card p-10 space-y-4">
+                            <h3 class="text-2xl font-bold">即時 3D 預覽</h3>
+                            <p class="text-slate-500">在瀏覽器中 360° 旋轉你的設計。調整字母重疊的細節，直到視覺呈現完美滿意。</p>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <div class="w-48 h-48 bg-white rounded-[40px] shadow-2xl flex items-center justify-center overflow-hidden border border-slate-100">
+                             <div class="animate-spin-slow text-slate-200">
+                                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"></path></svg>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步驟 05 (最後) -->
+                <div class="flex flex-col md:flex-row-reverse items-center gap-12">
+                    <div class="md:w-1/2 relative">
+                        <span class="step-num italic text-right right-0 left-auto">05</span>
+                        <div class="floating-card p-10 space-y-4 border-orange-200 bg-orange-50/50">
+                            <h3 class="text-2xl font-bold text-orange-600">收到專屬作品</h3>
+                            <p class="text-slate-600">5-7 個工作天後，收到精緻包裝的作品與 <strong>AI 專屬撰寫的理念卡片</strong>。讓你的故事被優雅地承載。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 作品範例：橫向滾動或錯位排版 -->
+        <section id="stories" class="mt-60">
+             <div class="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
+                <div class="space-y-4">
+                    <h2 class="text-5xl font-bold italic serif">Infinite Possibilities</h2>
+                    <p class="text-slate-500">交織的無限可能：每一對字母都有屬於它的幾何美學</p>
+                </div>
+                <a href="design-studio.html" class="text-blue-900 font-bold border-b-2 border-blue-900 pb-1 hover:text-orange-500 hover:border-orange-500 transition-all">Explore the Designer Studio &rarr;</a>
+             </div>
+
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                 <!-- 作品 1 -->
+                 <div class="space-y-6 mt-10">
+                     <div class="aspect-[4/5] rounded-[50px] overflow-hidden shadow-xl rotate-[-2deg] hover:rotate-0 transition-all">
+                        <img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80" alt="B x R" class="w-full h-full object-cover">
+                     </div>
+                     <div class="px-4">
+                         <span class="text-xs font-bold text-orange-500 uppercase tracking-widest">Surname Harmony</span>
+                         <h4 class="text-2xl font-bold">B × R</h4>
+                         <p class="text-slate-500 text-sm mt-2">兩個姓氏的結合，代表家庭的連結與傳承。適合紀念結婚週年。</p>
+                     </div>
+                 </div>
+                 <!-- 作品 2 -->
+                 <div class="space-y-6">
+                    <div class="aspect-[4/5] rounded-[50px] overflow-hidden shadow-xl rotate-[1deg] hover:rotate-0 transition-all">
+                       <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80" alt="M x C" class="w-full h-full object-cover">
+                    </div>
+                    <div class="px-4">
+                        <span class="text-xs font-bold text-orange-500 uppercase tracking-widest">Bond of Love</span>
+                        <h4 class="text-2xl font-bold">M × C</h4>
+                        <p class="text-slate-500 text-sm mt-2">母親與孩子的暱稱，交織成親密的印記。送給生命中最重要的人。</p>
+                    </div>
+                </div>
+                <!-- 作品 3 -->
+                <div class="space-y-6 mt-20">
+                    <div class="aspect-[4/5] rounded-[50px] overflow-hidden shadow-xl rotate-[-1deg] hover:rotate-0 transition-all">
+                       <img src="https://images.unsplash.com/photo-1491528323818-fdd1faba62cc?w=600&q=80" alt="A x A" class="w-full h-full object-cover">
+                    </div>
+                    <div class="px-4">
+                        <span class="text-xs font-bold text-orange-500 uppercase tracking-widest">Symmetry</span>
+                        <h4 class="text-2xl font-bold">A × A</h4>
+                        <p class="text-slate-500 text-sm mt-2">相同的兩個字母，創造對稱的平衡美感。代表自我與內在的和平。</p>
+                    </div>
+                </div>
+             </div>
+        </section>
+
+        <!-- FAQ：紙雕層疊感的 Accordion -->
+        <section id="faq" class="mt-60 max-w-4xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-20">你可能想知道的事</h2>
+            <div class="space-y-6">
+                <details class="group floating-card border-none">
+                    <summary class="list-none p-8 flex justify-between items-center cursor-pointer font-bold text-lg">
+                        製作需要多久時間？
+                        <span class="text-slate-300 group-open:rotate-180 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </summary>
+                    <div class="px-8 pb-8 text-slate-500 leading-relaxed">
+                        從付款完成後，製作時間約 5-7 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。
+                    </div>
+                </details>
+
+                <details class="group floating-card border-none">
+                    <summary class="list-none p-8 flex justify-between items-center cursor-pointer font-bold text-lg">
+                        如果不滿意設計怎麼辦？
+                        <span class="text-slate-300 group-open:rotate-180 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </summary>
+                    <div class="px-8 pb-8 text-slate-500 leading-relaxed">
+                        在付款前，你可以無限次修改設計。如果收到作品後有任何品質問題，我們提供 30 天無條件退換貨保證。
+                    </div>
+                </details>
+
+                <details class="group floating-card border-none">
+                    <summary class="list-none p-8 flex justify-between items-center cursor-pointer font-bold text-lg">
+                        AI 對話會保存我的隱私嗎？
+                        <span class="text-slate-300 group-open:rotate-180 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </summary>
+                    <div class="px-8 pb-8 text-slate-500 leading-relaxed">
+                        你的對話內容僅用於設計推薦，不會被分享或用於其他用途。我們確保你的故事安全且私密。
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="mt-60 relative py-40 rounded-[80px] bg-slate-900 text-white overflow-hidden text-center">
+            <!-- 裝飾性背景紙雕 -->
+            <svg class="absolute inset-0 w-full h-full opacity-10 pointer-events-none" viewBox="0 0 800 400">
+                <path d="M0,400 Q200,100 400,300 T800,0" fill="none" stroke="white" stroke-width="20" />
+            </svg>
+            
+            <div class="relative z-10 space-y-8 px-6">
+                <h2 class="text-5xl md:text-7xl font-bold italic serif italic">Start Casting Your Story.</h2>
+                <p class="text-xl opacity-60">每一段故事，都值得被永恆鑄造</p>
+                <div class="pt-8">
+                    <a href="design-studio.html" class="px-12 py-6 rounded-full bg-white text-slate-900 font-bold text-xl hover:bg-orange-500 hover:text-white transition-all shadow-2xl">
+                        立即開始創造 &rarr;
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-60 pt-20 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-12">
+            <div class="space-y-4">
+                <div class="text-3xl font-bold tracking-tighter">DUET</div>
+                <p class="text-slate-400 max-w-xs">為你的故事，鑄造永恆的交織。<br>我們是來自 BCAG 的職人實驗室。</p>
+            </div>
+            
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-20">
+                <div class="space-y-4">
+                    <h5 class="font-bold text-xs uppercase tracking-widest text-slate-300">Explore</h5>
+                    <ul class="space-y-2 text-sm text-slate-600">
+                        <li><a href="#how-it-works" class="hover:text-orange-500">How it works</a></li>
+                        <li><a href="#stories" class="hover:text-orange-500">Gallery</a></li>
+                        <li><a href="design-studio.html" class="hover:text-orange-500">Studio</a></li>
+                    </ul>
+                </div>
+                <div class="space-y-4">
+                    <h5 class="font-bold text-xs uppercase tracking-widest text-slate-300">Support</h5>
+                    <ul class="space-y-2 text-sm text-slate-600">
+                        <li><a href="#" class="hover:text-orange-500">FAQ</a></li>
+                        <li><a href="#" class="hover:text-orange-500">Shipping</a></li>
+                        <li><a href="#" class="hover:text-orange-500">Returns</a></li>
+                    </ul>
+                </div>
+                <div class="space-y-4">
+                    <h5 class="font-bold text-xs uppercase tracking-widest text-slate-300">Contact</h5>
+                    <a href="mailto:hello@duet.com" class="text-sm font-bold border-b border-black">hello@duet.com</a>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('translate-x-full');
+        }
+
+        // 簡單的視差滾動效果：紙雕背景
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const container = document.querySelector('.paper-cut-container');
+            container.style.transform = `translateY(${scrolled * 0.05}px)`;
+        });
+    </script>
+</body>
+</html>

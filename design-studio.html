@@ -2897,10 +2897,44 @@
                 }
 
                 console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
-                const { token, expires_in } = await response1.json();
+                const { task_id } = await response1.json();
+                console.log(`${timestamp()} ✅ 取得 task_id: ${task_id} ${elapsed()}`);
+
+                // 3. 輪詢檢查任務狀態
+                console.log(`${timestamp()} ⏳ 輪詢任務狀態... ${elapsed()}`);
+                
+                let pollCount = 0;
+                const maxPolls = 60; // 最多等 60 秒
+                let downloadToken = null;
+                let expires_in = 120;
+                
+                while (pollCount < maxPolls) {
+                    const statusResp = await fetch(`https://duet-backend-wlw8.onrender.com/api/request-preview-status/${task_id}`);
+                    const statusData = await statusResp.json();
+                    
+                    if (statusData.status === 'completed') {
+                        downloadToken = statusData.token;
+                        expires_in = statusData.expires_in;
+                        console.log(`✅ 任務完成，取得下載 token ${elapsed()}`);
+                        break;
+                    }
+                    
+                    if (statusData.status === 'error') {
+                        throw new Error(statusData.error || '任務處理失敗');
+                    }
+                    
+                    pollCount++;
+                    console.log(`⏳ 等待中 (${pollCount}/${maxPolls})...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                if (!downloadToken) {
+                    throw new Error('任務超時');
+                }
+                
                 console.log(`${timestamp()} ✅ 取得 token (有效期: ${expires_in}秒) ${elapsed()}`);
 
-                // 3. 用 token 下載 STL（帶重試機制）
+                // 4. 用 token 下載 STL（帶重試機制）
                 console.log(`${timestamp()} 🔽 開始下載 STL... ${elapsed()}`);
                 
                 let response2;
@@ -2910,7 +2944,7 @@
                 
                 while (retryCount <= maxRetries) {
                     try {
-                        response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
+                        response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${downloadToken}`);
                         console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
                         
                         if (!response2.ok) {
@@ -2935,7 +2969,7 @@
                     }
                 }
 
-                // 4. 用 STLLoader 解析
+                // 5. 用 STLLoader 解析
                 console.log(`${timestamp()} 🔧 STLLoader 解析中... ${elapsed()}`);
                 const loader = new STLLoader();
                 const cleanGeometry = loader.parse(arrayBuffer);
@@ -2943,7 +2977,7 @@
                 cleanGeometry.computeVertexNormals();
                 console.log(`${timestamp()} ✅ STL 解析完成 ${elapsed()}`);
 
-                // 5. 替換場景中的模型
+                // 6. 替換場景中的模型
                 console.log(`${timestamp()} 🔄 替換場景模型... ${elapsed()}`);
                 const oldGeometry = mainMesh.geometry;
                 mainMesh.geometry = cleanGeometry;
@@ -2984,7 +3018,7 @@
                 const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
                 console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
 
-                // 6. 設定標記：訂單需要清理
+                // 7. 設定標記：訂單需要清理
                 modelNeedsCleanup = true;
 
                 // 更新 label 顯示
