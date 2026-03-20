@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET | 流動的工藝，永恆的交織</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-stroke: rgba(255, 255, 255, 0.6);
+            --text-main: #2d3436;
+            --soft-gold: #c5a47e;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 20%, #fdfcfb 0%, #e2d1c3 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .serif { font-family: 'Playfair Display', serif; }
+
+        /* Liquid Glass Card Effect */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-stroke);
+            border-radius: 40px;
+            box-shadow: 
+                0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                0 10px 30px -5px rgba(0, 0, 0, 0.03),
+                inset 0 0 20px rgba(255, 255, 255, 0.5);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 打破格狀的有機流動 SVG 背景 */
+        .liquid-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        /* 導覽列 */
+        nav {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 漸層文字 */
+        .gradient-text {
+            background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 柔和浮動動畫 */
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            50% { transform: translate(15px, 20px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .float-blob {
+            animation: float 10s ease-in-out infinite;
+        }
+
+        /* 客製按鈕 */
+        .cta-button {
+            background: white;
+            color: var(--text-main);
+            padding: 16px 40px;
+            border-radius: 100px;
+            font-weight: 500;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .cta-button:hover {
+            background: var(--text-main);
+            color: white;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+
+        /* 移除預設捲軸 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Liquid Background Elements -->
+    <div class="liquid-bg">
+        <svg viewBox="0 0 1000 1000" class="w-full h-full">
+            <circle class="float-blob" cx="10%" cy="20%" r="300" fill="url(#grad1)" opacity="0.4"/>
+            <circle class="float-blob" style="animation-delay: -5s" cx="90%" cy="80%" r="400" fill="url(#grad2)" opacity="0.3"/>
+            <defs>
+                <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" style="stop-color:#e2d1c3;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#fdfcfb;stop-opacity:0" />
+                </radialGradient>
+                <radialGradient id="grad2" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" style="stop-color:#c5a47e;stop-opacity:0.3" />
+                    <stop offset="100%" style="stop-color:#fdfcfb;stop-opacity:0" />
+                </radialGradient>
+            </defs>
+        </svg>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-8 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex flex-col">
+                <span class="text-2xl font-light tracking-[0.2em] serif">DUET</span>
+                <span class="text-[9px] tracking-[0.4em] opacity-40 uppercase">Fine Jewelry Lab</span>
+            </div>
+            <div class="hidden md:flex gap-12 text-[13px] tracking-widest uppercase font-medium">
+                <a href="#how" class="hover:opacity-50 transition-opacity">How</a>
+                <a href="#stories" class="hover:opacity-50 transition-opacity">Stories</a>
+                <a href="#faq" class="hover:opacity-50 transition-opacity">Support</a>
+                <a href="design-studio.html" class="opacity-80">Design Studio</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-8 pt-48">
+        
+        <!-- Hero Section -->
+        <section class="flex flex-col lg:flex-row items-center justify-between gap-24 mb-60">
+            <div class="lg:w-3/5 space-y-10">
+                <h1 class="text-7xl lg:text-8xl leading-none font-light serif italic">
+                    <span class="block mb-4 overflow-hidden">
+                        <span class="inline-block gradient-text">兩個人，</span>
+                    </span>
+                    <span class="block">一個<span class="text-soft-gold">交織</span>的印記。</span>
+                </h1>
+                <p class="text-xl text-slate-500 font-light max-w-lg leading-relaxed border-l border-slate-200 pl-8">
+                    我們將冰冷的幾何學賦予溫度。透過對話，將屬於你們的姓名縮寫，幻化為流動如液態般的金屬藝術。
+                </p>
+                <div class="pt-6">
+                    <a href="design-studio.html" class="cta-button group">
+                        開啟您的專屬對話 <span class="inline-block transition-transform group-hover:translate-x-2 ml-2">→</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 核心視覺：液態玻璃質感的球體與交織字母 -->
+            <div class="lg:w-2/5 relative">
+                <div class="glass-card aspect-square flex items-center justify-center p-12 overflow-hidden">
+                    <div class="relative w-full h-full flex items-center justify-center">
+                        <!-- 模擬液態流動的金屬 B & R -->
+                        <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-2xl">
+                            <path d="M60,40 C110,40 120,90 80,100 C120,110 130,160 60,160 L60,40" fill="none" stroke="#2d3436" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.3" />
+                            <path class="draw-path" d="M80,60 C130,60 130,140 80,140 L140,140" fill="none" stroke="url(#metalGrad)" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+                            <defs>
+                                <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#2d3436;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#636e72;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#b2bec3;stop-opacity:1" />
+                                </linearGradient>
+                                <filter id="glow">
+                                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                        </svg>
+                        <!-- 裝飾文字 -->
+                        <div class="absolute bottom-0 left-0 text-[10px] tracking-[0.5em] opacity-30 serif italic">PRECISION CRAFTSMANSHIP</div>
+                    </div>
+                </div>
+                <!-- 懸浮提示紙條：人文感 -->
+                <div class="absolute -bottom-10 -right-10 glass-card p-6 rotate-3">
+                    <p class="text-xs italic opacity-60">"It felt like watching my own story take shape in real-time."</p>
+                    <div class="mt-2 text-[10px] font-bold tracking-widest">— Emily W.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 如何運作 Section：非對稱液態排版 -->
+        <section id="how" class="mb-60">
+            <h2 class="text-4xl serif italic mb-24 text-center">工藝之旅</h2>
+            
+            <div class="flex flex-col gap-32">
+                <!-- Step 1 -->
+                <div class="flex flex-col md:flex-row items-center gap-16 md:pr-20">
+                    <div class="md:w-1/2 glass-card p-12 relative overflow-hidden">
+                        <span class="absolute top-[-20px] left-[-20px] text-9xl font-bold opacity-[0.03]">01</span>
+                        <h3 class="text-2xl mb-6 tracking-wide">故事導入</h3>
+                        <p class="text-slate-500 font-light leading-relaxed">與我們的 AI 職人進行深度對話。它不僅是程式，更是聆聽者，捕捉您在文字間流露的情感溫度。</p>
+                    </div>
+                    <div class="md:w-1/2 text-sm uppercase tracking-[0.3em] opacity-30 text-center md:text-left">Consultation</div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex flex-col md:flex-row-reverse items-center gap-16 md:pl-20">
+                    <div class="md:w-1/2 glass-card p-12 relative overflow-hidden bg-white/20">
+                        <span class="absolute top-[-20px] right-[-20px] text-9xl font-bold opacity-[0.03]">02</span>
+                        <h3 class="text-2xl mb-6 tracking-wide">液態建模</h3>
+                        <p class="text-slate-500 font-light leading-relaxed">我們採用動態模擬算法，將字母骨架轉化為如液體般圓潤、流暢的立體形態，確保交織處自然而充滿美感。</p>
+                    </div>
+                    <div class="md:w-1/2 text-sm uppercase tracking-[0.3em] opacity-30 text-center md:text-right">Transformation</div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex flex-col md:flex-row items-center gap-16 md:pr-20">
+                    <div class="md:w-1/2 glass-card p-12 relative overflow-hidden">
+                        <span class="absolute top-[-20px] left-[-20px] text-9xl font-bold opacity-[0.03]">03</span>
+                        <h3 class="text-2xl mb-6 tracking-wide">實體鑄造</h3>
+                        <p class="text-slate-500 font-light leading-relaxed">選用 925 純銀或 18K 金，結合傳統脫蠟鑄造與現代精密拋光，將螢幕上的數位美學轉化為指尖的真實觸感。</p>
+                    </div>
+                    <div class="md:w-1/2 text-sm uppercase tracking-[0.3em] opacity-30 text-center md:text-left">Creation</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 客戶故事：液態拼貼 -->
+        <section id="stories" class="mb-60">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-8">
+                    <h2 class="text-6xl font-light serif">那些被<br><span class="text-soft-gold">永恆紀錄</span>的瞬間</h2>
+                    <p class="text-slate-500 max-w-md">DUET 不只是珠寶，更是承載記憶的器皿。看見他們的交織故事。</p>
+                </div>
+                
+                <!-- Story Card 1 -->
+                <div class="glass-card p-8 flex flex-col justify-between h-[400px] mt-12 rotate-[-2deg]">
+                    <div class="space-y-4">
+                        <div class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center italic serif text-xl">M</div>
+                        <p class="text-lg italic serif leading-relaxed">「這枚項鍊捕捉了我與愛妻姓名的重疊，它安靜而優雅，像極了我們相處的方式。」</p>
+                    </div>
+                    <div class="text-xs tracking-widest opacity-40">— MARK & JANE, 2026</div>
+                </div>
+
+                <!-- Story Card 2 -->
+                <div class="glass-card p-8 flex flex-col justify-between h-[400px] lg:mt-[-40px] rotate-[1deg]">
+                    <div class="space-y-4">
+                        <div class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center italic serif text-xl">A</div>
+                        <p class="text-lg italic serif leading-relaxed">「我從未想過名字的縮寫可以如此具有藝術感。AI 建議的字體組合完全超出了我的期待。」</p>
+                    </div>
+                    <div class="text-xs tracking-widest opacity-40">— ANDY L., DESIGNER</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section id="faq" class="mb-60 max-w-3xl mx-auto">
+            <h2 class="text-center text-3xl serif mb-20 italic">Studio Notes</h2>
+            <div class="space-y-4">
+                <details class="group glass-card border-none overflow-hidden">
+                    <summary class="list-none p-8 flex justify-between items-center cursor-pointer font-medium tracking-wide">
+                        製作時程與配送
+                        <span class="transition-transform group-open:rotate-180 opacity-30">↓</span>
+                    </summary>
+                    <div class="px-8 pb-8 text-slate-500 font-light text-sm leading-loose">
+                        每件 DUET 作品皆為接單後量身打造。從 AI 設計、3D 模型校對到實體手工拋光，約需 10-14 個工作天。我們提供全球專遞服務，確保這份心意安全抵達。
+                    </div>
+                </details>
+                <details class="group glass-card border-none overflow-hidden">
+                    <summary class="list-none p-8 flex justify-between items-center cursor-pointer font-medium tracking-wide">
+                        材質與保養建議
+                        <span class="transition-transform group-open:rotate-180 opacity-30">↓</span>
+                    </summary>
+                    <div class="px-8 pb-8 text-slate-500 font-light text-sm leading-loose">
+                        我們僅使用抗敏的高品質貴金屬。隨產品將附贈拭銀布與專屬保存盒。建議避免接觸化學藥劑，以維持液態金屬般的璀璨光澤。
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="text-center pb-40">
+            <div class="inline-block glass-card px-20 py-24 space-y-10 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-soft-gold to-transparent opacity-30"></div>
+                <h2 class="text-4xl md:text-5xl serif">準備好開始您的設計了嗎？</h2>
+                <p class="text-slate-400 font-light italic">讓故事在流動中永恆。</p>
+                <div class="pt-6">
+                    <a href="design-studio.html" class="cta-button">進入設計實驗室</a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="px-8 py-20 border-t border-white/30 text-center space-y-6">
+        <div class="text-xl font-light tracking-[0.4em] serif">DUET BY BCAG</div>
+        <p class="text-[10px] tracking-widest opacity-40 uppercase">© 2026 Crafted with Soul and Algorithms</p>
+    </footer>
+
+    <script>
+        // 簡單的滾動監聽：增加呼吸感
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            document.querySelectorAll('.float-blob').forEach((blob, index) => {
+                const speed = 0.05 + (index * 0.02);
+                blob.setAttribute('cy', `${(scrolled * speed) % 100 + 20}%`);
+            });
+        });
+    </script>
+</body>
+</html>

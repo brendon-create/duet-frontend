@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET | 譜寫你們的立體詩篇</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;500;600&family=Montserrat:wght@200;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-paper: #f4f1ea;        /* 暖燕麥色紙質感 */
+            --ink-green: #2d5a52;       /* 書卷墨綠 */
+            --gold-leaf: #b2945e;       /* 點綴金箔色 */
+            --text-soft: #4a4a4a;
+            --line-color: rgba(45, 90, 82, 0.15);
+            --transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Noto Serif TC', serif; 
+            background-color: var(--bg-paper); 
+            color: var(--ink-green);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* 垂直裝飾導引線 (呼應圖片 1) */
+        .v-line {
+            position: fixed; top: 0; width: 1px; height: 100vh;
+            background: var(--line-color); z-index: -1;
+        }
+
+        /* --- 導覽列：極簡且通透 --- */
+        nav {
+            position: fixed; top: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 2.5rem 5%; z-index: 1000;
+        }
+        .logo { font-size: 1.4rem; font-weight: 500; letter-spacing: 6px; }
+        .nav-links { display: flex; list-style: none; font-family: 'Montserrat', sans-serif; }
+        .nav-links li { margin-left: 3rem; font-size: 0.75rem; letter-spacing: 2px; cursor: pointer; opacity: 0.7; }
+
+        /* --- Hero Section：扉頁意象 --- */
+        .hero {
+            height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+            padding: 0 10%;
+        }
+        .hero-badge {
+            font-family: 'Montserrat', sans-serif; font-size: 0.7rem;
+            letter-spacing: 4px; color: var(--gold-leaf); margin-bottom: 2rem;
+            text-transform: uppercase;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 300;
+            line-height: 1.5; letter-spacing: 0.5rem; margin-bottom: 3rem;
+        }
+        .hero p {
+            max-width: 600px; font-weight: 300; color: var(--text-soft);
+            font-size: 1.05rem; letter-spacing: 1px;
+        }
+
+        /* --- 核心故事區：AI 情感導引 --- */
+        .story-section {
+            padding: 150px 10%; background: #fff;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+        }
+        .story-text h2 { font-size: 2.2rem; font-weight: 500; margin-bottom: 2rem; }
+        .story-text p { color: var(--text-soft); margin-bottom: 1.5rem; }
+
+        /* AI 卡片預覽 (像一張厚實的手寫卡片) */
+        .card-preview {
+            background: var(--bg-paper); padding: 50px;
+            box-shadow: 20px 20px 60px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .card-preview::before {
+            content: ""; position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 1px solid rgba(178, 148, 94, 0.2); pointer-events: none;
+        }
+        .card-content { font-style: italic; font-size: 1.1rem; color: #5a5a5a; position: relative; }
+        .signature-line {
+            margin-top: 40px; text-align: right; font-family: 'Montserrat', sans-serif;
+            font-size: 0.8rem; border-top: 1px solid #ddd; display: inline-block;
+            float: right; width: 150px; padding-top: 10px;
+        }
+
+        /* --- 3D 設計工作室區塊 --- */
+        .studio-cta {
+            padding: 120px 5%; text-align: center; background: var(--ink-green); color: #fff;
+        }
+        .studio-cta h2 { font-weight: 300; letter-spacing: 8px; margin-bottom: 2rem; }
+        .btn-workdesk {
+            display: inline-block; padding: 1.2rem 3.5rem;
+            border: 1px solid rgba(255,255,255,0.3); color: #fff;
+            text-decoration: none; letter-spacing: 3px; font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .btn-workdesk:hover { background: #fff; color: var(--ink-green); }
+
+        /* --- Footer --- */
+        footer { padding: 80px 10%; border-top: 1px solid var(--line-color); display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.7; }
+
+        @media (max-width: 768px) {
+            .story-section { grid-template-columns: 1fr; padding: 80px 10%; }
+            .hero h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="v-line" style="left: 15%;"></div>
+    <div class="v-line" style="left: 85%;"></div>
+
+    <nav>
+        <div class="logo">DUET</div>
+        <ul class="nav-links">
+            <li>品牌哲學</li>
+            <li>開始設計</li>
+            <li>維繫關係</li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-badge">A Symphony of Two Souls</div>
+        <h1>任何美好的關係<br>都是一場溫暖的和聲</h1>
+        <p>
+            DUET 讓你們在各自保有自我的交集裡，找到和諧與共鳴。<br>
+            兩個字母的垂直交織，鑄造出屬於你們的立體人生。
+        </p>
+        <div style="margin-top: 4rem; width: 1px; height: 100px; background: var(--gold-leaf);"></div>
+    </section>
+
+    <section class="story-section">
+        <div class="story-text">
+            <span style="color: var(--gold-leaf); letter-spacing: 3px; font-size: 0.8rem;">AI 情感導引</span>
+            <h2>讓不擅言辭的你<br>也能傳遞最重的心意</h2>
+            <p>我們知道，最寶貴的情感往往最難說出口。在 DUET，設計不只是調整參數，而是一場對話。</p>
+            <p>透過 AI 導引提問，我們協助您梳理送禮的初衷。您的答案將轉化為字體推薦的依據，並自動淬煉成一張「設計理念卡」，讓這份禮物擁有靈魂。</p>
+        </div>
+        <div class="card-preview">
+            <div class="card-content">
+                「這件作品選用了優雅的襯線字體與現代線條交疊，象徵你的沉穩與我的靈動。我們在垂直的時空中相遇，創造了這段不可取代的和聲...」
+            </div>
+            <div class="signature-line">設計師簽名</div>
+        </div>
+    </section>
+
+    <section class="studio-cta">
+        <h2>進入您的專屬設計工坊</h2>
+        <p style="margin-bottom: 3rem; opacity: 0.8;">即時 3D 建模 · 數十種藝術字體 · 三日快速出貨</p>
+        <a href="#" class="btn-workdesk">開始譜寫作品</a>
+    </section>
+
+    <footer>
+        <div>DUET by BCAG Precious Jewelry</div>
+        <div style="font-family: 'Montserrat', sans-serif;">EST. 2026 / TAIPEI</div>
+    </footer>
+
+</body>
+</html>

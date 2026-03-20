@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET | 鑄造一段關於交織的故事</title>
+    <!-- 使用 Tailwind CSS 加速開發並實作複雜佈局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-beige: #F9F7F2;
+            --brand-dark: #1A1A1A;
+            --brand-gold: #C5A059;
+            --brand-light-gold: #E2D1B0;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--brand-beige);
+            color: var(--brand-dark);
+            overflow-x: hidden;
+        }
+        .serif { font-family: 'Playfair Display', serif; }
+        
+        /* 隱藏標準滾動條 */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--brand-beige); }
+        ::-webkit-scrollbar-thumb { background: var(--brand-light-gold); border-radius: 10px; }
+
+        /* 流動佈局效果 */
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        .overlapping-text {
+            mix-blend-mode: multiply;
+            z-index: 10;
+        }
+
+        .soft-glow {
+            filter: blur(80px);
+            background: radial-gradient(circle, rgba(197, 160, 89, 0.15) 0%, rgba(249, 247, 242, 0) 70%);
+        }
+
+        /* 字母交織動態意象 */
+        .interlace-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        .letter-hint {
+            position: absolute;
+            font-size: 180px;
+            font-family: 'Playfair Display', serif;
+            line-height: 1;
+            opacity: 0.05;
+            pointer-events: none;
+        }
+
+        /* 導覽列模糊效果 */
+        .nav-blur {
+            backdrop-filter: blur(10px);
+            background: rgba(249, 247, 242, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 導覽列 -->
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-black/5">
+        <div class="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
+            <div class="flex items-baseline space-x-2">
+                <span class="text-2xl font-light tracking-[0.3em] serif">DUET</span>
+                <span class="text-[10px] tracking-widest opacity-40 uppercase">A Study of Connection</span>
+            </div>
+            <div class="hidden md:flex space-x-12 text-sm tracking-widest font-light">
+                <a href="#philosophy" class="hover:text-gold transition-colors">初衷</a>
+                <a href="#process" class="hover:text-gold transition-colors">工藝流程</a>
+                <a href="#faq" class="hover:text-gold transition-colors">疑問</a>
+                <a href="order-tracker.html" class="hover:text-gold transition-colors">查詢</a>
+            </div>
+            <a href="design-studio.html" class="px-6 py-2 bg-black text-white text-xs tracking-[0.2em] hover:bg-zinc-800 transition-all">
+                開始設計
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section: 打破平衡的開場 -->
+    <section class="min-h-screen pt-32 flex flex-col items-center justify-center relative px-8">
+        <div class="soft-glow absolute top-1/4 left-1/4 w-[500px] h-[500px]"></div>
+        
+        <div class="max-w-4xl w-full relative z-10">
+            <div class="reveal">
+                <p class="serif italic text-xl mb-6 opacity-60">Every interlace tells a silent story.</p>
+                <h1 class="text-6xl md:text-8xl leading-tight serif font-medium">
+                    不是裝飾，<br>
+                    而是<span class="italic text-brand-gold">交織</span>的時刻。
+                </h1>
+            </div>
+            
+            <div class="mt-16 flex flex-col md:flex-row items-end justify-between reveal delay-300">
+                <div class="max-w-sm mb-12 md:mb-0">
+                    <p class="text-lg font-light leading-relaxed opacity-80">
+                        我們相信，兩個名字的碰撞不只是字母的重疊，而是兩段生命軌跡的相遇。DUET 透過 AI 與工藝，將這份無形的連結，鑄造成觸手可及的永恆。
+                    </p>
+                </div>
+                <div class="flex flex-col items-end">
+                    <div class="w-64 h-[1px] bg-black/20 mb-4"></div>
+                    <span class="text-[10px] tracking-widest opacity-40 uppercase mb-8">Concept by BCAG</span>
+                    <a href="design-studio.html" class="group relative flex items-center space-x-4">
+                        <span class="serif italic text-2xl group-hover:pr-4 transition-all">Start your creation</span>
+                        <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 12H38M38 12L28 2M38 12L28 22" stroke="black" stroke-width="1"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 裝飾性意象 -->
+        <div class="absolute bottom-10 right-10 opacity-10 hidden lg:block">
+            <div class="interlace-container">
+                <div class="letter-hint top-0 left-0">A</div>
+                <div class="letter-hint bottom-0 right-0 italic text-brand-gold">M</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 品牌精神：留白與詩意 -->
+    <section id="philosophy" class="py-40 bg-white">
+        <div class="max-w-6xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-24 items-center">
+            <div class="relative">
+                <div class="aspect-[3/4] overflow-hidden bg-zinc-100">
+                    <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&q=80" alt="細節意象" class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000">
+                </div>
+                <div class="absolute -bottom-10 -right-10 bg-brand-beige p-12 hidden md:block border border-black/5">
+                    <p class="serif text-4xl italic tracking-tighter italic">"A duet is better than a solo."</p>
+                </div>
+            </div>
+            <div class="reveal">
+                <h2 class="serif text-4xl mb-12">為什麼是「交織」？</h2>
+                <div class="space-y-8 font-light text-zinc-600 leading-loose">
+                    <p>
+                        在傳統的飾品設計中，字母往往是獨立排印。但在 DUET，我們開發了專屬的參數化算法，讓兩個字母在 3D 空間中真正地穿插、擁抱。
+                    </p>
+                    <p>
+                        這代表著一種不可分割的關係——移除任何一個，另一個都將不再完整。這正是我們想為你捕捉的「關係」本質。
+                    </p>
+                    <div class="pt-10">
+                        <div class="flex space-x-8">
+                            <div>
+                                <h4 class="font-medium text-black">純粹</h4>
+                                <p class="text-xs">無多餘贅飾，僅留連結</p>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-black">唯一</h4>
+                                <p class="text-xs">100+ 字型交織出無限可能</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 體驗流程：打破 Step by Step 的僵硬感 -->
+    <section id="process" class="py-40 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="mb-32">
+                <span class="text-[10px] tracking-[0.5em] uppercase opacity-40">The Experience</span>
+                <h2 class="serif text-5xl mt-4 italic">從故事到鑄造，一段有機的演化。</h2>
+            </div>
+
+            <div class="relative">
+                <!-- 背景流動線條示意 -->
+                <svg class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" viewBox="0 0 1000 600">
+                    <path d="M0 300 C 200 100, 400 500, 1000 300" stroke="black" fill="none" stroke-width="1"/>
+                </svg>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-y-32 gap-x-12 relative z-10">
+                    <!-- Step 1 -->
+                    <div class="reveal">
+                        <span class="serif italic text-6xl opacity-10">01</span>
+                        <div class="mt-[-20px]">
+                            <h3 class="text-xl mb-4 font-medium tracking-wide">聆聽故事的 AI</h3>
+                            <p class="font-light text-zinc-500 leading-relaxed">
+                                不同於傳統的下拉選單，我們的 AI 設計師會邀請你聊聊這份禮物的意義。是慶祝、是守護、還是紀念？它將在對話中捕捉靈感。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 (偏移位置打破格線) -->
+                    <div class="reveal md:mt-40">
+                        <span class="serif italic text-6xl opacity-10">02</span>
+                        <div class="mt-[-20px]">
+                            <h3 class="text-xl mb-4 font-medium tracking-wide">交織的參數美學</h3>
+                            <p class="font-light text-zinc-500 leading-relaxed">
+                                我們將複雜的 OpenSCAD 參數化設計簡化為直覺的介面。你可以在網頁中 360 度觀看兩個靈魂是如何在 3D 空間中完美契合。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="reveal">
+                        <span class="serif italic text-6xl opacity-10">03</span>
+                        <div class="mt-[-20px]">
+                            <h3 class="text-xl mb-4 font-medium tracking-wide">傳統工藝的重量</h3>
+                            <p class="font-light text-zinc-500 leading-relaxed">
+                                最終我們回歸珠寶的本質——脫蠟鑄造與手工拋光。這不是快速生產的贈品，而是具備份量感的工藝品。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 常見疑問：以更親切的方式呈現 -->
+    <section id="faq" class="py-40 bg-zinc-900 text-white">
+        <div class="max-w-4xl mx-auto px-8">
+            <h2 class="serif text-4xl mb-24 text-center">一些關於細節的溫柔叮嚀</h2>
+            
+            <div class="space-y-16">
+                <div class="reveal border-l border-white/20 pl-8">
+                    <h4 class="serif italic text-xl mb-4 text-brand-light-gold">製作時間</h4>
+                    <p class="font-light opacity-60 leading-relaxed">
+                        「慢工，才能細活。」<br>
+                        從數位建模到實體拋光，我們需要 5-7 個工作天。我們不追趕時間，我們只追尋品質。
+                    </p>
+                </div>
+
+                <div class="reveal border-l border-white/20 pl-8">
+                    <h4 class="serif italic text-xl mb-4 text-brand-light-gold">材質選擇</h4>
+                    <p class="font-light opacity-60 leading-relaxed">
+                        我們提供 925 純銀與 18K 金。純銀適合紀錄日常，18K 金則像你們的感情一樣，經得起歲月的洗禮而不褪色。
+                    </p>
+                </div>
+
+                <div class="reveal border-l border-white/20 pl-8">
+                    <h4 class="serif italic text-xl mb-4 text-brand-light-gold">關於退換貨</h4>
+                    <p class="font-light opacity-60 leading-relaxed">
+                        因為每一件都是根據你的故事量身定做，我們無法進行二次銷售。但在製作前，你可以與 AI 設計師進行無數次的修改。如果收到後有任何非人為損壞，我們保證負責到底。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 最後召喚：讓想像空間留給使用者 -->
+    <section class="py-60 flex flex-col items-center justify-center text-center px-8 relative">
+        <div class="reveal">
+            <h2 class="serif text-5xl md:text-7xl mb-12">準備好，<br>鑄造你們的故事了嗎？</h2>
+            <p class="max-w-xl mx-auto font-light opacity-60 mb-16 leading-loose">
+                現在，請把那些過於具象的背景圖忘掉。<br>
+                在設計工作室中，只有你、他，和那對即將交織的字母。
+            </p>
+            <a href="design-studio.html" class="px-12 py-5 bg-black text-white tracking-[0.3em] text-sm hover:px-16 transition-all duration-500">
+                進入設計工作室
+            </a>
+        </div>
+        
+        <!-- 底部裝飾 -->
+        <div class="mt-40 opacity-20">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-[1px] bg-black"></div>
+                <span class="serif italic">DUET by BCAG</span>
+                <div class="w-12 h-[1px] bg-black"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-20 border-t border-black/5 text-[10px] tracking-[0.2em] uppercase opacity-40">
+        <div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center">
+            <p>&copy; 2026 DUET. CASTING STORIES INTO FORM.</p>
+            <div class="flex space-x-8 mt-4 md:mt-0">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="mailto:hello@duet.brendonchen.com">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 簡單的滾動察覺效果
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // 導覽列滾動變色
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('nav-blur');
+            } else {
+                nav.classList.remove('nav-blur');
+            }
+        });
+    </script>
+</body>
+</html>
