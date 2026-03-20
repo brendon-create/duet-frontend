@@ -3588,9 +3588,13 @@
                     select.appendChild(option);
                 });
 
-                // 如果只有一個字體，添加一個虛擬選項讓用戶可以觸發重新生成
-                // 不再添加「重新生成模型」和「重新選擇字體」選項
-                // 選擇字體後會自動使用第一個字體並生成模型
+                // 添加「重新選擇字體」選項
+                const reselectOption = document.createElement('option');
+                reselectOption.value = '__reselect__';
+                reselectOption.textContent = '＋ 重新選擇字體';
+                reselectOption.style.color = '#d4af37';
+                reselectOption.style.fontWeight = '600';
+                select.appendChild(reselectOption);
 
                 // 智能選擇預設字體（優先使用 AI 推薦）
                 let defaultFont = selectedFonts[0];
@@ -3620,6 +3624,15 @@
 
                 // 監聽下拉選單變更 - 選擇字體後自動生成模型
                 select.onchange = function () {
+                    // 檢查是否選擇「重新選擇字體」
+                    if (this.value === '__reselect__') {
+                        // 打開字體選擇器
+                        openFontSelector();
+                        // 恢復選擇當前使用的字體
+                        this.value = btn.getAttribute('data-selected');
+                        return;
+                    }
+                    
                     // 使用選擇的字體並生成模型
                     const selectedFont = this.value;
                     btn.setAttribute('data-selected', selectedFont);
