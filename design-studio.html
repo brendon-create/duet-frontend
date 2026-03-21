@@ -2505,6 +2505,9 @@
                 if (indicator) indicator.style.display = 'block';
             });
 
+            // 👉 關鍵：讓瀏覽器先渲染指示器，再開始運算（避免被阻塞導致來不及顯示）
+            await new Promise(resolve => setTimeout(resolve, 0));
+
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
 
@@ -2524,7 +2527,7 @@
                 if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
                     showInitialSphere();
                 }
-                // 隱藏重建提示（兩個 indicator）
+                // 隱藏重建提示（參數不完整時立即隱藏）
                 const indicatorsToHide = [
                     'model-rebuilding-indicator-top',
                     'model-rebuilding-indicator-cleanup'
@@ -2796,17 +2799,15 @@
             
             debug('Generation complete!'); // Debug
 
-            // 隱藏重建提示（延遲 1.5 秒讓使用者能看到）
-            setTimeout(() => {
-                const indicatorsToHide2 = [
-                    'model-rebuilding-indicator-top',
-                    'model-rebuilding-indicator-cleanup'
-                ];
-                indicatorsToHide2.forEach(id => {
-                    const ind = document.getElementById(id);
-                    if (ind) ind.style.display = 'none';
-                });
-            }, 500);
+            // 隱藏重建提示（渲染完成後立即隱藏）
+            const indicatorsToHide2 = [
+                'model-rebuilding-indicator-top',
+                'model-rebuilding-indicator-cleanup'
+            ];
+            indicatorsToHide2.forEach(id => {
+                const ind = document.getElementById(id);
+                if (ind) ind.style.display = 'none';
+            });
 
             // 🧹 啟用清理 toggle + 重置狀態
             const cleanupToggle = document.getElementById('cleanup-toggle');
