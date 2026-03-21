@@ -1096,7 +1096,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                作品模型重新製作中<span class="dots-animation"></span>
+                作品模型製作中<span class="dots-animation"></span>
             </div>
             
             <div class="control-group">
@@ -1206,7 +1206,7 @@
             color: #d4af37;
             text-align: center;
         ">
-            作品模型重新製作中<span class="dots-animation"></span>
+            作品模型製作中<span class="dots-animation"></span>
         </div>
 
         <div class="divider"></div>
@@ -2495,6 +2495,9 @@
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
+            // Debug: log when generateModel is called
+            console.log('[generateModel] 開始生成模型');
+
             // 顯示重建提示（兩個 indicator）
             const indicators = [
                 'model-rebuilding-indicator-top',
@@ -2502,11 +2505,15 @@
             ];
             indicators.forEach(id => {
                 const indicator = document.getElementById(id);
-                if (indicator) indicator.style.display = 'block';
+                if (indicator) {
+                    indicator.style.display = 'block';
+                    console.log(`[generateModel] 顯示指示器: ${id}`);
+                }
             });
 
-            // 👉 關鍵：讓瀏覽器先渲染指示器，再開始運算（避免被阻塞導致來不及顯示）
-            await new Promise(resolve => setTimeout(resolve, 0));
+            // 👉 關鍵：讓瀏覽器先渲染指示器，再開始運算
+            // 使用 50ms 延遲確保瀏覽器有足夠時間渲染顯示
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
@@ -2798,6 +2805,7 @@
             setTimeout(() => updateVolumeWeight(), 100);
             
             debug('Generation complete!'); // Debug
+            console.log('[generateModel] 模型生成完成，隱藏指示器');
 
             // 隱藏重建提示（渲染完成後立即隱藏）
             const indicatorsToHide2 = [
