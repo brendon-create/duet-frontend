@@ -15,5 +15,4 @@
 .DS_Store
 .DS_Store
 
-# Font library selector (private tool)
-font-library-selector.html
+# Font library selector (private tool) - renamed to root FontLabV2.html
