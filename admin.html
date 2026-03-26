@@ -833,6 +833,26 @@
         // 後端 URL 配置
         const API_BASE = 'https://duet-backend-wlw8.onrender.com';
         
+        // 管理員 API 金鑰（請填入您在 Render.com 設定的值）
+        const ADMIN_API_KEY = 'beacreator27v5Tx8WHd2';
+        
+        // 統一 API 呼叫函式
+        async function callApi(endpoint, options = {}) {
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+                'X-Admin-Key': ADMIN_API_KEY
+            };
+            // 如果有 X-Admin-User，也一併傳遞
+            if (currentUser && currentUser.username) {
+                defaultHeaders['X-Admin-User'] = currentUser.username;
+            }
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers: { ...defaultHeaders, ...options.headers }
+            });
+            return response;
+        }
+        
         // State
         let currentUser = null;
         let allOrders = [];
@@ -929,7 +949,7 @@
         async function loadMemoryStats() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/memory-stats?limit=50`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 
@@ -967,7 +987,7 @@
         async function loadOrders() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/orders`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 
@@ -1369,7 +1389,7 @@
         async function viewOrder(orderId) {
             try {
                 const response = await fetch(`${API_BASE}/api/order/${orderId}`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 if (data.success) showOrderModal(data.order);
@@ -1440,7 +1460,7 @@
         async function loadOrderLogs(orderId) {
             try {
                 const res = await fetch(`${API_BASE}/api/admin/order/${orderId}/logs`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
                 if (data.success && data.logs.length) {
@@ -1468,7 +1488,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': 'duet-admin-2024',
+                        'X-Admin-Key': ADMIN_API_KEY,
                         'X-Admin-User': currentUser.username
                     },
                     body: JSON.stringify({ status: newStatus, trackingNumber: tracking, logistics })
@@ -1492,7 +1512,7 @@
         async function loadUsers() {
             try {
                 const res = await fetch(`${API_BASE}/api/admin/users`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1526,7 +1546,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': 'duet-admin-2024'
+                        'X-Admin-Key': ADMIN_API_KEY
                     },
                     body: JSON.stringify({ username, name, password })
                 });
@@ -1546,7 +1566,7 @@
             try {
                 const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1562,7 +1582,7 @@
         async function loadPromoCodes() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/promo-codes`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 
@@ -1579,7 +1599,7 @@
         async function loadPromoStats() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/promo-codes/stats`, {
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 
@@ -1648,7 +1668,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': 'duet-admin-2024'
+                        'X-Admin-Key': ADMIN_API_KEY
                     },
                     body: JSON.stringify(promoData)
                 });
@@ -1671,7 +1691,7 @@
                     method: 'PUT',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': 'duet-admin-2024'
+                        'X-Admin-Key': ADMIN_API_KEY
                     },
                     body: JSON.stringify({ active: active })
                 });
@@ -1689,7 +1709,7 @@
             try {
                 const res = await fetch(`${API_BASE}/api/admin/promo-codes/${code}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': 'duet-admin-2024' }
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
                 if (data.success) {
