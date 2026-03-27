@@ -5549,6 +5549,26 @@
 
                 console.log('✅ 設計理念已確認:', editedStory);
 
+                // ==========================================
+                // 🚀 呼叫 API 將設計理念傳回後端更新訂單
+                // ==========================================
+                if (window.lastOrderId && editedStory) {
+                    fetch(`${BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ designStory: editedStory })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('✅ 設計理念已儲存到訂單:', window.lastOrderId);
+                        } else {
+                            console.warn('⚠️ 儲存設計理念失敗:', data.error);
+                        }
+                    })
+                    .catch(err => console.error('❌ API 錯誤:', err));
+                }
+
                 // 關閉 Modal
                 document.getElementById('design-story-modal').style.display = 'none';
 
