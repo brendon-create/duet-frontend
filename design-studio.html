@@ -4822,10 +4822,6 @@
 
                 // 確保 total 是數字
                 const totalAmount = Number(originalTotal);
-                if (isNaN(totalAmount) || totalAmount < 1) {
-                    alert('❌ 訂單金額錯誤，請重新整理頁面後再試');
-                    return;
-                }
 
                 const response = await fetch(`${BACKEND_URL}/api/checkout`, {
                     method: 'POST',
