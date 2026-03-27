@@ -644,6 +644,67 @@
             initializeConversation();
         });
 
+        // 從 sessionStorage 恢復對話紀錄
+        function restoreConversation() {
+            const saved = sessionStorage.getItem('duet_conversation_history');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.history && Array.isArray(data.history) && data.history.length > 0) {
+                        conversationHistory = data.history;
+                        currentTurn = data.currentTurn || 0;
+                        selectedLetters = data.selectedLetters || { letter1: '', letter2: '' };
+                        
+                        // 恢復對話到 chat container
+                        const chatContainer = document.getElementById('chat-container');
+                        chatContainer.innerHTML = '';
+                        
+                        conversationHistory.forEach(msg => {
+                            addMessageToDOM(msg.role, msg.content);
+                        });
+                        
+                        updateProgress(currentTurn);
+                        console.log('✅ 對話紀錄已從 sessionStorage 恢復');
+                        return true;
+                    }
+                } catch (e) {
+                    console.log('⚠️ 恢復對話紀錄失敗:', e);
+                }
+            }
+            return false;
+        }
+
+        // 儲存對話到 sessionStorage
+        function saveConversation() {
+            const data = {
+                history: conversationHistory,
+                currentTurn: currentTurn,
+                selectedLetters: selectedLetters,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('duet_conversation_history', JSON.stringify(data));
+        }
+
+        // 將訊息添加到 DOM（不加入 history）
+        function addMessageToDOM(role, content) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.textContent = content;
+            messageDiv.appendChild(bubbleDiv);
+            chatContainer.appendChild(messageDiv);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // 清除 sessionStorage 中的對話紀錄
+        function clearConversation() {
+            sessionStorage.removeItem('duet_conversation_history');
+        }
+
         // Skip to Manual Selection
         function skipToManual() {
             localStorage.setItem('duet_skip_ai', 'true');
@@ -652,6 +713,11 @@
 
         // Initialize Conversation
         async function initializeConversation() {
+            // 先嘗試從 sessionStorage 恢復對話
+            if (restoreConversation()) {
+                return;
+            }
+
             updateProgress(0);
 
             // First message from AI
@@ -662,6 +728,9 @@
                 role: 'assistant',
                 content: welcomeMessage
             });
+            
+            // 儲存初始對話
+            saveConversation();
         }
 
         // Add Message to Chat
@@ -730,6 +799,9 @@
                 role: 'user',
                 content: message
             });
+            
+            // 立即儲存使用者訊息（確保不會丟失）
+            saveConversation();
 
             // Clear input
             input.value = '';
@@ -792,12 +864,16 @@
                         role: 'assistant',
                         content: message
                     });
+                    
+                    // 儲存更新後的對話
+                    saveConversation();
                 }
 
             } catch (error) {
                 console.error('Error:', error);
                 removeTypingIndicator();
-                addMessage('assistant', '抱歉，發生了一些問題。請重新整理頁面再試一次。');
+                // 顯示友善的錯誤訊息，而不是要求重新整理
+                addMessage('assistant', '顧問忙碌中，請點擊重試');
             } finally {
                 isWaitingForResponse = false;
                 document.getElementById('send-btn').disabled = false;
@@ -847,6 +923,9 @@
 
             localStorage.setItem('duet_ai_consultation', JSON.stringify(aiData));
             console.log('✅ AI 諮詢資料已儲存:', aiData);
+            
+            // 清除 sessionStorage 中的對話紀錄（已完成）
+            clearConversation();
 
             // Hide chat container
             document.getElementById('main-container').style.display = 'none';
