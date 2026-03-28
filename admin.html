@@ -500,6 +500,9 @@
                 <button class="tab" onclick="switchTab('users')">員工管理</button>
                 <button class="tab" onclick="switchTab('promos')">優惠券管理</button>
                 <button class="tab" onclick="switchTab('system')">系統監控</button>
+                <span id="apiBalanceDisplay" style="margin-left: 12px; font-size: 12px; color: #888; display: none;">
+                    API 餘額: <span id="apiBalanceValue" style="color: #4ade80;">$0</span>
+                </span>
             </div>
             
             <!-- Orders Tab -->
@@ -568,6 +571,13 @@
                         <input type="checkbox" id="showTestOrders" onchange="filterOrders()" style="width: 16px; height: 16px;">
                         顯示測試
                     </label>
+                    <select id="bulkActionSelect" style="margin-left: 16px; padding: 8px 12px; background: #2a2a2a; border: 1px solid var(--border); color: var(--text-light); border-radius: 6px;">
+                        <option value="">批次動作...</option>
+                        <option value="test">標記為測試</option>
+                        <option value="invalid">標記為無效</option>
+                        <option value="delete">刪除選取</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                 </div>
@@ -576,7 +586,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 50px;">測試</th>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllOrders" onchange="toggleSelectAll()" style="width: 18px; height: 18px;"></th>
                                 <th>訂單編號</th>
                                 <th>客戶</th>
                                 <th>商品</th>
@@ -587,7 +597,7 @@
                             </tr>
                         </thead>
                         <tbody id="ordersTableBody">
-                            <tr><td colspan="7" class="loading">載入中...</td></tr>
+                            <tr><td colspan="8" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -714,7 +724,27 @@
             
             <!-- System Tab -->
             <div id="systemTab" style="display: none;">
+                <!-- API 餘額管理 -->
                 <div class="stats-row">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);">
+                        <div class="stat-number" id="apiBalanceDisplayNum" style="color: #4ade80;">$0</div>
+                        <div class="stat-label">Claude API 餘額</div>
+                    </div>
+                    <div class="stat-card">
+                        <button onclick="showApiBalanceEdit()" style="background: none; border: 1px solid #666; padding: 8px 16px; border-radius: 6px; color: #ccc; cursor: pointer;">儲值</button>
+                    </div>
+                </div>
+                
+                <!-- API 使用統計 -->
+                <div class="stats-row" style="margin-top: 16px;">
+                    <div class="stat-card"><div class="stat-number" id="apiTotalCalls">0</div><div class="stat-label">API 呼叫次數</div></div>
+                    <div class="stat-card"><div class="stat-number" id="apiTotalInputTokens">0</div><div class="stat-label">輸入 Tokens</div></div>
+                    <div class="stat-card"><div class="stat-number" id="apiTotalOutputTokens">0</div><div class="stat-label">輸出 Tokens</div></div>
+                    <div class="stat-card"><div class="stat-number" id="apiTotalCost" style="color: #fb923c;">$0</div><div class="stat-label">總花費</div></div>
+                </div>
+                
+                <!-- 記憶體用量統計 -->
+                <div class="stats-row" style="margin-top: 16px;">
                     <div class="stat-card"><div class="stat-number" id="avgMemory">-</div><div class="stat-label">平均記憶體 (MB)</div></div>
                     <div class="stat-card"><div class="stat-number" id="maxMemory">-</div><div class="stat-label">最大記憶體 (MB)</div></div>
                     <div class="stat-card"><div class="stat-number" id="totalRecords">-</div><div class="stat-label">總記錄筆數</div></div>
@@ -724,6 +754,27 @@
                     <button class="btn btn-secondary" onclick="loadMemoryStats()">重新整理</button>
                 </div>
                 
+                <!-- API 使用記錄表格 -->
+                <h3 style="margin: 24px 0 12px 0; color: #ccc;">API 使用記錄</h3>
+                <div class="table-container" style="margin-bottom: 24px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>訂單編號</th>
+                                <th>輸入 Tokens</th>
+                                <th>輸出 Tokens</th>
+                                <th>花費 ($)</th>
+                                <th>時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiUsageTableBody">
+                            <tr><td colspan="5" class="loading">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 記憶體用量表格 -->
+                <h3 style="margin: 24px 0 12px 0; color: #ccc;">記憶體用量記錄</h3>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -834,6 +885,26 @@
         </div>
     </div>
     
+    <!-- API Balance Edit Modal -->
+    <div class="modal-overlay" id="apiBalanceModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">API 儲值</h2>
+                <button class="modal-close" onclick="closeApiBalanceModal()">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div class="form-group">
+                    <label>輸入新的餘額 ($)</label>
+                    <input type="number" id="newApiBalance" step="0.01" min="0" placeholder="例如: 100.00">
+                </div>
+                <p style="font-size: 12px; color: #888; margin-top: 8px;">
+                    請輸入您充值後的總餘額（包含剩餘額度）
+                </p>
+                <button onclick="updateApiBalance()" class="btn btn-primary" style="width: 100%; margin-top: 12px;">確認儲值</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // 後端 URL 配置
         const API_BASE = 'https://duet-backend-wlw8.onrender.com';
@@ -926,6 +997,7 @@
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
             loadOrders();
+            loadApiBalance(); // 載入 API 餘額
             
             // 自動每 30 秒刷新訂單
             setInterval(() => {
@@ -947,7 +1019,103 @@
             
             if (tab === 'users') loadUsers();
             if (tab === 'promos') loadPromoCodes();
-            if (tab === 'system') loadMemoryStats();
+            if (tab === 'system') {
+                loadMemoryStats();
+                loadApiBalance();
+                loadApiUsage();
+            }
+        }
+        
+        // API Balance & Usage
+        async function loadApiBalance() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/api-balance`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const balance = data.balance.balance || 0;
+                    document.getElementById('apiBalanceValue').textContent = `$${balance.toFixed(2)}`;
+                    document.getElementById('apiBalanceDisplayNum').textContent = `$${balance.toFixed(2)}`;
+                    document.getElementById('apiBalanceDisplay').style.display = 'inline';
+                }
+            } catch (err) {
+                console.error('載入 API 餘額失敗:', err);
+            }
+        }
+        
+        async function loadApiUsage() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/api-usage?limit=50`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.success && data.summary) {
+                    document.getElementById('apiTotalCalls').textContent = data.summary.total_calls || 0;
+                    document.getElementById('apiTotalInputTokens').textContent = data.summary.total_input_tokens || 0;
+                    document.getElementById('apiTotalOutputTokens').textContent = data.summary.total_output_tokens || 0;
+                    document.getElementById('apiTotalCost').textContent = `$${(data.summary.total_cost || 0).toFixed(4)}`;
+                    
+                    // 更新表格
+                    const tbody = document.getElementById('apiUsageTableBody');
+                    if (!data.usage.length) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="loading">尚無記錄</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.usage.map(u => `
+                        <tr>
+                            <td>${u.order_id || '-'}</td>
+                            <td>${u.input_tokens || 0}</td>
+                            <td>${u.output_tokens || 0}</td>
+                            <td>$${u.cost ? u.cost.toFixed(4) : '0'}</td>
+                            <td>${u.created_at ? new Date(u.created_at).toLocaleString('zh-TW') : '-'}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('載入 API 使用記錄失敗:', err);
+            }
+        }
+        
+        function showApiBalanceEdit() {
+            document.getElementById('apiBalanceModal').classList.add('active');
+        }
+        
+        function closeApiBalanceModal() {
+            document.getElementById('apiBalanceModal').classList.remove('active');
+        }
+        
+        async function updateApiBalance() {
+            const newBalance = parseFloat(document.getElementById('newApiBalance').value);
+            if (isNaN(newBalance) || newBalance < 0) {
+                alert('請輸入有效的金額');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/api-balance`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': ADMIN_API_KEY 
+                    },
+                    body: JSON.stringify({ balance: newBalance })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('API 餘額已更新');
+                    closeApiBalanceModal();
+                    loadApiBalance();
+                } else {
+                    alert('更新失敗: ' + data.error);
+                }
+            } catch (err) {
+                alert('更新失敗: ' + err);
+            }
         }
         
         // Memory Stats
@@ -1014,6 +1182,9 @@
             let paidOrdersCount = 0;
 
             orders.forEach(o => {
+                // 排除測試和無效訂單不納入統計
+                if (o.isTest || o.isInvalid) return;
+                
                 if (counts[o.status] !== undefined) counts[o.status]++;
                 // 只計算已付款訂單的營收
                 if (o.status === 'paid' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
@@ -1235,7 +1406,7 @@
             // 根據「顯示測試」開關過濾訂單
             const showTest = document.getElementById('showTestOrders')?.checked || false;
             if (!showTest) {
-                orders = orders.filter(o => !o.isTest);
+                orders = orders.filter(o => !o.isTest && !o.isInvalid);
             }
             
             const totalPages = Math.ceil(orders.length / pageSize);
@@ -1250,17 +1421,23 @@
                 tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
+            
+            // 更新全選框狀態
+            const selectAll = document.getElementById('selectAllOrders');
+            if (selectAll) selectAll.checked = pageOrders.length > 0 && pageOrders.every(o => selectedOrders.includes(o.orderId));
+            
             tbody.innerHTML = pageOrders.map(order => {
                 const u = order.userInfo || {};
                 const items = order.items || [];
                 const total = order.total || 0;
                 const status = statusMap[order.status] || { text: order.status, class: '' };
                 const date = order.timestamp ? new Date(order.timestamp).toLocaleDateString('zh-TW') : '-';
-                const isTest = order.isTest ? 'checked' : '';
+                const isChecked = selectedOrders.includes(order.orderId) ? 'checked' : '';
+                const rowStyle = order.isInvalid ? 'opacity: 0.5; text-decoration: line-through;' : (order.isTest ? 'opacity: 0.7;' : '');
 
-                return `<tr>
-                    <td><input type="checkbox" ${isTest} onchange="toggleTestOrder('${order.orderId}', this.checked)" style="width: 18px; height: 18px; cursor: pointer;"></td>
-                    <td><strong>${order.orderId}</strong></td>
+                return `<tr style="${rowStyle}">
+                    <td><input type="checkbox" ${isChecked} onchange="toggleOrderSelection('${order.orderId}')" style="width: 18px; height: 18px; cursor: pointer;"></td>
+                    <td><strong>${order.orderId}</strong>${order.isTest ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試</span>' : ''}${order.isInvalid ? '<span style="color:#ef4444;font-size:10px;margin-left:4px;">無效</span>' : ''}</td>
                     <td>${u.name || '-'}<br><small style="color:var(--text-muted)">${u.email || '-'}</small></td>
                     <td>${items.map(i => i.letter1 + i.letter2).join(', ') || '-'}</td>
                     <td>NT$ ${total.toLocaleString()}</td>
@@ -1276,19 +1453,103 @@
             document.getElementById('nextPage').disabled = currentPage >= totalPages;
         }
 
-        async function toggleTestOrder(orderId, isTest) {
+        // 訂單勾選功能
+        let selectedOrders = [];
+        
+        function toggleOrderSelection(orderId) {
+            if (selectedOrders.includes(orderId)) {
+                selectedOrders = selectedOrders.filter(id => id !== orderId);
+            } else {
+                selectedOrders.push(orderId);
+            }
+        }
+        
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAllOrders');
+            const pageOrders = filteredOrders.filter(o => !o.isTest && !o.isInvalid);
+            if (selectAll.checked) {
+                // 選取目前頁面所有可見訂單
+                selectedOrders = [...new Set([...selectedOrders, ...pageOrders.map(o => o.orderId)])];
+            } else {
+                // 取消選取目前頁面
+                selectedOrders = selectedOrders.filter(id => !pageOrders.some(o => o.orderId === id));
+            }
+            renderOrders(filteredOrders);
+        }
+        
+        async function executeBulkAction() {
+            const action = document.getElementById('bulkActionSelect').value;
+            if (!action) {
+                alert('請選擇要執行的動作');
+                return;
+            }
+            if (selectedOrders.length === 0) {
+                alert('請先選取要操作的訂單');
+                return;
+            }
+            
+            if (!confirm(`確定要對 ${selectedOrders.length} 筆訂單執行「${action === 'test' ? '標記為測試' : action === 'invalid' ? '標記為無效' : '刪除'}」嗎？`)) {
+                return;
+            }
+            
+            try {
+                if (action === 'delete') {
+                    // 刪除訂單
+                    for (const orderId of selectedOrders) {
+                        await fetch(`${API_BASE}/api/admin/order/${orderId}`, {
+                            method: 'DELETE',
+                            headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                        });
+                    }
+                    alert('刪除完成');
+                } else {
+                    // 標記為測試或無效
+                    for (const orderId of selectedOrders) {
+                        await fetch(`${API_BASE}/api/admin/order/${orderId}/test-status`, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Admin-Key': ADMIN_API_KEY
+                            },
+                            body: JSON.stringify({ 
+                                is_test: action === 'test' ? 1 : 0,
+                                is_invalid: action === 'invalid' ? 1 : 0
+                            })
+                        });
+                    }
+                    alert('標記完成');
+                }
+                
+                selectedOrders = [];
+                loadOrders();
+            } catch (err) {
+                alert('執行失敗: ' + err.message);
+            }
+        }
+        
+        async function updateOrderTag(orderId, tagType, value) {
             try {
                 const res = await fetch(`${API_BASE}/api/admin/order/${orderId}/test-status`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY,
-                        'X-Admin-User': currentUser.username
+                        'X-Admin-Key': ADMIN_API_KEY
                     },
-                    body: JSON.stringify({ is_test: isTest ? 1 : 0 })
+                    body: JSON.stringify({ 
+                        is_test: tagType === 'test' ? (value ? 1 : 0) : (allOrders.find(o => o.orderId === orderId)?.isTest || 0),
+                        is_invalid: tagType === 'invalid' ? (value ? 1 : 0) : (allOrders.find(o => o.orderId === orderId)?.isInvalid || 0)
+                    })
                 });
                 const data = await res.json();
-                if (!data.success) {
+                if (data.success) {
+                    // 更新本地資料
+                    const order = allOrders.find(o => o.orderId === orderId);
+                    if (order) {
+                        if (tagType === 'test') order.isTest = value ? 1 : 0;
+                        if (tagType === 'invalid') order.isInvalid = value ? 1 : 0;
+                    }
+                    alert('更新成功');
+                } else {
                     alert('更新失敗: ' + data.error);
                 }
             } catch (err) {
@@ -1435,6 +1696,7 @@
             const items = order.items || [];
             const status = statusMap[order.status] || { text: order.status, class: '' };
             const isTest = order.isTest ? 'checked' : '';
+            const isInvalid = order.isInvalid ? 'checked' : '';
             
             // 取得設計理念
             const designStory = order.design_story || order.finalDesignStory || '';
@@ -1448,8 +1710,15 @@
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" ${isTest} onchange="toggleTestOrder('${order.orderId}', this.checked)" style="width:18px;height:18px;">
+                            <input type="checkbox" ${isTest} onchange="updateOrderTag('${order.orderId}', 'test', this.checked)" style="width:18px;height:18px;">
                             <span style="color:var(--text-muted);font-size:12px;">勾選表示此為測試訂單</span>
+                        </label>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">無效訂單</span>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" ${isInvalid} onchange="updateOrderTag('${order.orderId}', 'invalid', this.checked)" style="width:18px;height:18px;">
+                            <span style="color:var(--text-muted);font-size:12px;">勾選表示此為無效訂單</span>
                         </label>
                     </div>
                 </div>`;
