@@ -3,69 +3,1158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DUET - 為你的故事，鑄造永恆的交織</title>
-    <link rel="stylesheet" href="assets/css/landing.css">
+    <title>DUET — 為你的故事，鑄造永恆的交織</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-cream: #FAF8F5;
+            --color-warm-white: #F5F1EB;
+            --color-taupe: #E8E2D9;
+            --color-warm-gray: #9A958C;
+            --color-charcoal: #2C2A26;
+            --color-bronze: #8B7355;
+            --color-gold: #C9A962;
+            --font-serif: 'Cormorant Garamond', Georgia, serif;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+            --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--color-cream);
+            color: var(--color-charcoal);
+            line-height: 1.6;
+            font-weight: 300;
+            letter-spacing: -0.01em;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.5rem 3rem;
+            transition: all 0.6s var(--transition-smooth);
+        }
+
+        .nav.scrolled {
+            background: rgba(250, 248, 245, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 1rem 3rem;
+            border-bottom: 1px solid var(--color-taupe);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .logo-text {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            color: var(--color-charcoal);
+        }
+
+        .logo-subtitle {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            color: var(--color-warm-gray);
+            text-transform: uppercase;
+            margin-top: 0.2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--color-charcoal);
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            font-weight: 400;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--color-bronze);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            background: var(--color-charcoal);
+            color: var(--color-cream) !important;
+            padding: 0.9rem 1.8rem;
+            border-radius: 0;
+            transition: all 0.4s ease;
+        }
+
+        .nav-cta::after {
+            display: none !important;
+        }
+
+        .nav-cta:hover {
+            background: var(--color-bronze);
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 8rem 5rem 5rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--color-bronze);
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.3s;
+        }
+
+        .badge-line {
+            width: 40px;
+            height: 1px;
+            background: var(--color-bronze);
+        }
+
+        .hero-title {
+            font-family: var(--font-serif);
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
+            font-weight: 300;
+            line-height: 1.15;
+            color: var(--color-charcoal);
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.5s;
+        }
+
+        .hero-title em {
+            font-style: italic;
+            font-weight: 400;
+            color: var(--color-bronze);
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--color-warm-gray);
+            max-width: 400px;
+            margin-bottom: 3rem;
+            line-height: 1.8;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.7s;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1.5rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.9s;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: var(--color-charcoal);
+            color: var(--color-cream);
+            padding: 1.2rem 2.5rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            transition: all 0.4s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-bronze);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(139, 115, 85, 0.2);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--color-charcoal);
+            padding: 1.2rem 2rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--color-charcoal);
+            transition: all 0.4s ease;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--color-bronze);
+            color: var(--color-bronze);
+            gap: 1.2rem;
+        }
+
+        .hero-visual {
+            position: relative;
+            background: var(--color-taupe);
+            overflow: hidden;
+        }
+
+        .hero-image-container {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-image {
+            width: 85%;
+            height: 85%;
+            object-fit: cover;
+            filter: grayscale(20%) contrast(1.1);
+            transition: all 1.2s ease;
+        }
+
+        .hero-visual:hover .hero-image {
+            transform: scale(1.03);
+            filter: grayscale(0%) contrast(1);
+        }
+
+        .hero-overlay {
+            position: absolute;
+            bottom: 3rem;
+            left: 3rem;
+            right: 3rem;
+            background: rgba(250, 248, 245, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .overlay-text {
+            font-family: var(--font-serif);
+            font-size: 1.2rem;
+            font-style: italic;
+            color: var(--color-charcoal);
+        }
+
+        .overlay-price {
+            text-align: right;
+        }
+
+        .price-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--color-warm-gray);
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+
+        .price-value {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            color: var(--color-charcoal);
+        }
+
+        /* Story Section */
+        .story-section {
+            padding: 10rem 5rem;
+            background: var(--color-warm-white);
+            position: relative;
+        }
+
+        .story-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6rem;
+            align-items: center;
+        }
+
+        .story-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--color-bronze);
+            margin-bottom: 1.5rem;
+        }
+
+        .story-title {
+            font-family: var(--font-serif);
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 300;
+            line-height: 1.2;
+            margin-bottom: 2rem;
+        }
+
+        .story-text {
+            color: var(--color-warm-gray);
+            font-size: 1.05rem;
+            line-height: 2;
+            margin-bottom: 2rem;
+        }
+
+        .story-quote {
+            font-family: var(--font-serif);
+            font-size: 1.3rem;
+            font-style: italic;
+            color: var(--color-charcoal);
+            border-left: 2px solid var(--color-bronze);
+            padding-left: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .story-visual {
+            position: relative;
+        }
+
+        .story-image-main {
+            width: 100%;
+            aspect-ratio: 4/5;
+            object-fit: cover;
+            filter: grayscale(30%);
+        }
+
+        .story-image-accent {
+            position: absolute;
+            bottom: -2rem;
+            right: -2rem;
+            width: 60%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border: 10px solid var(--color-warm-white);
+            filter: grayscale(20%);
+        }
+
+        /* Process Section */
+        .process-section {
+            padding: 10rem 5rem;
+            background: var(--color-cream);
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 6rem;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--color-bronze);
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: var(--font-serif);
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 300;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            color: var(--color-warm-gray);
+            font-size: 1rem;
+        }
+
+        .process-steps {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .process-step {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 3rem;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--color-taupe);
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .process-step:hover {
+            padding-left: 1rem;
+        }
+
+        .step-number {
+            font-family: var(--font-serif);
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--color-taupe);
+            line-height: 1;
+            transition: color 0.4s ease;
+        }
+
+        .process-step:hover .step-number {
+            color: var(--color-bronze);
+        }
+
+        .step-content h3 {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 0.8rem;
+        }
+
+        .step-content p {
+            color: var(--color-warm-gray);
+            font-size: 0.95rem;
+            line-height: 1.8;
+            max-width: 400px;
+        }
+
+        /* Gallery Section */
+        .gallery-section {
+            padding: 8rem 0;
+            background: var(--color-charcoal);
+            color: var(--color-cream);
+        }
+
+        .gallery-header {
+            text-align: center;
+            padding: 0 5rem;
+            margin-bottom: 4rem;
+        }
+
+        .gallery-header .section-label {
+            color: var(--color-gold);
+        }
+
+        .gallery-header .section-title {
+            color: var(--color-cream);
+        }
+
+        .gallery-header .section-subtitle {
+            color: var(--color-warm-gray);
+        }
+
+        .gallery-scroll {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem 5rem;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+        }
+
+        .gallery-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .gallery-item {
+            flex: 0 0 350px;
+            scroll-snap-align: start;
+            position: relative;
+            group: gallery;
+        }
+
+        .gallery-image {
+            width: 100%;
+            aspect-ratio: 3/4;
+            object-fit: cover;
+            filter: grayscale(50%) brightness(0.9);
+            transition: all 0.6s ease;
+        }
+
+        .gallery-item:hover .gallery-image {
+            filter: grayscale(0%) brightness(1);
+        }
+
+        .gallery-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 2rem;
+            background: linear-gradient(to top, rgba(44, 42, 38, 0.9), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+            opacity: 1;
+        }
+
+        .gallery-letters {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            color: var(--color-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .gallery-desc {
+            font-size: 0.85rem;
+            color: var(--color-cream);
+            font-style: italic;
+        }
+
+        /* Craft Section */
+        .craft-section {
+            padding: 10rem 5rem;
+            background: var(--color-cream);
+        }
+
+        .craft-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 6rem;
+            align-items: center;
+        }
+
+        .craft-visual {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .craft-image {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            filter: grayscale(30%);
+        }
+
+        .craft-image:first-child {
+            transform: translateY(2rem);
+        }
+
+        .craft-image:last-child {
+            transform: translateY(-2rem);
+        }
+
+        .craft-content .section-label {
+            margin-bottom: 1.5rem;
+        }
+
+        .craft-content .story-title {
+            margin-bottom: 3rem;
+        }
+
+        .craft-features {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .craft-feature {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            border: 1px solid var(--color-taupe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .feature-text h4 {
+            font-family: var(--font-serif);
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-text p {
+            font-size: 0.9rem;
+            color: var(--color-warm-gray);
+            line-height: 1.6;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            padding: 10rem 5rem;
+            background: var(--color-warm-white);
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--color-taupe);
+            padding: 2rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-question h3 {
+            font-family: var(--font-serif);
+            font-size: 1.3rem;
+            font-weight: 400;
+            transition: color 0.3s ease;
+        }
+
+        .faq-item:hover .faq-question h3 {
+            color: var(--color-bronze);
+        }
+
+        .faq-icon {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.4s ease;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 200px;
+            padding-top: 1rem;
+        }
+
+        .faq-answer p {
+            color: var(--color-warm-gray);
+            font-size: 0.95rem;
+            line-height: 1.8;
+            max-width: 600px;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 10rem 5rem;
+            background: var(--color-charcoal);
+            color: var(--color-cream);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1600&q=80') center/cover;
+            opacity: 0.1;
+            filter: grayscale(100%);
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-section .section-label {
+            color: var(--color-gold);
+            margin-bottom: 2rem;
+        }
+
+        .cta-title {
+            font-family: var(--font-serif);
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-weight: 300;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-subtitle {
+            font-size: 1.1rem;
+            color: var(--color-warm-gray);
+            margin-bottom: 3rem;
+            font-style: italic;
+        }
+
+        .btn-light {
+            background: var(--color-cream);
+            color: var(--color-charcoal);
+        }
+
+        .btn-light:hover {
+            background: var(--color-gold);
+            color: var(--color-charcoal);
+        }
+
+        /* Footer */
+        .footer {
+            padding: 5rem;
+            background: var(--color-charcoal);
+            color: var(--color-cream);
+            border-top: 1px solid rgba(250, 248, 245, 0.1);
+        }
+
+        .footer-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 4rem;
+        }
+
+        .footer-brand .logo-text {
+            color: var(--color-cream);
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            color: var(--color-warm-gray);
+            font-size: 0.9rem;
+            line-height: 1.8;
+            max-width: 300px;
+        }
+
+        .footer-links h4 {
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-links a {
+            display: block;
+            color: var(--color-warm-gray);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-bottom: 0.8rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--color-gold);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 4rem auto 0;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(250, 248, 245, 0.1);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--color-warm-gray);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Mobile Menu */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .hamburger span {
+            width: 25px;
+            height: 1px;
+            background: var(--color-charcoal);
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-visual {
+                min-height: 50vh;
+                order: -1;
+            }
+
+            .story-container,
+            .craft-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 80%;
+                height: 100vh;
+                background: var(--color-cream);
+                flex-direction: column;
+                padding: 5rem 2rem;
+                transition: right 0.4s ease;
+                gap: 2rem;
+            }
+
+            .nav-links.active {
+                right: 0;
+            }
+
+            .hamburger {
+                display: flex;
+            }
+
+            .hero-content,
+            .story-section,
+            .process-section,
+            .craft-section,
+            .faq-section,
+            .cta-section,
+            .footer {
+                padding: 4rem 1.5rem;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+            }
+
+            .process-step {
+                grid-template-columns: 60px 1fr;
+                gap: 1.5rem;
+            }
+
+            .step-number {
+                font-size: 2rem;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .gallery-item {
+                flex: 0 0 280px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="nav">
+    <nav class="nav" id="nav">
         <div class="nav-container">
             <div class="nav-logo">
                 <span class="logo-text">DUET</span>
                 <span class="logo-subtitle">by BCAG</span>
             </div>
-            <!-- 漢堡選單按鈕（手機顯示） -->
-            <div class="hamburger" onclick="toggleMobileNav()" id="hamburger">
+            <div class="hamburger" onclick="toggleMenu()">
                 <span></span>
                 <span></span>
                 <span></span>
             </div>
-            <div class="nav-links" id="nav-links">
-                <a href="#how-it-works">如何運作</a>
-                <a href="#stories">客戶故事</a>
+            <div class="nav-links" id="navLinks">
+                <a href="#story">品牌故事</a>
+                <a href="#process">設計流程</a>
+                <a href="#gallery">作品展示</a>
                 <a href="#faq">常見問題</a>
                 <a href="order-tracker.html">訂單查詢</a>
-                <a href="design-studio.html" class="btn-primary">開始設計</a>
+                <a href="design-studio.html" class="nav-cta">開始設計</a>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-container">
-            <div class="hero-content">
-                <div class="hero-badge">✨ 全球首創 AI 對話式珠寶設計</div>
-                <h1 class="hero-title">
-                    每一個交織，<br>
-                    都是一段故事的開始
-                </h1>
-                <p class="hero-subtitle">
-                    兩個字母，承載著你們的故事。<br>
-                    透過 AI 對話，我們為你打造獨一無二的交織墜飾。
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-line"></span>
+                全球首創 AI 對話式珠寶設計
+            </div>
+            <h1 class="hero-title">
+                每一個交織，<br>
+                都是一段<em>故事</em>的開始
+            </h1>
+            <p class="hero-subtitle">
+                兩個字母，承載著你們的故事。透過溫暖的 AI 對話，我們為你打造獨一無二的交織墜飾。
+            </p>
+            <div class="hero-cta">
+                <a href="design-studio.html" class="btn-primary">
+                    開始你的故事
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="#story" class="btn-secondary">
+                    了解更多
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-image-container">
+                <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1200&q=80" alt="DUET 交織墜飾" class="hero-image">
+            </div>
+            <div class="hero-overlay">
+                <span class="overlay-text">「專屬於你的交織印記」</span>
+                <div class="overlay-price">
+                    <span class="price-label">起價</span>
+                    <span class="price-value">NT$ 2,980</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Story Section -->
+    <section class="story-section" id="story">
+        <div class="story-container">
+            <div class="story-content">
+                <span class="story-label">品牌理念</span>
+                <h2 class="story-title">
+                    當科技遇見<br>
+                    手作的溫度
+                </h2>
+                <p class="story-text">
+                    DUET 相信，每一件珠寶都應該訴說一個故事。我們結合最先進的 AI 技術與傳統珠寶工藝，讓你能透過對話，創造出真正屬於你的設計。
                 </p>
-                <div class="hero-cta">
-                    <a href="design-studio.html" class="btn-primary-large">
-                        開始你的故事
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
-                    <a href="#how-it-works" class="btn-secondary-large">
-                        了解更多
-                    </a>
+                <p class="story-text">
+                    不是選擇現成的款式，而是從你的記憶、情感與關係出發，讓 AI 設計師引導你，將無形的情感轉化為有形的交織。
+                </p>
+                <div class="story-quote">
+                    「最好的珠寶，不是最昂貴的，<br>
+                    而是最能觸動人心的。」
                 </div>
             </div>
-            <div class="hero-visual">
-                <div class="visual-container">
-                    <div class="visual-glow"></div>
-                    <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&q=80" alt="DUET 交織墜飾" class="visual-image">
-                    <div class="visual-overlay">
-                        <div class="overlay-tag">
-                            <span class="tag-label">客製化設計</span>
-                            <span class="tag-price">NT$ 2,980 起</span>
+            <div class="story-visual">
+                <img src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80" alt="手工製作過程" class="story-image-main">
+                <img src="https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&q=80" alt="細節工藝" class="story-image-accent">
+            </div>
+        </div>
+    </section>
+
+    <!-- Process Section -->
+    <section class="process-section" id="process">
+        <div class="section-header">
+            <span class="section-label">設計旅程</span>
+            <h2 class="section-title">從對話到實體</h2>
+            <p class="section-subtitle">五個步驟，創造你的專屬交織</p>
+        </div>
+        <div class="process-steps">
+            <div class="process-step">
+                <div class="step-number">01</div>
+                <div class="step-content">
+                    <h3>分享你的故事</h3>
+                    <p>與我們的 AI 設計師對話，分享這份禮物背後的意義——是紀念、是感謝，還是承諾？</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">02</div>
+                <div class="step-content">
+                    <h3>探索字型組合</h3>
+                    <p>根據你的故事情感，AI 會推薦最適合的字型風格。你也可以自由探索 100+ 種精選字體。</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">03</div>
+                <div class="step-content">
+                    <h3>即時 3D 預覽</h3>
+                    <p>在瀏覽器中 360° 旋轉檢視你的設計，調整每個細節，直到完美呈現你心中的模樣。</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">04</div>
+                <div class="step-content">
+                    <h3>確認與付款</h3>
+                    <p>滿意後透過綠界金流安全付款。我們會在製作前再次與你確認每個細節。</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">05</div>
+                <div class="step-content">
+                    <h3>收到專屬作品</h3>
+                    <p>5-7 個工作天，你將收到精緻包裝的作品，以及 AI 為你撰寫的設計理念卡片。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="gallery-section" id="gallery">
+        <div class="gallery-header">
+            <span class="section-label">交織範例</span>
+            <h2 class="section-title">無限可能的組合</h2>
+            <p class="section-subtitle">每一組字母，都訴說著獨特的故事</p>
+        </div>
+        <div class="gallery-scroll">
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80" alt="範例作品" class="gallery-image">
+                <div class="gallery-overlay">
+                    <div class="gallery-letters">B × R</div>
+                    <div class="gallery-desc">姓氏的連結，家族的傳承</div>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80" alt="範例作品" class="gallery-image">
+                <div class="gallery-overlay">
+                    <div class="gallery-letters">M × C</div>
+                    <div class="gallery-desc">名字與暱稱的親密印記</div>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1491528323818-fdd1faba62cc?w=600&q=80" alt="範例作品" class="gallery-image">
+                <div class="gallery-overlay">
+                    <div class="gallery-letters">A × A</div>
+                    <div class="gallery-desc">對稱美學，自我的平衡</div>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80" alt="範例作品" class="gallery-image">
+                <div class="gallery-overlay">
+                    <div class="gallery-letters">J × S</div>
+                    <div class="gallery-desc">紀念特別的相遇時刻</div>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=600&q=80" alt="範例作品" class="gallery-image">
+                <div class="gallery-overlay">
+                    <div class="gallery-letters">E × L</div>
+                    <div class="gallery-desc">永恆承諾的象徵</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Craft Section -->
+    <section class="craft-section">
+        <div class="craft-grid">
+            <div class="craft-visual">
+                <img src="https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=600&q=80" alt="工藝細節" class="craft-image">
+                <img src="https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=600&q=80" alt="材質質感" class="craft-image">
+            </div>
+            <div class="craft-content">
+                <span class="section-label">精湛工藝</span>
+                <h2 class="story-title">每個細節<br>都值得珍藏</h2>
+                <div class="craft-features">
+                    <div class="craft-feature">
+                        <div class="feature-icon">◈</div>
+                        <div class="feature-text">
+                            <h4>參數化設計</h4>
+                            <p>OpenSCAD 精確建模，確保 3D 預覽與實品完全一致</p>
+                        </div>
+                    </div>
+                    <div class="craft-feature">
+                        <div class="feature-icon">◉</div>
+                        <div class="feature-text">
+                            <h4>脫蠟鑄造法</h4>
+                            <p>傳統失蠟鑄造，純銀與 18K 金材質可選</p>
+                        </div>
+                    </div>
+                    <div class="craft-feature">
+                        <div class="feature-icon">◊</div>
+                        <div class="feature-text">
+                            <h4>手工拋光</h4>
+                            <p>專業珠寶師傅手工打磨，呈現完美光澤</p>
+                        </div>
+                    </div>
+                    <div class="craft-feature">
+                        <div class="feature-icon">◎</div>
+                        <div class="feature-text">
+                            <h4>專屬故事卡片</h4>
+                            <p>AI 根據你的故事撰寫設計理念，讓心意完整傳達</p>
                         </div>
                     </div>
                 </div>
@@ -73,328 +1162,167 @@
         </div>
     </section>
 
-    <!-- How It Works -->
-    <section id="how-it-works" class="how-it-works">
-        <div class="section-container">
-            <div class="section-header">
-                <span class="section-badge">簡單五步驟</span>
-                <h2 class="section-title">你的專屬設計旅程</h2>
-                <p class="section-subtitle">從對話到實體，只需要 5-7 個工作天</p>
-            </div>
-
-            <div class="steps">
-                <div class="step">
-                    <div class="step-icon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="step-content">
-                        <h3 class="step-title">AI 對話諮詢</h3>
-                        <p class="step-description">透過溫暖的對話，分享你們的故事。我們的 AI 設計師會仔細聆聽，理解這份禮物的意義。</p>
-                    </div>
-                    <div class="step-number">01</div>
-                </div>
-
-                <div class="step">
-                    <div class="step-icon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <div class="step-content">
-                        <h3 class="step-title">選擇字型組合</h3>
-                        <p class="step-description">根據你的故事，我們推薦最適合的字型組合。你也可以自由探索 100+ 種精選字體。</p>
-                    </div>
-                    <div class="step-number">02</div>
-                </div>
-
-                <div class="step">
-                    <div class="step-icon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <div class="step-content">
-                        <h3 class="step-title">即時 3D 預覽</h3>
-                        <p class="step-description">在瀏覽器中即時預覽你的設計。360° 旋轉、調整細節，直到完全滿意。</p>
-                    </div>
-                    <div class="step-number">03</div>
-                </div>
-
-                <div class="step">
-                    <div class="step-icon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <rect x="3" y="8" width="18" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-                            <path d="M3 10h18M7 15h.01M11 15h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <div class="step-content">
-                        <h3 class="step-title">安全付款下單</h3>
-                        <p class="step-description">透過綠界金流完成付款，保障你的交易安全。付款後立即開始製作。</p>
-                    </div>
-                    <div class="step-number">04</div>
-                </div>
-
-                <div class="step">
-                    <div class="step-icon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="step-content">
-                        <h3 class="step-title">收到專屬作品</h3>
-                        <p class="step-description">5-7 個工作天後，你將收到精緻包裝的作品，以及 <strong>AI 根據你的故事撰寫的設計理念卡片</strong>，讓你送禮時能完整傳達心意。</p>
-                    </div>
-                    <div class="step-number">05</div>
-                </div>
-            </div>
-
-            <div class="cta-banner">
-                <h3>準備好開始了嗎？</h3>
-                <a href="design-studio.html" class="btn-primary-large">立即開始設計</a>
-            </div>
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faq">
+        <div class="section-header">
+            <span class="section-label">常見問題</span>
+            <h2 class="section-title">你可能想知道的事</h2>
         </div>
-    </section>
-
-    <!-- Customer Stories -->
-    <section id="stories" class="stories">
-        <div class="section-container">
-            <div class="section-header">
-                <span class="section-badge">作品範例</span>
-                <h2 class="section-title">交織的無限可能</h2>
-                <p class="section-subtitle">以下是範例作品，呈現不同字母組合與風格的呈現效果</p>
-            </div>
-
-            <div class="stories-grid">
-                <div class="story-card">
-                    <div class="story-image">
-                        <img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80" alt="範例作品">
-                    </div>
-                    <div class="story-content">
-                        <div class="story-letters">B × R</div>
-                        <h3 class="story-title">「範例：姓氏組合」</h3>
-                        <p class="story-text">兩個姓氏首字母的結合，代表家庭的連結與傳承。適合紀念結婚週年或家族重要時刻。</p>
-                        <div class="story-author">— 範例作品</div>
-                    </div>
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question">
+                    <h3>製作需要多久時間？</h3>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
                 </div>
-
-                <div class="story-card">
-                    <div class="story-image">
-                        <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80" alt="範例作品">
-                    </div>
-                    <div class="story-content">
-                        <div class="story-letters">M × C</div>
-                        <h3 class="story-title">「範例：名字與暱稱」</h3>
-                        <p class="story-text">媽媽的名字與孩子為她取的暱稱，交織成最親密的印記。送給生命中最重要的人。</p>
-                        <div class="story-author">— 範例作品</div>
-                    </div>
-                </div>
-
-                <div class="story-card">
-                    <div class="story-image">
-                        <img src="https://images.unsplash.com/photo-1491528323818-fdd1faba62cc?w=600&q=80" alt="範例作品">
-                    </div>
-                    <div class="story-content">
-                        <div class="story-letters">A × A</div>
-                        <h3 class="story-title">「範例：對稱美學」</h3>
-                        <p class="story-text">相同的兩個字母，创造对称的和谐美感。适合代表自我、平衡、或双胞胎之间的独特连结。</p>
-                        <div class="story-author">— 範例作品</div>
-                    </div>
+                <div class="faq-answer">
+                    <p>付款完成後，製作時間約 5-7 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- Craftsmanship -->
-    <section class="craftsmanship">
-        <div class="section-container">
-            <div class="craft-grid">
-                <div class="craft-content">
-                    <span class="section-badge">精湛工藝</span>
-                    <h2 class="section-title">每一個細節，都值得珍藏</h2>
-                    <div class="craft-features">
-                        <div class="craft-feature">
-                            <div class="feature-icon">✨</div>
-                            <div class="feature-content">
-                                <h3>OpenSCAD 3D 建模</h3>
-                                <p>精確的參數化設計，確保 3D 預覽與實品完全一致</p>
-                            </div>
-                        </div>
-                        <div class="craft-feature">
-                            <div class="feature-icon">💎</div>
-                            <div class="feature-content">
-                                <h3>脫蠟鑄造法</h3>
-                                <p>採用失蠟鑄造法，純銀或 18K 金材質可選，精品級工藝</p>
-                            </div>
-                        </div>
-                        <div class="craft-feature">
-                            <div class="feature-icon">🎨</div>
-                            <div class="feature-content">
-                                <h3>手工拋光</h3>
-                                <p>專業珠寶師傅手工拋光，呈現完美光澤</p>
-                            </div>
-                        </div>
-                        <div class="craft-feature">
-                            <div class="feature-icon">📦</div>
-                            <div class="feature-content">
-                                <h3>設計理念卡片</h3>
-                                <p>AI 根據你的故事撰寫專屬卡片，讓心意完美傳達</p>
-                            </div>
-                        </div>
-                    </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <h3>可以選擇什麼材質？</h3>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
                 </div>
-                <div class="craft-visual">
-                    <img src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80" alt="手工製作過程">
+                <div class="faq-answer">
+                    <p>目前提供 925 純銀（NT$ 2,980）和 18K 金（NT$ 12,800）兩種選擇。所有材質皆經過品質認證，並附保證書。</p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- FAQ -->
-    <section id="faq" class="faq">
-        <div class="section-container">
-            <div class="section-header">
-                <span class="section-badge">常見問題</span>
-                <h2 class="section-title">你可能想知道的事</h2>
-            </div>
-
-            <div class="faq-list">
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <h3>製作需要多久時間？</h3>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="faq-answer">
-                        <p>從付款完成後，製作時間約 5-7 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</p>
-                    </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <h3>如果不滿意設計怎麼辦？</h3>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
                 </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <h3>可以選擇什麼材質？</h3>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="faq-answer">
-                        <p>目前提供 925 純銀（NT$ 2,980）和 18K 金（NT$ 12,800）兩種選擇。所有材質皆經過品質認證，並附保證書。</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <h3>如果不滿意設計怎麼辦？</h3>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="faq-answer">
-                        <p>在付款前，你可以無限次修改設計。付款後，我們會在製作前再次與你確認。如果收到作品後有任何品質問題，我們提供 30 天無條件退換貨保證。</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <h3>AI 對話會保存我的隱私嗎？</h3>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="faq-answer">
-                        <p>你的對話內容僅用於設計推薦，不會被分享或用於其他用途。我們採用端到端加密，確保你的故事安全私密。</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <h3>可以只訂購一個字母嗎？</h3>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div class="faq-answer">
-                        <p>DUET 的核心概念是「交織」，因此目前僅提供雙字母設計。但你可以選擇相同的字母（例如 A × A），創造對稱的美感。</p>
-                    </div>
+                <div class="faq-answer">
+                    <p>付款前可無限次修改設計。付款後製作前會再次確認。收到作品後若有品質問題，提供 30 天無條件退換貨保證。</p>
                 </div>
             </div>
-
-            <div class="faq-contact">
-                <p>還有其他問題？</p>
-                <a href="mailto:hello@duet.brendonchen.com" class="btn-secondary">聯絡我們</a>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <h3>AI 對話會保存我的隱私嗎？</h3>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </div>
+                <div class="faq-answer">
+                    <p>對話內容僅用於設計推薦，採用端到端加密，不會被分享或用於其他用途。你的故事只屬於你。</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <h3>可以只訂購一個字母嗎？</h3>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </div>
+                <div class="faq-answer">
+                    <p>DUET 的核心是「交織」，因此僅提供雙字母設計。但你可以選擇相同字母（如 A × A），創造對稱美感。</p>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- CTA Section -->
-    <section class="final-cta">
-        <div class="section-container">
-            <div class="final-cta-content">
-                <h2>開始創造屬於你的交織時刻</h2>
-                <p>每一段故事，都值得被永恆鑄造</p>
-                <a href="design-studio.html" class="btn-primary-large">
-                    立即開始設計
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </a>
-            </div>
+    <section class="cta-section">
+        <div class="cta-content">
+            <span class="section-label">開始創造</span>
+            <h2 class="cta-title">屬於你的<br>交織時刻</h2>
+            <p class="cta-subtitle">每一段故事，都值得被永恆鑄造</p>
+            <a href="design-studio.html" class="btn-primary btn-light">
+                立即開始設計
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
         </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-grid">
-                <div class="footer-brand">
-                    <div class="footer-logo">
-                        <span class="logo-text">DUET</span>
-                        <span class="logo-subtitle">by BCAG</span>
-                    </div>
-                    <p class="footer-description">
-                        為你的故事，鑄造永恆的交織
-                    </p>
-                    <div class="footer-social">
-                        <a href="#" class="social-link">Instagram</a>
-                        <a href="#" class="social-link">Facebook</a>
-                    </div>
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="nav-logo">
+                    <span class="logo-text">DUET</span>
+                    <span class="logo-subtitle">by BCAG</span>
                 </div>
-
-                <div class="footer-links">
-                    <h4>服務</h4>
-                    <a href="design-studio.html">開始設計</a>
-                    <a href="order-tracker.html">訂單查詢</a>
-                    <a href="support.html">保固服務</a>
-                </div>
-
-                <div class="footer-links">
-                    <h4>了解更多</h4>
-                    <a href="#how-it-works">如何運作</a>
-                    <a href="#stories">客戶故事</a>
-                    <a href="#faq">常見問題</a>
-                </div>
-
-                <div class="footer-links">
-                    <h4>聯絡我們</h4>
-                    <a href="mailto:hello@duet.brendonchen.com">hello@duet.brendonchen.com</a>
-                    <a href="https://duet.brendonchen.com">duet.brendonchen.com</a>
-                </div>
+                <p>為你的故事，鑄造永恆的交織。結合 AI 技術與傳統工藝，創造獨一無二的專屬珠寶。</p>
             </div>
-
-            <div class="footer-bottom">
-                <p>&copy; 2026 DUET by BCAG. All rights reserved.</p>
-                <div class="footer-legal">
-                    <a href="#">隱私權政策</a>
-                    <a href="#">使用條款</a>
-                </div>
+            <div class="footer-links">
+                <h4>服務</h4>
+                <a href="design-studio.html">開始設計</a>
+                <a href="order-tracker.html">訂單查詢</a>
+                <a href="#">保固服務</a>
+            </div>
+            <div class="footer-links">
+                <h4>探索</h4>
+                <a href="#story">品牌故事</a>
+                <a href="#process">設計流程</a>
+                <a href="#gallery">作品展示</a>
+            </div>
+            <div class="footer-links">
+                <h4>聯絡</h4>
+                <a href="mailto:hello@duet.brendonchen.com">hello@duet.brendonchen.com</a>
+                <a href="https://instagram.com">Instagram</a>
+                <a href="https://facebook.com">Facebook</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 DUET by BCAG. All rights reserved.</p>
+            <div>
+                <a href="#" style="color: var(--color-warm-gray); text-decoration: none; margin-right: 2rem;">隱私權政策</a>
+                <a href="#" style="color: var(--color-warm-gray); text-decoration: none;">使用條款</a>
             </div>
         </div>
     </footer>
 
-    <!-- 引入 JavaScript -->
-    <script src="assets/js/landing.js"></script>
+    <script>
+        // Navigation scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Mobile menu toggle
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // FAQ accordion
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile menu if open
+                    document.getElementById('navLinks').classList.remove('active');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

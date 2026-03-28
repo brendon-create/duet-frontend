@@ -5564,7 +5564,10 @@
                     fetch(`${BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ designStory: editedStory })
+                        body: JSON.stringify({ 
+                            designStory: editedStory,
+                            sendEmail: true  // ✅ 觸發發送確認郵件
+                        })
                     })
                     .then(res => res.json())
                     .then(data => {
