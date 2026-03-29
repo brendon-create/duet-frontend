@@ -1913,8 +1913,8 @@
         // 檢查 AI 諮詢數據
         // ========== 通用通知函數 (新增) ==========
         // 環境設定已由 assets/js/config.js 提供
-        // 直接使用全域變數 window.BACKEND_URL 和 window.CURRENT_ENV
-        const BACKEND_URL = window.BACKEND_URL;
+        // 直接使用全域變數 window.BACKEND_URL（已在 config.js 設定）
+        // 注意：不要用 const 重新定義，避免重複變數錯誤
 
         /**
          * 顯示通知訊息
@@ -2010,11 +2010,11 @@
                     console.log('🎨 準備設計理念收集流程');
                     console.log('🔍 訂單ID:', orderId);
                     console.log('🔍 BACKEND_URL:', BACKEND_URL);
-                    console.log('🔍 完整 API URL:', `${BACKEND_URL}/api/order/${orderId}`);
+                    console.log('🔍 完整 API URL:', `${window.BACKEND_URL}/api/order/${orderId}`);
 
                     // 先從後端載入訂單資料，恢復購物車
                     try {
-                        const apiUrl = `${BACKEND_URL}/api/order/${orderId}`;
+                        const apiUrl = `${window.BACKEND_URL}/api/order/${orderId}`;
                         console.log('📡 正在呼叫 API:', apiUrl);
 
                         const response = await fetch(apiUrl);
@@ -2096,7 +2096,7 @@
          */
         async function queryOrderStatus(orderId) {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/order/status/${orderId}`);
+                const response = await fetch(`${window.BACKEND_URL}/api/order/status/${orderId}`);
                 const data = await response.json();
 
                 if (data.success && data.paid) {
@@ -2219,7 +2219,7 @@
         async function testBackendConnection() {
             try {
                 console.log('🔍 測試後端連接...');
-                const response = await fetch(`${BACKEND_URL}/health`, {
+                const response = await fetch(`${window.BACKEND_URL}/health`, {
                     method: 'GET',
                     mode: 'cors'
                 });
@@ -4203,10 +4203,10 @@
             applyBtn.textContent = '驗證中...';
 
             try {
-                console.log('🌐 呼叫後端 API:', `${BACKEND_URL}/api/validate-promo`);
+                console.log('🌐 呼叫後端 API:', `${window.BACKEND_URL}/api/validate-promo`);
 
                 // 呼叫後端驗證 API
-                const response = await fetch(`${BACKEND_URL}/api/validate-promo`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4329,7 +4329,7 @@
 
                 console.log('📦 訂單資料:', { orderId: mockOrderId, items: itemsWithBBox, total: calculateCartTotal() });
 
-                const response = await fetch(`${BACKEND_URL}/api/test-order`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/test-order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4702,7 +4702,7 @@
 
                 const conversationSummary = aiData.conversationSummary || aiData;
 
-                const response = await fetch(`${BACKEND_URL}/api/design-story`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/design-story`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4817,14 +4817,14 @@
                 const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
 
                 // 呼叫後端初始化支付
-                console.log('🌐 呼叫後端 API:', `${BACKEND_URL}/api/checkout`);
+                console.log('🌐 呼叫後端 API:', `${window.BACKEND_URL}/api/checkout`);
                 console.log('💰 DEBUG - originalTotal:', originalTotal, 'type:', typeof originalTotal);
                 console.log('🎫 DEBUG - appliedPromoCode:', appliedPromoCode);
 
                 // 確保 total 是數字
                 const totalAmount = Number(originalTotal);
 
-                const response = await fetch(`${BACKEND_URL}/api/checkout`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -5562,7 +5562,7 @@
                 // 🚀 呼叫 API 將設計理念傳回後端更新訂單
                 // ==========================================
                 if (window.lastOrderId && editedStory) {
-                    fetch(`${BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
+                    fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -5799,7 +5799,7 @@
             console.log('🔍 墜頭位置:', { bailRelativeX, bailRelativeY, bailRelativeZ, bailRot });
 
             // Step 4: 呼叫後端（帶重試機制）
-            console.log('🌐 呼叫後端:', `${BACKEND_URL}/api/generate-stl`);
+            console.log('🌐 呼叫後端:', `${window.BACKEND_URL}/api/generate-stl`);
             
             let retryCount = 0;
             const maxRetries = 2;
@@ -5812,7 +5812,7 @@
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                     
-                    const response = await fetch(`${BACKEND_URL}/api/generate-stl`, {
+                    const response = await fetch(`${window.BACKEND_URL}/api/generate-stl`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(params)
@@ -5870,7 +5870,7 @@
         // 驗證測試密碼（使用後端折扣碼 API）
         async function verifyTestPassword(password) {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/validate-promo`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

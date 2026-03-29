@@ -510,8 +510,8 @@
     </div>
     
     <script>
-        // 環境設定已由 assets/js/config.js 提供
-        const API_BASE = window.BACKEND_URL;
+        // 直接使用全域變數 window.BACKEND_URL（已在 config.js 設定）
+        // 注意：不要用 const 重新定義
         
         const statusMap = {
             'pending': { text: '待付款', class: 'pending' },
