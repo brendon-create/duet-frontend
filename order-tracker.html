@@ -508,8 +508,30 @@
     </div>
     
     <script>
-        // 後端 URL 配置
-        const API_BASE = 'https://duet-backend-wlw8.onrender.com';
+        // ==========================================
+        // 環境持久化設定（優先順序：URL > localStorage > 預設）
+        // ==========================================
+        const PRODUCTION_BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
+        const STAGING_BACKEND_URL = 'https://duet-backend-staging-wlw8.onrender.com';
+        const ENV_STORAGE_KEY = 'duet_deploy_env';
+
+        function getCurrentEnv() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlEnv = urlParams.get('env');
+            if (urlEnv === 'staging' || urlEnv === 'production') {
+                localStorage.setItem(ENV_STORAGE_KEY, urlEnv);
+                return urlEnv;
+            }
+            const storedEnv = localStorage.getItem(ENV_STORAGE_KEY);
+            if (storedEnv === 'staging' || storedEnv === 'production') {
+                return storedEnv;
+            }
+            return 'production';
+        }
+
+        const currentEnv = getCurrentEnv();
+        const API_BASE = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_BACKEND_URL;
+        window.CURRENT_ENV = currentEnv;
         
         const statusMap = {
             'pending': { text: '待付款', class: 'pending' },
