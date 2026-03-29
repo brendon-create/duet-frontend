@@ -2,6 +2,8 @@
 <html lang="zh-TW">
 
 <head>
+    <!-- 環境設定（必須在最前面載入） -->
+    <script src="assets/js/config.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DUET 設計諮詢 | BCAG</title>
@@ -629,30 +631,8 @@
     </div>
 
     <script>
-        // ==========================================
-        // 環境持久化設定（優先順序：URL > localStorage > 預設）
-        // ==========================================
-        const PRODUCTION_BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
-        const STAGING_BACKEND_URL = 'https://duet-backend-staging-ye5v.onrender.com';
-        const ENV_STORAGE_KEY = 'duet_deploy_env';
-
-        function getCurrentEnv() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlEnv = urlParams.get('env');
-            if (urlEnv === 'staging' || urlEnv === 'production') {
-                localStorage.setItem(ENV_STORAGE_KEY, urlEnv);
-                return urlEnv;
-            }
-            const storedEnv = localStorage.getItem(ENV_STORAGE_KEY);
-            if (storedEnv === 'staging' || storedEnv === 'production') {
-                return storedEnv;
-            }
-            return 'production';
-        }
-
-        const currentEnv = getCurrentEnv();
-        const BACKEND_URL = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_BACKEND_URL;
-        window.CURRENT_ENV = currentEnv;
+        // 環境設定已由 assets/js/config.js 提供
+        const BACKEND_URL = window.BACKEND_URL;
 
         // State
         let conversationHistory = [];
