@@ -2,6 +2,8 @@
 <html lang="zh-TW">
 
 <head>
+    <!-- 環境設定（必須在最前面載入） -->
+    <script src="assets/js/config.js"></script>
     <meta charset="UTF-8">
     
     <!-- 🔒 Content Security Policy - 放行所有資源 -->
@@ -1910,41 +1912,9 @@
 
         // 檢查 AI 諮詢數據
         // ========== 通用通知函數 (新增) ==========
-        // ==========================================
-        // 環境持久化設定（優先順序：URL > localStorage > 預設）
-        // ==========================================
-        const PRODUCTION_BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
-        const STAGING_BACKEND_URL = 'https://duet-backend-staging-ye5v.onrender.com';
-        const ENV_STORAGE_KEY = 'duet_deploy_env';
-
-        // 取得當前環境（URL 參數優先）
-        function getCurrentEnv() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlEnv = urlParams.get('env');
-            
-            // 第一優先：URL 有 env 參數
-            if (urlEnv === 'staging' || urlEnv === 'production') {
-                // 寫入 localStorage（覆蓋現有值）
-                localStorage.setItem(ENV_STORAGE_KEY, urlEnv);
-                return urlEnv;
-            }
-            
-            // 第二優先：檢查 localStorage
-            const storedEnv = localStorage.getItem(ENV_STORAGE_KEY);
-            if (storedEnv === 'staging' || storedEnv === 'production') {
-                return storedEnv;
-            }
-            
-            // 第三優先：預設為正式環境
-            return 'production';
-        }
-
-        const currentEnv = getCurrentEnv();
-        const BACKEND_URL = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_BACKEND_URL;
-        
-        // 重要：讓其他檔案可讀取
-        window.BACKEND_URL = BACKEND_URL;
-        window.CURRENT_ENV = currentEnv; // 供其他模組使用
+        // 環境設定已由 assets/js/config.js 提供
+        // 直接使用全域變數 window.BACKEND_URL 和 window.CURRENT_ENV
+        const BACKEND_URL = window.BACKEND_URL;
 
         /**
          * 顯示通知訊息
