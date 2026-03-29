@@ -819,7 +819,7 @@
 
             try {
                 // Call AI API
-                const response = await fetch(`${BACKEND_URL}/api/ai-consultant`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/ai-consultant`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
