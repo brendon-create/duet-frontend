@@ -33,10 +33,10 @@ function getCurrentEnv() {
 
 // 初始化環境
 const currentEnv = getCurrentEnv();
-const BACKEND_URL = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_BACKEND_URL;
+const backendUrl = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_BACKEND_URL;
 
-// 設定全域變數（供其他 JS 使用）
-window.BACKEND_URL = BACKEND_URL;
+// 設定全域變數（只使用 window，避免重複定義）
+window.BACKEND_URL = backendUrl;
 window.CURRENT_ENV = currentEnv;
 
 console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);

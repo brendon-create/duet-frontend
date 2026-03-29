@@ -461,8 +461,8 @@
     </div>
 
     <script>
-        // 環境設定已由 assets/js/config.js 提供
-        const BACKEND_URL = window.BACKEND_URL;
+        // 直接使用全域變數 window.BACKEND_URL（已在 config.js 設定）
+        // 注意：不要用 const 重新定義
         
         let orderId = null;
         let conceptsData = {
