@@ -519,7 +519,7 @@
         // Load Order Data
         async function loadOrderData() {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/order/${orderId}`);
+                const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`);
                 const data = await response.json();
                 
                 if (!data.success) {
@@ -566,7 +566,7 @@
         // Generate Concept for Group
         async function generateConceptForGroup(group, aiData) {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-design-concept`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/generate-design-concept`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
