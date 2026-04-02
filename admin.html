@@ -501,6 +501,7 @@
                 <button class="tab active" onclick="switchTab('orders')">訂單管理</button>
                 <button class="tab" onclick="switchTab('users')">員工管理</button>
                 <button class="tab" onclick="switchTab('promos')">優惠券管理</button>
+                <button class="tab" onclick="switchTab('feedback')">客戶回饋</button>
                 <button class="tab" onclick="switchTab('system')">系統監控</button>
                 <span id="apiBalanceDisplay" style="margin-left: 12px; font-size: 12px; color: #888; display: none;">
                     API 餘額: <span id="apiBalanceValue" style="color: #4ade80;">$0</span>
@@ -719,6 +720,41 @@
                         </thead>
                         <tbody id="promoTableBody">
                             <tr><td colspan="8" class="loading">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Feedback Tab -->
+            <div id="feedbackTab" style="display: none;">
+                <div class="stats-row">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);">
+                        <div class="stat-number" id="feedbackTotal" style="color: #4ade80;">0</div>
+                        <div class="stat-label">總回饋數</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6a 100%);">
+                        <div class="stat-number" id="feedbackAvgRating" style="color: #60a5fa;">0.0</div>
+                        <div class="stat-label">平均評分</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="feedback5Stars" style="color: #d4af37;">0</div>
+                        <div class="stat-label">5星評分</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>訂單編號</th>
+                                <th>評分</th>
+                                <th>回饋內容</th>
+                                <th> Email</th>
+                                <th>提交時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feedbackTableBody">
+                            <tr><td colspan="5" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1017,10 +1053,12 @@
             document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
             document.getElementById('usersTab').style.display = tab === 'users' ? 'block' : 'none';
             document.getElementById('promosTab').style.display = tab === 'promos' ? 'block' : 'none';
+            document.getElementById('feedbackTab').style.display = tab === 'feedback' ? 'block' : 'none';
             document.getElementById('systemTab').style.display = tab === 'system' ? 'block' : 'none';
             
             if (tab === 'users') loadUsers();
             if (tab === 'promos') loadPromoCodes();
+            if (tab === 'feedback') loadFeedback();
             if (tab === 'system') {
                 loadMemoryStats();
                 loadApiBalance();
@@ -2104,6 +2142,61 @@
         
         function closeCustomerDetailModal() {
             document.getElementById('customerDetailModal').classList.remove('active');
+        }
+        
+        // ========== 客戶回饋 ==========
+        async function loadFeedback() {
+            try {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/feedback`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderFeedback(data.feedback || []);
+                }
+            } catch (err) {
+                document.getElementById('feedbackTableBody').innerHTML = '<tr><td colspan="5" class="loading">載入失敗</td></tr>';
+            }
+        }
+        
+        function renderFeedback(feedbackList) {
+            const tbody = document.getElementById('feedbackTableBody');
+            const total = feedbackList.length;
+            
+            // 計算統計
+            let totalRating = 0;
+            let count5Stars = 0;
+            feedbackList.forEach(f => {
+                totalRating += f.rating || 0;
+                if (f.rating === 5) count5Stars++;
+            });
+            const avgRating = total > 0 ? (totalRating / total).toFixed(1) : '0.0';
+            
+            // 更新統計卡片
+            document.getElementById('feedbackTotal').textContent = total;
+            document.getElementById('feedbackAvgRating').textContent = avgRating;
+            document.getElementById('feedback5Stars').textContent = count5Stars;
+            
+            // 渲染表格
+            if (feedbackList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">尚無回饋資料</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = feedbackList.map(f => `
+                <tr>
+                    <td>${f.order_id || '-'}</td>
+                    <td>
+                        <span style="color: #d4af37;">
+                            ${'★'.repeat(f.rating || 0)}
+                        </span>
+                    </td>
+                    <td>${f.comment || '-'}</td>
+                    <td>${f.customer_email || '-'}</td>
+                    <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
+                </tr>
+            `).join('');
         }
     </script>
 </body>
