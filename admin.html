@@ -762,6 +762,19 @@
             
             <!-- System Tab -->
             <div id="systemTab" style="display: none;">
+                <!-- 郵件測試 -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-label">狀態通知郵件測試</div>
+                        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="testEmail('processing')">processing</button>
+                            <button class="btn btn-secondary" onclick="testEmail('completed')">completed</button>
+                            <button class="btn btn-secondary" onclick="testEmail('shipped')">shipped</button>
+                            <button class="btn btn-secondary" onclick="testEmail('delivered')">delivered</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- API 餘額管理 -->
                 <div class="stats-row">
                     <div class="stat-card" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);">
@@ -1155,6 +1168,32 @@
                 }
             } catch (err) {
                 alert('更新失敗: ' + err);
+            }
+        }
+        
+        // 測試郵件
+        async function testEmail(status) {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '發送中...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/test-email/${status}`, {
+                    method: 'POST',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert(data.error || '發送失敗');
+                }
+            } catch (err) {
+                alert('網路錯誤');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
         
