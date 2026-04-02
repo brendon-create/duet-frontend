@@ -1850,6 +1850,12 @@
             const tracking = document.getElementById('trackingNumber')?.value || '';
             const logistics = document.getElementById('logisticsType')?.value || '';
             
+            // 顯示處理中
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '處理中...';
+            btn.disabled = true;
+            
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/status`, {
                     method: 'POST',
@@ -1868,7 +1874,12 @@
                 } else {
                     alert('更新失敗: ' + data.error);
                 }
-            } catch (err) { alert('網路錯誤'); }
+            } catch (err) { 
+                alert('網路錯誤'); 
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
         
         function closeModal() {
