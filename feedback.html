@@ -325,7 +325,13 @@
         }
         
         // 配置 BACKEND_URL
-        window.BACKEND_URL = 'https://duet.brendonchen.com';
+        // 自動檢測環境參數
+        const env = urlParams.get('env');
+        if (env === 'staging') {
+            window.BACKEND_URL = 'https://duet-staging.brendonchen.com';
+        } else {
+            window.BACKEND_URL = 'https://duet.brendonchen.com';
+        }
     </script>
 </body>
 </html>
