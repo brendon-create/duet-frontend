@@ -3887,11 +3887,11 @@
                 dataURL: renderer.domElement.toDataURL('image/png')
             });
             
-            // Hero 視角 (45度角) - 與 product-photo-studio.js 一致
+            // Hero 視角 (45度角) - 拉近鏡頭，使物品看起來和三視圖一樣大
             camera.position.set(
-                center.x + distance * 0.8,
-                center.y - distance * 1.2,
-                center.z + distance * 0.6
+                center.x + distance * 0.4,
+                center.y - distance * 0.6,
+                center.z + distance * 0.3
             );
             camera.lookAt(center);
             controls.update();
