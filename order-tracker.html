@@ -557,7 +557,7 @@
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE}/api/order/${orderId}`);
+                const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`);
                 const data = await response.json();
                 
                 hideLoading();
@@ -593,7 +593,7 @@
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE}/api/order/send-code`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/order/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, email })
@@ -670,7 +670,7 @@
             showLoading();
             
             try {
-                const response = await fetch(`${API_BASE}/api/order/verify-code`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/order/verify-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: currentEmail, code })
@@ -832,7 +832,7 @@
         async function showOrderDetail(orderId) {
             showLoading();
             try {
-                const response = await fetch(`${API_BASE}/api/order/${orderId}`);
+                const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`);
                 const data = await response.json();
                 hideLoading();
                 if (data.success) {
