@@ -924,7 +924,7 @@
             if (currentUser && currentUser.username) {
                 defaultHeaders['X-Admin-User'] = currentUser.username;
             }
-            const response = await fetch(`${API_BASE}${endpoint}`, {
+            const response = await fetch(`${window.BACKEND_URL}${endpoint}`, {
                 ...options,
                 headers: { ...defaultHeaders, ...options.headers }
             });
@@ -966,7 +966,7 @@
             const errorEl = document.getElementById('loginError');
             
             try {
-                const response = await fetch(`${API_BASE}/api/admin/login`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -1031,7 +1031,7 @@
         // API Balance & Usage
         async function loadApiBalance() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/api-balance`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/api-balance`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1049,7 +1049,7 @@
         
         async function loadApiUsage() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/api-usage?limit=50`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/api-usage?limit=50`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1098,7 +1098,7 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/admin/api-balance`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/api-balance`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1123,7 +1123,7 @@
         // Memory Stats
         async function loadMemoryStats() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/memory-stats?limit=50`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/memory-stats?limit=50`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1161,7 +1161,7 @@
         // Orders
         async function loadOrders() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/orders`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/orders`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1498,7 +1498,7 @@
                 if (action === 'delete') {
                     // 刪除訂單
                     for (const orderId of selectedOrders) {
-                        await fetch(`${API_BASE}/api/admin/order/${orderId}`, {
+                        await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}`, {
                             method: 'DELETE',
                             headers: { 'X-Admin-Key': ADMIN_API_KEY }
                         });
@@ -1507,7 +1507,7 @@
                 } else {
                     // 標記為測試或無效
                     for (const orderId of selectedOrders) {
-                        await fetch(`${API_BASE}/api/admin/order/${orderId}/test-status`, {
+                        await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/test-status`, {
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
@@ -1531,7 +1531,7 @@
         
         async function updateOrderTag(orderId, tagType, value) {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/order/${orderId}/test-status`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/test-status`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1685,7 +1685,7 @@
         // Order Detail
         async function viewOrder(orderId) {
             try {
-                const response = await fetch(`${API_BASE}/api/order/${orderId}`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1788,7 +1788,7 @@
         
         async function loadOrderLogs(orderId) {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/order/${orderId}/logs`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/logs`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
@@ -1813,7 +1813,7 @@
             const logistics = document.getElementById('logisticsType')?.value || '';
             
             try {
-                const res = await fetch(`${API_BASE}/api/admin/order/${orderId}/status`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/status`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1840,7 +1840,7 @@
         // Users
         async function loadUsers() {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/users`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/users`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await res.json();
@@ -1871,7 +1871,7 @@
             const password = document.getElementById('newPassword').value;
             
             try {
-                const res = await fetch(`${API_BASE}/api/admin/users`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/users`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1893,7 +1893,7 @@
         async function deleteUser(userId) {
             if (!confirm('確定要刪除此員工帳號嗎？')) return;
             try {
-                const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/users/${userId}`, {
                     method: 'DELETE',
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
@@ -1910,7 +1910,7 @@
         // ========== 優惠券管理 ==========
         async function loadPromoCodes() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/promo-codes`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1927,7 +1927,7 @@
         
         async function loadPromoStats() {
             try {
-                const response = await fetch(`${API_BASE}/api/admin/promo-codes/stats`, {
+                const response = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/stats`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
@@ -1993,7 +1993,7 @@
             };
             
             try {
-                const res = await fetch(`${API_BASE}/api/admin/promo-codes`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -2016,7 +2016,7 @@
         
         async function togglePromo(code, active) {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/promo-codes/${code}`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
                     method: 'PUT',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -2036,7 +2036,7 @@
         async function deletePromo(code) {
             if (!confirm(`確定要刪除優惠碼 ${code} 嗎？`)) return;
             try {
-                const res = await fetch(`${API_BASE}/api/admin/promo-codes/${code}`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
                     method: 'DELETE',
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
