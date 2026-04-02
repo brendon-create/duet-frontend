@@ -765,7 +765,22 @@
                 <!-- 郵件測試 -->
                 <div class="stats-row">
                     <div class="stat-card">
-                        <div class="stat-label">狀態通知郵件測試</div>
+                        <div class="stat-label">顧客確認信</div>
+                        <div style="margin-top: 12px;">
+                            <button class="btn btn-secondary" onclick="testEmail('customer_confirmation')">顧客確認信（三視圖）</button>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">內部通知</div>
+                        <div style="margin-top: 12px;">
+                            <button class="btn btn-secondary" onclick="testEmail('internal_notification')">新訂單通知</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-row" style="margin-top: 16px;">
+                    <div class="stat-card">
+                        <div class="stat-label">狀態通知郵件</div>
                         <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="testEmail('processing')">processing</button>
                             <button class="btn btn-secondary" onclick="testEmail('completed')">completed</button>
