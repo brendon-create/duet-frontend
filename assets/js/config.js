@@ -40,3 +40,26 @@ window.BACKEND_URL = backendUrl;
 window.CURRENT_ENV = currentEnv;
 
 console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
+
+// ==========================================
+// Render 保持喚醒（每次頁面載入時發送請求到 /health）
+// ==========================================
+(function() {
+    // 延遲 2 秒後發送請求（讓頁面先載入）
+    setTimeout(function() {
+        fetch(window.BACKEND_URL + '/health', {
+            method: 'GET',
+            cache: 'no-store'  // 確保不使用快取
+        })
+        .then(function(response) {
+            if (response.ok) {
+                console.log('✅ Render 已喚醒');
+            } else {
+                console.warn('⚠️ Render 喚醒失敗');
+            }
+        })
+        .catch(function(err) {
+            console.warn('⚠️ Render 喚醒請求失敗:', err.message);
+        });
+    }, 2000);
+})();
