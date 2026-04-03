@@ -1283,28 +1283,6 @@
     </footer>
 
     <script>
-        // ==========================================
-        // 環境持久化設定（優先順序：URL > localStorage > 預設）
-        // ==========================================
-        const ENV_STORAGE_KEY = 'duet_deploy_env';
-        
-        function getCurrentEnv() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlEnv = urlParams.get('env');
-            if (urlEnv === 'staging' || urlEnv === 'production') {
-                localStorage.setItem(ENV_STORAGE_KEY, urlEnv);
-                return urlEnv;
-            }
-            const storedEnv = localStorage.getItem(ENV_STORAGE_KEY);
-            if (storedEnv === 'staging' || storedEnv === 'production') {
-                return storedEnv;
-            }
-            return 'production';
-        }
-        
-        const currentEnv = getCurrentEnv();
-        window.CURRENT_ENV = currentEnv;
-        
         // Navigation scroll effect
         window.addEventListener('scroll', () => {
             const nav = document.getElementById('nav');
