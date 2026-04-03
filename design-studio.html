@@ -2215,34 +2215,114 @@
 
         console.log('🔧 後端 URL:', BACKEND_URL);
 
-        // === 測試後端連接 ===
+        // === 測試後端連接（加入重試機制） ===
         async function testBackendConnection() {
-            try {
-                console.log('🔍 測試後端連接...');
-                const response = await fetch(`${window.BACKEND_URL}/health`, {
-                    method: 'GET',
-                    mode: 'cors'
-                });
+            const MAX_RETRIES = 3;
+            let retryCount = 0;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+            async function tryConnect() {
+                try {
+                    console.log('🔍 測試後端連接...');
+                    const response = await fetch(`${window.BACKEND_URL}/health`, {
+                        method: 'GET',
+                        mode: 'cors'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('✅ 後端連接成功:', data);
+
+                    // 隱藏錯誤提示（如果之前有顯示）
+                    hideBackendError();
+
+                    // 顯示成功訊息（選用）
+                    if (data.engine === 'OpenSCAD') {
+                        console.log('✅ OpenSCAD 引擎已就緒');
+                    }
+
+                    return true;
+                } catch (error) {
+                    console.error('❌ 後端連接失敗:', error);
+                    console.error('請確認：');
+                    console.error('1. 網路連線是否正常');
+                    console.error('2. 後端 URL 是否正確:', BACKEND_URL);
+
+                    // 重試
+                    if (retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        console.log(`🔄 重試連接後端 (${retryCount}/${MAX_RETRIES})...`);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        return tryConnect();
+                    } else {
+                        // 顯示錯誤提示
+                        showBackendError();
+                        return false;
+                    }
                 }
+            }
 
-                const data = await response.json();
-                console.log('✅ 後端連接成功:', data);
+            return tryConnect();
+        }
 
-                // 顯示成功訊息（選用）
-                if (data.engine === 'OpenSCAD') {
-                    console.log('✅ OpenSCAD 引擎已就緒');
-                }
+        // === 顯示後端連接錯誤提示 ===
+        function showBackendError() {
+            // 檢查是否已有提示
+            if (document.getElementById('backend-error-toast')) return;
 
-                return true;
-            } catch (error) {
-                console.error('❌ 後端連接失敗:', error);
-                console.error('請確認：');
-                console.error('1. 網路連線是否正常');
-                console.error('2. 後端 URL 是否正確:', BACKEND_URL);
-                return false;
+            const toast = document.createElement('div');
+            toast.id = 'backend-error-toast';
+            toast.innerHTML = `
+                <div style="
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    border: 1px solid #e94560;
+                    border-radius: 16px;
+                    padding: 32px 40px;
+                    text-align: center;
+                    z-index: 10000;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                    max-width: 90%;
+                ">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <h3 style="
+                        color: #e94560;
+                        margin: 0 0 16px 0;
+                        font-size: 24px;
+                        font-weight: 600;
+                    ">網路連線問題</h3>
+                    <p style="
+                        color: #a0a0b0;
+                        margin: 0 0 24px 0;
+                        font-size: 16px;
+                        line-height: 1.6;
+                    ">無法連線到伺服器，請檢查網路後重新整理頁面</p>
+                    <button onclick="location.reload()" style="
+                        background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+                        border: none;
+                        color: white;
+                        padding: 14px 32px;
+                        font-size: 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                    ">重新整理</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+        }
+
+        // === 隱藏後端連接錯誤提示 ===
+        function hideBackendError() {
+            const toast = document.getElementById('backend-error-toast');
+            if (toast) {
+                toast.remove();
             }
         }
 
