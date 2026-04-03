@@ -2987,7 +2987,7 @@
 
                 // 2. 請求後端生成乾淨的 STL
                 console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
-                const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
+                const response1 = await fetch(`${window.BACKEND_URL}/api/request-preview`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
@@ -3011,7 +3011,7 @@
                 let expires_in = 120;
                 
                 while (pollCount < maxPolls) {
-                    const statusResp = await fetch(`https://duet-backend-wlw8.onrender.com/api/request-preview-status/${task_id}`);
+                    const statusResp = await fetch(`${window.BACKEND_URL}/api/request-preview-status/${task_id}`);
                     const statusData = await statusResp.json();
                     
                     if (statusData.status === 'completed') {
@@ -3046,7 +3046,7 @@
                 
                 while (retryCount <= maxRetries) {
                     try {
-                        response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${downloadToken}`);
+                        response2 = await fetch(`${window.BACKEND_URL}/api/get-preview/${downloadToken}`);
                         console.log(`${timestamp()} 🔽 STL 下載回應收到 ${elapsed()}`);
                         
                         if (!response2.ok) {
