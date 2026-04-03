@@ -71,8 +71,9 @@
         }
 
         @media (max-width: 768px) {
+            /* 強制顯示漢堡選單 */
             .hamburger {
-                display: flex;
+                display: flex !important;
             }
 
             nav {
@@ -107,10 +108,10 @@
             }
         }
 
-        /* 桌面版時，隱藏 nav-links 內的 CTA 按鈕 */
+        /* 桌面版時，顯示 nav-links 內的 CTA 按鈕 */
         @media (min-width: 769px) {
             .nav-links .cta-button {
-                display: none;
+                display: inline-block;
             }
         }
 
