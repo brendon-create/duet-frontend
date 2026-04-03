@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <!-- 環境設定（必須在最前面載入） -->
+    <script src="assets/js/config.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DUET 字體測試工具 (含 Fillet)</title>
@@ -522,7 +524,7 @@
                 const startTime = Date.now();
                 
                 // 1. 請求後端生成乾淨的 STL 並取得 token
-                const response1 = await fetch('https://duet-backend-wlw8.onrender.com/api/request-preview', {
+                const response1 = await fetch(`${window.BACKEND_URL}/api/request-preview`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -543,7 +545,7 @@
                 console.log(`   ✅ 取得 token (有效期: ${expires_in}秒)`);
                 
                 // 2. 用 token 下載乾淨的 STL
-                const response2 = await fetch(`https://duet-backend-wlw8.onrender.com/api/get-preview/${token}`);
+                const response2 = await fetch(`${window.BACKEND_URL}/api/get-preview/${token}`);
                 
                 if (!response2.ok) {
                     const error = await response2.json();
