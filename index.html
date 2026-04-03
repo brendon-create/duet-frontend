@@ -74,12 +74,14 @@
             /* 強制顯示漢堡選單 */
             .hamburger {
                 display: flex !important;
+                z-index: 1001;
             }
 
             nav {
                 padding: 16px 24px;
             }
 
+            /* 手機版：導航項目隱藏，改由漢堡選單控制 */
             .nav-links {
                 position: fixed;
                 top: 60px;
@@ -88,13 +90,29 @@
                 background-color: #FAF8F5;
                 flex-direction: column;
                 padding: 24px;
-                gap: 20px;
+                gap: 0;
                 border-bottom: 1px solid rgba(44, 42, 38, 0.08);
                 display: none;
+                z-index: 1000;
             }
 
             .nav-links.active {
                 display: flex;
+            }
+
+            /* 導航項目之間的分隔線 */
+            .nav-links > li {
+                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+            }
+
+            .nav-links > li:last-child {
+                border-bottom: none;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 16px 0;
+                font-size: 16px;
             }
 
             /* 在手機版時，隱藏原來的外部 CTA 按鈕 */
@@ -105,6 +123,10 @@
             /* 在手機版時，顯示 nav-links 內的 CTA 按鈕 */
             .nav-links .cta-button {
                 display: inline-block;
+                width: 100%;
+                text-align: center;
+                padding: 16px;
+                margin-top: 8px;
             }
         }
 
