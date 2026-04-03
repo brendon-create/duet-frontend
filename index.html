@@ -42,6 +42,78 @@
             border-bottom: 1px solid rgba(44, 42, 38, 0.08);
         }
 
+        /* 漢堡選單 */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .hamburger span {
+            width: 24px;
+            height: 2px;
+            background-color: #2C2A26;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            nav {
+                padding: 16px 24px;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 60px;
+                left: 0;
+                right: 0;
+                background-color: #FAF8F5;
+                flex-direction: column;
+                padding: 24px;
+                gap: 20px;
+                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+                display: none;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            /* 在手機版時，隱藏原來的外部 CTA 按鈕 */
+            nav > .cta-button {
+                display: none;
+            }
+
+            /* 在手機版時，顯示 nav-links 內的 CTA 按鈕 */
+            .nav-links .cta-button {
+                display: inline-block;
+            }
+        }
+
+        /* 桌面版時，隱藏 nav-links 內的 CTA 按鈕 */
+        @media (min-width: 769px) {
+            .nav-links .cta-button {
+                display: none;
+            }
+        }
+
         .logo {
             font-size: 20px;
             font-weight: 600;
@@ -53,6 +125,14 @@
             letter-spacing: 1px;
             color: #8B8680;
             margin-top: 4px;
+            font-family: 'Libre Caslon Text', serif;
+            font-style: italic;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
         }
 
         .nav-links {
@@ -917,18 +997,23 @@
 <body>
     <!-- ===== 導航欄 ===== -->
     <nav>
-        <div class="logo">
-            DUET
-            <div class="logo-subtitle">BY BCAG</div>
+        <div class="logo-container">
+            <div class="logo">DUET</div>
+            <div class="logo-subtitle">by BCAG</div>
         </div>
-        <ul class="nav-links">
+        <div class="hamburger" onclick="toggleMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <ul class="nav-links" id="navLinks">
             <li><a href="#story">品牌故事</a></li>
             <li><a href="#process">設計流程</a></li>
             <li><a href="#gallery">作品展示</a></li>
             <li><a href="#faq">常見問題</a></li>
             <li><a href="#">訂單查詢</a></li>
+            <li><button class="cta-button">開始設計</button></li>
         </ul>
-        <button class="cta-button">開始設計</button>
     </nav>
 
     <!-- ===== Hero 區塊 ===== -->
@@ -1223,6 +1308,14 @@
                 this.classList.toggle('active');
             });
         });
+
+        // ===== 漢堡選單 =====
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            const hamburger = document.querySelector('.hamburger');
+            navLinks.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
 
         // ===== 平滑滾動 =====
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
