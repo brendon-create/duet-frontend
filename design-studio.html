@@ -1074,6 +1074,37 @@
             font-size: 14px;
             line-height: 1.5;
         }
+        
+        /* ========== 手機版 RWD ========== */
+        @media (max-width: 768px) {
+            #control-panel {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                top: auto;
+                width: 100%;
+                max-height: 40vh;
+                border-radius: 20px 20px 0 0;
+            }
+            
+            #saved-versions {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .version-slot {
+                width: 80px;
+                height: 80px;
+            }
+            
+            #viewport {
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 45vh;
+            }
+        }
     </style>
     
     <!-- 🔧 開發者功能模組 -->
