@@ -45,21 +45,43 @@ console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
 // Render 保持喚醒（每次頁面載入時發送請求到 /health）
 // ==========================================
 (function() {
-    // 延遲 2 秒後發送請求（讓頁面先載入）
-    setTimeout(function() {
+    // 重試次數
+    const MAX_RETRIES = 3;
+    let retryCount = 0;
+
+    function tryWakeUpRender() {
         fetch(window.BACKEND_URL + '/health', {
             method: 'GET',
-            cache: 'no-store'  // 確保不使用快取
+            cache: 'no-store'
         })
         .then(function(response) {
             if (response.ok) {
                 console.log('✅ Render 已喚醒');
             } else {
                 console.warn('⚠️ Render 喚醒失敗');
+                // 重試
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`🔄 重試喚醒 Render (${retryCount}/${MAX_RETRIES})...`);
+                    setTimeout(tryWakeUpRender, 2000);
+                } else {
+                    console.error('❌ Render 喚醒失敗，已達最大重試次數');
+                }
             }
         })
         .catch(function(err) {
             console.warn('⚠️ Render 喚醒請求失敗:', err.message);
+            // 重試
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`🔄 重試喚醒 Render (${retryCount}/${MAX_RETRIES})...`);
+                setTimeout(tryWakeUpRender, 2000);
+            } else {
+                console.error('❌ Render 喚醒失敗，已達最大重試次數');
+            }
         });
-    }, 2000);
+    }
+
+    // 延遲 2 秒後發送請求（讓頁面先載入）
+    setTimeout(tryWakeUpRender, 2000);
 })();
