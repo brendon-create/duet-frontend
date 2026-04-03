@@ -43,45 +43,37 @@ console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
 
 // ==========================================
 // Render 保持喚醒（每次頁面載入時發送請求到 /health）
+// 注意：Render 從休眠到啟動需要 30-60 秒，
+// 此請求只負責「發送喚醒訊號」，不等待成功回應
 // ==========================================
 (function() {
-    // 重試次數
-    const MAX_RETRIES = 3;
-    let retryCount = 0;
+    // 檢查是否已經嘗試過喚醒（同一個 session 內只喚醒一次）
+    if (window.sessionStorage && window.sessionStorage.getItem('render_wake_requested')) {
+        return;
+    }
 
-    function tryWakeUpRender() {
+    // 標記已發送喚醒請求
+    if (window.sessionStorage) {
+        window.sessionStorage.setItem('render_wake_requested', 'true');
+    }
+
+    // 延遲 2 秒後發送請求（讓頁面先載入）
+    setTimeout(function() {
         fetch(window.BACKEND_URL + '/health', {
             method: 'GET',
             cache: 'no-store'
         })
         .then(function(response) {
             if (response.ok) {
-                console.log('✅ Render 已喚醒');
+                console.log('✅ Render 已在運作中');
             } else {
-                console.warn('⚠️ Render 喚醒失敗');
-                // 重試
-                if (retryCount < MAX_RETRIES) {
-                    retryCount++;
-                    console.log(`🔄 重試喚醒 Render (${retryCount}/${MAX_RETRIES})...`);
-                    setTimeout(tryWakeUpRender, 2000);
-                } else {
-                    console.error('❌ Render 喚醒失敗，已達最大重試次數');
-                }
+                console.log('📡 Render 喚醒請求已發送（正在啟動中...）');
             }
         })
         .catch(function(err) {
-            console.warn('⚠️ Render 喚醒請求失敗:', err.message);
-            // 重試
-            if (retryCount < MAX_RETRIES) {
-                retryCount++;
-                console.log(`🔄 重試喚醒 Render (${retryCount}/${MAX_RETRIES})...`);
-                setTimeout(tryWakeUpRender, 2000);
-            } else {
-                console.error('❌ Render 喚醒失敗，已達最大重試次數');
-            }
+            // 請求失敗不代表 Render 沒有被喚醒
+            // 可能只是還在啟動中，下次 request 會成功
+            console.log('📡 Render 喚醒請求已發送（請稍候...）');
         });
-    }
-
-    // 延遲 2 秒後發送請求（讓頁面先載入）
-    setTimeout(tryWakeUpRender, 2000);
+    }, 2000);
 })();
