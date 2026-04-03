@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DUET — 為你們的故事，鑄造永恆的交織</title>
+    <!-- 環境設定（必須最優先載入） -->
+    <script src="assets/js/config.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -1239,9 +1241,11 @@
         // ===== CTA 按鈕點擊事件 =====
         document.querySelectorAll('.cta-button, .cta-button-primary, .cta-button-light').forEach(btn => {
             btn.addEventListener('click', function() {
-                // 這裡可以連接到設計工作室頁面
-                console.log('開始設計流程');
-                // window.location.href = 'design-studio.html';
+                // 取得目前環境並跳转到設計工作室
+                const env = window.CURRENT_ENV || 'production';
+                const studioUrl = `design-studio.html?env=${env}`;
+                console.log('跳轉到:', studioUrl);
+                window.location.href = studioUrl;
             });
         });
 
