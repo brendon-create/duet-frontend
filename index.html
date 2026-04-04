@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DUET — 為你們的故事，鑄造永恆的交織</title>
+    <title>DUET — 為你們的故事,鑄造永恆的交織</title>
     <!-- 環境設定（必須最優先載入） -->
     <script src="assets/js/config.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,107 +42,6 @@
             border-bottom: 1px solid rgba(44, 42, 38, 0.08);
         }
 
-        /* 漢堡選單 */
-        .hamburger {
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            cursor: pointer;
-            padding: 8px;
-        }
-
-        .hamburger span {
-            width: 24px;
-            height: 2px;
-            background-color: #2C2A26;
-            transition: all 0.3s ease;
-        }
-
-        .hamburger.active span:nth-child(1) {
-            transform: rotate(45deg) translate(5px, 5px);
-        }
-
-        .hamburger.active span:nth-child(2) {
-            opacity: 0;
-        }
-
-        .hamburger.active span:nth-child(3) {
-            transform: rotate(-45deg) translate(5px, -5px);
-        }
-
-        @media (max-width: 768px) {
-            /* 強制顯示漢堡選單 */
-            .hamburger {
-                display: flex !important;
-                z-index: 1001;
-            }
-
-            nav {
-                padding: 16px 24px;
-            }
-
-            /* 手機版：導航項目隱藏，改由漢堡選單控制 */
-            .nav-links {
-                position: fixed;
-                top: 60px;
-                left: 0;
-                right: 0;
-                background-color: #FAF8F5;
-                flex-direction: column;
-                padding: 24px;
-                gap: 0;
-                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
-                display: none;
-                z-index: 1000;
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            /* 導航項目之間的分隔線 */
-            .nav-links > li {
-                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
-            }
-
-            .nav-links > li:last-child {
-                border-bottom: none;
-            }
-
-            .nav-links a {
-                display: block;
-                padding: 16px 0;
-                font-size: 16px;
-            }
-
-            /* 在手機版時，隱藏原來的外部 CTA 按鈕 */
-            nav > .cta-button {
-                display: none;
-            }
-
-            /* 在手機版時，顯示 nav-links 內的 CTA 按鈕 */
-            .nav-links .cta-button {
-                display: inline-block;
-                width: 100%;
-                text-align: center;
-                padding: 16px;
-                margin-top: 8px;
-            }
-        }
-
-        /* 桌面版時，顯示 nav-links */
-        @media (min-width: 769px) {
-            .nav-links {
-                display: flex;
-            }
-            .nav-links .cta-button {
-                display: inline-block;
-            }
-            .hamburger {
-                display: none !important;
-            }
-        }
-
         .logo {
             font-size: 20px;
             font-weight: 600;
@@ -164,6 +63,7 @@
             gap: 8px;
         }
 
+        /* 導航連結（桌面版預設樣式）*/
         .nav-links {
             display: flex;
             gap: 40px;
@@ -210,6 +110,96 @@
             background-color: #FAF8F5;
             color: #2C2A26;
             box-shadow: 0 8px 24px rgba(44, 42, 38, 0.12);
+        }
+
+        /* 漢堡選單（桌面版預設隱藏）*/
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+            z-index: 1001;
+        }
+
+        .hamburger span {
+            width: 24px;
+            height: 2px;
+            background-color: #2C2A26;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* ===== 手機版樣式 ===== */
+        @media (max-width: 768px) {
+            /* 顯示漢堡選單 */
+            .hamburger {
+                display: flex !important;
+            }
+
+            nav {
+                padding: 16px 24px;
+            }
+
+            /* 導航連結預設隱藏 */
+            .nav-links {
+                position: fixed !important;
+                top: 60px;
+                left: 0;
+                right: 0;
+                background-color: #FAF8F5;
+                flex-direction: column !important;
+                padding: 24px;
+                gap: 0 !important;
+                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+                display: none !important;
+                z-index: 1000;
+            }
+
+            /* 點擊漢堡後顯示 */
+            .nav-links.active {
+                display: flex !important;
+            }
+
+            /* 導航項目分隔線 */
+            .nav-links > li {
+                border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+            }
+
+            .nav-links > li:last-child {
+                border-bottom: none;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 16px 0;
+                font-size: 16px;
+            }
+
+            /* 隱藏桌面版外部 CTA 按鈕 */
+            nav > .cta-button {
+                display: none !important;
+            }
+
+            /* 顯示手機版內部 CTA 按鈕 */
+            .nav-links .cta-button {
+                display: inline-block !important;
+                width: 100%;
+                text-align: center;
+                padding: 16px;
+                margin-top: 8px;
+            }
         }
 
         /* ===== Hero 區塊 ===== */
@@ -653,7 +643,7 @@
             line-height: 1.6;
         }
 
-        /* ===== 客戶故事區塊（新增）===== */
+        /* ===== 客戶故事區塊 ===== */
         .testimonials-section {
             padding: 160px 80px;
             background: linear-gradient(135deg, #FAF8F5 0%, #F5F1ED 100%);
@@ -975,14 +965,6 @@
         @media (max-width: 640px) {
             nav {
                 padding: 16px 20px;
-                flex-direction: column;
-                gap: 16px;
-            }
-
-            .nav-links {
-                flex-direction: column;
-                gap: 12px;
-                width: 100%;
             }
 
             .hero-content h1 {
@@ -1091,7 +1073,7 @@
             <div class="process-item">
                 <div class="process-number">01</div>
                 <h3>分享你的故事</h3>
-                <p>與我們的 AI 設計師對話，分享這份禮物背後的意義——是紀念、是感謝，還是承諾？</p>
+                <p>與我們的 AI 設計師對話，分享這份禮物背後的意義——是紀念、是感謝，還是承諾?</p>
             </div>
             <div class="process-item">
                 <div class="process-number">02</div>
@@ -1199,7 +1181,7 @@
         </div>
     </section>
 
-    <!-- ===== 客戶故事區塊（新增）===== -->
+    <!-- ===== 客戶故事區塊 ===== -->
     <section class="testimonials-section">
         <div class="testimonials-header">
             <div class="subtitle">客戶故事</div>
@@ -1234,27 +1216,27 @@
         </div>
         <div class="faq-grid">
             <div class="faq-item">
-                <div class="faq-question">製作需要多久時間？</div>
+                <div class="faq-question">製作需要多久時間?</div>
                 <div class="faq-answer">付款完成後，製作時間約 5-7 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</div>
             </div>
             <div class="faq-item">
-                <div class="faq-question">可以選擇什麼材質？</div>
+                <div class="faq-question">可以選擇什麼材質?</div>
                 <div class="faq-answer">目前提供 925 純銀（NT$ 2,980）和 18K 金（NT$ 12,800）兩種選擇。所有材質皆經過品質認證，並附保證書。</div>
             </div>
             <div class="faq-item">
-                <div class="faq-question">如果不滿意設計怎麼辦？</div>
+                <div class="faq-question">如果不滿意設計怎麼辦?</div>
                 <div class="faq-answer">付款前可無限次修改設計。付款後製作前會再次確認。收到作品後若有品質問題，提供 30 天無條件退換貨保證。</div>
             </div>
             <div class="faq-item">
-                <div class="faq-question">AI 對話會保存我的隱私嗎？</div>
+                <div class="faq-question">AI 對話會保存我的隱私嗎?</div>
                 <div class="faq-answer">對話內容僅用於設計推薦，採用端到端加密，不會被分享或用於其他用途。你的故事只屬於你。</div>
             </div>
             <div class="faq-item">
-                <div class="faq-question">可以只訂購一個字母嗎？</div>
+                <div class="faq-question">可以只訂購一個字母嗎?</div>
                 <div class="faq-answer">DUET 的核心是「交織」，因此僅提供雙字母設計。但你可以選擇相同字母（如 A × A），創造對稱美感。</div>
             </div>
             <div class="faq-item">
-                <div class="faq-question">如何聯絡客服？</div>
+                <div class="faq-question">如何聯絡客服?</div>
                 <div class="faq-answer">您可以透過 hello@duet.brendonchen.com 聯絡我們，或在 Instagram 和 Facebook 上私訊。我們通常在 24 小時內回覆。</div>
             </div>
         </div>
@@ -1356,6 +1338,13 @@
                         behavior: 'smooth',
                         block: 'start'
                     });
+                    // 手機版：點擊錨點後自動關閉選單
+                    if (window.innerWidth <= 768) {
+                        const navLinks = document.getElementById('navLinks');
+                        const hamburger = document.querySelector('.hamburger');
+                        navLinks.classList.remove('active');
+                        hamburger.classList.remove('active');
+                    }
                 }
             });
         });
