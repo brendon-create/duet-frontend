@@ -130,16 +130,16 @@
             }
         }
 
-        /* 桌面版時，隱藏 nav-links 項目（改由漢堡選單顯示） */
+        /* 桌面版時，顯示 nav-links */
         @media (min-width: 769px) {
             .nav-links {
-                display: none !important;
+                display: flex !important;
             }
             .nav-links .cta-button {
                 display: inline-block;
             }
             .hamburger {
-                display: flex !important;
+                display: none !important;
             }
         }
 
