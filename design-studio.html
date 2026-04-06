@@ -747,6 +747,12 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            transition: opacity 0.8s ease-out, visibility 0.8s;
+        }
+
+        #loader.fade-out {
+            opacity: 0;
+            visibility: hidden;
         }
 
         .spinner {
@@ -2601,7 +2607,7 @@
             scene.add(mainMesh);
             // 暴露 mainMesh 給全局，供佩戴模擬使用
             window.mainMesh = mainMesh;
-            document.getElementById('loader').style.display = 'none';
+            document.getElementById('loader').classList.add('fade-out');
         }
 
         function getMaterial(materialType, finish, plating = 'none') {
