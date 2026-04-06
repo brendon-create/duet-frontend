@@ -1,0 +1,440 @@
+/* ===== DUET Design Studio - 視覺統一 CSS 覆蓋樣式表 ===== */
+/* 此 CSS 檔案用於將 design-studio.html 的視覺風格與 index.html 統一 */
+/* 不改變任何 HTML 結構或功能，僅修改外觀 */
+
+/* ===== 全局背景與色彩系統 ===== */
+:root {
+    --primary-bg: #FAF8F5;
+    --primary-text: #2C2A26;
+    --secondary-text: #8B8680;
+    --accent-border: #D4CECA;
+    --dark-bg: #2C2A26;
+    --light-overlay: rgba(250, 248, 245, 0.95);
+    --glass-bg: rgba(250, 248, 245, 0.85);
+    --glass-border: rgba(44, 42, 38, 0.15);
+}
+
+/* ===== Body 與主容器 ===== */
+body {
+    background: linear-gradient(135deg, #FAF8F5 0%, #F5F1ED 100%);
+    color: var(--primary-text);
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* ===== Canvas 背景 ===== */
+canvas {
+    background: linear-gradient(135deg, #FAF8F5 0%, #EFE9E0 50%, #F5F1ED 100%) !important;
+    background-attachment: fixed !important;
+}
+
+/* ===== 控制面板主容器 ===== */
+#control-panel,
+[class*="control-panel"],
+[class*="panel"] {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(44, 42, 38, 0.08) !important;
+    color: var(--primary-text) !important;
+}
+
+/* ===== 面板標題與區塊 ===== */
+.panel-header,
+.section-title,
+[class*="title"] {
+    color: var(--primary-text) !important;
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    border-bottom: 1px solid var(--accent-border) !important;
+}
+
+.subtitle,
+[class*="subtitle"] {
+    color: var(--secondary-text) !important;
+    font-size: 12px !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+}
+
+/* ===== 控制組與區塊分隔 ===== */
+.control-group,
+.section {
+    border-color: var(--accent-border) !important;
+    background: rgba(250, 248, 245, 0.5) !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    margin: 12px 0 !important;
+}
+
+.divider {
+    background: linear-gradient(90deg, transparent, var(--accent-border), transparent) !important;
+    height: 1px !important;
+    margin: 16px 0 !important;
+}
+
+/* ===== 下拉選單 (Select) ===== */
+select {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: var(--primary-text) !important;
+    border: 1px solid var(--accent-border) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+select:hover {
+    border-color: var(--primary-text) !important;
+    box-shadow: 0 4px 12px rgba(44, 42, 38, 0.1) !important;
+}
+
+select:focus {
+    outline: none !important;
+    border-color: var(--primary-text) !important;
+    box-shadow: 0 0 0 3px rgba(44, 42, 38, 0.1) !important;
+}
+
+select option {
+    background-color: var(--primary-bg) !important;
+    color: var(--primary-text) !important;
+}
+
+/* ===== 按鈕樣式 ===== */
+button {
+    background-color: var(--primary-text) !important;
+    color: var(--primary-bg) !important;
+    border: 1.5px solid var(--primary-text) !important;
+    border-radius: 6px !important;
+    padding: 10px 20px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.5px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+button:hover {
+    background-color: var(--primary-bg) !important;
+    color: var(--primary-text) !important;
+    box-shadow: 0 8px 24px rgba(44, 42, 38, 0.15) !important;
+    transform: translateY(-2px) !important;
+}
+
+button:active {
+    transform: translateY(0) !important;
+}
+
+/* ===== 特殊按鈕樣式 ===== */
+#font1-btn,
+#font2-btn,
+.font-select-btn {
+    background-color: rgba(44, 42, 38, 0.8) !important;
+    border: 1px solid var(--accent-border) !important;
+}
+
+#font1-btn:hover,
+#font2-btn:hover,
+.font-select-btn:hover {
+    background-color: var(--primary-text) !important;
+}
+
+#addToCartBtn {
+    background: linear-gradient(135deg, var(--primary-text), rgba(44, 42, 38, 0.8)) !important;
+    font-weight: 600 !important;
+    padding: 12px 24px !important;
+}
+
+#addToCartBtn:hover {
+    background: linear-gradient(135deg, var(--primary-bg), var(--primary-text)) !important;
+}
+
+.toggle-button {
+    background-color: transparent !important;
+    border: 1px solid var(--accent-border) !important;
+    color: var(--secondary-text) !important;
+}
+
+.toggle-button.active {
+    background-color: var(--primary-text) !important;
+    border-color: var(--primary-text) !important;
+    color: var(--primary-bg) !important;
+}
+
+/* ===== 滑桿樣式 ===== */
+input[type="range"] {
+    width: 100% !important;
+    height: 4px !important;
+    border-radius: 2px !important;
+    background: linear-gradient(90deg, var(--accent-border), var(--secondary-text)) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    background: var(--primary-text) !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(44, 42, 38, 0.2) !important;
+    transition: all 0.3s ease !important;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    width: 18px !important;
+    height: 18px !important;
+    box-shadow: 0 4px 12px rgba(44, 42, 38, 0.3) !important;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    background: var(--primary-text) !important;
+    cursor: pointer !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(44, 42, 38, 0.2) !important;
+    transition: all 0.3s ease !important;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    width: 18px !important;
+    height: 18px !important;
+    box-shadow: 0 4px 12px rgba(44, 42, 38, 0.3) !important;
+}
+
+/* ===== 滑桿值顯示 ===== */
+.slider-value,
+[class*="value"] {
+    color: var(--secondary-text) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+/* ===== 切換開關 ===== */
+.toggle-switch,
+.toggle-checkbox {
+    accent-color: var(--primary-text) !important;
+}
+
+.toggle-label {
+    color: var(--primary-text) !important;
+    font-size: 13px !important;
+}
+
+/* ===== 資訊框 ===== */
+.info-box,
+[class*="info"] {
+    background-color: rgba(44, 42, 38, 0.04) !important;
+    border-left: 3px solid var(--secondary-text) !important;
+    border-radius: 4px !important;
+    padding: 12px 16px !important;
+    color: var(--secondary-text) !important;
+    font-size: 13px !important;
+}
+
+.info-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid var(--accent-border) !important;
+}
+
+.info-row:last-child {
+    border-bottom: none !important;
+}
+
+.info-label {
+    color: var(--secondary-text) !important;
+    font-size: 12px !important;
+}
+
+/* ===== 價格顯示 ===== */
+#price-display,
+[class*="price"] {
+    color: var(--primary-text) !important;
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* ===== 模態窗口 (Modal) ===== */
+.modal,
+[class*="modal"] {
+    background-color: var(--light-overlay) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.modal-content,
+[class*="modal-content"] {
+    background-color: var(--primary-bg) !important;
+    border: 1px solid var(--accent-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(44, 42, 38, 0.2) !important;
+}
+
+/* ===== 關閉按鈕 ===== */
+#close-modal,
+[class*="close"] {
+    background-color: transparent !important;
+    color: var(--secondary-text) !important;
+    border: 1px solid var(--accent-border) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    font-size: 20px !important;
+    transition: all 0.3s ease !important;
+}
+
+#close-modal:hover,
+[class*="close"]:hover {
+    background-color: var(--accent-border) !important;
+    color: var(--primary-text) !important;
+}
+
+/* ===== 字體選擇器 ===== */
+.font-selector,
+[class*="font-selector"] {
+    background-color: rgba(250, 248, 245, 0.8) !important;
+    border: 1px solid var(--accent-border) !important;
+    border-radius: 8px !important;
+}
+
+.font-item,
+[class*="font-item"] {
+    padding: 12px !important;
+    border-bottom: 1px solid var(--accent-border) !important;
+    transition: all 0.2s ease !important;
+}
+
+.font-item:hover,
+[class*="font-item"]:hover {
+    background-color: rgba(44, 42, 38, 0.04) !important;
+}
+
+.font-item input[type="checkbox"],
+[class*="font-item"] input[type="checkbox"] {
+    accent-color: var(--primary-text) !important;
+    margin-right: 12px !important;
+}
+
+/* ===== 加載指示器 ===== */
+.spinner,
+[class*="spinner"] {
+    border-color: var(--accent-border) !important;
+    border-top-color: var(--primary-text) !important;
+}
+
+.loading-text,
+[class*="loading"] {
+    color: var(--secondary-text) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 13px !important;
+}
+
+.dots-animation {
+    color: var(--secondary-text) !important;
+}
+
+/* ===== 動畫效果 ===== */
+@keyframes fadeInPanel {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#control-panel,
+.modal-content {
+    animation: fadeInPanel 0.4s ease-out !important;
+}
+
+/* ===== 懸停與焦點效果 ===== */
+button:focus,
+select:focus,
+input:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(44, 42, 38, 0.1) !important;
+}
+
+/* ===== 文字選擇顏色 ===== */
+::selection {
+    background-color: var(--primary-text) !important;
+    color: var(--primary-bg) !important;
+}
+
+::-moz-selection {
+    background-color: var(--primary-text) !important;
+    color: var(--primary-bg) !important;
+}
+
+/* ===== 滾動條樣式 ===== */
+::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--primary-bg) !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-border) !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-text) !important;
+}
+
+/* ===== 響應式調整 ===== */
+@media (max-width: 768px) {
+    #control-panel,
+    [class*="control-panel"],
+    [class*="panel"] {
+        border-radius: 8px !important;
+        padding: 12px !important;
+    }
+
+    button {
+        padding: 8px 16px !important;
+        font-size: 12px !important;
+    }
+
+    select {
+        padding: 6px 10px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* ===== 打印樣式 ===== */
+@media print {
+    body {
+        background: white !important;
+    }
+
+    #control-panel,
+    [class*="control-panel"] {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+}
