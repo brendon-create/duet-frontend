@@ -9,6 +9,7 @@
 # Backup files
 *.bak
 *~
+frontend backup/
 
 # Logs
 *.log
