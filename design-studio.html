@@ -2516,12 +2516,13 @@
             renderer.toneMappingExposure = 1.2;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.getElementById('viewport').appendChild(renderer.domElement);
+            renderer.domElement.style.pointerEvents = 'none';
             // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
             window.renderer = renderer;
             window.scene = scene;
             window.camera = camera;
 
-            controls = new OrbitControls(camera, renderer.domElement);
+            controls = new OrbitControls(camera, document.getElementById('viewport'));
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.target.set(0, 0, 0);
