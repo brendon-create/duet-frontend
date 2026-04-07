@@ -747,6 +747,7 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            pointer-events: none;
             transition: opacity 0.8s ease-out, visibility 0.8s;
         }
 
@@ -1206,12 +1207,12 @@
         </div>
 
         <div class="control-group">
-            <label>Size (Height)</label>
+            <label>作品尺寸高度（Height）</label>
             <select id="size">
                 <option value="8">8 mm</option>
-                <option value="10">10 mm</option>
+                <option value="10" selected>10 mm</option>
                 <option value="12">12 mm</option>
-                <option value="15" selected>15 mm</option>
+                <option value="15">15 mm</option>
                 <option value="18">18 mm</option>
             </select>
         </div>
