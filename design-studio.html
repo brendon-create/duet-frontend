@@ -3299,6 +3299,8 @@
 
             // 嘗試從多個來源載入
             const sources = [
+                // 0. 本地字體（優先）
+                `./assets/fonts/typeface/${fontName.replace(/ /g, '_')}.json`,
                 // 1. @compai/font-* 套件 (esm.sh CDN)
                 `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
                 // 2. components-ai/typefaces GitHub (jsDelivr)
