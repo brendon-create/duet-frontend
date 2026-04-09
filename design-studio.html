@@ -1222,23 +1222,23 @@
         <div class="section-title">Bail Position</div>
 
         <div class="control-group">
-            <label>X (Left/Right) <span class="slider-value" id="bailX-val">0.0</span></label>
-            <input type="range" id="bailX" min="-10" max="10" step="0.1" value="0">
+            <label>X (Left/Right) <span class="slider-value" id="ringX-val">0.0</span></label>
+            <input type="range" id="ringX" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Y (Front/Back) <span class="slider-value" id="bailY-val">0.0</span></label>
-            <input type="range" id="bailY" min="-10" max="10" step="0.1" value="0">
+            <label>Y (Front/Back) <span class="slider-value" id="ringY-val">0.0</span></label>
+            <input type="range" id="ringY" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Z (Up/Down) <span class="slider-value" id="bailZ-val">0.0</span></label>
-            <input type="range" id="bailZ" min="-10" max="10" step="0.1" value="0">
+            <label>Z (Up/Down) <span class="slider-value" id="ringZ-val">0.0</span></label>
+            <input type="range" id="ringZ" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Rotation <span class="slider-value" id="bailRotation-val">0°</span></label>
-            <input type="range" id="bailRotation" min="0" max="90" step="1" value="0">
+            <label>Rotation <span class="slider-value" id="ringRotation-val">0°</span></label>
+            <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
         </div>
 
         <!-- 🧹 清理零碎部件開關 -->
@@ -2402,7 +2402,7 @@
         
         // 全域變數
         let scene, camera, renderer, controls, envMap;
-        let mainMesh = null, bailMesh = null;
+        let mainMesh = null, ringMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
@@ -2692,7 +2692,7 @@
 
             // 暫存舊物件，等新物件創建完成後再移除（避免畫面空白）
             const oldMainMesh = mainMesh;
-            const oldBailMesh = bailMesh;
+            const oldRingMesh = ringMesh;
 
             debug('Loading fonts...');
             // 載入字體
@@ -2934,14 +2934,14 @@
                 oldMainMesh.geometry?.dispose();
                 oldMainMesh.material?.dispose();
             }
-            if (oldBailMesh) {
-                scene.remove(oldBailMesh);
-                oldBailMesh.geometry?.dispose();
-                oldBailMesh.material?.dispose();
+            if (oldRingMesh) {
+                scene.remove(oldRingMesh);
+                oldRingMesh.geometry?.dispose();
+                oldRingMesh.material?.dispose();
             }
 
-            debug('Model generated, creating bail...'); // Debug
-            createBail();
+            debug('Model generated, creating ring...'); // Debug
+            createRing();
             
             // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
             setTimeout(() => updateVolumeWeight(), 100);
@@ -2987,9 +2987,9 @@
             // 🔧 更新產品攝影模組的 mesh 引用（加入 null check 避免 ReferenceError）
             // ==========================================
             if (typeof gridHelper !== 'undefined' && typeof axesHelper !== 'undefined') {
-                ProductPhotoStudio.setMeshes(mainMesh, bailMesh, gridHelper, axesHelper);
+                ProductPhotoStudio.setMeshes(mainMesh, ringMesh, gridHelper, axesHelper);
             } else {
-                ProductPhotoStudio.setMeshes(mainMesh, bailMesh, null, null);
+                ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
             }
         }
 
@@ -3019,11 +3019,11 @@
                 console.log(`${timestamp()} 🧹 開始清理零碎部件`);
 
                 // 1. 取得當前參數（包含墜頭位置）
-                // 計算墜頭相對於模型中心的位置
-                const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
-                const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
-                const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
-                const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+                // 計算圓環相對於模型中心的位置
+                const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
+                const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
+                const ringRelativeZ = ringMesh ? (ringMesh.position.z - modelCenter.z) : 0;
+                const ringRot = ringMesh ? (ringMesh.rotation.z * 180 / Math.PI) : 0;
                 
                 const params = {
                     letter1: document.getElementById('letter1').value,
@@ -3031,12 +3031,12 @@
                     font1: document.getElementById('font1-btn')?.getAttribute('data-selected') || 'Alex Brush',
                     font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
                     size: parseInt(document.getElementById('size').value),
-                    bailRelativeX: bailRelativeX,
-                    bailRelativeY: bailRelativeY,
-                    bailRelativeZ: bailRelativeZ,
-                    bailRotation: bailRot
+                    ringRelativeX: ringRelativeX,
+                    ringRelativeY: ringRelativeY,
+                    ringRelativeZ: ringRelativeZ,
+                    ringRotation: ringRot
                 };
-                console.log(`${timestamp()} 📋 參數準備完成 (墜頭: x=${bailRelativeX.toFixed(2)}, y=${bailRelativeY.toFixed(2)}, z=${bailRelativeZ.toFixed(2)}, rot=${bailRot.toFixed(1)}°) ${elapsed()}`);
+                console.log(`${timestamp()} 📋 參數準備完成 (圓環: x=${ringRelativeX.toFixed(2)}, y=${ringRelativeY.toFixed(2)}, z=${ringRelativeZ.toFixed(2)}, rot=${ringRot.toFixed(1)}°) ${elapsed()}`);
 
                 // 2. 請求後端生成乾淨的 STL
                 console.log(`${timestamp()} 📡 發送後端請求... ${elapsed()}`);
@@ -3159,13 +3159,13 @@
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
                 
-                // ✅ 保留舊墜頭（後端 STL 不含墜頭，保持用戶調整的位置）
-                if (bailMesh) {
-                    console.log(`${timestamp()} ✅ 保留舊墜頭（位置: x=${bailMesh.position.x.toFixed(2)}, y=${bailMesh.position.y.toFixed(2)}, z=${bailMesh.position.z.toFixed(2)}, rot=${(bailMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
+                // ✅ 保留舊圓環（後端 STL 不含圓環，保持用戶調整的位置）
+                if (ringMesh) {
+                    console.log(`${timestamp()} ✅ 保留舊圓環（位置: x=${ringMesh.position.x.toFixed(2)}, y=${ringMesh.position.y.toFixed(2)}, z=${ringMesh.position.z.toFixed(2)}, rot=${(ringMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
                     
-                    // 🔧 重新調整墜頭位置（相對於新的模型中心 = 原點）
-                    updateBailPosition();
-                    console.log(`${timestamp()} 🔧 墜頭位置已更新: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)}) ${elapsed()}`);
+                    // 🔧 重新調整圓環位置（相對於新的模型中心 = 原點）
+                    updateRingPosition();
+                    console.log(`${timestamp()} 🔧 圓環位置已更新: (${ringMesh.position.x.toFixed(2)}, ${ringMesh.position.y.toFixed(2)}, ${ringMesh.position.z.toFixed(2)}) ${elapsed()}`);
                 }
                 
                 console.log(`${timestamp()} ✅ 模型已替換 ${elapsed()}`);
@@ -3379,22 +3379,23 @@
             });
         }
 
-        function createBail() {
-            // 先移除舊的 bailMesh
-            if (bailMesh) {
-                scene.remove(bailMesh);
-                bailMesh.geometry?.dispose();
-                bailMesh.material?.dispose();
-                bailMesh = null;
+        function createRing() {
+            // 先移除舊的 ringMesh
+            if (ringMesh) {
+                scene.remove(ringMesh);
+                ringMesh.geometry?.dispose();
+                ringMesh.material?.dispose();
+                ringMesh = null;
                 // 暴露給佩戴模擬（用於截取墜飾）
-                window.bailMesh = null;
+                window.ringMesh = null;
             }
 
             if (!mainMesh) return;
 
-            const innerRadius = 1.5;   // 內直徑 3mm
-            const tubeRadius = 0.35;   // 管半徑 0.35mm，直徑 0.7mm
-            const geometry = new THREE.TorusGeometry(innerRadius + tubeRadius, tubeRadius, 16, 32);
+            const innerRadius = 1;     // 內半徑 1mm，內徑 2mm
+            const tubeRadius = 0.3;     // 管半徑 0.3mm，直徑 0.6mm
+            const ringRadius = innerRadius + tubeRadius;  // 外半徑 1.3mm
+            const geometry = new THREE.TorusGeometry(ringRadius, tubeRadius, 16, 32);
 
             // 將 Torus 從 XY 平面轉到 XZ 平面 (站立)
             geometry.rotateX(Math.PI / 2);
@@ -3406,36 +3407,36 @@
                 document.getElementById('finish').value,
                 document.getElementById('plating').value
             );
-            bailMesh = new THREE.Mesh(geometry, material);
-            scene.add(bailMesh);
+            ringMesh = new THREE.Mesh(geometry, material);
+            scene.add(ringMesh);
             // 暴露給佩戴模擬（用於截取墜飾）
-            window.bailMesh = bailMesh;
+            window.ringMesh = ringMesh;
 
-            updateBailPosition();
+            updateRingPosition();
         }
 
-        function updateBailPosition() {
-            if (!bailMesh) return;
-            const x = parseFloat(document.getElementById('bailX').value);
-            // bailY 對應 UI 的 Position Y (Depth)
-            const y_depth_adj = parseFloat(document.getElementById('bailY').value);
-            // bailZ 對應 UI 的 Position Z (Height)
-            const z_height_adj = parseFloat(document.getElementById('bailZ').value);
-            const rotation = parseFloat(document.getElementById('bailRotation').value);
+        function updateRingPosition() {
+            if (!ringMesh) return;
+            const x = parseFloat(document.getElementById('ringX').value);
+            // ringY 對應 UI 的 Position Y (Depth)
+            const y_depth_adj = parseFloat(document.getElementById('ringY').value);
+            // ringZ 對應 UI 的 Position Z (Height)
+            const z_height_adj = parseFloat(document.getElementById('ringZ').value);
+            const rotation = parseFloat(document.getElementById('ringRotation').value);
 
             const baseZ = modelTopZ + 2.0; // 在 Z (高度) 軸上定位
 
             // 調整：X 不變, Y 軸為 modelCenter.y + 深度調整, Z 軸為 baseZ + 高度調整
-            bailMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
+            ringMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
 
             // 旋轉以 Z 軸為軸心
-            bailMesh.rotation.z = (rotation * Math.PI) / 180;
+            ringMesh.rotation.z = (rotation * Math.PI) / 180;
 
             // 🔍 Debug: 墜頭位置
             console.log('🔍 墜頭絕對位置:', {
-                x: bailMesh.position.x.toFixed(3),
-                y: bailMesh.position.y.toFixed(3),
-                z: bailMesh.position.z.toFixed(3),
+                x: ringMesh.position.x.toFixed(3),
+                y: ringMesh.position.y.toFixed(3),
+                z: ringMesh.position.z.toFixed(3),
                 rotation: rotation + '°'
             });
             console.log('🔍 模型中心:', {
@@ -3449,16 +3450,16 @@
 
         // 只更新材質，不重建模型（即時切換！）
         function updateMaterial() {
-            if (!mainMesh || !bailMesh) return;
+            if (!mainMesh || !ringMesh) return;
 
             const materialType = document.getElementById('material').value;
             const finish = document.getElementById('finish').value;
             const plating = document.getElementById('plating').value;
             const newMaterial = getMaterial(materialType, finish, plating);
 
-            // 更換主體和墜頭的材質
+            // 更換主體和圓環的材質
             mainMesh.material = newMaterial;
-            bailMesh.material = newMaterial.clone();
+            ringMesh.material = newMaterial.clone();
 
             // 更新重量顯示（密度改變了）
             updateVolumeWeight();
@@ -3840,12 +3841,12 @@
                 plating: document.getElementById('plating').value,
                 finish: document.getElementById('finish').value,
                 size: document.getElementById('size').value,
-                bailX: document.getElementById('bailX').value,
-                bailY: document.getElementById('bailY').value,
-                bailZ: document.getElementById('bailZ').value,
-                bailRotation: document.getElementById('bailRotation').value,
+                ringX: document.getElementById('ringX').value,
+                ringY: document.getElementById('ringY').value,
+                ringZ: document.getElementById('ringZ').value,
+                ringRotation: document.getElementById('ringRotation').value,
                 mesh: mainMesh.clone(),
-                bail: bailMesh ? bailMesh.clone() : null
+                ring: ringMesh ? ringMesh.clone() : null
             };
 
             // 創建縮略圖
@@ -3887,9 +3888,9 @@
 
             const meshClone = mainMesh.clone();
             slotScene.add(meshClone);
-            if (bailMesh) {
-                const bailClone = bailMesh.clone();
-                slotScene.add(bailClone);
+            if (ringMesh) {
+                const ringClone = ringMesh.clone();
+                slotScene.add(ringClone);
             }
 
             slotRenderer.render(slotScene, slotCamera);
@@ -3922,16 +3923,16 @@
             document.getElementById('plating').value = slotData.plating || 'none';  // 向後相容：如果沒有電鍍資料，預設為「無」
             document.getElementById('finish').value = slotData.finish;
             document.getElementById('size').value = slotData.size;
-            document.getElementById('bailX').value = slotData.bailX;
-            document.getElementById('bailY').value = slotData.bailY;
-            document.getElementById('bailZ').value = slotData.bailZ;
-            document.getElementById('bailRotation').value = slotData.bailRotation;
+            document.getElementById('ringX').value = slotData.ringX;
+            document.getElementById('ringY').value = slotData.ringY;
+            document.getElementById('ringZ').value = slotData.ringZ;
+            document.getElementById('ringRotation').value = slotData.ringRotation;
 
             // 更新顯示值
-            document.getElementById('bailX-val').textContent = slotData.bailX;
-            document.getElementById('bailY-val').textContent = slotData.bailY;
-            document.getElementById('bailZ-val').textContent = slotData.bailZ;
-            document.getElementById('bailRotation-val').textContent = slotData.bailRotation + '°';
+            document.getElementById('ringX-val').textContent = slotData.ringX;
+            document.getElementById('ringY-val').textContent = slotData.ringY;
+            document.getElementById('ringZ-val').textContent = slotData.ringZ;
+            document.getElementById('ringRotation-val').textContent = slotData.ringRotation + '°';
 
             // 更新字體按鈕和下拉選單
             const font1Btn = document.getElementById('font1-btn');
@@ -3950,10 +3951,10 @@
                 if (mainMesh.geometry) mainMesh.geometry.dispose();
                 if (mainMesh.material) mainMesh.material.dispose();
             }
-            if (bailMesh) {
-                scene.remove(bailMesh);
-                if (bailMesh.geometry) bailMesh.geometry.dispose();
-                if (bailMesh.material) bailMesh.material.dispose();
+            if (ringMesh) {
+                scene.remove(ringMesh);
+                if (ringMesh.geometry) ringMesh.geometry.dispose();
+                if (ringMesh.material) ringMesh.material.dispose();
             }
 
             // 載入新模型（使用深拷貝）
@@ -3961,10 +3962,10 @@
             mainMesh.material = mainMesh.material.clone();
             scene.add(mainMesh);
 
-            if (slotData.bail) {
-                bailMesh = slotData.bail.clone();
-                bailMesh.material = bailMesh.material.clone();
-                scene.add(bailMesh);
+            if (slotData.ring) {
+                ringMesh = slotData.ring.clone();
+                ringMesh.material = ringMesh.material.clone();
+                scene.add(ringMesh);
             }
 
             updateVolumeWeight();
@@ -4065,11 +4066,11 @@
             const font1Name = font1Select ? font1Select.value : document.getElementById('font1-btn').getAttribute('data-selected');
             const font2Name = font2Select ? font2Select.value : document.getElementById('font2-btn').getAttribute('data-selected');
 
-            // 計算墜頭相對於主體中心的向量
-            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
-            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
-            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
-            const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+            // 計算圓環相對於主體中心的向量
+            const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
+            const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
+            const ringRelativeZ = ringMesh ? (ringMesh.position.z - modelCenter.z) : 0;
+            const ringRot = ringMesh ? (ringMesh.rotation.z * 180 / Math.PI) : 0;
 
             // ✅ 生成縮略圖（用於購物車預覽）
             const thumbnailCanvas = document.createElement('canvas');
@@ -4098,7 +4099,7 @@
 
             // 複製當前場景的物件
             thumbnailScene.add(mainMesh.clone());
-            if (bailMesh) thumbnailScene.add(bailMesh.clone());
+            if (ringMesh) thumbnailScene.add(ringMesh.clone());
 
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
@@ -4128,15 +4129,15 @@
                     }
                     return basePrice;
                 })(),
-                // 儲存墜頭相對向量
-                bailRelativeX: bailRelativeX,
-                bailRelativeY: bailRelativeY,
-                bailRelativeZ: bailRelativeZ,
-                bailRotation: bailRot,
-                // 儲存墜頭絕對座標（用於後端精確定位）
-                bailAbsoluteX: bailMesh ? bailMesh.position.x : 0,
-                bailAbsoluteY: bailMesh ? bailMesh.position.y : 0,
-                bailAbsoluteZ: bailMesh ? bailMesh.position.z : 0,
+                // 儲存圓環相對向量
+                ringRelativeX: ringRelativeX,
+                ringRelativeY: ringRelativeY,
+                ringRelativeZ: ringRelativeZ,
+                ringRotation: ringRot,
+                // 儲存圓環絕對座標（用於後端精確定位）
+                ringAbsoluteX: ringMesh ? ringMesh.position.x : 0,
+                ringAbsoluteY: ringMesh ? ringMesh.position.y : 0,
+                ringAbsoluteZ: ringMesh ? ringMesh.position.z : 0,
                 // 儲存字母 BBox 信息（用於後端精確建模）
                 letter1BBox: window.letter1BBox || {},
                 letter2BBox: window.letter2BBox || {},
@@ -4439,10 +4440,10 @@
             try {
                 console.log('📤 發送測試訂單到後端...');
 
-                // ✅ 排除 mesh 和 bail（3D 物件），只發送必要資料
+                // ✅ 排除 mesh 和 ring（3D 物件），只發送必要資料
                 const itemsWithBBox = cartItems.map(item => {
-                    // 解構排除 mesh 和 bail
-                    const { mesh, bail, ...itemData } = item;
+                    // 解構排除 mesh 和 ring
+                    const { mesh, ring, ...itemData } = item;
 
                     return {
                         ...itemData,
@@ -4450,13 +4451,13 @@
                         size: typeof item.size === 'string' ? parseInt(item.size) : item.size,
                         quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity,
                         price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
-                        bailAbsoluteX: typeof item.bailAbsoluteX === 'string' ? parseFloat(item.bailAbsoluteX) : (item.bailAbsoluteX || 0),
-                        bailAbsoluteY: typeof item.bailAbsoluteY === 'string' ? parseFloat(item.bailAbsoluteY) : (item.bailAbsoluteY || 0),
-                        bailAbsoluteZ: typeof item.bailAbsoluteZ === 'string' ? parseFloat(item.bailAbsoluteZ) : (item.bailAbsoluteZ || 0),
-                        bailRelativeX: typeof item.bailRelativeX === 'string' ? parseFloat(item.bailRelativeX) : (item.bailRelativeX || 0),
-                        bailRelativeY: typeof item.bailRelativeY === 'string' ? parseFloat(item.bailRelativeY) : (item.bailRelativeY || 0),
-                        bailRelativeZ: typeof item.bailRelativeZ === 'string' ? parseFloat(item.bailRelativeZ) : (item.bailRelativeZ || 0),
-                        bailRotation: typeof item.bailRotation === 'string' ? parseFloat(item.bailRotation) : (item.bailRotation || 0),
+                        ringAbsoluteX: typeof item.ringAbsoluteX === 'string' ? parseFloat(item.ringAbsoluteX) : (item.ringAbsoluteX || 0),
+                        ringAbsoluteY: typeof item.ringAbsoluteY === 'string' ? parseFloat(item.ringAbsoluteY) : (item.ringAbsoluteY || 0),
+                        ringAbsoluteZ: typeof item.ringAbsoluteZ === 'string' ? parseFloat(item.ringAbsoluteZ) : (item.ringAbsoluteZ || 0),
+                        ringRelativeX: typeof item.ringRelativeX === 'string' ? parseFloat(item.ringRelativeX) : (item.ringRelativeX || 0),
+                        ringRelativeY: typeof item.ringRelativeY === 'string' ? parseFloat(item.ringRelativeY) : (item.ringRelativeY || 0),
+                        ringRelativeZ: typeof item.ringRelativeZ === 'string' ? parseFloat(item.ringRelativeZ) : (item.ringRelativeZ || 0),
+                        ringRotation: typeof item.ringRotation === 'string' ? parseFloat(item.ringRotation) : (item.ringRotation || 0),
                         letter1BBox: item.letter1BBox || { width: 10, height: 12, depth: 5, offsetX: 0, offsetY: 0, offsetZ: 0 },
                         letter2BBox: item.letter2BBox || { width: 10, height: 12, depth: 5, offsetX: 0, offsetY: 0, offsetZ: 0 }
                     };
@@ -5620,13 +5621,13 @@
                 });
             });
 
-            ['bailX', 'bailY', 'bailZ', 'bailRotation'].forEach(id => {
+            ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
                 const slider = document.getElementById(id);
                 slider.addEventListener('input', (e) => {
-                    const suffix = id === 'bailRotation' ? '°' : '';
+                    const suffix = id === 'ringRotation' ? '°' : '';
                     document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
                     // 只更新位置，不重新創建
-                    updateBailPosition();
+                    updateRingPosition();
                 });
             });
 
@@ -5907,16 +5908,16 @@
             // 使用全域的 modelCenter（和加入購物車一樣）
             console.log('🔍 模型中心: x=' + modelCenter.x.toFixed(3) + ', y=' + modelCenter.y.toFixed(3) + ', z=' + modelCenter.z.toFixed(3));
             
-            if (bailMesh) {
-                console.log('🔍 墜頭絕對位置: x=' + bailMesh.position.x.toFixed(3) + ', y=' + bailMesh.position.y.toFixed(3) + ', z=' + bailMesh.position.z.toFixed(3));
+            if (ringMesh) {
+                console.log('🔍 圓環絕對位置: x=' + ringMesh.position.x.toFixed(3) + ', y=' + ringMesh.position.y.toFixed(3) + ', z=' + ringMesh.position.z.toFixed(3));
             }
             
-            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
-            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
-            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
-            const bailRot = bailMesh ? (bailMesh.rotation.z * 180 / Math.PI) : 0;
+            const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
+            const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
+            const ringRelativeZ = ringMesh ? (ringMesh.position.z - modelCenter.z) : 0;
+            const ringRot = ringMesh ? (ringMesh.rotation.z * 180 / Math.PI) : 0;
             
-            console.log('🔍 墜頭相對位置: x=' + bailRelativeX.toFixed(3) + ', y=' + bailRelativeY.toFixed(3) + ', z=' + bailRelativeZ.toFixed(3) + ', rotation=' + bailRot.toFixed(1) + '°');
+            console.log('🔍 圓環相對位置: x=' + ringRelativeX.toFixed(3) + ', y=' + ringRelativeY.toFixed(3) + ', z=' + ringRelativeZ.toFixed(3) + ', rotation=' + ringRot.toFixed(1) + '°');
             
             const params = {
                 letter1: letter1,
@@ -5924,14 +5925,14 @@
                 font1: font1,
                 font2: font2,
                 size: parseInt(document.getElementById('size').value),
-                bailRelativeX: bailRelativeX,
-                bailRelativeY: bailRelativeY,
-                bailRelativeZ: bailRelativeZ,
-                bailRotation: bailRot
+                ringRelativeX: ringRelativeX,
+                ringRelativeY: ringRelativeY,
+                ringRelativeZ: ringRelativeZ,
+                ringRotation: ringRot
             };
 
             console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
-            console.log('🔍 墜頭位置:', { bailRelativeX, bailRelativeY, bailRelativeZ, bailRot });
+            console.log('🔍 圓環位置:', { ringRelativeX, ringRelativeY, ringRelativeZ, ringRot });
 
             // Step 4: 呼叫後端（帶重試機制）
             console.log('🌐 呼叫後端:', `${window.BACKEND_URL}/api/generate-stl`);

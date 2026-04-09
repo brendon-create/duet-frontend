@@ -48,7 +48,7 @@ const ProductPhotoStudio = {
     renderer: null,
     controls: null,
     mainMesh: null,
-    bailMesh: null,
+    ringMesh: null,
     gridHelper: null,
     axesHelper: null,
     
@@ -77,9 +77,9 @@ const ProductPhotoStudio = {
     /**
      * 設定 mesh 引用（從外部更新）
      */
-    setMeshes(mainMesh, bailMesh, gridHelper, axesHelper) {
+    setMeshes(mainMesh, ringMesh, gridHelper, axesHelper) {
         this.mainMesh = mainMesh;
-        this.bailMesh = bailMesh;
+        this.ringMesh = ringMesh;
         this.gridHelper = gridHelper;
         this.axesHelper = axesHelper;
     },
@@ -193,7 +193,7 @@ const ProductPhotoStudio = {
     exportProductPhoto(angle = 'current') {
         // 從 window 讀取（因為 design-studio 有暴露）
         const mainMesh = window.mainMesh || this.mainMesh;
-        const bailMesh = window.bailMesh || this.bailMesh;
+        const ringMesh = window.ringMesh || this.ringMesh;
         
         if (!mainMesh) {
             this.showToast('請先生成作品');
