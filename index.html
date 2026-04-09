@@ -27,6 +27,13 @@
         h1, h2, h3, h4, h5, h6 {
             font-family: 'Cormorant Garamond', Georgia, serif;
             font-weight: 500;
+            /* 規範數字對齊，避免襯線字體的數字下沉 */
+            font-variant-numeric: lining-nums;
+        }
+
+        /* 全域數字對齊 */
+        body {
+            font-variant-numeric: lining-nums;
         }
 
         /* ===== 導航欄 ===== */
@@ -1057,13 +1064,10 @@
     <!-- ===== Hero 區塊 ===== -->
     <section class="hero">
         <div class="hero-content">
-            <div class="subtitle">全球首創 AI 對話式珠寶設計</div>
-            <h1>每一個交織，<br>都是一段<em>故事</em>的開始</h1>
-            <p>兩個字母，承載著你們的故事。透過溫暖的 AI 對話，我們為你打造獨一無二的交織墜飾。</p>
-            <div class="tagline">「專屬於你的交織印記」</div>
-            <div class="price-tag">
-                <div class="amount">NT$ 3,850 <span class="unit">起</span></div>
-            </div>
+            <div class="subtitle">BCAG 全新 AI 對話線上珠寶設計服務 — DUET 系列</div>
+            <h1>每一個關係的交織，<br>都是一段<em>故事</em>的開始</h1>
+            <p>最棒的關係，是各自保有真實的自己，但讓彼此的生命都更有深度、空間、層次！<br>DUET 系列用兩個字母，承載你們的故事。透過溫暖的 AI 訂製諮詢，引導您親手打造獨一無二的交織墜飾。</p>
+            <div class="tagline">「專屬於你們的交織印記」</div>
             <div class="hero-buttons">
                 <button class="cta-button-primary">開始你的故事 →</button>
                 <a href="#story" class="cta-button-secondary">了解更多 ↓</a>
@@ -1077,10 +1081,9 @@
     <!-- ===== 品牌理念區塊 ===== -->
     <section class="story-section" id="story">
         <div class="story-content">
-            <h2>當科技遇見<br>手作的溫度</h2>
-            <p>DUET 相信，每一件珠寶都應該訴說一個故事。我們結合最先進的 AI 技術與傳統珠寶工藝，讓你能透過對話，創造出真正屬於你的設計。</p>
-            <p>不是選擇現成的款式，而是從你的記憶、情感與關係出發，讓 AI 設計師引導你，將無形的情感轉化為有形的交織。</p>
-            <div class="story-quote">「最好的珠寶，不是最昂貴的，而是最能觸動人心的。」</div>
+            <h2>當科技遇見<br>手作溫度</h2>
+            <p>我們相信，每一件珠寶的存在，都是為了訴說一個故事。結合 AI 與傳統珠寶工藝，DUET 系列讓線上客製化珠寶不再只是選擇款式、雷射雕刻，而是從您的情感與記憶出發，將無形的故事轉化為獨特造型。</p>
+            <div class="story-quote">「最好的珠寶，不是最昂貴的，而是乘載著真實故事的作品。」</div>
         </div>
         <div class="story-images">
             <img src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80" alt="手工製作過程">
@@ -1099,27 +1102,27 @@
             <div class="process-item">
                 <div class="process-number">01</div>
                 <h3>分享你的故事</h3>
-                <p>與我們的 AI 設計師對話，分享這份禮物背後的意義——是紀念、是感謝，還是承諾?</p>
+                <p>與我們的 AI 訂製諮詢師對話，分享這份禮物背後的意義——是紀念、是感謝，還是承諾?</p>
             </div>
             <div class="process-item">
                 <div class="process-number">02</div>
                 <h3>探索字型組合</h3>
-                <p>根據你的故事情感，AI 會推薦最適合的字型風格。你也可以自由探索 100+ 種精選字體。</p>
+                <p>根據你的故事情感，AI 會推薦最適合的字型風格。你也可以自由探索近百種精選字體。</p>
             </div>
             <div class="process-item">
                 <div class="process-number">03</div>
                 <h3>即時 3D 預覽</h3>
-                <p>在瀏覽器中 360° 旋轉檢視你的設計，調整每個細節，直到完美呈現你心中的模樣。</p>
+                <p>在瀏覽器中 360° 旋轉檢視你的設計，調整細節，直到完美呈現你喜歡的模樣。</p>
             </div>
             <div class="process-item">
                 <div class="process-number">04</div>
                 <h3>確認與付款</h3>
-                <p>滿意後透過綠界金流安全付款。我們會在製作前再次與你確認每個細節。</p>
+                <p>確認細節後，透過安全的金流完成付款。如果必要，我們的團隊也會在製作前再次與你確認細節。</p>
             </div>
             <div class="process-item">
                 <div class="process-number">05</div>
                 <h3>收到專屬作品</h3>
-                <p>5-7 個工作天，你將收到精緻包裝的作品，以及 AI 為你撰寫的設計理念卡片。</p>
+                <p>只要約 7-14 個工作天（未來將逐步縮短為 5-7 個工作天），你將收到精緻包裝的作品，以及 AI 為你撰寫的設計理念卡片。</p>
             </div>
         </div>
     </section>
@@ -1173,35 +1176,64 @@
     <!-- ===== 精湛工藝區塊 ===== -->
     <section class="craft-section">
         <div class="craft-header">
-            <h2>每個細節<br>都值得珍藏</h2>
+            <h2>每個細節<br>都為了精準實現您的想像</h2>
         </div>
         <div class="craft-grid">
             <div class="craft-item">
-                <div class="craft-icon">◈</div>
+                <div class="craft-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="4" width="24" height="24" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="4" y1="12" x2="28" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="12" y1="12" x2="12" y2="28" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
                 <div class="craft-content">
-                    <h3>參數化設計</h3>
-                    <p>OpenSCAD 精確建模，確保 3D 預覽與實品完全一致</p>
+                    <h3>簡潔介面</h3>
+                    <p>精心設計的介面，讓您用最簡單的操作，組合出超過千萬種可能的設計</p>
                 </div>
             </div>
             <div class="craft-item">
-                <div class="craft-icon">◉</div>
+                <div class="craft-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="16" cy="16" r="4" fill="currentColor"/>
+                        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="16" y1="26" x2="16" y2="30" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="2" y1="16" x2="6" y2="16" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="26" y1="16" x2="30" y2="16" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
                 <div class="craft-content">
-                    <h3>脫蠟鑄造法</h3>
-                    <p>傳統失蠟鑄造，純銀與 18K 金材質可選</p>
+                    <h3>AI 輔助設計</h3>
+                    <p>AI 設計諮詢、字體推薦、全自動 3D 建模，讓您輕鬆完成專屬設計</p>
                 </div>
             </div>
             <div class="craft-item">
-                <div class="craft-icon">◊</div>
+                <div class="craft-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 4L28 12V24L16 28L4 24V12L16 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                        <path d="M16 16L28 12" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M16 16V28" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M16 16L4 12" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
                 <div class="craft-content">
-                    <h3>手工拋光</h3>
-                    <p>專業珠寶師傅手工打磨，呈現完美光澤</p>
+                    <h3>傳統工藝</h3>
+                    <p>以專業珠寶師傅的手工技藝，完美呈現作品，確保完成品與您看到的預覽一致</p>
                 </div>
             </div>
             <div class="craft-item">
-                <div class="craft-icon">◎</div>
+                <div class="craft-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="4" width="20" height="24" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="10" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="10" y1="15" x2="22" y2="15" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="10" y1="20" x2="16" y2="20" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
                 <div class="craft-content">
-                    <h3>專屬故事卡片</h3>
-                    <p>AI 根據你的故事撰寫設計理念，讓心意完整傳達</p>
+                    <h3>專屬設計理念卡</h3>
+                    <p>由 AI 根據你的故事撰寫設計理念，由您微調並確認，讓心意完整傳達</p>
                 </div>
             </div>
         </div>
@@ -1227,10 +1259,10 @@
                 <div class="testimonial-product">✦ J × S 18K 金墜飾</div>
             </div>
             <div class="testimonial-card">
-                <div class="testimonial-quote">「這不只是珠寶，更是一段記憶的具象化。DUET 的服務讓整個過程都充滿了溫度和期待。」</div>
-                <div class="testimonial-author">陳思語</div>
+                <div class="testimonial-quote">「忙碌的工作，讓我連結婚紀念日都忘了，看到行事曆的提醒時，已經只剩不到兩週，但我連思考該送什麼的時間都沒有。DUET 的服務讓整個過程都充滿了溫度和期待，DUET 作品的即興與驚喜，更是此時此刻的我們正需要的火花！」</div>
+                <div class="testimonial-author">歐陽</div>
                 <div class="testimonial-detail">高雄</div>
-                <div class="testimonial-product">✦ C × H 純銀墜飾</div>
+                <div class="testimonial-product">✦ B × A 純銀鍍 18K 白金墜飾</div>
             </div>
         </div>
     </section>
@@ -1243,19 +1275,19 @@
         <div class="faq-grid">
             <div class="faq-item">
                 <div class="faq-question">製作需要多久時間?</div>
-                <div class="faq-answer">付款完成後，製作時間約 5-7 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</div>
+                <div class="faq-answer">付款完成後，製作時間約 7-14 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</div>
             </div>
             <div class="faq-item">
                 <div class="faq-question">可以選擇什麼材質?</div>
-                <div class="faq-answer">目前提供 925 純銀（NT$ 2,980）和 18K 金（NT$ 12,800）兩種選擇。所有材質皆經過品質認證，並附保證書。</div>
+                <div class="faq-answer">目前提供 925 純銀、黃銅（NT$ 3,850）兩種材質，並可選擇無電鍍或 18K 金、18K 白金（+NT$ 400）兩種電鍍選擇。所有材質皆經過品質認證，並附保證書。</div>
             </div>
             <div class="faq-item">
                 <div class="faq-question">如果不滿意設計怎麼辦?</div>
-                <div class="faq-answer">付款前可無限次修改設計。付款後製作前會再次確認。收到作品後若有品質問題，提供 30 天無條件退換貨保證。</div>
+                <div class="faq-answer">付款前可無限次修改設計。付款後若作品有明顯疑慮（例如墜頭位置偏移、包含未清除的分離部件等），製作前會再次確認。收到作品後若有製作品質問題，提供 30 天無條件退換貨保證。（因作品完全按照訂製時看到的 3D 模擬製作，退換貨不包含對作品造型本身的不滿意，下單前請仔細確認造型）</div>
             </div>
             <div class="faq-item">
                 <div class="faq-question">AI 對話會保存我的隱私嗎?</div>
-                <div class="faq-answer">對話內容僅用於設計推薦，採用端到端加密，不會被分享或用於其他用途。你的故事只屬於你。</div>
+                <div class="faq-answer">對話內容僅用於設計推薦，採用端到端加密，並儲存在符合 SOC2 Type II、HIPAA、ISO 27001 三重資安認證的資料庫中，不會在未經您同意的情況下被分享或用於其他用途。您的故事只屬於您。</div>
             </div>
             <div class="faq-item">
                 <div class="faq-question">可以只訂購一個字母嗎?</div>
@@ -1263,7 +1295,7 @@
             </div>
             <div class="faq-item">
                 <div class="faq-question">如何聯絡客服?</div>
-                <div class="faq-answer">您可以透過 hello@duet.brendonchen.com 聯絡我們，或在 Instagram 和 Facebook 上私訊。我們通常在 24 小時內回覆。</div>
+                <div class="faq-answer">您可以透過 service@brendonchen.com 聯絡我們，或在 Instagram 和 Facebook 上私訊。我們通常會在 24 小時內回覆。</div>
             </div>
         </div>
     </section>
@@ -1303,7 +1335,7 @@
             <div class="footer-section">
                 <h4>聯絡</h4>
                 <ul>
-                    <li><a href="mailto:hello@duet.brendonchen.com">hello@duet.brendonchen.com</a></li>
+                    <li><a href="mailto:service@brendonchen.com">service@brendonchen.com</a></li>
                     <li><a href="#">Instagram</a></li>
                     <li><a href="#">Facebook</a></li>
                 </ul>
@@ -1312,8 +1344,8 @@
         <div class="footer-bottom">
             <p>© 2026 DUET by BCAG. All rights reserved.</p>
             <div class="footer-socials">
-                <a href="#">隱私權政策</a>
-                <a href="#">使用條款</a>
+                <a href="privacy.html">隱私權政策</a>
+                <a href="terms.html">使用條款</a>
             </div>
         </div>
     </footer>
