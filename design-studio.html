@@ -3018,7 +3018,7 @@
                 
                 console.log(`${timestamp()} 🧹 開始清理零碎部件`);
 
-                // 1. 取得當前參數（包含墜頭位置）
+                // 1. 取得當前參數（包含圓環位置）
                 // 計算圓環相對於模型中心的位置
                 const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
                 const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
@@ -3432,8 +3432,8 @@
             // 旋轉以 Z 軸為軸心
             ringMesh.rotation.z = (rotation * Math.PI) / 180;
 
-            // 🔍 Debug: 墜頭位置
-            console.log('🔍 墜頭絕對位置:', {
+            // 🔍 Debug: 圓環位置
+            console.log('🔍 圓環絕對位置:', {
                 x: ringMesh.position.x.toFixed(3),
                 y: ringMesh.position.y.toFixed(3),
                 z: ringMesh.position.z.toFixed(3),
