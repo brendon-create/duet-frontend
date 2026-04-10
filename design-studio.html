@@ -3270,12 +3270,18 @@
                 height: window.letter2BBox.height.toFixed(3) + 'mm',
                 depth: window.letter2BBox.depth.toFixed(3) + 'mm'
             });
-            debug('🔍 Bevel 參數:', {
-                bevelEnabled: params.bevelEnabled,
-                bevelThickness: params.bevelThickness,
-                bevelSize: params.bevelSize,
-                bevelSegments: params.bevelSegments
-            });
+            // V3 路徑使用 ExtrudeGeometry，bevelEnabled 為 false
+            // 只有舊路徑 (TextGeometry) 才需要顯示 bevel 參數
+            if (typeof params !== 'undefined') {
+                debug('🔍 Bevel 參數:', {
+                    bevelEnabled: params.bevelEnabled,
+                    bevelThickness: params.bevelThickness,
+                    bevelSize: params.bevelSize,
+                    bevelSegments: params.bevelSegments
+                });
+            } else {
+                debug('🔍 Bevel 參數: V3 路徑 (ExtrudeGeometry, bevelEnabled: false)');
+            }
             debug('📏 前端 Model 最終實際尺寸 (CSG 交集後):');
             console.log('  寬度 (X):', modelWidth.toFixed(3), 'mm');
             console.log('  深度 (Y):', modelDepth.toFixed(3), 'mm');
