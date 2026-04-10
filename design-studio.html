@@ -1789,6 +1789,12 @@
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
+        
+        // ==========================================
+        // V3 物理補償系統：引入 Clipper lib
+        // ==========================================
+        import ClipperLib from 'https://cdn.jsdelivr.net/npm/clipper-lib@1.18.2/+esm';
+        window.ClipperLib = ClipperLib;
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
@@ -2420,13 +2426,35 @@
         // 120 種字體清單（來自 font-selector.htm）
         // 可用字體清單（從外部 JSON 載入）
         let availableFonts = [];
-
-        // 從外部 JSON 檔案載入字體庫
+        
+        // ==========================================
+        // V3 物理補償系統：字體元資料快取
+        // ==========================================
+        let fontsMetadata = {};  // { "Alex Brush": { weight: 400, offset_r: 0.15, ... }, ... }
+        
+        // 從外部 JSON 檔案載入字體庫（含元資料）
         async function loadFontsFromJSON() {
             try {
                 const response = await fetch('fonts.json');
                 const data = await response.json();
-                return data.fonts || [];
+                const fontsList = data.fonts || [];
+                
+                // 建構元資料快取（用於快速查詢 offset_r）
+                fontsMetadata = {};
+                fontsList.forEach(font => {
+                    if (typeof font === 'object' && font.name) {
+                        fontsMetadata[font.name] = {
+                            weight: font.weight || 400,
+                            offset_r: font.offset_r || 0,
+                            is_bold_required: font.is_bold_required || false
+                        };
+                    } else if (typeof font === 'string') {
+                        fontsMetadata[font] = { weight: 400, offset_r: 0, is_bold_required: false };
+                    }
+                });
+                
+                // 回傳字體名稱陣列（供 UI 使用）
+                return fontsList.map(f => typeof f === 'object' ? f.name : f);
             } catch (error) {
                 console.error('❌ 載入字體庫失敗，使用內建列表:', error);
                 // Fallback: 使用內建字體列表
@@ -2453,6 +2481,207 @@
                     "Tangerine", "Titan One", "Varela Round", "Vollkorn", "Zilla Slab"
                 ];
             }
+        }
+        
+        // ==========================================
+        // V3 物理補償系統：取得字體元資料
+        // ==========================================
+        function getFontMetadata(fontName) {
+            return fontsMetadata[fontName] || { weight: 400, offset_r: 0, is_bold_required: false };
+        }
+
+        // ==========================================
+        // V3 物理補償系統：ClipperLib 2D Offset 工具函數
+        // 用途：對細筆畫字體（如 Alex Brush、Dancing Script）進行物理補償
+        // 原理：將 Three.js Shape → Clipper 路徑 → offset → 轉回 Shape
+        // ==========================================
+        const CLIPPER_SCALE = 1000;  // Clipper 整數運算精度
+
+        /**
+         * 將 Three.js Shape 的路徑轉換為 Clipper 路徑
+         * @param {THREE.Shape} shape - Three.js 2D 形狀
+         * @returns {Array} [{ outer: [[x,y], ...], holes: [[[x,y], ...], ...] }]
+         */
+        function shapeToClipperPaths(shape) {
+            const result = { outer: [], holes: [] };
+
+            // 外形狀路徑（顺时针 CW）
+            const outerPoints = shape.getOuterHoles()[0] || shape.getStraightBow().length > 0 ? [] : [];
+            // 遍歷 allPaths 取第一個當外形的起點
+            const allPaths = shape.getStraightBow();
+            if (allPaths && allPaths.length > 0) {
+                // 檢查是否是外形（不是孔洞）
+                // Three.js Shape.extractPoints() 會返回輪廓
+                const points = allPaths[0];
+                for (let i = 0; i < points.length; i++) {
+                    outerPoints.push([
+                        Math.round(points[i].x * CLIPPER_SCALE),
+                        Math.round(points[i].y * CLIPPER_SCALE)
+                    ]);
+                }
+            }
+
+            // 如果外形是空的，嘗試用 getOutermost()
+            if (outerPoints.length === 0) {
+                const outermost = shape.getOutermost();
+                if (outermost && outermost.length > 0) {
+                    for (let i = 0; i < outermost.length; i++) {
+                        outerPoints.push([
+                            Math.round(outermost[i].x * CLIPPER_SCALE),
+                            Math.round(outermost[i].y * CLIPPER_SCALE)
+                        ]);
+                    }
+                }
+            }
+
+            result.outer = outerPoints;
+
+            // 孔洞路徑（逆时针 CCW）
+            const holePaths = shape.getHoles();
+            for (let h = 0; h < holePaths.length; h++) {
+                const hole = holePaths[h];
+                const holePoints = [];
+                if (hole && hole.length > 0) {
+                    for (let i = 0; i < hole.length; i++) {
+                        holePoints.push([
+                            Math.round(hole[i].x * CLIPPER_SCALE),
+                            Math.round(hole[i].y * CLIPPER_SCALE)
+                        ]);
+                    }
+                }
+                if (holePoints.length > 0) {
+                    result.holes.push(holePoints);
+                }
+            }
+
+            return result;
+        }
+
+        /**
+         * 使用 ClipperLib 對 Shape 進行 offset 補償
+         * @param {THREE.Shape} shape - 原始 Three.js Shape
+         * @param {number} offsetMm - 補償量（mm）
+         * @param {number} targetHeight - 目標高度（mm），用於單位換算
+         * @returns {THREE.Shape} 補償後的新 Shape
+         */
+        function offsetShape(shape, offsetMm, targetHeight) {
+            // 如果 offset 為 0 或 Shape 為空，直接返回原形狀
+            if (!shape || offsetMm === 0) {
+                return shape;
+            }
+
+            const clipper = new ClipperLib.Clipper();
+
+            // 單位換算：offset_mm → offset_threejs_units
+            // H_raw ≈ 50 (TextGeometry size)，targetHeight 用戶輸入（mm）
+            // 換算係數：k = H_raw / 10 ≈ 5.0
+            // offset_threejs = offset_mm * (k / 10) / scale
+            // 由於 scale = targetHeight / H_raw，所以 offset_threejs = offset_mm * (H_raw / 10) / (targetHeight / H_raw)
+            // = offset_mm * (H_raw^2 / 10 / targetHeight)
+            // 簡化後：offset_mm * (scale * 90)，其中 scale = targetHeight / H_raw
+            const H_raw = 50;  // TextGeometry size
+            const scale = targetHeight / H_raw;
+            const offsetThreeJS = offsetMm * scale * 90;
+
+            console.log(`[V3 Clipper] offsetMm=${offsetMm}, targetHeight=${targetHeight}, scale=${scale}, offsetThreeJS=${offsetThreeJS}`);
+
+            // 收集所有多邊形路徑
+            const paths = [];
+
+            // 外形（必须是 CW 顺序给 Clipper）
+            const outerPath = [];
+            const allPaths = shape.getStraightBow();
+            if (allPaths && allPaths.length > 0) {
+                for (let i = 0; i < allPaths[0].length; i++) {
+                    outerPath.push(new ClipperLib.IntPoint(
+                        allPaths[0][i].x * CLIPPER_SCALE,
+                        allPaths[0][i].y * CLIPPER_SCALE
+                    ));
+                }
+            }
+            if (outerPath.length > 0) {
+                paths.push(outerPath);
+            }
+
+            // 孔洞（必须是 CCW 顺序给 Clipper）
+            const holePaths = shape.getHoles();
+            for (let h = 0; h < holePaths.length; h++) {
+                const hole = holePaths[h];
+                if (hole && hole.length > 0) {
+                    const holePath = [];
+                    for (let i = 0; i < hole.length; i++) {
+                        holePath.push(new ClipperLib.IntPoint(
+                            hole[i].x * CLIPPER_SCALE,
+                            hole[i].y * CLIPPER_SCALE
+                        ));
+                    }
+                    if (holePath.length > 0) {
+                        paths.push(holePath);
+                    }
+                }
+            }
+
+            if (paths.length === 0) {
+                console.warn('[V3 Clipper] 無法提取路徑，返回原形狀');
+                return shape;
+            }
+
+            // 添加路徑到 Clipper
+            clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
+
+            // 執行 offset
+            const scaledOffset = offsetThreeJS * CLIPPER_SCALE;
+            const joinType = ClipperLib.JoinType.jtRound;
+            const miterLimit = 2;
+
+            const offsettedPaths = new ClipperLib.Paths();
+            const success = clipper.Execute(
+                ClipperLib.ClipType.ctUnion,
+                offsettedPaths,
+                ClipperLib.PolyFillType.pftEvenOdd,
+                ClipperLib.PolyFillType.pftEvenOdd
+            );
+
+            if (!success) {
+                console.warn('[V3 Clipper] Offset 失敗，返回原形狀');
+                return shape;
+            }
+
+            // 將結果轉換回 THREE.Shape
+            const newShape = new THREE.Shape();
+            if (offsettedPaths.length > 0) {
+                const firstPath = offsettedPaths[0];
+                for (let i = 0; i < firstPath.length; i++) {
+                    const x = firstPath[i].X / CLIPPER_SCALE;
+                    const y = firstPath[i].Y / CLIPPER_SCALE;
+                    if (i === 0) {
+                        newShape.moveTo(x, y);
+                    } else {
+                        newShape.lineTo(x, y);
+                    }
+                }
+                newShape.closePath();
+
+                // 如果有孔洞，加入剩餘路徑
+                for (let p = 1; p < offsettedPaths.length; p++) {
+                    const holePath = new THREE.Path();
+                    const pathData = offsettedPaths[p];
+                    for (let i = 0; i < pathData.length; i++) {
+                        const x = pathData[i].X / CLIPPER_SCALE;
+                        const y = pathData[i].Y / CLIPPER_SCALE;
+                        if (i === 0) {
+                            holePath.moveTo(x, y);
+                        } else {
+                            holePath.lineTo(x, y);
+                        }
+                    }
+                    holePath.closePath();
+                    newShape.holes.push(holePath);
+                }
+            }
+
+            console.log(`[V3 Clipper] Offset 完成，輸出 ${offsettedPaths.length} 個路徑`);
+            return newShape;
         }
 
         // 字體載入完成的 Promise（供其他地方 await）
@@ -2699,6 +2928,14 @@
             const f1 = await loadFont(f1Name);
             const f2 = await loadFont(f2Name);
             debug('Fonts loaded, generating geometry...');
+
+            // ==========================================
+            // V3 物理補償系統：讀取字體的 offset_r 參數
+            // ==========================================
+            const meta1 = getFontMetadata(f1Name);
+            const meta2 = getFontMetadata(f2Name);
+            console.log(`[V3 Offset] 字體1: ${f1Name}, offset_r: ${meta1.offset_r}`);
+            console.log(`[V3 Offset] 字體2: ${f2Name}, offset_r: ${meta2.offset_r}`);
 
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
