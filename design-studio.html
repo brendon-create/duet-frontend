@@ -3732,14 +3732,21 @@
             }
 
             // ==========================================
-            // V3 物理補償系統：直接從後端下載 TTF 檔案（我們自己下載的字體）
-            // 後端 /api/get-ttf-by-name 直接服務已下載的 TTF 檔案
-            // 沒有 CORS 問題，沒有格式問題（100% 是原始 TTF）
+            // V3 物理補償系統：直接從後端靜態路徑下載 TTF 檔案
+            // 後端 Flask static_url_path='/assets/fonts' 直接服務 fonts/ 目錄
+            // URL 格式：/assets/fonts/Alex_Brush-Regular.ttf
+            // 沒有 CORS 問題，100% 是我們自己下載的原始 TTF
             // ==========================================
             if (!opentypeFont) {
                 try {
                     // 直接從後端取得 TTF 檔案（二進位資料）
-                    const ttfResponse = await fetch(`${window.BACKEND_URL}/api/get-ttf-by-name?font=${encodeURIComponent(fontName)}`);
+                    // 將字體顯示名稱轉換為檔案名稱
+                    // "Alex Brush" → "Alex_Brush-Regular.ttf"
+                    const filename = fontName.replace(/ /g, '_') + '-Regular.ttf';
+                    const ttfUrl = `${window.BACKEND_URL}/assets/fonts/${filename}`;
+                    
+                    console.log(`[V3 Font Loading] Fetching TTF from static URL: ${ttfUrl}`);
+                    const ttfResponse = await fetch(ttfUrl);
                     
                     if (ttfResponse.ok) {
                         const fontBuffer = await ttfResponse.arrayBuffer();
@@ -3751,7 +3758,7 @@
                         
                         try {
                             opentypeFont = opentype.parse(fontBuffer);
-                            console.log(`✓ Loaded opentypeFont ${fontName} from backend TTF`);
+                            console.log(`✓ Loaded opentypeFont ${fontName} from static TTF: ${filename}`);
                             
                             // 如果還沒有 THREE.Font，從 opentype 轉換
                             if (!threeFont) {
@@ -3761,13 +3768,13 @@
                             }
                         } catch (parseError) {
                             console.log(`✗ Parse failed: ${parseError.message}`);
-                            console.log(`[V3 Font Loading] TTF 檔案解析失敗`);
+                            console.error(`[V3 Font Loading] ❌ TTF 檔案解析失敗: ${filename}`);
                         }
                     } else {
-                        console.log(`✗ 後端 TTF endpoint 失敗: ${ttfResponse.status}`);
+                        console.warn(`✗ Static TTF not found: ${ttfUrl} (${ttfResponse.status})`);
                     }
                 } catch (error) {
-                    console.warn(`[V3 Font Loading] Failed to fetch TTF from backend: ${error.message}`);
+                    console.warn(`[V3 Font Loading] Failed to fetch TTF from static path: ${error.message}`);
                 }
             }
 
