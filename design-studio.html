@@ -2976,6 +2976,17 @@
             const useV3Path1 = meta1.offset_r > 0 && f1.opentypeFont;
             const useV3Path2 = meta2.offset_r > 0 && f2.opentypeFont;
 
+            // ==========================================
+            // V3 物理補償系統：檢查 V3 是否需要但無法使用
+            // 如果 offset_r > 0 但 opentypeFont 為 null，顯示紅色警告
+            // ==========================================
+            if (!checkV3FontStatus(f1Name, f1, meta1.offset_r)) {
+                console.warn(`[V3] ${f1Name} 需要 V3 補償但無法使用，細筆劃可能列印失敗`);
+            }
+            if (!checkV3FontStatus(f2Name, f2, meta2.offset_r)) {
+                console.warn(`[V3] ${f2Name} 需要 V3 補償但無法使用，細筆劃可能列印失敗`);
+            }
+
             if (useV3Path1) {
                 console.log(`[V3] 使用 V3 路徑生成字母 1: ${l1}`);
             }
@@ -3721,55 +3732,36 @@
             }
 
             // ==========================================
-            // V3 物理補償系統：嘗試從 Google Fonts 取得 TTF 格式
-            // 關鍵：使用舊版瀏覽器 User-Agent 欺騙 Google 回傳 TTF 而非 woff2
+            // V3 物理補償系統：嘗試從後端取得 TTF URL（解決 CORS 問題）
+            // 後端沒有 CORS 限制，可以直接取得 Google Fonts TTF URL
             // opentype.js 無法解析 woff2，只能解析 TTF/OTF
             // ==========================================
             if (!opentypeFont) {
                 try {
-                    const fontUrlName = fontName.replace(/ /g, '+');
-                    const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
-
-                    // 使用舊版瀏覽器 User-Agent 來取得 TTF URL（Google 會根據 UA 回傳不同格式）
-                    const cssResponse = await fetch(cssUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
-                        }
-                    });
-
-                    if (cssResponse.ok) {
-                        const cssText = await cssResponse.text();
-                        console.log(`[V3 Font Loading] Google Fonts CSS response (TTF strategy):`, cssText.substring(0, 200));
-
-                        // 匹配 TTF URL（Google 會根據 UA 回傳 .ttf 或 .woff2）
-                        const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
-
-                        if (urlMatch) {
-                            const fontFileUrl = urlMatch[1];
-                            console.log(`[V3 Font Loading] Font file URL: ${fontFileUrl}`);
-
-                            // 驗證 URL 是否為 TTF 格式
-                            if (!fontFileUrl.endsWith('.ttf')) {
-                                console.log(`[V3 Font Loading] ⚠️ 取得的不是 TTF 格式（${fontFileUrl.split('.').pop()}），opentype.js 可能無法解析`);
-                            }
-
-                            const fontResponse = await fetch(fontFileUrl, {
-                                headers: {
-                                    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
-                                }
-                            });
-
+                    // 透過後端 proxy 取得 TTF URL
+                    const ttfUrlResponse = await fetch(`${window.BACKEND_URL}/api/get-ttf-url?font=${encodeURIComponent(fontName)}`);
+                    
+                    if (ttfUrlResponse.ok) {
+                        const ttfData = await ttfUrlResponse.json();
+                        
+                        if (ttfData.ttf_url) {
+                            console.log(`[V3 Font Loading] 從後端取得 TTF URL: ${ttfData.ttf_url}`);
+                            
+                            // 下載 TTF 檔案
+                            const fontResponse = await fetch(ttfData.ttf_url);
+                            
                             if (fontResponse.ok) {
                                 const fontBuffer = await fontResponse.arrayBuffer();
-
+                                
                                 // 檢查檔案格式（魔數簽名）
-                                const signature = String.fromCharCode(new Uint8Array(fontBuffer.slice(0, 4)).reduce((a, b) => a + String.fromCharCode(b), ''));
+                                const signatureBytes = new Uint8Array(fontBuffer.slice(0, 4));
+                                const signature = String.fromCharCode(...signatureBytes);
                                 console.log(`[V3 Font Loading] Font file signature: ${signature} (expected: '\\x00\\x01\\x00\\x00' for TTF or 'OTTO' for OTF)`);
-
+                                
                                 try {
                                     opentypeFont = opentype.parse(fontBuffer);
-                                    console.log(`✓ Loaded opentypeFont ${fontName} from TTF`);
-
+                                    console.log(`✓ Loaded opentypeFont ${fontName} from TTF via backend proxy`);
+                                    
                                     // 如果還沒有 THREE.Font，從 opentype 轉換
                                     if (!threeFont) {
                                         const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
@@ -3778,19 +3770,19 @@
                                     }
                                 } catch (parseError) {
                                     console.log(`✗ Parse failed: ${parseError.message}`);
-                                    console.log(`[V3 Font Loading] 可能是因為 Google 仍然回傳了 woff2 格式`);
+                                    console.log(`[V3 Font Loading] 可能是不支援的字體格式`);
                                 }
                             } else {
                                 console.log(`✗ Font file fetch failed: ${fontResponse.status}`);
                             }
                         } else {
-                            console.log(`✗ No font URL found in CSS response`);
+                            console.log(`✗ 後端沒有回傳 TTF URL: ${ttfData.error}`);
                         }
                     } else {
-                        console.log(`✗ Google Fonts CSS fetch failed: ${cssResponse.status}`);
+                        console.log(`✗ 後端 TTF URL endpoint 失敗: ${ttfUrlResponse.status}`);
                     }
                 } catch (error) {
-                    console.warn(`[V3 Font Loading] Failed Google Fonts: ${error.message}`);
+                    console.warn(`[V3 Font Loading] Failed backend proxy: ${error.message}`);
                 }
             }
 
@@ -4362,6 +4354,81 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, duration);
+        }
+
+        // ==========================================
+        // V3 物理補償系統：顯示紅色警告（當 V3 需要的字體無法載入 opentypeFont 時）
+        // 使用者明確要求：不要自動回退到 V2，要顯示明顯的紅色警告
+        // ==========================================
+        let v3WarningTimeout = null;
+        function showV3Warning(message) {
+            // 移除舊的警告
+            const oldWarning = document.getElementById('v3-warning-banner');
+            if (oldWarning) oldWarning.remove();
+            if (v3WarningTimeout) clearTimeout(v3WarningTimeout);
+
+            // 創建紅色警告橫幅
+            const warning = document.createElement('div');
+            warning.id = 'v3-warning-banner';
+            warning.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                color: white;
+                padding: 16px 24px;
+                text-align: center;
+                font-size: 15px;
+                font-weight: 600;
+                z-index: 100000;
+                box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                animation: slideDown 0.3s ease-out;
+            `;
+            
+            warning.innerHTML = `
+                <span style="font-size: 20px;">⚠️</span>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    margin-left: 8px;
+                ">關閉</button>
+            `;
+
+            // 添加動畫樣式（如果還沒有）
+            if (!document.getElementById('v3-warning-styles')) {
+                const style = document.createElement('style');
+                style.id = 'v3-warning-styles';
+                style.textContent = `
+                    @keyframes slideDown {
+                        from { transform: translateY(-100%); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(warning);
+            console.error(`[V3 Warning] ${message}`);
+        }
+
+        // 當 V3 需要的字體無法載入時顯示警告
+        function checkV3FontStatus(fontName, fontData, offset_r) {
+            if (offset_r > 0 && !fontData.opentypeFont) {
+                showV3Warning(`V3 物理補償系統失敗：${fontName} 的 opentypeFont 載入失敗，細筆劃可能無法正確列印。此字體需要 TTF 格式支援。`);
+                return false;
+            }
+            return true;
         }
 
         function confirmFontSelection() {
