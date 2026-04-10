@@ -1794,21 +1794,29 @@
         // V3 物理補償系統：引入 Clipper lib
         // ==========================================
         // V3 物理補償系統：動態載入 ClipperLib（UMD 版本）
-        // 使用 unpkg CDN，支援 Vercel 的 CSP 環境
+        // 使用 cdn.jsdelivr.net CDN，支援 Vercel 的 CSP 環境
+        // 注意：clipper-lib@1.18.2 不存在，正確版本為 6.4.2
         // ==========================================
         async function loadClipperLib() {
             if (window.ClipperLib) return window.ClipperLib;
             
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = 'https://unpkg.com/clipper-lib@1.18.2/clipper.js';
-                script.onload = () => resolve(window.ClipperLib);
+                // 主要 CDN：cdn.jsdelivr.net（已驗證可用）
+                script.src = 'https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js';
+                script.onload = () => {
+                    console.log('✅ ClipperLib 已透過 jsdelivr CDN 載入');
+                    resolve(window.ClipperLib);
+                };
                 script.onerror = () => {
-                    console.error('❌ ClipperLib 載入失敗，嘗試備用 CDN...');
+                    console.error('❌ ClipperLib jsdelivr 載入失敗，嘗試備用 CDN...');
                     // 備用：嘗試 esm.sh
                     const script2 = document.createElement('script');
-                    script2.src = 'https://esm.sh/clipper-lib@1.18.2';
-                    script2.onload = () => resolve(window.ClipperLib);
+                    script2.src = 'https://esm.sh/clipper-lib@6.4.2';
+                    script2.onload = () => {
+                        console.log('✅ ClipperLib 已透過 esm.sh CDN 載入');
+                        resolve(window.ClipperLib);
+                    };
                     script2.onerror = () => reject(new Error('所有 CDN 都無法載入 ClipperLib'));
                     document.head.appendChild(script2);
                 };
