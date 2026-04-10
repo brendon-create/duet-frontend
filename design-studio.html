@@ -1792,8 +1792,29 @@
         
         // ==========================================
         // V3 物理補償系統：引入 Clipper lib
-        import ClipperLib from 'https://esm.sh/clipper-lib@1.18.2';
-        window.ClipperLib = ClipperLib;
+        // ==========================================
+        // V3 物理補償系統：動態載入 ClipperLib（UMD 版本）
+        // 使用 unpkg CDN，支援 Vercel 的 CSP 環境
+        // ==========================================
+        async function loadClipperLib() {
+            if (window.ClipperLib) return window.ClipperLib;
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/clipper-lib@1.18.2/clipper.js';
+                script.onload = () => resolve(window.ClipperLib);
+                script.onerror = () => {
+                    console.error('❌ ClipperLib 載入失敗，嘗試備用 CDN...');
+                    // 備用：嘗試 esm.sh
+                    const script2 = document.createElement('script');
+                    script2.src = 'https://esm.sh/clipper-lib@1.18.2';
+                    script2.onload = () => resolve(window.ClipperLib);
+                    script2.onerror = () => reject(new Error('所有 CDN 都無法載入 ClipperLib'));
+                    document.head.appendChild(script2);
+                };
+                document.head.appendChild(script);
+            });
+        }
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
