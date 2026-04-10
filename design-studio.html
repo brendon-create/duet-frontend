@@ -3732,57 +3732,42 @@
             }
 
             // ==========================================
-            // V3 物理補償系統：嘗試從後端取得 TTF URL（解決 CORS 問題）
-            // 後端沒有 CORS 限制，可以直接取得 Google Fonts TTF URL
-            // opentype.js 無法解析 woff2，只能解析 TTF/OTF
+            // V3 物理補償系統：直接從後端下載 TTF 檔案（我們自己下載的字體）
+            // 後端 /api/get-ttf-by-name 直接服務已下載的 TTF 檔案
+            // 沒有 CORS 問題，沒有格式問題（100% 是原始 TTF）
             // ==========================================
             if (!opentypeFont) {
                 try {
-                    // 透過後端 proxy 取得 TTF URL
-                    const ttfUrlResponse = await fetch(`${window.BACKEND_URL}/api/get-ttf-url?font=${encodeURIComponent(fontName)}`);
+                    // 直接從後端取得 TTF 檔案（二進位資料）
+                    const ttfResponse = await fetch(`${window.BACKEND_URL}/api/get-ttf-by-name?font=${encodeURIComponent(fontName)}`);
                     
-                    if (ttfUrlResponse.ok) {
-                        const ttfData = await ttfUrlResponse.json();
+                    if (ttfResponse.ok) {
+                        const fontBuffer = await ttfResponse.arrayBuffer();
                         
-                        if (ttfData.ttf_url) {
-                            console.log(`[V3 Font Loading] 從後端取得 TTF URL: ${ttfData.ttf_url}`);
+                        // 檢查檔案格式（魔數簽名）
+                        const signatureBytes = new Uint8Array(fontBuffer.slice(0, 4));
+                        const signature = String.fromCharCode(...signatureBytes);
+                        console.log(`[V3 Font Loading] Font file signature: ${signature} (expected: '\\x00\\x01\\x00\\x00' for TTF or 'OTTO' for OTF)`);
+                        
+                        try {
+                            opentypeFont = opentype.parse(fontBuffer);
+                            console.log(`✓ Loaded opentypeFont ${fontName} from backend TTF`);
                             
-                            // 下載 TTF 檔案
-                            const fontResponse = await fetch(ttfData.ttf_url);
-                            
-                            if (fontResponse.ok) {
-                                const fontBuffer = await fontResponse.arrayBuffer();
-                                
-                                // 檢查檔案格式（魔數簽名）
-                                const signatureBytes = new Uint8Array(fontBuffer.slice(0, 4));
-                                const signature = String.fromCharCode(...signatureBytes);
-                                console.log(`[V3 Font Loading] Font file signature: ${signature} (expected: '\\x00\\x01\\x00\\x00' for TTF or 'OTTO' for OTF)`);
-                                
-                                try {
-                                    opentypeFont = opentype.parse(fontBuffer);
-                                    console.log(`✓ Loaded opentypeFont ${fontName} from TTF via backend proxy`);
-                                    
-                                    // 如果還沒有 THREE.Font，從 opentype 轉換
-                                    if (!threeFont) {
-                                        const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
-                                        threeFont = loader.parse(typefaceData);
-                                        console.log(`✓ Converted to THREE.Font ${fontName}`);
-                                    }
-                                } catch (parseError) {
-                                    console.log(`✗ Parse failed: ${parseError.message}`);
-                                    console.log(`[V3 Font Loading] 可能是不支援的字體格式`);
-                                }
-                            } else {
-                                console.log(`✗ Font file fetch failed: ${fontResponse.status}`);
+                            // 如果還沒有 THREE.Font，從 opentype 轉換
+                            if (!threeFont) {
+                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
+                                threeFont = loader.parse(typefaceData);
+                                console.log(`✓ Converted to THREE.Font ${fontName}`);
                             }
-                        } else {
-                            console.log(`✗ 後端沒有回傳 TTF URL: ${ttfData.error}`);
+                        } catch (parseError) {
+                            console.log(`✗ Parse failed: ${parseError.message}`);
+                            console.log(`[V3 Font Loading] TTF 檔案解析失敗`);
                         }
                     } else {
-                        console.log(`✗ 後端 TTF URL endpoint 失敗: ${ttfUrlResponse.status}`);
+                        console.log(`✗ 後端 TTF endpoint 失敗: ${ttfResponse.status}`);
                     }
                 } catch (error) {
-                    console.warn(`[V3 Font Loading] Failed backend proxy: ${error.message}`);
+                    console.warn(`[V3 Font Loading] Failed to fetch TTF from backend: ${error.message}`);
                 }
             }
 
