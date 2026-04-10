@@ -3721,67 +3721,54 @@
             }
 
             // ==========================================
-            // V3 物理補償系統：嘗試從 @fontsource 載入 TTF 格式（opentype.js 可解析）
-            // @fontsource 套件在 esm.sh 提供實際的 TTF 檔案
-            // ==========================================
-            if (!opentypeFont) {
-                try {
-                    const fontUrlName = fontName.replace(/ /g, '-').toLowerCase();
-                    // @fontsource 的 TTF 檔案 URL 格式
-                    const ttfUrl = `https://esm.sh/@fontsource/${fontUrlName}/files/${fontUrlName}-regular-400.ttf`;
-
-                    console.log(`[V3 Font Loading] Trying TTF from @fontsource: ${ttfUrl}`);
-
-                    const ttfResponse = await fetch(ttfUrl);
-                    if (ttfResponse.ok) {
-                        const ttfBuffer = await ttfResponse.arrayBuffer();
-
-                        try {
-                            opentypeFont = opentype.parse(ttfBuffer);
-                            console.log(`✓ Loaded opentypeFont ${fontName} from TTF`);
-
-                            // 如果還沒有 THREE.Font，從 opentype 轉換
-                            if (!threeFont) {
-                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
-                                threeFont = loader.parse(typefaceData);
-                                console.log(`✓ Converted to THREE.Font ${fontName}`);
-                            }
-                        } catch (parseError) {
-                            console.log(`✗ TTF parse failed: ${parseError.message}`);
-                        }
-                    } else {
-                        console.log(`✗ TTF fetch failed: ${ttfResponse.status}`);
-                    }
-                } catch (error) {
-                    console.warn(`[V3 Font Loading] Failed @fontsource TTF: ${error.message}`);
-                }
-            }
-
-            // ==========================================
-            // 如果 TTF 載入失敗，嘗試 Google Fonts（可能是 woff2 格式）
-            // opentype.js 無法解析 woff2，所以這個 fallback 通常會失敗
+            // V3 物理補償系統：嘗試從 Google Fonts 取得 TTF 格式
+            // 關鍵：使用舊版瀏覽器 User-Agent 欺騙 Google 回傳 TTF 而非 woff2
+            // opentype.js 無法解析 woff2，只能解析 TTF/OTF
             // ==========================================
             if (!opentypeFont) {
                 try {
                     const fontUrlName = fontName.replace(/ /g, '+');
                     const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
 
-                    const cssResponse = await fetch(cssUrl);
+                    // 使用舊版瀏覽器 User-Agent 來取得 TTF URL（Google 會根據 UA 回傳不同格式）
+                    const cssResponse = await fetch(cssUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
+                        }
+                    });
+
                     if (cssResponse.ok) {
                         const cssText = await cssResponse.text();
+                        console.log(`[V3 Font Loading] Google Fonts CSS response (TTF strategy):`, cssText.substring(0, 200));
+
+                        // 匹配 TTF URL（Google 會根據 UA 回傳 .ttf 或 .woff2）
                         const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
 
                         if (urlMatch) {
                             const fontFileUrl = urlMatch[1];
-                            console.log(`[V3 Font Loading] Trying Google Fonts: ${fontFileUrl}`);
+                            console.log(`[V3 Font Loading] Font file URL: ${fontFileUrl}`);
 
-                            const fontResponse = await fetch(fontFileUrl);
+                            // 驗證 URL 是否為 TTF 格式
+                            if (!fontFileUrl.endsWith('.ttf')) {
+                                console.log(`[V3 Font Loading] ⚠️ 取得的不是 TTF 格式（${fontFileUrl.split('.').pop()}），opentype.js 可能無法解析`);
+                            }
+
+                            const fontResponse = await fetch(fontFileUrl, {
+                                headers: {
+                                    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
+                                }
+                            });
+
                             if (fontResponse.ok) {
                                 const fontBuffer = await fontResponse.arrayBuffer();
 
+                                // 檢查檔案格式（魔數簽名）
+                                const signature = String.fromCharCode(new Uint8Array(fontBuffer.slice(0, 4)).reduce((a, b) => a + String.fromCharCode(b), ''));
+                                console.log(`[V3 Font Loading] Font file signature: ${signature} (expected: '\\x00\\x01\\x00\\x00' for TTF or 'OTTO' for OTF)`);
+
                                 try {
                                     opentypeFont = opentype.parse(fontBuffer);
-                                    console.log(`✓ Loaded opentypeFont ${fontName}`);
+                                    console.log(`✓ Loaded opentypeFont ${fontName} from TTF`);
 
                                     // 如果還沒有 THREE.Font，從 opentype 轉換
                                     if (!threeFont) {
@@ -3790,10 +3777,17 @@
                                         console.log(`✓ Converted to THREE.Font ${fontName}`);
                                     }
                                 } catch (parseError) {
-                                    console.log(`✗ Parse failed (Google Fonts 通常是 woff2，opentype.js 不支援): ${parseError.message}`);
+                                    console.log(`✗ Parse failed: ${parseError.message}`);
+                                    console.log(`[V3 Font Loading] 可能是因為 Google 仍然回傳了 woff2 格式`);
                                 }
+                            } else {
+                                console.log(`✗ Font file fetch failed: ${fontResponse.status}`);
                             }
+                        } else {
+                            console.log(`✗ No font URL found in CSS response`);
                         }
+                    } else {
+                        console.log(`✗ Google Fonts CSS fetch failed: ${cssResponse.status}`);
                     }
                 } catch (error) {
                     console.warn(`[V3 Font Loading] Failed Google Fonts: ${error.message}`);
