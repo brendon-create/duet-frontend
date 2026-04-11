@@ -2538,52 +2538,39 @@
         function shapeToClipperPaths(shape) {
             const result = { outer: [], holes: [] };
 
-            // 外形狀路徑（顺时针 CW）
-            const outerPoints = shape.getOuterHoles()[0] || shape.getStraightBow().length > 0 ? [] : [];
-            // 遍歷 allPaths 取第一個當外形的起點
-            const allPaths = shape.getStraightBow();
-            if (allPaths && allPaths.length > 0) {
-                // 檢查是否是外形（不是孔洞）
-                // Three.js Shape.extractPoints() 會返回輪廓
-                const points = allPaths[0];
+            // 使用 shape.getPoints() 取得輪廓點（標準 Three.js API）
+            const divisions = 64;
+            const points = shape.getPoints(divisions);
+            
+            if (points && points.length > 0) {
                 for (let i = 0; i < points.length; i++) {
-                    outerPoints.push([
+                    result.outer.push([
                         Math.round(points[i].x * CLIPPER_SCALE),
                         Math.round(points[i].y * CLIPPER_SCALE)
                     ]);
                 }
             }
 
-            // 如果外形是空的，嘗試用 getOutermost()
-            if (outerPoints.length === 0) {
-                const outermost = shape.getOutermost();
-                if (outermost && outermost.length > 0) {
-                    for (let i = 0; i < outermost.length; i++) {
-                        outerPoints.push([
-                            Math.round(outermost[i].x * CLIPPER_SCALE),
-                            Math.round(outermost[i].y * CLIPPER_SCALE)
-                        ]);
+            // 孔洞：從 shape.holes 陣列取得（標準 Three.js 屬性）
+            if (shape.holes && shape.holes.length > 0) {
+                for (let h = 0; h < shape.holes.length; h++) {
+                    const holeCurves = shape.holes[h];
+                    const holePoints = [];
+                    // 從孔洞的曲線取得點
+                    const holePath = new THREE.Shape();
+                    holePath.curves = holeCurves;
+                    const extractedPoints = holePath.getPoints(divisions);
+                    if (extractedPoints) {
+                        for (let i = 0; i < extractedPoints.length; i++) {
+                            holePoints.push([
+                                Math.round(extractedPoints[i].x * CLIPPER_SCALE),
+                                Math.round(extractedPoints[i].y * CLIPPER_SCALE)
+                            ]);
+                        }
                     }
-                }
-            }
-
-            result.outer = outerPoints;
-
-            // 孔洞路徑（逆时针 CCW）
-            const holePaths = shape.getHoles();
-            for (let h = 0; h < holePaths.length; h++) {
-                const hole = holePaths[h];
-                const holePoints = [];
-                if (hole && hole.length > 0) {
-                    for (let i = 0; i < hole.length; i++) {
-                        holePoints.push([
-                            Math.round(hole[i].x * CLIPPER_SCALE),
-                            Math.round(hole[i].y * CLIPPER_SCALE)
-                        ]);
+                    if (holePoints.length > 0) {
+                        result.holes.push(holePoints);
                     }
-                }
-                if (holePoints.length > 0) {
-                    result.holes.push(holePoints);
                 }
             }
 
@@ -2621,35 +2608,42 @@
             // 收集所有多邊形路徑
             const paths = [];
 
-            // 外形（必须是 CW 顺序给 Clipper）
-            const outerPath = [];
-            const allPaths = shape.getStraightBow();
-            if (allPaths && allPaths.length > 0) {
-                for (let i = 0; i < allPaths[0].length; i++) {
+            // 外形：使用 shape.getPoints() 取得輪廓點（標準 Three.js API）
+            const divisions = 64;
+            const outerPoints = shape.getPoints(divisions);
+            if (outerPoints && outerPoints.length > 0) {
+                const outerPath = [];
+                for (let i = 0; i < outerPoints.length; i++) {
                     outerPath.push(new ClipperLib.IntPoint(
-                        allPaths[0][i].x * CLIPPER_SCALE,
-                        allPaths[0][i].y * CLIPPER_SCALE
+                        Math.round(outerPoints[i].x * CLIPPER_SCALE),
+                        Math.round(outerPoints[i].y * CLIPPER_SCALE)
                     ));
                 }
-            }
-            if (outerPath.length > 0) {
-                paths.push(outerPath);
+                if (outerPath.length > 0) {
+                    paths.push(outerPath);
+                }
             }
 
-            // 孔洞（必须是 CCW 顺序给 Clipper）
-            const holePaths = shape.getHoles();
-            for (let h = 0; h < holePaths.length; h++) {
-                const hole = holePaths[h];
-                if (hole && hole.length > 0) {
-                    const holePath = [];
-                    for (let i = 0; i < hole.length; i++) {
-                        holePath.push(new ClipperLib.IntPoint(
-                            hole[i].x * CLIPPER_SCALE,
-                            hole[i].y * CLIPPER_SCALE
-                        ));
-                    }
-                    if (holePath.length > 0) {
-                        paths.push(holePath);
+            // 孔洞：從 shape.holes 陣列取得（標準 Three.js 屬性）
+            if (shape.holes && shape.holes.length > 0) {
+                for (let h = 0; h < shape.holes.length; h++) {
+                    const holeCurves = shape.holes[h];
+                    if (holeCurves && holeCurves.length > 0) {
+                        const holePath = [];
+                        const tempShape = new THREE.Shape();
+                        tempShape.curves = holeCurves;
+                        const holePoints = tempShape.getPoints(divisions);
+                        if (holePoints) {
+                            for (let i = 0; i < holePoints.length; i++) {
+                                holePath.push(new ClipperLib.IntPoint(
+                                    Math.round(holePoints[i].x * CLIPPER_SCALE),
+                                    Math.round(holePoints[i].y * CLIPPER_SCALE)
+                                ));
+                            }
+                        }
+                        if (holePath.length > 0) {
+                            paths.push(holePath);
+                        }
                     }
                 }
             }
@@ -3873,82 +3867,55 @@
                 return [shape];
             }
 
-            // 收集外形和孔洞路徑
-            const paths = [];
-
-            // 外形（必须 CW 顺序）
-            const outerPoints = [];
-            // 使用 shape.getStraightBow() 或手動遍歷
-            const outerPath = shape.getStraightBow();
-            if (outerPath && outerPath.length > 0) {
-                for (let i = 0; i < outerPath[0].length; i++) {
-                    outerPoints.push(new ClipperLib.IntPoint(
-                        outerPath[0][i].x * CLIPPER_SCALE,
-                        outerPath[0][i].y * CLIPPER_SCALE
-                    ));
-                }
-            }
-            if (outerPoints.length > 0) {
-                paths.push(outerPoints);
-            }
-
-            // 孔洞（必须 CCW 顺序）
-            const holePaths = shape.getHoles();
-            for (let h = 0; h < holePaths.length; h++) {
-                const hole = holePaths[h];
-                if (hole && hole.length > 0) {
-                    const holePoints = [];
-                    for (let i = 0; i < hole.length; i++) {
-                        holePoints.push(new ClipperLib.IntPoint(
-                            hole[i].x * CLIPPER_SCALE,
-                            hole[i].y * CLIPPER_SCALE
-                        ));
-                    }
-                    if (holePoints.length > 0) {
-                        paths.push(holePoints);
-                    }
-                }
-            }
-
-            if (paths.length === 0) {
-                console.warn('[V3 Clipper] 無法提取路徑');
+            // 使用 shape.getPoints() 取得輪廓點（標準 Three.js API）
+            const divisions = 64;  // 解析度：曲線上的點數量
+            const points = shape.getPoints(divisions);
+            
+            if (!points || points.length === 0) {
+                console.warn('[V3 Clipper] 無法從 Shape 取得輪廓點');
                 return [shape];
             }
 
-            // 執行 Clipper offset
+            // 將點轉換為 Clipper 路徑（使用 IntPoint）
+            const clipperPath = [];
+            for (let i = 0; i < points.length; i++) {
+                clipperPath.push(new ClipperLib.IntPoint(
+                    Math.round(points[i].x * CLIPPER_SCALE),
+                    Math.round(points[i].y * CLIPPER_SCALE)
+                ));
+            }
+
+            // 執行 Clipper Offset（MinkowskiSum 或 Contour Offset）
+            // 注意：對於簡單的輪廓 offset，直接使用 Contour Offset
             const clipper = new ClipperLib.Clipper();
-            clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
-
-            const scaledOffset = offsetAmount * CLIPPER_SCALE;
-            const joinType = ClipperLib.JoinType.jtRound;
-            const miterLimit = 2;
-
+            
+            // 將路徑縮放以進行 offset
+            const scaledOffset = Math.round(offsetAmount * CLIPPER_SCALE);
+            
+            // 使用 Contour Offset（不是 MinkowskiSum）
             const offsettedPaths = new ClipperLib.Paths();
-            const success = clipper.Execute(
-                ClipperLib.ClipType.ctUnion,
-                offsettedPaths,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                {
-                    ArcTolerance: 0.25,
-                    MiterLimit: miterLimit,
-                    RoundType: ClipperLib.RoundType.Round,
-                    OffsetType: ClipperLib.OffsetType.etRound
-                }
-            );
+            
+            // 方法：先擴大輪廓，再收縮回來（類似 offset）
+            // 或者直接使用 ClipperOffset
+            const co = new ClipperLib.ClipperOffset();
+            co.AddPath(clipperPath, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+            
+            co.Execute(offsettedPaths, scaledOffset);
 
-            if (!success || offsettedPaths.length === 0) {
-                console.warn('[V3 Clipper] Offset 失敗');
+            if (!offsettedPaths || offsettedPaths.length === 0) {
+                console.warn('[V3 Clipper] Offset 執行後無輸出');
                 return [shape];
             }
 
             // 將 Clipper 路徑轉換回 THREE.Shape
             const resultShapes = [];
-            for (const clipperPath of offsettedPaths) {
+            for (const cp of offsettedPaths) {
+                if (cp.length < 3) continue;  // 至少需要 3 個點才能形成多邊形
+                
                 const newShape = new THREE.Shape();
-                for (let i = 0; i < clipperPath.length; i++) {
-                    const x = clipperPath[i].X / CLIPPER_SCALE;
-                    const y = clipperPath[i].Y / CLIPPER_SCALE;
+                for (let i = 0; i < cp.length; i++) {
+                    const x = cp[i].X / CLIPPER_SCALE;
+                    const y = cp[i].Y / CLIPPER_SCALE;
                     if (i === 0) {
                         newShape.moveTo(x, y);
                     } else {
@@ -3959,7 +3926,12 @@
                 resultShapes.push(newShape);
             }
 
-            console.log(`[V3 Clipper] Offset 完成，輸出 ${resultShapes.length} 個路徑`);
+            if (resultShapes.length === 0) {
+                console.warn('[V3 Clipper] 無有效結果');
+                return [shape];
+            }
+
+            console.log(`[V3 Clipper] Offset 完成，輸出 ${resultShapes.length} 個路徑，offset=${offsetAmount}mm`);
             return resultShapes;
         }
 
