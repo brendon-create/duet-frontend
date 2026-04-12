@@ -3818,40 +3818,243 @@
          */
         function opentypePathToThreeShape(path, scale = 1) {
             const shape = new THREE.Shape();
-            let isFirst = true;
 
             for (const cmd of path.commands) {
                 const x = cmd.x * scale;
-                const y = cmd.y * scale;
+                const y = cmd.y * scale;  // Y 軸不翻轉（opentype Y 向上 = Three.js Y 向上）
 
                 switch (cmd.type) {
-                    case 'M':  // moveto
+                    case 'M':
                         shape.moveTo(x, y);
-                        isFirst = true;
                         break;
-                    case 'L':  // lineto
+                    case 'L':
                         shape.lineTo(x, y);
                         break;
-                    case 'Q':  // quadratic curve
-                        shape.quadraticCurveTo(
-                            cmd.x1 * scale, cmd.y1 * scale,
-                            x, y
-                        );
+                    case 'Q':
+                        shape.quadraticCurveTo(cmd.x1 * scale, cmd.y1 * scale, x, y);
                         break;
-                    case 'C':  // cubic bezier
+                    case 'C':
                         shape.bezierCurveTo(
                             cmd.x1 * scale, cmd.y1 * scale,
                             cmd.x2 * scale, cmd.y2 * scale,
                             x, y
                         );
                         break;
-                    case 'Z':  // closepath
+                    case 'Z':
                         shape.closePath();
                         break;
                 }
             }
 
             return shape;
+        }
+
+        /**
+         * 將 opentype.js glyph（可能有多個輪廓）轉換為 THREE.Shape
+         * 處理孔洞：外輪廓 CW，內孔洞 CCW
+         * @param {Object} glyph - opentype.js glyph 對象
+         * @param {Object} font - opentype.js font 對象
+         * @param {number} offsetR - 補償量（原始單位）
+         * @returns {THREE.Shape[]} Shape 陣列
+         */
+        async function glyphToShapes(glyph, font, offsetR = 0) {
+            const ClipperLib = await loadClipperLib();
+            
+            // 使用 getPaths() 取得所有輪廓
+            const paths = glyph.getPaths(font.unitsPerEm);
+            if (!paths || paths.length === 0) {
+                console.warn('[V3] 無法取得 glyph 輪廓');
+                return [];
+            }
+            
+            console.log(`[V3] glyph 有 ${paths.length} 個輪廓`);
+            
+            // 轉換所有輪廓為點陣列，並計算邊界
+            const contourInfos = paths.map((p, idx) => {
+                const points = [];
+                let startX = 0, startY = 0;
+                for (const cmd of p.commands) {
+                    switch (cmd.type) {
+                        case 'M':
+                            startX = cmd.x;
+                            startY = cmd.y;
+                            points.push({ x: cmd.x, y: cmd.y });
+                            break;
+                        case 'L':
+                            points.push({ x: cmd.x, y: cmd.y });
+                            break;
+                        case 'Q':
+                            points.push({ x: cmd.x, y: cmd.y });
+                            break;
+                        case 'C':
+                            points.push({ x: cmd.x, y: cmd.y });
+                            break;
+                        case 'Z':
+                            points.push({ x: startX, y: startY });
+                            break;
+                    }
+                }
+                
+                // 計算邊界框
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const pt of points) {
+                    minX = Math.min(minX, pt.x);
+                    maxX = Math.max(maxX, pt.x);
+                    minY = Math.min(minY, pt.y);
+                    maxY = Math.max(maxY, pt.y);
+                }
+                
+                // 轉換為 Clipper IntPoint 並檢查方向
+                const intPoints = points.map(pt => new ClipperLib.IntPoint(pt.x, pt.y));
+                const isCW = ClipperLib.Clipper.Orientation(intPoints);
+                
+                console.log(`[V3] 輪廓 ${idx}: ${isCW ? 'CW (外)' : 'CCW (孔)'}, 點數: ${points.length}`);
+                
+                return {
+                    points,
+                    intPoints,
+                    isCW,
+                    centerX: (minX + maxX) / 2,
+                    centerY: (minY + maxY) / 2,
+                    width: maxX - minX,
+                    height: maxY - minY
+                };
+            });
+            
+            // 找出外輪廓（第一個 CW 的）
+            let outerIdx = contourInfos.findIndex(c => c.isCW);
+            if (outerIdx === -1) outerIdx = 0;  // 沒有 CW，就用第一個
+            
+            // 建立 Shape 並加入孔洞
+            const mainShape = new THREE.Shape();
+            const outer = contourInfos[outerIdx];
+            
+            // 使用 outer.minY 作為 baseline（不是 centerY）
+            // 這樣孔洞會保持在正確的位置（相對於 baseline）
+            // 例如 'A' 的孔洞在 y=200-500，會正確地位於 outer 的上方（y=200-500）
+            const baselineX = outer.minX;
+            const baselineY = outer.minY;  // 這是 baseline（y=0 在 opentype 中）
+            
+            // 移動外輪廓到原點（以 baseline 為準）
+            for (let i = 0; i < outer.points.length; i++) {
+                const pt = outer.points[i];
+                const x = (pt.x - baselineX);
+                const y = (pt.y - baselineY);
+                
+                if (i === 0) {
+                    mainShape.moveTo(x, y);
+                } else {
+                    mainShape.lineTo(x, y);
+                }
+            }
+            mainShape.closePath();
+            
+            // 加入其他輪廓作為孔洞
+            for (let i = 0; i < contourInfos.length; i++) {
+                if (i === outerIdx) continue;
+                
+                const hole = contourInfos[i];
+                const holePath = new THREE.Path();
+                
+                // 使用同樣的 baseline 偏移，保持孔洞與外輪廓的相對位置
+                for (let j = 0; j < hole.points.length; j++) {
+                    const pt = hole.points[j];
+                    const x = (pt.x - baselineX);
+                    const y = (pt.y - baselineY);
+                    
+                    if (j === 0) {
+                        holePath.moveTo(x, y);
+                    } else {
+                        holePath.lineTo(x, y);
+                    }
+                }
+                holePath.closePath();
+                
+                mainShape.holes.push(holePath);
+            }
+            
+            // 如果有 offsetR，先做 offset（在外輪廓級別）
+            if (offsetR !== 0) {
+                const offsetShapes = await offsetContoursWithClipper(mainShape, offsetR);
+                if (offsetShapes.length > 0) {
+                    return offsetShapes;
+                }
+            }
+            
+            return [mainShape];
+        }
+
+        /**
+         * 使用 ClipperLib 對輪廓執行 offset
+         * @param {THREE.Shape} shape - 含孔洞的 Shape
+         * @param {number} offsetR - offset 量（原始單位）
+         * @returns {THREE.Shape[]} offset 後的 Shapes
+         */
+        async function offsetContoursWithClipper(shape, offsetR) {
+            const ClipperLib = await loadClipperLib();
+            
+            try {
+                // 對外輪廓做 offset
+                const outerPoints = shape.getPoints(64);
+                const clipperPath = outerPoints.map(pt => 
+                    new ClipperLib.IntPoint(Math.round(pt.x), Math.round(pt.y))
+                );
+                
+                const co = new ClipperLib.ClipperOffset();
+                co.AddPath(clipperPath, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+                
+                const offsettedPaths = new ClipperLib.Paths();
+                co.Execute(offsettedPaths, offsetR);
+                
+                if (!offsettedPaths || offsettedPaths.length === 0) {
+                    console.warn('[V3 Clipper] Offset 無輸出');
+                    return [shape];
+                }
+                
+                console.log(`[V3 Clipper] Offset 完成，產生 ${offsettedPaths.length} 個輪廓`);
+                
+                // 轉換回 THREE.Shape
+                const resultShapes = [];
+                for (const cp of offsettedPaths) {
+                    if (cp.length < 3) continue;
+                    
+                    const newShape = new THREE.Shape();
+                    for (let i = 0; i < cp.length; i++) {
+                        const x = cp[i].X;
+                        const y = cp[i].Y;
+                        if (i === 0) {
+                            newShape.moveTo(x, y);
+                        } else {
+                            newShape.lineTo(x, y);
+                        }
+                    }
+                    newShape.closePath();
+                    resultShapes.push(newShape);
+                }
+                
+                // 重建孔洞
+                for (const newShape of resultShapes) {
+                    for (const holePath of shape.holes) {
+                        const holePoints = holePath.getPoints(64);
+                        const newHole = new THREE.Path();
+                        for (let i = 0; i < holePoints.length; i++) {
+                            const pt = holePoints[i];
+                            if (i === 0) {
+                                newHole.moveTo(pt.x, pt.y);
+                            } else {
+                                newHole.lineTo(pt.x, pt.y);
+                            }
+                        }
+                        newHole.closePath();
+                        newShape.holes.push(newHole);
+                    }
+                }
+                
+                return resultShapes;
+            } catch (e) {
+                console.error('[V3 Clipper] Offset 錯誤:', e);
+                return [shape];
+            }
         }
 
         /**
@@ -3955,51 +4158,46 @@
 
             console.log(`[V3] createV3LetterGeometry: ${letter}, font: ${fontName}, offset_r: ${offset_r}`);
 
-            // 1. 使用 opentype.js 取得字母路徑
+            // 1. 使用 opentype.js 取得字母 glyph
             const glyph = opentypeFont.charToGlyph(letter);
             if (!glyph || glyph.index === 0) {
                 console.warn(`[V3] 無法取得 ${letter} 的 glyph`);
                 return null;
             }
 
-            // 取得路徑（opentype 使用 baseline 坐標，需要翻轉）
-            const path = glyph.getPath(0, opentypeFont.ascender, opentypeFont.unitsPerEm);
-
-            // 計算縮放比例：將 opentype 單位映射到 Three.js 單位
-            // opentype 的 unitsPerEm 通常是 1000
-            // 我們需要讓字母大約等於 targetHeight
-            const fontHeight = opentypeFont.ascender - opentypeFont.descender;
-            const scale = targetHeight / fontHeight;
-
-            // 2. 將路徑轉換為 THREE.Shape
-            const originalShape = opentypePathToThreeShape(path, scale);
-
-            // 3. 如果有 offset_r > 0，使用 ClipperLib 執行 offset
-            let finalShapes = [originalShape];
-            if (offset_r > 0) {
-                console.log(`[V3] 執行 Clipper offset: ${offset_r}mm`);
-                finalShapes = await offsetShapeWithClipper(originalShape, offset_r);
+            // 2. 使用 glyphToShapes() 將 glyph 轉換為 THREE.Shape[]
+            // 這個函數會處理多輪廓 glyph（有空心的字母如 A、B、O）
+            // 並且在 offset_r > 0 時執行 ClipperLib offset
+            // 坐標已相對於 baseline (minY) 進行了偏移
+            const shapes = await glyphToShapes(glyph, opentypeFont, offset_r);
+            if (!shapes || shapes.length === 0) {
+                console.warn(`[V3] 無法將 ${letter} 轉換為 shapes`);
+                return null;
             }
 
-            // 4. 使用 ExtrudeGeometry 擠出
-            // ExtrudeGeometry 接受單一 Shape 或 Shape[]，depth 是 Z 軸深度
+            // 3. 使用 ExtrudeGeometry 擠出（使用原始坐標，約 1000 單位）
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
                 curveSegments: 24
             };
+            const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            const geometry = new THREE.ExtrudeGeometry(finalShapes, extrudeSettings);
-
-            // 5. 居中
+            // 4. 計算當前幾何高度並縮放到 targetHeight
             geometry.computeBoundingBox();
             const bbox = geometry.boundingBox;
-            const centerX = (bbox.max.x + bbox.min.x) / 2;
-            const centerY = (bbox.max.y + bbox.min.y) / 2;
-            const centerZ = (bbox.max.z + bbox.min.z) / 2;
-            geometry.translate(-centerX, -centerY, -centerZ);
+            const currentHeight = bbox.max.y - bbox.min.y;
+            
+            if (currentHeight > 0) {
+                const scale = targetHeight / currentHeight;
+                geometry.scale(scale, scale, scale);
+                console.log(`[V3] 縮放到 targetHeight: ${targetHeight}mm (scale: ${scale.toFixed(4)})`);
+            }
 
-            console.log(`[V3] ExtrudeGeometry 完成: ${letter}, depth: ${depth}`);
+            // 5. 置中
+            geometry.center();
+
+            console.log(`[V3] ExtrudeGeometry 完成: ${letter}, depth: ${depth}, finalHeight: ${targetHeight}mm`);
             return geometry;
         }
 
