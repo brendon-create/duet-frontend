@@ -4177,15 +4177,8 @@
             letter1Select.value = inputChars[0];
             letter2Select.value = inputChars[1];
 
-            // 保留舊選中的字體順序（用於檢測新增的字體）
-            const oldSelectedFonts = Array.from(document.querySelectorAll('.font-list-item input[type="checkbox"]:checked'))
-                .map(cb => cb.dataset.font);
-
-            // 新選中的字體
-            const newSelectedFonts = Array.from(checkedFonts);
-
-            // 合併順序：新選的字體優先（因為是最近選擇的），舊選的放在後面
-            const selectedFonts = [...newSelectedFonts, ...oldSelectedFonts.filter(f => newSelectedFonts.includes(f))];
+            // 直接使用 checkedFonts，因為 Set 會維持插入順序
+            const selectedFonts = Array.from(checkedFonts);
 
             // 更新字體按鈕為下拉選單
             ['font1', 'font2'].forEach((target, idx) => {
