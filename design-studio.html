@@ -3395,38 +3395,40 @@
 
         /**
          * 遞迴遍歷 PolyTree 節點，建立 THREE.Shape（含正確孔洞）
-         * 使用 node.IsHole() 判定是否為孔洞
          * @param {ClipperLib.PolyNode} node - PolyTree 節點
          * @param {number} scale - 整數縮放因子（需除回）
-         * @param {Array} shapes - 收集結果的 Shape 陣列
+         * @param {Array} allShapes - 收集結果的 Shape 陣列
+         * @param {Object} container - 父節點的 Shape（孔洞會被加入這裡）
          */
-        function traversePolyTreeNode(node, scale, shapes) {
+        function traversePolyTreeNode(node, scale, allShapes, container) {
             const ClipperLib = window.ClipperLib;
 
             if (!node) return;
 
-            // IsHole() === false 表示這是外輪廓
-            if (!node.IsHole()) {
-                // 這是一個外輪廓（或是根節點）
-                // 建立新的 Shape
-                const pts = node.Value.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                const newShape = new THREE.Shape(pts);
-                shapes.push(newShape);
+            // 取得輪廓座標
+            const pts = node.Contour().map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
 
-                // 遞迴處理子節點（孔洞）
+            if (!node.IsHole()) {
+                // 外輪廓：建立新的 Shape
+                const shape = new THREE.Shape(pts);
+                allShapes.push(shape);
+                console.log(`[V3] 建立 Shape: ${allShapes.length}`);
+
+                // 遞迴處理子節點（可能是孔洞或嵌套輪廓）
                 const children = node.Childs();
                 for (var i = 0; i < children.length; i++) {
-                    var child = children[i];
-                    if (child.IsHole()) {
-                        // 孔洞：建立 Path 並加入父 Shape
-                        const holePts = child.Value.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                        const holePath = new THREE.Path(holePts);
-                        newShape.holes.push(holePath);
-                        console.log(`[V3] 孔洞已加入: ${newShape.holes.length} 個孔洞`);
-                    } else {
-                        // 子外輪廓（嵌套輪廓，可能是裝飾孔）
-                        traversePolyTreeNode(child, scale, shapes);
-                    }
+                    traversePolyTreeNode(children[i], scale, allShapes, shape);
+                }
+            } else {
+                // 孔洞：加入父節點的 holes
+                const holePath = new THREE.Path(pts);
+                container.holes.push(holePath);
+                console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${container.holes.length}`);
+
+                // 遞迴處理子節點（孔洞內可能有嵌套實心）
+                const children = node.Childs();
+                for (var i = 0; i < children.length; i++) {
+                    traversePolyTreeNode(children[i], scale, allShapes, container);
                 }
             }
         }
@@ -3446,37 +3448,29 @@
                 return shapes;
             }
 
-            // 🔧 使用 PolyTree 進行層級化的孔洞偵測
             // 使用 Clipper.BoolOp 合併路徑，結果用 PolyTree 接收
             const co = new ClipperLib.Clipper();
             co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
 
-            const solution = new ClipperLib.PolyTree();
+            const polyTree = new ClipperLib.PolyTree();
             co.Execute(
                 ClipperLib.ClipType.ctUnion,
-                solution,
+                polyTree,
                 ClipperLib.PolyFillType.pftEvenOdd,
                 ClipperLib.PolyFillType.pftEvenOdd
             );
 
-            console.log(`[V3] PolyTree 節點數: ${solution.Childs().length}`);
+            console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
 
             // 遍歷 PolyTree 的根節點
-            var rootChildren = solution.Childs();
+            var rootChildren = polyTree.Childs();
             for (var i = 0; i < rootChildren.length; i++) {
                 var child = rootChildren[i];
-                if (child.Value && child.Value.length > 0) {
-                    traversePolyTreeNode(child, scale, shapes);
-                }
+                // 根節點的 container 是 null（最外層不需要加入孔洞）
+                traversePolyTreeNode(child, scale, shapes, null);
             }
 
-            // 如果 PolyTree 方法失敗（沒有Childs），fallback 到舊的 Orientation 排序方法
-            if (shapes.length === 0) {
-                console.warn('[V3] PolyTree 方法失敗，使用 Orientation 排序 fallback');
-                return clipperPathsToThreeShapes_OldFallback(clipperPaths, scale);
-            }
-
-            console.log(`[V3] Shape 數量（PolyTree）：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
+            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
             return shapes;
         }
 
