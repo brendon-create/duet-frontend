@@ -3662,8 +3662,9 @@
             let finalPaths = clipperPaths;
             if (offsetR > 0) {
                 // 換算：offset_r (mm) → 歸一化座標 → Clipper 整數單位
-                // 歸一化後 fontHeight 約為 1.x，所以直接用 targetHeight * fontHeight
-                const offsetUnits = offsetR * fontHeight * CLIP_SCALE;
+                // 換算：offset_r (mm) → 歸一化比例 → Clipper 整數單位
+                // 歸一化後，1 unit = 1mm（目標高度），所以 offset 比例 = offsetR / targetHeight
+                const offsetUnits = (offsetR / targetHeight) * CLIP_SCALE;
                 console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
                 finalPaths = clipperOffset(clipperPaths, offsetUnits);
                 console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
@@ -3696,7 +3697,11 @@
             console.log(`[V3] 縮放比例：${scaleFactor}（歸一化 → ${targetHeight}mm）`);
             geo.scale(scaleFactor, scaleFactor, scaleFactor);
 
-            // ── 步驟 7：置中 ──────────────────────────────────────────
+            // ── 步驟 7：Y 軸 180 度旋轉 ──────────────────────────────
+            // JSON 是 Y-up，但 Three.js 渲染時需要翻轉。用空間旋轉而非座標取負
+            geo.rotateX(Math.PI);
+
+            // ── 步驟 8：置中 ──────────────────────────────────────────
             // 使用 Three.js 內建的 center() 方法，不再手算偏移
             geo.center();
 
