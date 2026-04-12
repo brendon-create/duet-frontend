@@ -3339,7 +3339,7 @@
 
         /**
          * 對 Clipper 路徑執行 Offset（膨脹）
-         * 外輪廓（CW）正向偏移；內孔洞（CCW）負向偏移
+         * 修復：先 Union 合併拓撲，再統一 offset，避免碎裂
          * @param {Array} paths - ClipperLib.Paths
          * @param {number} offsetUnits - 偏移量（Clipper 整數單位）
          * @returns {Array} 偏移後的 ClipperLib.Paths
@@ -3348,47 +3348,59 @@
             if (offsetUnits === 0) return paths;
 
             const ClipperLib = window.ClipperLib;
-            const co = new ClipperLib.ClipperOffset();
 
-            for (const path of paths) {
-                const isCW = ClipperLib.Clipper.Orientation(path);
-                // 外輪廓 CW → 正向 offset；孔洞 CCW → 負向 offset
-                const delta = isCW ? offsetUnits : -offsetUnits;
-                co.AddPath(
-                    path,
-                    ClipperLib.JoinType.jtRound,
-                    ClipperLib.EndType.etClosedPolygon
-                );
-                // ClipperOffset 不支援個別路徑不同 delta，需分開 Execute
-                const partResult = new ClipperLib.Paths();
-                co.Execute(partResult, delta);
-                // 把結果合回（重新建立一個乾淨的 ClipperOffset）
-                co.Clear();
-                // 暫存：分開累積結果
-                paths = paths; // 下面改用另一種方式
-            }
+            // Step 1: CleanPolygons 移除自相交點，避免碎裂
+            const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
+            console.log(`[V3] CleanPolygons 後路徑數: ${cleaned.length}`);
 
-            // 正確做法：分開處理外輪廓和孔洞
-            const outerPaths = paths.filter(p => ClipperLib.Clipper.Orientation(p));
-            const holePaths  = paths.filter(p => !ClipperLib.Clipper.Orientation(p));
+            // Step 2: 先 Union 合併所有路徑，建立正確的拓撲關係
+            const co = new ClipperLib.Clipper();
+            co.AddPaths(cleaned, ClipperLib.PolyType.ptSubject, true);
 
+            const polyTree = new ClipperLib.PolyTree();
+            co.Execute(
+                ClipperLib.ClipType.ctUnion,
+                polyTree,
+                ClipperLib.PolyFillType.pftEvenOdd,
+                ClipperLib.PolyFillType.pftEvenOdd
+            );
+            console.log(`[V3] Union PolyTree 節點數: ${polyTree.Childs().length}`);
+
+            // Step 3: 將 PolyTree 展平為路徑陣列，準備做 offset
+            const flatPaths = [];
+            const flattenPolyTreeToPaths = (node) => {
+                if (node.Contour && node.Contour().length > 0) {
+                    flatPaths.push(node.Contour());
+                }
+                const children = node.Childs();
+                for (var i = 0; i < children.length; i++) {
+                    flattenPolyTreeToPaths(children[i]);
+                }
+            };
+            flattenPolyTreeToPaths(polyTree);
+            console.log(`[V3] 展平后路徑數: ${flatPaths.length}`);
+
+            // Step 4: 對合併後的路徑做統一 offset（正向膨脹）
+            const coOffset = new ClipperLib.ClipperOffset();
+            coOffset.MiterLimit = 2.0;
+            coOffset.AddPaths(flatPaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+
+            const offsetResult = new ClipperLib.PolyTree();
+            coOffset.Execute(offsetResult, offsetUnits); // 正值 = 向外膨脹
+
+            // Step 5: 將 offset 後的 PolyTree 展平回傳
             const resultPaths = [];
-
-            if (outerPaths.length > 0) {
-                const coOuter = new ClipperLib.ClipperOffset();
-                coOuter.AddPaths(outerPaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
-                const outerResult = new ClipperLib.Paths();
-                coOuter.Execute(outerResult, offsetUnits);
-                resultPaths.push(...outerResult);
-            }
-
-            if (holePaths.length > 0) {
-                const coHole = new ClipperLib.ClipperOffset();
-                coHole.AddPaths(holePaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
-                const holeResult = new ClipperLib.Paths();
-                coHole.Execute(holeResult, -offsetUnits); // 孔洞向內縮
-                resultPaths.push(...holeResult);
-            }
+            const flattenResult = (node) => {
+                if (node.Contour && node.Contour().length > 0) {
+                    resultPaths.push(node.Contour());
+                }
+                const children = node.Childs();
+                for (var i = 0; i < children.length; i++) {
+                    flattenResult(children[i]);
+                }
+            };
+            flattenResult(offsetResult);
+            console.log(`[V3] Offset 後路徑數: ${resultPaths.length}`);
 
             return resultPaths;
         }
@@ -3421,9 +3433,11 @@
                 }
             } else {
                 // 孔洞：加入父節點的 holes
-                const holePath = new THREE.Path(pts);
-                container.holes.push(holePath);
-                console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${container.holes.length}`);
+                if (container) {
+                    const holePath = new THREE.Path(pts);
+                    container.holes.push(holePath);
+                    console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${container.holes.length}`);
+                }
 
                 // 遞迴處理子節點（孔洞內可能有嵌套實心）
                 const children = node.Childs();
@@ -3436,7 +3450,7 @@
         /**
          * 將 Clipper 路徑陣列重新組裝成 THREE.Shape 陣列
          * 使用 PolyTree + IsHole() 進行正確的孔洞偵測
-         * @param {Array} clipperPaths - 偏移後的 ClipperLib.Paths
+         * @param {Array} clipperPaths - 偏移後的 ClipperLib.Paths 或 PolyTree
          * @param {number} scale - 整數縮放因子（需除回）
          * @returns {Array} THREE.Shape[]
          */
@@ -3448,26 +3462,50 @@
                 return shapes;
             }
 
-            // 使用 Clipper.BoolOp 合併路徑，結果用 PolyTree 接收
-            const co = new ClipperLib.Clipper();
-            co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
+            // 檢查是否為 PolyTree（若是，Childs 是方法）
+            var rootChildren;
+            var isPolyTree = false;
 
-            const polyTree = new ClipperLib.PolyTree();
-            co.Execute(
-                ClipperLib.ClipType.ctUnion,
-                polyTree,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd
-            );
+            try {
+                rootChildren = clipperPaths.Childs();
+                if (rootChildren && rootChildren.length !== undefined) {
+                    isPolyTree = true;
+                }
+            } catch (e) {
+                // 不是 PolyTree，是普通的 Paths 陣列
+                rootChildren = null;
+            }
 
-            console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
+            if (isPolyTree) {
+                // 直接遍歷 PolyTree
+                console.log(`[V3] PolyTree 根節點數: ${rootChildren.length}`);
 
-            // 遍歷 PolyTree 的根節點
-            var rootChildren = polyTree.Childs();
-            for (var i = 0; i < rootChildren.length; i++) {
-                var child = rootChildren[i];
-                // 根節點的 container 是 null（最外層不需要加入孔洞）
-                traversePolyTreeNode(child, scale, shapes, null);
+                for (var i = 0; i < rootChildren.length; i++) {
+                    var child = rootChildren[i];
+                    // 根節點的 container 是 null（最外層不需要加入孔洞）
+                    traversePolyTreeNode(child, scale, shapes, null);
+                }
+            } else {
+                // 普通 Paths 陣列：使用 Clipper.BoolOp 建立 PolyTree
+                const co = new ClipperLib.Clipper();
+                co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
+
+                const polyTree = new ClipperLib.PolyTree();
+                co.Execute(
+                    ClipperLib.ClipType.ctUnion,
+                    polyTree,
+                    ClipperLib.PolyFillType.pftEvenOdd,
+                    ClipperLib.PolyFillType.pftEvenOdd
+                );
+
+                console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
+
+                // 遍歷 PolyTree 的根節點
+                var rootChildren = polyTree.Childs();
+                for (var i = 0; i < rootChildren.length; i++) {
+                    var child = rootChildren[i];
+                    traversePolyTreeNode(child, scale, shapes, null);
+                }
             }
 
             console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
