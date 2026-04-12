@@ -3831,7 +3831,8 @@
             // 使用從 fonts.json 載入的可用字體清單
             const fontsToDisplay = availableFonts.length > 0 ? availableFonts : [];
 
-            fontsToDisplay.forEach((font) => {
+            fontsToDisplay.forEach((fontObj) => {
+                const font = fontObj.name;  // fonts.json 的格式為物件
                 const item = document.createElement('div');
                 item.className = 'font-list-item';
 
