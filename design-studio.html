@@ -559,6 +559,60 @@
             box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
         }
 
+        /* 手機版 Font Selector Modal 響應式設計 */
+        @media (max-width: 768px) {
+            #font-selector-modal {
+                left: 0;
+                right: 0;
+                top: 10px;
+                bottom: 10px;
+                max-height: calc(100vh - 20px);
+                border-radius: 12px;
+            }
+
+            .modal-layout {
+                flex-direction: column;
+                height: calc(100vh - 120px); /* 留空間給關閉按鈕和確認按鈕 */
+            }
+
+            .font-sidebar {
+                width: 100%;
+                min-width: unset;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                max-height: 35%;
+                overflow-y: auto;
+            }
+
+            .font-display-area {
+                padding: 20px;
+                gap: 15px;
+                padding-bottom: 100px; /* 預留空間給絕對定位的確認按鈕 */
+            }
+
+            .confirm-container {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                display: flex;
+                justify-content: center;
+            }
+
+            .confirm-btn {
+                padding: 14px 32px;
+                font-size: 13px;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .close-modal-btn {
+                top: 10px;
+                right: 15px;
+                font-size: 32px;
+            }
+        }
+
         /* Cart Modal */
         #cart-modal {
             display: none;
