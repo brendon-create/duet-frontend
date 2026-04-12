@@ -3550,19 +3550,73 @@
             return shapes;
         }
 
+        // ============================================================
+        // V3 JSON 預處理資料快取
+        // ============================================================
+        const v3FontDataCache = new Map();
+
         /**
-         * V3 核心：從字體名稱和字母，產生已做 Offset 的 THREE.BufferGeometry
-         *
+         * 載入 V3 預處理過的字體 JSON 資料
+         * 使用快取避免重複載入
+         * 
+         * @param {string} fontName - 字體名稱
+         * @returns {Promise<object>} - 字體資料物件
+         */
+        async function loadV3FontData(fontName) {
+            if (v3FontDataCache.has(fontName)) {
+                return v3FontDataCache.get(fontName);
+            }
+
+            const jsonUrl = `assets/v3-data/${fontName}.json`;
+            console.log(`[V3] 載入預處理字體資料：${jsonUrl}`);
+            
+            try {
+                const response = await fetch(jsonUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const fontData = await response.json();
+                v3FontDataCache.set(fontName, fontData);
+                console.log(`[V3] 字體資料載入成功：${fontName}，glyphs 數量：${Object.keys(fontData.glyphs).length}`);
+                return fontData;
+            } catch (err) {
+                console.error(`[V3] 載入字體資料失敗：${fontName}`, err);
+                throw err;
+            }
+        }
+
+        /**
+         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
+         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
+         * 
+         * @param {Array} points - JSON 中的 path 陣列
+         * @param {number} CLIP_SCALE - 縮放因子
+         * @returns {Array} - Clipper 路徑格式
+         */
+        function v3PathToClipperPath(points, CLIP_SCALE) {
+            const path = [];
+            for (const pt of points) {
+                path.push({
+                    X: Math.round(pt.x * CLIP_SCALE),
+                    Y: Math.round(pt.y * CLIP_SCALE)
+                });
+            }
+            return path;
+        }
+
+        /**
+         * V3 核心：從預處理 JSON 資料產生字母幾何體
+         * 
          * Pipeline：
-         *   1. 載入 TTF → opentype.js 解析
-         *   2. 取得 glyph path commands
-         *   3. Y 軸翻轉（校正 opentype 座標系）
+         *   1. 載入 v3-data JSON（已預處理好 metrics 和路徑）
+         *   2. 取出 glyph 路徑（已離散化）
+         *   3. Y 軸翻轉（JSON Y-up → Three.js Y-up）
          *   4. 轉為 Clipper 整數路徑
          *   5. 執行 Clipper Offset（依 fonts.json 的 offset_r）
          *   6. 轉回 THREE.Shape（含孔洞）
          *   7. ExtrudeGeometry 擠出
-         *   8. scale() 縮放至目標高度
-         *   9. center() 中心歸零
+         *   8. 使用 fontHeight 縮放至目標高度
+         *   9. 使用 advanceWidth/ascender/descender 進行 metrics-based 置中
          *
          * @param {string} fontName - 字體名稱（對應 fonts.json）
          * @param {string} letter - 單一字母字符
@@ -3573,49 +3627,50 @@
         async function createV3LetterGeometry(fontName, letter, targetHeight, depthFactor = 18) {
             console.log(`[V3] 開始生成字母 "${letter}"，字體：${fontName}，目標高度：${targetHeight}mm`);
 
-            // ── 步驟 1：載入 TTF ──────────────────────────────────────
-            const buffer = await loadTTFBuffer(fontName);
-            const otFont = opentype.parse(buffer);
-            const unitsPerEm = otFont.unitsPerEm;
+            // ── 步驟 1：載入 V3 預處理 JSON ───────────────────────────
+            const fontData = await loadV3FontData(fontName);
+            const { unitsPerEm, ascender, descender, fontHeight, glyphs } = fontData;
 
-            // ── 步驟 2：取得 glyph 路徑 ───────────────────────────────
-            const glyph = otFont.charToGlyph(letter);
-            if (!glyph || glyph.index === 0) {
-                throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" 的 glyph`);
+            // 取得字元的 charCode
+            const charCode = letter.charCodeAt(0);
+            const glyphKey = String(charCode);
+            const glyphData = glyphs[glyphKey];
+
+            if (!glyphData) {
+                throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
             }
 
-            // 取得原始 path commands（在 unitsPerEm 座標系下）
-            const rawPath = glyph.getPath(0, 0, unitsPerEm);
-            const commands = rawPath.commands;
+            const { advanceWidth, path: pathPoints, isHole } = glyphData;
+            console.log(`[V3] Glyph 資料：advanceWidth=${advanceWidth}，isHole=${isHole}，path 點數=${pathPoints.length}`);
 
-            // ── 步驟 3：Y 軸翻轉 ──────────────────────────────────────
-            // opentype.js 的 Y 軸向下（螢幕座標），Three.js 的 Y 軸向上
-            // 翻轉後字母才能正確顯示
-            const flippedCommands = commands.map(cmd => {
-                const c = { ...cmd };
-                if ('y'  in c) c.y  = -c.y;
-                if ('y1' in c) c.y1 = -c.y1;
-                if ('y2' in c) c.y2 = -c.y2;
-                return c;
-            });
+            // ── 步驟 2-3：Y 軸翻轉並轉為 Clipper 路徑 ─────────────────
+            // JSON 中的 Y 軸是向上的（與 Three.js 相同），但路徑是基於 baseline 的
+            // 我們需要翻轉 Y 使得字母在 Z=0 平面上正確顯示
+            const CLIP_SCALE = 1000;
+            
+            // Y 軸翻轉：Y' = -Y（這樣 ascender 在上，descender 在下）
+            // 翻轉後的路徑點
+            const flippedPoints = pathPoints.map(pt => ({
+                x: pt.x,
+                y: -pt.y
+            }));
 
-            // ── 步驟 4：轉為 Clipper 整數路徑 ────────────────────────
-            const CLIP_SCALE = 1000; // 浮點 → 整數縮放因子
-            const clipperPaths = opentypeCommandsToClipperPaths(flippedCommands, CLIP_SCALE);
+            // 轉為 Clipper 整數路徑
+            const clipperPaths = [v3PathToClipperPath(flippedPoints, CLIP_SCALE)];
 
-            if (clipperPaths.length === 0) {
+            if (clipperPaths[0].length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
             }
 
-            // ── 步驟 5：Clipper Offset ────────────────────────────────
+            // ── 步驟 4：Clipper Offset ────────────────────────────────
             const meta = fontMetaMap[fontName] || { offset_r: 0 };
             const offsetR = meta.offset_r || 0;
 
             let finalPaths = clipperPaths;
             if (offsetR > 0) {
-                // 換算：offset_r (mm) → unitsPerEm 座標系 → Clipper 整數單位
-                // offset_r 是在目標高度下的 mm 值，需換算回 unitsPerEm 比例
-                const offsetUnits = (offsetR / targetHeight) * unitsPerEm * CLIP_SCALE;
+                // 換算：offset_r (mm) → fontHeight 座標系 → Clipper 整數單位
+                // offset_r 是在目標高度下的 mm 值，需換算回 fontHeight 比例
+                const offsetUnits = (offsetR / targetHeight) * fontHeight * CLIP_SCALE;
                 console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
                 finalPaths = clipperOffset(clipperPaths, offsetUnits);
                 console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
@@ -3623,7 +3678,7 @@
                 console.log(`[V3] 字體 "${fontName}" offset_r=0，跳過 Offset`);
             }
 
-            // ── 步驟 6：轉回 THREE.Shape（含孔洞）──────────────────
+            // ── 步驟 5：轉回 THREE.Shape（含孔洞）──────────────────
             const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
             if (shapes.length === 0) {
@@ -3632,31 +3687,53 @@
 
             console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
 
-            // ── 步驟 7：ExtrudeGeometry 擠出 ─────────────────────────
-            // depth 使用 unitsPerEm 單位，後面 scale() 時會一起縮放
-            const depth = unitsPerEm * depthFactor;
+            // ── 步驟 6：ExtrudeGeometry 擠出 ─────────────────────────
+            // depth 使用 fontHeight 單位，後面 scale() 時會一起縮放
+            const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 1  // 曲線已在 Clipper 平坦化，不需要額外細分
+                curveSegments: 1  // 路徑已離散化，不需要額外細分
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // ── 步驟 8：縮放至目標高度 ────────────────────────────────
-            geo.computeBoundingBox();
-            const bbox = geo.boundingBox;
-            const actualHeight = bbox.max.y - bbox.min.y;
-
-            if (actualHeight === 0) {
-                throw new Error(`[V3] 字母 "${letter}" BBox 高度為 0，幾何體可能為空`);
+            // ── 步驟 7：縮放至目標高度 ────────────────────────────────
+            // 使用 fontHeight (= ascender - descender) 而非 BBox 高度
+            // 這確保前後端使用相同的縮放基準
+            if (fontHeight === 0) {
+                throw new Error(`[V3] 字體 "${fontName}" fontHeight 為 0`);
             }
 
-            const scaleFactor = targetHeight / actualHeight;
-            console.log(`[V3] 縮放比例：${scaleFactor.toFixed(4)}（實際高度 ${actualHeight.toFixed(2)} → ${targetHeight}mm）`);
+            const scaleFactor = targetHeight / fontHeight;
+            console.log(`[V3] 縮放比例：${scaleFactor.toFixed(4)}（fontHeight ${fontHeight} → ${targetHeight}mm）`);
             geo.scale(scaleFactor, scaleFactor, scaleFactor);
 
-            // ── 步驟 9：中心歸零 ──────────────────────────────────────
-            geo.center();
+            // ── 步驟 8：Metrics-based 置中（廢除 geo.center()）──────
+            // 
+            // X 軸置中：使用 advanceWidth
+            // - advanceWidth 是字元寬度（從 origin 到 next glyph 的距離）
+            // - 我們希望字母中心在 x=0，所以要平移 -advanceWidth/2
+            // - 在 fontHeight 單位下：-advanceWidth / 2
+            // - 縮放後：(-advanceWidth / 2) * scaleFactor
+            //
+            // Y 軸置中：使用 ascender 和 descender
+            // - 在 JSON 中，ascender > 0，descender < 0
+            // - 字母範圍是 [descender, ascender]
+            // - 中心點應該在 (ascender + descender) / 2
+            // - 我們希望中心在 y=0，所以要平移 -(ascender + descender) / 2
+            // - 在 fontHeight 單位下：-(ascender + descender) / 2 = 0（因為 descender = -ascenderHeight）
+            // - 但實際上 fontHeight = ascender - descender，所以中心在 (ascender - descender)/2 = fontHeight/2
+            // - 縮放後：(fontHeight/2) * scaleFactor = targetHeight/2
+            // 
+            // 修正：Y 軸平移應該是 -(ascender + descender)/2 * scaleFactor
+            // 但由於 descender 是負值，這個值約等於 ascender/2 * scaleFactor
+            const xOffset = (-advanceWidth / 2) * scaleFactor;
+            const yOffset = (-(ascender + descender) / 2) * scaleFactor;
+            
+            console.log(`[V3] Metrics 置中：X偏移=${xOffset.toFixed(4)}，Y偏移=${yOffset.toFixed(4)}`);
+            console.log(`[V3] advanceWidth=${advanceWidth}，ascender=${ascender}，descender=${descender}，fontHeight=${fontHeight}`);
+            
+            geo.translate(xOffset, yOffset, 0);
 
             console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成`);
             return geo;
