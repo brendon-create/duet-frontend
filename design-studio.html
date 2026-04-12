@@ -4055,7 +4055,7 @@
         }
 
         /**
-         * 使用 ClipperLib 對輪廓執行 offset
+         * 使用 ClipperLib 對輪廓執行 offset（保持孔洞）
          * @param {THREE.Shape} shape - 含孔洞的 Shape
          * @param {number} offsetR - offset 量（原始單位）
          * @returns {THREE.Shape[]} offset 後的 Shapes
@@ -4064,7 +4064,7 @@
             const ClipperLib = await loadClipperLib();
             
             try {
-                // 對外輪廓做 offset
+                // 對外輪廓做 offset（向外擴展）
                 const outerPoints = shape.getPoints(64);
                 const clipperPath = outerPoints.map(pt => 
                     new ClipperLib.IntPoint(Math.round(pt.x), Math.round(pt.y))
@@ -4073,19 +4073,19 @@
                 const co = new ClipperLib.ClipperOffset();
                 co.AddPath(clipperPath, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
                 
-                const offsettedPaths = new ClipperLib.Paths();
-                co.Execute(offsettedPaths, offsetR);
+                const offsettedOuterPaths = new ClipperLib.Paths();
+                co.Execute(offsettedOuterPaths, offsetR);
                 
-                if (!offsettedPaths || offsettedPaths.length === 0) {
+                if (!offsettedOuterPaths || offsettedOuterPaths.length === 0) {
                     console.warn('[V3 Clipper] Offset 無輸出');
                     return [shape];
                 }
                 
-                console.log(`[V3 Clipper] Offset 完成，產生 ${offsettedPaths.length} 個輪廓`);
+                console.log(`[V3 Clipper] 外輪廓 offset 完成，產生 ${offsettedOuterPaths.length} 個輪廓`);
                 
                 // 轉換回 THREE.Shape
                 const resultShapes = [];
-                for (const cp of offsettedPaths) {
+                for (const cp of offsettedOuterPaths) {
                     if (cp.length < 3) continue;
                     
                     const newShape = new THREE.Shape();
@@ -4102,24 +4102,58 @@
                     resultShapes.push(newShape);
                 }
                 
-                // 重建孔洞
+                // 對每個孔洞也做 offset（向內收縮，使用負值）
                 for (const newShape of resultShapes) {
                     for (const holePath of shape.holes) {
                         const holePoints = holePath.getPoints(64);
-                        const newHole = new THREE.Path();
-                        for (let i = 0; i < holePoints.length; i++) {
-                            const pt = holePoints[i];
-                            if (i === 0) {
-                                newHole.moveTo(pt.x, pt.y);
-                            } else {
-                                newHole.lineTo(pt.x, pt.y);
+                        
+                        // 孔洞 offset：向內收縮（負值）
+                        const holeClipperPath = holePoints.map(pt => 
+                            new ClipperLib.IntPoint(Math.round(pt.x), Math.round(pt.y))
+                        );
+                        
+                        const holeCo = new ClipperLib.ClipperOffset();
+                        holeCo.AddPath(holeClipperPath, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+                        
+                        const offsettedHolePaths = new ClipperLib.Paths();
+                        holeCo.Execute(offsettedHolePaths, -offsetR);  // 負值 = 向內
+                        
+                        if (offsettedHolePaths && offsettedHolePaths.length > 0) {
+                            // 使用第一個 offset 後的孔洞
+                            const offsettedHole = offsettedHolePaths[0];
+                            if (offsettedHole.length >= 3) {
+                                const newHole = new THREE.Path();
+                                for (let i = 0; i < offsettedHole.length; i++) {
+                                    const x = offsettedHole[i].X;
+                                    const y = offsettedHole[i].Y;
+                                    if (i === 0) {
+                                        newHole.moveTo(x, y);
+                                    } else {
+                                        newHole.lineTo(x, y);
+                                    }
+                                }
+                                newHole.closePath();
+                                newShape.holes.push(newHole);
                             }
+                        } else {
+                            // 如果孔洞 offset 失敗，使用原始孔洞（可能會導致孔洞變小）
+                            console.warn('[V3 Clipper] 孔洞 offset 失敗，使用原始孔洞');
+                            const newHole = new THREE.Path();
+                            for (let i = 0; i < holePoints.length; i++) {
+                                const pt = holePoints[i];
+                                if (i === 0) {
+                                    newHole.moveTo(pt.x, pt.y);
+                                } else {
+                                    newHole.lineTo(pt.x, pt.y);
+                                }
+                            }
+                            newHole.closePath();
+                            newShape.holes.push(newHole);
                         }
-                        newHole.closePath();
-                        newShape.holes.push(newHole);
                     }
                 }
                 
+                console.log(`[V3 Clipper] 最終產生 ${resultShapes.length} 個 Shapes，總孔洞數: ${resultShapes.reduce((sum, s) => sum + s.holes.length, 0)}`);
                 return resultShapes;
             } catch (e) {
                 console.error('[V3 Clipper] Offset 錯誤:', e);
