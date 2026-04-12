@@ -4177,10 +4177,18 @@
             letter1Select.value = inputChars[0];
             letter2Select.value = inputChars[1];
 
-            const selectedFonts = Array.from(checkedFonts);
+            // 保留舊選中的字體順序（用於檢測新增的字體）
+            const oldSelectedFonts = Array.from(document.querySelectorAll('.font-list-item input[type="checkbox"]:checked'))
+                .map(cb => cb.dataset.font);
+
+            // 新選中的字體
+            const newSelectedFonts = Array.from(checkedFonts);
+
+            // 合併順序：新選的字體優先（因為是最近選擇的），舊選的放在後面
+            const selectedFonts = [...newSelectedFonts, ...oldSelectedFonts.filter(f => newSelectedFonts.includes(f))];
 
             // 更新字體按鈕為下拉選單
-            ['font1', 'font2'].forEach(target => {
+            ['font1', 'font2'].forEach((target, idx) => {
                 const btn = document.getElementById(`${target}-btn`);
 
                 // 隱藏按鈕，創建下拉選單
@@ -4276,7 +4284,22 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 選擇字體後自動使用第一個字體並生成模型
+            // 檢測新增的字體：如果有新增，font1 改用第一個新增的字體
+            const newlyAddedFonts = newSelectedFonts.filter(f => !oldSelectedFonts.includes(f));
+            if (newlyAddedFonts.length > 0) {
+                // 有新增字體，改用第一個新增字體
+                const firstNewFont = newlyAddedFonts[0];
+                const font1Select = document.getElementById('font1-select');
+                const font1Btn = document.getElementById('font1-btn');
+                if (font1Select) {
+                    font1Select.value = firstNewFont;
+                    font1Btn.setAttribute('data-selected', firstNewFont);
+                    document.getElementById('font1').value = firstNewFont;
+                }
+                console.log(`[V3] 偵測到新增字體 ${firstNewFont}，優先使用`);
+            }
+
+            // 選擇字體後自動生成模型
             generateModel();
             isReselect = false;  // 重置標記
         }
