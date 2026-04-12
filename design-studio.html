@@ -4277,21 +4277,6 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 檢測新增的字體：如果有新增，font1 改用第一個新增的字體
-            const newlyAddedFonts = newSelectedFonts.filter(f => !oldSelectedFonts.includes(f));
-            if (newlyAddedFonts.length > 0) {
-                // 有新增字體，改用第一個新增字體
-                const firstNewFont = newlyAddedFonts[0];
-                const font1Select = document.getElementById('font1-select');
-                const font1Btn = document.getElementById('font1-btn');
-                if (font1Select) {
-                    font1Select.value = firstNewFont;
-                    font1Btn.setAttribute('data-selected', firstNewFont);
-                    document.getElementById('font1').value = firstNewFont;
-                }
-                console.log(`[V3] 偵測到新增字體 ${firstNewFont}，優先使用`);
-            }
-
             // 選擇字體後自動生成模型
             generateModel();
             isReselect = false;  // 重置標記
