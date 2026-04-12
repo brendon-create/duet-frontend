@@ -3399,12 +3399,14 @@
          * @param {ClipperLib.PolyNode} node - PolyTree 節點
          * @param {number} scale - 整數縮放因子（需除回）
          * @param {Array} shapes - 收集結果的 Shape 陣列
-         * @param {Object} shapeMap - 用於建立孔洞關聯的映射
          */
-        function traversePolyTreeNode(node, scale, shapes, shapeMap) {
+        function traversePolyTreeNode(node, scale, shapes) {
             const ClipperLib = window.ClipperLib;
 
-            if (!node || !node.IsHole()) {
+            if (!node) return;
+
+            // IsHole() === false 表示這是外輪廓
+            if (!node.IsHole()) {
                 // 這是一個外輪廓（或是根節點）
                 // 建立新的 Shape
                 const pts = node.Value.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
@@ -3412,18 +3414,18 @@
                 shapes.push(newShape);
 
                 // 遞迴處理子節點（孔洞）
-                if (node.Childs && node.Childs.length > 0) {
-                    for (const child of node.Childs) {
-                        if (child.IsHole()) {
-                            // 孔洞：建立 Path 並加入父 Shape
-                            const holePts = child.Value.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                            const holePath = new THREE.Path(holePts);
-                            newShape.holes.push(holePath);
-                            console.log(`[V3] 孔洞已加入: ${newShape.holes.length} 個孔洞`);
-                        } else {
-                            // 子外輪廓（嵌套輪廓，可能是裝飾孔）
-                            traversePolyTreeNode(child, scale, shapes, shapeMap);
-                        }
+                const children = node.Childs();
+                for (var i = 0; i < children.length; i++) {
+                    var child = children[i];
+                    if (child.IsHole()) {
+                        // 孔洞：建立 Path 並加入父 Shape
+                        const holePts = child.Value.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
+                        const holePath = new THREE.Path(holePts);
+                        newShape.holes.push(holePath);
+                        console.log(`[V3] 孔洞已加入: ${newShape.holes.length} 個孔洞`);
+                    } else {
+                        // 子外輪廓（嵌套輪廓，可能是裝飾孔）
+                        traversePolyTreeNode(child, scale, shapes);
                     }
                 }
             }
@@ -3445,23 +3447,26 @@
             }
 
             // 🔧 使用 PolyTree 進行層級化的孔洞偵測
-            // 1. 先用 Clipper.BoolOp 合併路徑（保留拓樸關係）
-            // 2. 然後遍歷 PolyTree，建立正確的 Shape + holes 結構
-
-            // 方法：使用 ClipperOffset 的 Reverse 模式來建立 PolyTree
-            // 將所有路徑加入同一個 Clipper 並執行，結果用 PolyTree 接收
-            const co = new ClipperLib.ClipperOffset();
-            co.AddPaths(clipperPaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+            // 使用 Clipper.BoolOp 合併路徑，結果用 PolyTree 接收
+            const co = new ClipperLib.Clipper();
+            co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
 
             const solution = new ClipperLib.PolyTree();
-            co.Execute(solution, 0); // delta=0 只做路徑合併，不做 offset
+            co.Execute(
+                ClipperLib.ClipType.ctUnion,
+                solution,
+                ClipperLib.PolyFillType.pftEvenOdd,
+                ClipperLib.PolyFillType.pftEvenOdd
+            );
 
-            console.log(`[V3] PolyTree 節點數: ${solution.Childs.length}`);
+            console.log(`[V3] PolyTree 節點數: ${solution.Childs().length}`);
 
             // 遍歷 PolyTree 的根節點
-            for (const child of solution.Childs) {
+            var rootChildren = solution.Childs();
+            for (var i = 0; i < rootChildren.length; i++) {
+                var child = rootChildren[i];
                 if (child.Value && child.Value.length > 0) {
-                    traversePolyTreeNode(child, scale, shapes, {});
+                    traversePolyTreeNode(child, scale, shapes);
                 }
             }
 
