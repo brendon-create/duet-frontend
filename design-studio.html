@@ -3567,7 +3567,9 @@
                 return v3FontDataCache.get(fontName);
             }
 
-            const jsonUrl = `assets/v3-data/${fontName}.json`;
+            // 將空格置換為底線，並進行 URL 編碼
+            const fileName = fontName.replace(/ /g, '_');
+            const jsonUrl = `assets/v3-data/${encodeURIComponent(fileName)}.json`;
             console.log(`[V3] 載入預處理字體資料：${jsonUrl}`);
             
             try {
