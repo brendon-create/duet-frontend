@@ -3595,12 +3595,15 @@
          * @param {number} CLIP_SCALE - 縮放因子
          * @returns {Array} - Clipper 路徑格式
          */
-        function v3PathToClipperPath(points, CLIP_SCALE) {
+        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
             const path = [];
             for (const pt of points) {
+                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
+                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
+                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
                 path.push({
-                    X: Math.round(pt.x * CLIP_SCALE),
-                    Y: Math.round(pt.y * CLIP_SCALE)
+                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
+                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
                 });
             }
             return path;
@@ -3611,13 +3614,12 @@
          * 
          * Pipeline（歸一化版）：
          *   1. 載入 v3-data JSON（已預處理好 metrics 和路徑，歸一化為 0-1 範圍）
-         *   2. 取出 glyph 路徑（已離散化）
-         *   3. 直接轉為 Clipper 整數路徑（JSON 已是 Y-up）
-         *   4. 執行 Clipper Offset（依 fonts.json 的 offset_r）
-         *   5. 轉回 THREE.Shape（含孔洞）
-         *   6. ExtrudeGeometry 擠出
-         *   7. 縮放至目標高度（scaleFactor = targetHeight）
-         *   8. geometry.center() 置中
+         *   2. 取出 glyph 路徑（已離散化），乘以 targetHeight 轉為實際 mm，再轉 Clipper 路徑
+         *   3. 執行 Clipper Offset（依 fonts.json 的 offset_r，直接為 mm 單位）
+         *   4. 轉回 THREE.Shape（含孔洞）
+         *   5. ExtrudeGeometry 擠出
+         *   6. Y 軸 180 度旋轉（Y-up → Z-up）
+         *   7. geometry.center() 置中
          *
          * @param {string} fontName - 字體名稱（對應 fonts.json）
          * @param {string} letter - 單一字母字符
@@ -3644,27 +3646,26 @@
             const { path: pathPoints } = glyphData;
             console.log(`[V3] Glyph 資料：path 點數=${pathPoints.length}`);
 
-            // ── 步驟 2：轉為 Clipper 路徑 ─────────────────────────────
-            // JSON 已是歸一化（0-1 範圍）和 Y-up，不需要 Y-flip
-            // 使用較大的 CLIP_SCALE = 100000 以保留歸一化後的精確度
+            // ── 步驟 2：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
+            // JSON 是歸一化（0-1 範圍）和 Y-up
+            // CLIP_SCALE = 100000 表示 1mm 的整數精度
             const CLIP_SCALE = 100000;
-            
-            const clipperPaths = [v3PathToClipperPath(pathPoints, CLIP_SCALE)];
+            // 先乘以 targetHeight 將座標從歸一化轉為實際 mm（如 0.5 → 5mm）
+            const clipperPaths = [v3PathToClipperPath(pathPoints, CLIP_SCALE, targetHeight)];
 
             if (clipperPaths[0].length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
             }
 
-            // ── 步驟 3：Clipper Offset ────────────────────────────────
+            // ── 步驟 3：Clipper Offset（座標已縮放到實際 mm）────────────
             const meta = fontMetaMap[fontName] || { offset_r: 0 };
             const offsetR = meta.offset_r || 0;
 
             let finalPaths = clipperPaths;
             if (offsetR > 0) {
-                // 換算：offset_r (mm) → 歸一化座標 → Clipper 整數單位
-                // 換算：offset_r (mm) → 歸一化比例 → Clipper 整數單位
-                // 歸一化後，1 unit = 1mm（目標高度），所以 offset 比例 = offsetR / targetHeight
-                const offsetUnits = (offsetR / targetHeight) * CLIP_SCALE;
+                // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
+                // 例如：offsetR = 0.1mm, CLIP_SCALE = 100000 → offsetUnits = 10000（代表 0.1mm）
+                const offsetUnits = offsetR * CLIP_SCALE;
                 console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
                 finalPaths = clipperOffset(clipperPaths, offsetUnits);
                 console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
@@ -3691,17 +3692,12 @@
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // ── 步驟 6：縮放至目標高度 ────────────────────────────────
-            // 歸一化後 scaleFactor = targetHeight（因為 1 unit = 1mm）
-            const scaleFactor = targetHeight;
-            console.log(`[V3] 縮放比例：${scaleFactor}（歸一化 → ${targetHeight}mm）`);
-            geo.scale(scaleFactor, scaleFactor, scaleFactor);
-
-            // ── 步驟 7：Y 軸 180 度旋轉 ──────────────────────────────
+            // ── 步驟 6：Y 軸 180 度旋轉 ──────────────────────────────
+            // 座標已在步驟 2 乘以 targetHeight 變成實際 mm，不需要再 scale
             // JSON 是 Y-up，但 Three.js 渲染時需要翻轉。用空間旋轉而非座標取負
             geo.rotateX(Math.PI);
 
-            // ── 步驟 8：置中 ──────────────────────────────────────────
+            // ── 步驟 7：置中 ──────────────────────────────────────────
             // 使用 Three.js 內建的 center() 方法，不再手算偏移
             geo.center();
 
