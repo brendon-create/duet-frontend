@@ -2568,7 +2568,7 @@
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.up.set(0, 0, 1); // Z-up 系統
             // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
-            camera.position.set(60, -85, 18);  // 拉遠鏡頭（原: 50, -70, 15）
+            camera.position.set(40, -57, 12);  // 半徑7.5→5，按比例縮小（原: 60, -85, 18）
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
