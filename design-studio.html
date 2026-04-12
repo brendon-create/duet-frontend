@@ -2657,7 +2657,7 @@
         }
 
         function showInitialSphere() {
-            const geometry = new THREE.SphereGeometry(7.5, 64, 64);
+            const geometry = new THREE.SphereGeometry(5, 64, 64);
             const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
             mainMesh = new THREE.Mesh(geometry, material);
             scene.add(mainMesh);
@@ -3885,7 +3885,7 @@
             const z_height_adj = parseFloat(document.getElementById('ringZ').value);
             const rotation = parseFloat(document.getElementById('ringRotation').value);
 
-            const baseZ = modelTopZ + 2.0; // 在 Z (高度) 軸上定位
+            const baseZ = modelTopZ + 1.2; // 在 Z (高度) 軸上定位
 
             // 調整：X 不變, Y 軸為 modelCenter.y + 深度調整, Z 軸為 baseZ + 高度調整
             ringMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
