@@ -3914,39 +3914,50 @@
         async function glyphToShapes(glyph, font, offsetR = 0) {
             const ClipperLib = await loadClipperLib();
             
-            // 使用 getPaths() 取得所有輪廓
-            const paths = glyph.getPaths(font.unitsPerEm);
-            if (!paths || paths.length === 0) {
-                console.warn('[V3] 無法取得 glyph 輪廓');
+            // 使用 getPath() 取得路徑（不是 getPaths()）
+            // getPath() 返回一個包含所有輪廓的 Path 對象
+            const path = glyph.getPath(0, 0, font.unitsPerEm);
+            if (!path || !path.commands) {
+                console.warn('[V3] 無法取得 glyph 路徑');
                 return [];
             }
             
-            console.log(`[V3] glyph 有 ${paths.length} 個輪廓`);
+            // 解析 commands，將每個 M (MoveTo) 視為新輪廓的開始
+            const contours = [];
+            let currentContour = [];
+            
+            for (const cmd of path.commands) {
+                if (cmd.type === 'M') {
+                    // 如果已經有當前輪廓，先保存
+                    if (currentContour.length > 0) {
+                        contours.push(currentContour);
+                    }
+                    // 開始新輪廓
+                    currentContour = [{ x: cmd.x, y: cmd.y }];
+                } else if (cmd.type === 'Z') {
+                    // ClosePath - 輪廓結束，不添加額外點（Z 只是標記）
+                    // 輪廓陣列的最後一個點已經是封閉的
+                } else {
+                    // L, Q, C 等命令添加點
+                    currentContour.push({ x: cmd.x, y: cmd.y });
+                }
+            }
+            // 保存最後一個輪廓
+            if (currentContour.length > 0) {
+                contours.push(currentContour);
+            }
+            
+            if (contours.length === 0) {
+                console.warn('[V3] 無法解析 glyph 輪廓');
+                return [];
+            }
+            
+            console.log(`[V3] glyph 有 ${contours.length} 個輪廓`);
             
             // 轉換所有輪廓為點陣列，並計算邊界
-            const contourInfos = paths.map((p, idx) => {
-                const points = [];
-                let startX = 0, startY = 0;
-                for (const cmd of p.commands) {
-                    switch (cmd.type) {
-                        case 'M':
-                            startX = cmd.x;
-                            startY = cmd.y;
-                            points.push({ x: cmd.x, y: cmd.y });
-                            break;
-                        case 'L':
-                            points.push({ x: cmd.x, y: cmd.y });
-                            break;
-                        case 'Q':
-                            points.push({ x: cmd.x, y: cmd.y });
-                            break;
-                        case 'C':
-                            points.push({ x: cmd.x, y: cmd.y });
-                            break;
-                        case 'Z':
-                            points.push({ x: startX, y: startY });
-                            break;
-                    }
+            const contourInfos = contours.map((points, idx) => {
+                if (points.length < 3) {
+                    return null; // 跳過太少的點
                 }
                 
                 // 計算邊界框
@@ -3968,26 +3979,31 @@
                     points,
                     intPoints,
                     isCW,
+                    minX, maxX, minY, maxY,
                     centerX: (minX + maxX) / 2,
                     centerY: (minY + maxY) / 2,
                     width: maxX - minX,
                     height: maxY - minY
                 };
-            });
+            }).filter(c => c !== null);
             
-            // 找出外輪廓（第一個 CW 的）
+            if (contourInfos.length === 0) {
+                console.warn('[V3] 沒有有效的輪廓');
+                return [];
+            }
+            
+            // 找出外輪廓（CW 的，沒有 CCW 在裡面的）
+            // 通常第一個 CW 就是外輪廓
             let outerIdx = contourInfos.findIndex(c => c.isCW);
-            if (outerIdx === -1) outerIdx = 0;  // 沒有 CW，就用第一個
+            if (outerIdx === -1) outerIdx = 0;
             
-            // 建立 Shape 並加入孔洞
             const mainShape = new THREE.Shape();
             const outer = contourInfos[outerIdx];
             
-            // 使用 outer.minY 作為 baseline（不是 centerY）
+            // 使用 outer.minY 作為 baseline
             // 這樣孔洞會保持在正確的位置（相對於 baseline）
-            // 例如 'A' 的孔洞在 y=200-500，會正確地位於 outer 的上方（y=200-500）
             const baselineX = outer.minX;
-            const baselineY = outer.minY;  // 這是 baseline（y=0 在 opentype 中）
+            const baselineY = outer.minY;
             
             // 移動外輪廓到原點（以 baseline 為準）
             for (let i = 0; i < outer.points.length; i++) {
