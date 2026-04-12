@@ -4000,16 +4000,13 @@
             const mainShape = new THREE.Shape();
             const outer = contourInfos[outerIdx];
             
-            // 使用 outer.minY 作為 baseline
-            // 這樣孔洞會保持在正確的位置（相對於 baseline）
-            const baselineX = outer.minX;
-            const baselineY = outer.minY;
-            
-            // 移動外輪廓到原點（以 baseline 為準）
+            // 直接使用原始坐標，不做 baseline 偏移
+            // 讓後續的 scale() 和 center() 來處理大小和位置
+            // Y 軸翻轉：opentype Y 向上，Three.js 也向上，但 ExtrudeGeometry 擠出方向需要一致
             for (let i = 0; i < outer.points.length; i++) {
                 const pt = outer.points[i];
-                const x = (pt.x - baselineX);
-                const y = (pt.y - baselineY);
+                const x = pt.x;
+                const y = -pt.y;  // Y 軸翻轉，解決上下顛倒
                 
                 if (i === 0) {
                     mainShape.moveTo(x, y);
@@ -4020,17 +4017,17 @@
             mainShape.closePath();
             
             // 加入其他輪廓作為孔洞
+            // 直接使用原始坐標，保持與外輪廓一致的 Y 軸翻轉
             for (let i = 0; i < contourInfos.length; i++) {
                 if (i === outerIdx) continue;
                 
                 const hole = contourInfos[i];
                 const holePath = new THREE.Path();
                 
-                // 使用同樣的 baseline 偏移，保持孔洞與外輪廓的相對位置
                 for (let j = 0; j < hole.points.length; j++) {
                     const pt = hole.points[j];
-                    const x = (pt.x - baselineX);
-                    const y = (pt.y - baselineY);
+                    const x = pt.x;
+                    const y = -pt.y;  // Y 軸翻轉，保持與外輪廓一致
                     
                     if (j === 0) {
                         holePath.moveTo(x, y);
@@ -4272,7 +4269,7 @@
             // 2. 使用 glyphToShapes() 將 glyph 轉換為 THREE.Shape[]
             // 這個函數會處理多輪廓 glyph（有空心的字母如 A、B、O）
             // 並且在 offset_r > 0 時執行 ClipperLib offset
-            // 坐標已相對於 baseline (minY) 進行了偏移
+            // 注意：現在直接使用 opentype 原始坐標，Y 軸已翻轉 (y = -y)
             const shapes = await glyphToShapes(glyph, opentypeFont, offset_r);
             if (!shapes || shapes.length === 0) {
                 console.warn(`[V3] 無法將 ${letter} 轉換為 shapes`);
