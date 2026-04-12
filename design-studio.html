@@ -3214,15 +3214,17 @@
 
         /**
          * 從後端 /assets/fonts/ttf/ 取得 TTF ArrayBuffer
-         * 格式：FontName_weight.ttf，例如 Dancing_Script_400.ttf
+         * 格式：FontName-Regular.ttf，例如 Alex_Brush-Regular.ttf
          */
         async function loadTTFBuffer(fontName) {
             if (loadedTTFBuffers[fontName]) return loadedTTFBuffers[fontName];
 
             const meta = fontMetaMap[fontName] || { weight: 400 };
             const weight = meta.weight || 400;
-            // 檔名格式：空格換底線，加上字重
-            const fileName = fontName.replace(/ /g, '_') + '_' + weight + '.ttf';
+            // 檔名格式：Google Fonts 命名慣例 - FontName-Regular.ttf
+            // 所有 weight 400 的字體都是 Regular 版本
+            const style = weight === 400 ? 'Regular' : 'Bold';
+            const fileName = fontName.replace(/ /g, '_') + '-' + style + '.ttf';
             const backendBase = window.BACKEND_URL || 'https://duet-backend-wlw8.onrender.com';
             const url = `${backendBase}/assets/fonts/ttf/${fileName}`;
 
