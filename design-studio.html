@@ -6083,7 +6083,7 @@
             for (let i = 0; i < availableFonts.length; i += batchSize) {
                 const batch = availableFonts.slice(i, i + batchSize);
                 const link = document.createElement('link');
-                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.name.replace(/ /g, '+')).join('&family=') + '&display=swap';
                 link.rel = 'stylesheet';
                 document.head.appendChild(link);
             }
