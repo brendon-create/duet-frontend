@@ -2726,7 +2726,28 @@
                 return;
             }
 
-            const targetHeight = parseInt(document.getElementById('size').value);
+            const sizeEl = document.getElementById('size');
+            const sizeValue = sizeEl ? sizeEl.value : null;
+            const targetHeight = parseInt(sizeValue);
+            
+            // 嚴格數值檢查：如果 targetHeight 是 NaN，噴出錯誤並中斷
+            if (isNaN(targetHeight) || targetHeight <= 0) {
+                console.error('❌ [generateModel] targetHeight 無效:', { 
+                    sizeValue, 
+                    parsedValue: targetHeight,
+                    sizeElementExists: !!sizeEl,
+                    sizeElementValue: sizeEl?.value
+                });
+                // 顯示初始球體，不崩潰
+                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') showInitialSphere();
+                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                return;
+            }
+            
+            console.log(`[generateModel] targetHeight=${targetHeight}mm (size select value: "${sizeValue}")`);
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
