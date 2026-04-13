@@ -2680,9 +2680,9 @@
             const materialConfig = {
                 color: finalColor,
                 metalness: mat.metalness,
-                roughness: 0.1,  // 使用固定值以獲得一致的珠寶光澤
+                roughness: roughness,
                 flatShading: false,  // 確保平滑渲染（不使用平面著色）
-                envMapIntensity: 1.2
+                envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
             };
 
             // 只在 envMap 存在時才加入（防止黑色球體）
