@@ -1796,6 +1796,7 @@
         "imports": {
             "three": "https://esm.sh/three@0.160.0",
             "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
+            "three/addons/utils/": "https://esm.sh/three@0.160.0/examples/jsm/utils/",
             "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
             "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3",
             "opentype": "https://esm.sh/opentype.js@1.3.4"
@@ -1839,6 +1840,7 @@
         import { STLExporter } from 'three/addons/exporters/STLExporter.js';
         import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import { BufferGeometryUtils } from 'three/addons/utils/BufferGeometryUtils.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
@@ -2678,9 +2680,9 @@
             const materialConfig = {
                 color: finalColor,
                 metalness: mat.metalness,
-                roughness: roughness,
+                roughness: 0.1,  // 使用固定值以獲得一致的珠寶光澤
                 flatShading: false,  // 確保平滑渲染（不使用平面著色）
-                envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
+                envMapIntensity: 1.2
             };
 
             // 只在 envMap 存在時才加入（防止黑色球體）
@@ -2846,12 +2848,9 @@
             geo1 = geo1.toNonIndexed();
             geo2 = geo2.toNonIndexed();
 
-            // ── Z-fighting 預防：微小 epsilon 偏移 ──
-            // 對於方正字體（Chango, Bungee 等），兩個字母的共面可能導致 Z-fighting
-            // 偏移 0.001mm（1微米）即可讓 CSG 引擎正確判斷面與面關係
-            const EPSILON_OFFSET = 0.001;
-            geo2.translate(EPSILON_OFFSET, EPSILON_OFFSET, EPSILON_OFFSET);
-            console.log(`[V3] 已套用 epsilon 偏移: ${EPSILON_OFFSET}mm（預防 Z-fighting）`);
+            // ── 取消 epsilon offset：Z-fighting 問題需要幾何體洗滌而非位移 ──
+            // const EPSILON_OFFSET = 0.001;
+            // geo2.translate(EPSILON_OFFSET, EPSILON_OFFSET, EPSILON_OFFSET);
 
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
@@ -2902,10 +2901,15 @@
             }
 
             debug('Fixing geometry...'); // Debug
-            // === 修復幾何體 ===
-            result.geometry = result.geometry.toNonIndexed();
-            result.geometry.deleteAttribute('normal');
-            result.geometry.computeVertexNormals();
+            // === 幾何體洗滌程序 ===
+            // A. 轉為非索引格式
+            let tempGeo = result.geometry.toNonIndexed();
+            // B. 焊接頂點（0.005mm 容差）- 修復 CSG 後的共面幾何問題
+            tempGeo = BufferGeometryUtils.mergeVertices(tempGeo, 0.005);
+            // C. 重新拋光
+            tempGeo.computeVertexNormals();
+            // D. 寫回結果
+            result.geometry = tempGeo;
 
             const offset = 0.001;
             const positions = result.geometry.attributes.position;
@@ -3772,7 +3776,7 @@
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 12
+                curveSegments: 16
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
