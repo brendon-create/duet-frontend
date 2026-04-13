@@ -2746,6 +2746,15 @@
                 return;
             }
 
+            // ── 物理幾何中心對齊（0409 精神）────────────────────────────
+            // 確保 Offset 完成並擠出後，才執行 center()
+            // 順序：Offset → Extrude → center → scale → rotate
+            geo1.computeBoundingBox();
+            geo1.center();  // BBox 中心對齊原點
+
+            geo2.computeBoundingBox();
+            geo2.center();  // BBox 中心對齊原點
+
             // ── 記錄 BBox（供後端參考，center() 之後、旋轉之前）──
             geo1.computeBoundingBox();
             const bbox1AfterScale = geo1.boundingBox;
@@ -3692,16 +3701,11 @@
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // ── 步驟 6：Y 軸 180 度旋轉 ──────────────────────────────
-            // 座標已在步驟 2 乘以 targetHeight 變成實際 mm，不需要再 scale
-            // JSON 是 Y-up，但 Three.js 渲染時需要翻轉。用空間旋轉而非座標取負
-            geo.rotateX(Math.PI);
+            // ⚠️ 注意：不再在這裡執行 rotateX 或 center
+            // 物理幾何中心對齊將在 generateModel 中執行（scale → center → rotate）
+            // 這樣確保 Offset 完成並擠出後，才執行 center()
 
-            // ── 步驟 7：置中 ──────────────────────────────────────────
-            // 使用 Three.js 內建的 center() 方法，不再手算偏移
-            geo.center();
-
-            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成`);
+            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成（原始狀態，待 generateModel 對齊）`);
             return geo;
         }
 
