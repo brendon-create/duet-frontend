@@ -2679,6 +2679,7 @@
                 color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
+                flatShading: false,  // 確保平滑渲染（不使用平面著色）
                 envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
             };
 
@@ -3750,7 +3751,7 @@
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 16
+                curveSegments: 20
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
