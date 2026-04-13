@@ -2904,8 +2904,8 @@
             // === 幾何體洗滌程序 ===
             // A. 轉為非索引格式
             let tempGeo = result.geometry.toNonIndexed();
-            // B. 焊接頂點（0.005mm 容差）- 修復 CSG 後的共面幾何問題
-            tempGeo = BufferGeometryUtils.mergeVertices(tempGeo, 0.005);
+            // B. 焊接頂點（0.01mm 容差）- 提高精度消除格子感
+            tempGeo = BufferGeometryUtils.mergeVertices(tempGeo, 0.01);
             // C. 重新拋光
             tempGeo.computeVertexNormals();
             // D. 寫回結果
@@ -3771,15 +3771,15 @@
 
             // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
             // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
-            // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
+            // curveSegments 提升到 24 解決邊緣折線問題（工業級平滑度）
             // bevelEnabled 加入倒角讓邊緣圓潤
             const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: true,
                 bevelThickness: 0.3,  // 倒角深度（mm）
-                bevelSize: 0.2,       // 倒角半徑
-                bevelSegments: 8,      // 倒角平滑度
+                bevelSize: 0.25,       // 倒角半徑（加大讓過渡更柔和）
+                bevelSegments: 12,      // 倒角平滑度（提高讓倒角更圓潤）
                 curveSegments: 24
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
