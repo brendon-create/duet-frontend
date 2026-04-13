@@ -1840,7 +1840,7 @@
         import { STLExporter } from 'three/addons/exporters/STLExporter.js';
         import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-        import { BufferGeometryUtils } from 'three/addons/utils/BufferGeometryUtils.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
@@ -3772,11 +3772,15 @@
             // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
             // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
             // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
+            // bevelEnabled 加入倒角讓邊緣圓潤
             const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
-                bevelEnabled: false,
-                curveSegments: 16
+                bevelEnabled: true,
+                bevelThickness: 0.3,  // 倒角深度（mm）
+                bevelSize: 0.2,       // 倒角半徑
+                bevelSegments: 8,      // 倒角平滑度
+                curveSegments: 24
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
