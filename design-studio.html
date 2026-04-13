@@ -2846,6 +2846,13 @@
             geo1 = geo1.toNonIndexed();
             geo2 = geo2.toNonIndexed();
 
+            // ── Z-fighting 預防：微小 epsilon 偏移 ──
+            // 對於方正字體（Chango, Bungee 等），兩個字母的共面可能導致 Z-fighting
+            // 偏移 0.001mm（1微米）即可讓 CSG 引擎正確判斷面與面關係
+            const EPSILON_OFFSET = 0.001;
+            geo2.translate(EPSILON_OFFSET, EPSILON_OFFSET, EPSILON_OFFSET);
+            console.log(`[V3] 已套用 epsilon 偏移: ${EPSILON_OFFSET}mm（預防 Z-fighting）`);
+
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
 
