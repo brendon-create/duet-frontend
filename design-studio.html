@@ -2901,30 +2901,28 @@
             }
 
             debug('Fixing geometry...'); // Debug
-            // === 幾何體洗滌程序 ===
+            // === V2 幾何體洗滌程序（還原絲滑感）===
             // A. 轉為非索引格式
-            let tempGeo = result.geometry.toNonIndexed();
-            // B. 焊接頂點（0.01mm 容差）- 提高精度消除格子感
-            tempGeo = BufferGeometryUtils.mergeVertices(tempGeo, 0.01);
-            // C. 重新拋光
-            tempGeo.computeVertexNormals();
-            // D. 寫回結果
-            result.geometry = tempGeo;
-
-            const offset = 0.001;
+            result.geometry = result.geometry.toNonIndexed();
+            // B. 刪除破碎的法向量屬性
+            result.geometry.deleteAttribute('normal');
+            // C. 重新計算平滑法向量
+            result.geometry.computeVertexNormals();
+            // D. Normal Offset 絲滑化（V2 黑科技）
+            const normalOffset = 0.001;
             const positions = result.geometry.attributes.position;
             const normals = result.geometry.attributes.normal;
-
+            
             for (let i = 0; i < positions.count; i++) {
                 const nx = normals.getX(i);
                 const ny = normals.getY(i);
                 const nz = normals.getZ(i);
-
+                
                 positions.setXYZ(
                     i,
-                    positions.getX(i) + nx * offset,
-                    positions.getY(i) + ny * offset,
-                    positions.getZ(i) + nz * offset
+                    positions.getX(i) + nx * normalOffset,
+                    positions.getY(i) + ny * normalOffset,
+                    positions.getZ(i) + nz * normalOffset
                 );
             }
             positions.needsUpdate = true;
@@ -3777,9 +3775,9 @@
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: true,
-                bevelThickness: 0.3,  // 倒角深度（mm）
-                bevelSize: 0.25,       // 倒角半徑（加大讓過渡更柔和）
-                bevelSegments: 12,      // 倒角平滑度（提高讓倒角更圓潤）
+                bevelThickness: 0.15,  // 倒角深度（mm）- V2 小而精參數
+                bevelSize: 0.15,       // 倒角半徑
+                bevelSegments: 5,      // 倒角平滑度 - V2 小而精參數
                 curveSegments: 24
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
