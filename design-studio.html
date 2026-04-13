@@ -2867,8 +2867,22 @@
             debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
             debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
 
-            // 布林交集運算
-            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+            // 布林交集運算（包 try-catch 確保錯誤不被靜默）
+            let result;
+            try {
+                console.log('[V3] 執行 CSG 交集運算...');
+                result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+                console.log('[V3] CSG 交集完成');
+            } catch (csgError) {
+                console.error('❌ CSG 交集失敗:', csgError);
+                // 顯示初始球體，不崩潰
+                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') showInitialSphere();
+                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                return;
+            }
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
@@ -3758,7 +3772,7 @@
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 20
+                curveSegments: 12
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
