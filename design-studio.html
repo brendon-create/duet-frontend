@@ -2820,17 +2820,6 @@
                 offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
             };
 
-            // ── 空間對位 ──
-            // Letter 1：XZ 平面（正面），沿 Y 軸 extrude
-            const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            geo1.applyMatrix4(rotMat1);
-
-            // Letter 2：YZ 平面（側面），先繞 X 再繞 Z
-            const rotMat2X = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            const rotMat2Z = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-            geo2.applyMatrix4(rotMat2X);
-            geo2.applyMatrix4(rotMat2Z);
-
             // ── CSG 前必須 toNonIndexed() ──
             geo1 = geo1.toNonIndexed();
             geo2 = geo2.toNonIndexed();
