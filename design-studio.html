@@ -3724,11 +3724,12 @@
 
             // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
             // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
+            // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
             const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 1  // 路徑已離散化，不需要額外細分
+                curveSegments: 16
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
