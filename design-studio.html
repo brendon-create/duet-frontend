@@ -2860,6 +2860,23 @@
             const brush2 = new Brush(geo2, baseMat);
             brush2.updateMatrixWorld();
 
+            // 🔥 終極調試：CSG 前檢查兩個 Brush 的實際狀態
+            const checkBrush = (brush, name) => {
+                brush.updateMatrixWorld();
+                const box = new THREE.Box3().setFromObject(brush);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const pos = new THREE.Vector3();
+                box.getCenter(pos);
+                console.log(`🔥 [CSG Ready] ${name}:`, {
+                    actualSize: { x: size.x.toFixed(2), y: size.y.toFixed(2), z: size.z.toFixed(2) },
+                    centerPos: { x: pos.x.toFixed(3), y: pos.y.toFixed(3), z: pos.z.toFixed(3) },
+                    rotation: { x: brush.rotation.x.toFixed(3), y: brush.rotation.y.toFixed(3), z: brush.rotation.z.toFixed(3) }
+                });
+            };
+            checkBrush(brush1, 'Letter1 (A)');
+            checkBrush(brush2, 'Letter2 (G)');
+
             debug('[V3] 執行 CSG 交集...');
             brush1.geometry.computeBoundingBox();
             brush2.geometry.computeBoundingBox();
@@ -3432,9 +3449,41 @@
          * @returns {Array} 偏移後的 ClipperLib.Paths
          */
         function clipperOffset(paths, offsetUnits) {
-            if (offsetUnits === 0) return paths;
-
             const ClipperLib = window.ClipperLib;
+
+            // Step 0: 即使 offsetUnits=0 也要執行 CleanPolygons + Union 以正確識別孔洞
+            if (offsetUnits === 0) {
+                console.log(`[V3] offsetUnits=0，仍執行 CleanPolygons + Union 以正確識別孔洞`);
+                const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
+                console.log(`[V3] CleanPolygons 後路徑數: ${cleaned.length}`);
+
+                const co = new ClipperLib.Clipper();
+                co.AddPaths(cleaned, ClipperLib.PolyType.ptSubject, true);
+
+                const polyTree = new ClipperLib.PolyTree();
+                co.Execute(
+                    ClipperLib.ClipType.ctUnion,
+                    polyTree,
+                    ClipperLib.PolyFillType.pftEvenOdd,
+                    ClipperLib.PolyFillType.pftEvenOdd
+                );
+                console.log(`[V3] Union PolyTree 節點數: ${polyTree.Childs().length}`);
+
+                // 將 PolyTree 展平為路徑陣列
+                const resultPaths = [];
+                const flattenResult = (node) => {
+                    if (node.Contour && node.Contour().length > 0) {
+                        resultPaths.push(node.Contour());
+                    }
+                    const children = node.Childs();
+                    for (var i = 0; i < children.length; i++) {
+                        flattenResult(children[i]);
+                    }
+                };
+                flattenResult(polyTree);
+                console.log(`[V3] offsetUnits=0處理後路徑數: ${resultPaths.length}`);
+                return resultPaths;
+            }
 
             // Step 1: CleanPolygons 移除自相交點，避免碎裂
             const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
@@ -3700,6 +3749,8 @@
             // V2 的命令物件有 'type' 欄位
             const isV2 = (typeof input[0] === 'object' && 'type' in input[0]);
 
+            console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}, firstType=${input[0]?.type}`);
+
             if (!isV2) {
                 // v1：所有點都是直線端點，直接 push
                 // 格式可能是 [ [x,y], ... ] 或 [ {x,y}, ... ]
@@ -3944,6 +3995,7 @@
                 // offsetUnits=0 時 clipperOffset 會執行 CleanPolygons + Union
                 // 這樣 clipperPathsToThreeShapes 才能正確識別孔洞
                 console.log(`[V3] offset_r=0，走 Clipper 流程以正確處理孔洞`);
+                console.log(`[V3] 進入 clipperOffset 前：clipperPaths[0].length=${clipperPaths[0]?.length}`);
                 const finalPaths = clipperOffset(clipperPaths, 0);
                 console.log(`[V3] Clipper 處理後路徑數：${clipperPaths.length} → ${finalPaths.length}`);
                 shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
