@@ -3689,18 +3689,21 @@
             const STEPS_Q = 16;
             const STEPS_C = 24;
 
+            // Y 軸翻轉：opentype Y-up → Three.js Y-down（只在這裡翻轉一次）
+            const fy = y => -y;
+            
             const push = (x, y) => path.push({
                 X: Math.round(x * targetHeight * CLIP_SCALE),
-                Y: Math.round(y * targetHeight * CLIP_SCALE)
+                Y: Math.round(fy(y) * targetHeight * CLIP_SCALE)
             });
 
-            // 判斷是 v1（path 點陣列）還是 v2（commands 曲線命令陣列）
-            // v1 的 Q 點沒有 x1/y1 控制點欄位，v2 的 Q 命令有 x1/y1
-            const isV1 = input.length > 0 && input[0].type !== undefined &&
-                         !('x1' in input.find(c => c.type === 'Q' || c.type === 'C') || {});
+            // 判定格式：V1 為 [ [x,y], ... ] 或 [ {x,y}, ... ]，V2 為 [ {type:'M', x,y}, ... ]
+            // V2 的命令物件有 'type' 欄位
+            const isV2 = (typeof input[0] === 'object' && 'type' in input[0]);
 
-            if (isV1) {
+            if (!isV2) {
                 // v1：所有點都是直線端點，直接 push
+                // 格式可能是 [ [x,y], ... ] 或 [ {x,y}, ... ]
                 for (const pt of input) {
                     if (pt.type === 'Z') {
                         if (path.length > 0) {
@@ -3711,7 +3714,10 @@
                             }
                         }
                     } else {
-                        push(pt.x, pt.y);
+                        // 支援兩種格式：[x,y] 或 {x,y}
+                        const px = pt[0] !== undefined ? pt[0] : pt.x;
+                        const py = pt[1] !== undefined ? pt[1] : pt.y;
+                        push(px, py);
                     }
                 }
                 return path;
