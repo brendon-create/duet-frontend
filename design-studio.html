@@ -3689,12 +3689,11 @@
             const STEPS_Q = 16;
             const STEPS_C = 24;
 
-            // Y 軸翻轉：opentype Y-up → Three.js Y-down（只在這裡翻轉一次）
-            const fy = y => -y;
+            // 不需要 Y 軸翻轉：opentype Y-up = Three.js Y-up（兩者座標系統相同）
             
             const push = (x, y) => path.push({
                 X: Math.round(x * targetHeight * CLIP_SCALE),
-                Y: Math.round(fy(y) * targetHeight * CLIP_SCALE)
+                Y: Math.round(y * targetHeight * CLIP_SCALE)
             });
 
             // 判定格式：V1 為 [ [x,y], ... ] 或 [ {x,y}, ... ]，V2 為 [ {type:'M', x,y}, ... ]
@@ -3973,9 +3972,9 @@
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // ⚠️ 方向修正：這是為了把 OpenType Y-up 座標轉為 Web 座標
-            // 不是對位，只是方向校正
-            geo.rotateX(Math.PI);
+            // 方向修正：旋轉 -90 度讓字母直立，前面朝向 +Z（正確！）
+
+            geo.rotateX(-Math.PI / 2);
 
             console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成（已修正方向，待 generateModel 對齊）`);
             return geo;
