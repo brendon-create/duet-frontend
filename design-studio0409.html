@@ -14,7 +14,7 @@
         font-src 'self' https://fonts.gstatic.com data:;
         img-src 'self' data: blob: https://*.supabase.co https://cdn.jsdelivr.net https://payment.ecpay.com.tw;
         frame-src 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw;
-        connect-src 'self' https://*.supabase.co https://*.onrender.com https://esm.sh https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com;
+        connect-src 'self' https://*.supabase.co https://*.onrender.com https://esm.sh https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com;
     ">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1084,55 +1084,6 @@
         
         /* ========== 手機版 RWD ========== */
         @media (max-width: 768px) {
-            /* Font Selector Modal 手機版 - 只顯示字體卡，隱藏左側清單 */
-            #font-selector-modal {
-                left: 0;
-                right: 0;
-                top: 0;
-                bottom: 0;
-                max-height: 100vh;
-                border-radius: 0;
-                overflow-y: auto;
-            }
-            
-            #font-selector-modal .modal-layout {
-                flex-direction: column;
-                height: 100vh;
-                padding-bottom: 70px; /* 為固定確認按鈕預留空間 */
-            }
-            
-            /* 隱藏左側字體清單 */
-            #font-selector-modal .font-sidebar {
-                display: none;
-            }
-            
-            /* 字體卡顯示區域 - 填滿可用空間 */
-            #font-selector-modal .font-display-area {
-                flex: 1;
-                padding: 20px;
-                padding-bottom: 80px; /* 確認按鈕上方一點 */
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            /* 確認按鈕固定在最下方 */
-            #font-selector-modal .confirm-container {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                padding: 12px 20px;
-                background: rgba(0, 0, 0, 0.9);
-                backdrop-filter: blur(10px);
-                z-index: 2002;
-                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-            }
-            
-            #font-selector-modal .confirm-btn {
-                width: 100%;
-                padding: 14px;
-            }
-            
             #control-panel {
                 position: fixed;
                 left: 0;
@@ -1788,15 +1739,11 @@
         </div>
     </div>
 
-    <!-- ClipperLib：UMD 格式，需在 importmap 之前載入，透過 window.ClipperLib 存取 -->
-    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
-
     <script type="importmap">
     {
         "imports": {
             "three": "https://esm.sh/three@0.160.0",
             "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
-            "three/addons/utils/": "https://esm.sh/three@0.160.0/examples/jsm/utils/",
             "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
             "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3",
             "opentype": "https://esm.sh/opentype.js@1.3.4"
@@ -1840,7 +1787,6 @@
         import { STLExporter } from 'three/addons/exporters/STLExporter.js';
         import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
@@ -2432,13 +2378,10 @@
         window.addEventListener('load', async () => {
             console.log('📱 頁面已載入，初始化...');
 
-            // 初始化可用字體清單
+            // 先初始化可用字體清單
             await initAvailableFonts();
 
-            // 初始化 V3 字體 meta 資料（含 offset_r）
-            await initFontMeta();
-
-            // 測試後端連接
+            // 然後測試後端連接
             testBackendConnection();
         });
 
@@ -2570,7 +2513,7 @@
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.up.set(0, 0, 1); // Z-up 系統
             // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
-            camera.position.set(40, -57, 12);  // 半徑7.5→5，按比例縮小（原: 60, -85, 18）
+            camera.position.set(60, -85, 18);  // 拉遠鏡頭（原: 50, -70, 15）
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -2659,7 +2602,7 @@
         }
 
         function showInitialSphere() {
-            const geometry = new THREE.SphereGeometry(5, 64, 64);
+            const geometry = new THREE.SphereGeometry(7.5, 64, 64);
             const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
             mainMesh = new THREE.Mesh(geometry, material);
             scene.add(mainMesh);
@@ -2681,7 +2624,6 @@
                 color: finalColor,
                 metalness: mat.metalness,
                 roughness: roughness,
-                flatShading: false,  // 確保平滑渲染（不使用平面著色）
                 envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
             };
 
@@ -2695,20 +2637,30 @@
 
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
-            console.log('[V3 generateModel] 開始生成模型');
+            // Debug: log when generateModel is called
+            console.log('[generateModel] 開始生成模型');
 
-            // 顯示重建提示
-            ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.display = 'block'; }
+            // 顯示重建提示（兩個 indicator）
+            const indicators = [
+                'model-rebuilding-indicator-top',
+                'model-rebuilding-indicator-cleanup'
+            ];
+            indicators.forEach(id => {
+                const indicator = document.getElementById(id);
+                if (indicator) {
+                    indicator.style.display = 'block';
+                    console.log(`[generateModel] 顯示指示器: ${id}`);
+                }
             });
 
-            // 讓瀏覽器先渲染指示器
+            // 👉 關鍵：讓瀏覽器先渲染指示器，再開始運算
+            // 使用 50ms 延遲確保瀏覽器有足夠時間渲染顯示
             await new Promise(resolve => setTimeout(resolve, 50));
 
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
 
+            // 檢查字體按鈕或下拉選單是否有選擇的字體
             const font1Select = document.getElementById('font1-select');
             const font2Select = document.getElementById('font2-select');
             const font1Btn = document.getElementById('font1-btn');
@@ -2717,111 +2669,73 @@
             const f1Name = font1Select ? font1Select.value : font1Btn.getAttribute('data-selected');
             const f2Name = font2Select ? font2Select.value : font2Btn.getAttribute('data-selected');
 
-            console.log('[V3 generateModel] 參數:', { l1, l2, f1Name, f2Name });
+            console.log('generateModel called:', { l1, l2, f1Name, f2Name }); // Debug → 保留這個（關鍵資訊）
 
             if (!l1 || !l2 || !f1Name || !f2Name || f1Name === 'reselect' || f2Name === 'reselect') {
-                debug('參數不完整，顯示初始球體');
-                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') showInitialSphere();
-                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
+                debug('Missing parameters, showing sphere');
+                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') {
+                    showInitialSphere();
+                }
+                // 隱藏重建提示（參數不完整時立即隱藏）
+                const indicatorsToHide = [
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicatorsToHide.forEach(id => {
+                    const ind = document.getElementById(id);
+                    if (ind) ind.style.display = 'none';
                 });
                 return;
             }
 
-            const sizeEl = document.getElementById('size');
-            const sizeValue = sizeEl ? sizeEl.value : null;
-            const targetHeight = parseInt(sizeValue);
-            
-            // 嚴格數值檢查：如果 targetHeight 是 NaN，噴出錯誤並中斷
-            if (isNaN(targetHeight) || targetHeight <= 0) {
-                console.error('❌ [generateModel] targetHeight 無效:', { 
-                    sizeValue, 
-                    parsedValue: targetHeight,
-                    sizeElementExists: !!sizeEl,
-                    sizeElementValue: sizeEl?.value
-                });
-                // 顯示初始球體，不崩潰
-                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') showInitialSphere();
-                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
-                });
-                return;
-            }
-            
-            console.log(`[generateModel] targetHeight=${targetHeight}mm (size select value: "${sizeValue}")`);
+            const targetHeight = parseInt(document.getElementById('size').value);
+
+            // 暫存舊物件，等新物件創建完成後再移除（避免畫面空白）
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
-            // ── V3 Pipeline：opentype.js + Clipper Offset → ExtrudeGeometry ──
-            let geo1, geo2;
-            try {
-                [geo1, geo2] = await Promise.all([
-                    createV3LetterGeometry(f1Name, l1, targetHeight, 18),
-                    createV3LetterGeometry(f2Name, l2, targetHeight, 18)
-                ]);
-            } catch (err) {
-                console.error('[V3 generateModel] 幾何體生成失敗:', err);
-                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
-                });
-                return;
-            }
+            debug('Loading fonts...');
+            // 載入字體
+            const f1 = await loadFont(f1Name);
+            const f2 = await loadFont(f2Name);
+            debug('Fonts loaded, generating geometry...');
 
-            // ── 物理幾何中心對齊（0409 精神）────────────────────────────
-            // 確保 Offset 完成並擠出後，才執行 center()
-            // 順序：Offset → Extrude → center → scale → rotate → center (保險)
-            
-            // 步驟 1：center() 將 BBox 中心對齊原點
+            const evaluator = new Evaluator();
+            const baseMat = new THREE.MeshStandardMaterial();
+
+            // ✅ 修復截斷問題：增大 depth 係數
+            // 原因：scale() 會縮小所有方向，包括深度
+            // 後端用 resize() 只縮放 XY，保持原始深度
+            // 前端需要更大的係數來補償縮放
+            const depth = targetHeight * 18.0;  // 🎛️ 優化：從 20.0 → 18.0（減少頂點數）
+            const params = {
+                font: null,
+                size: 50,
+                height: depth,
+                curveSegments: 28,  // 🎛️ 優化：從 32 → 28（減少 12% 面數，視覺差異不明顯）
+                bevelEnabled: false,  // 🔧 關閉 bevel 以確保前後端一致
+                bevelThickness: 2.0,
+                bevelSize: 0.8,
+                bevelSegments: 16
+            };
+
+            // === 字母 1 (正面)：將字母平面從 XY 轉到 XZ，擠出方向從 Z 轉到 Y ===
+            const geo1 = new TextGeometry(l1, { ...params, font: f1 });
             geo1.computeBoundingBox();
-            geo1.center();  // BBox 中心對齊原點
+            const bbox1 = geo1.boundingBox;
+            const actualHeight1 = bbox1.max.y - bbox1.min.y;
+            const actualWidth1 = bbox1.max.x - bbox1.min.x;
 
-            geo2.computeBoundingBox();
-            geo2.center();  // BBox 中心對齊原點
+            // 🔍 Debug: 原始尺寸（scale 之前）
+            debug('Letter 1 原始 bbox:', bbox1);
 
-            // 步驟 2：計算縮放係數，確保 targetHeight 正確應用
-            // 根據實際 BBox 高度與 targetHeight 的比例計算 scale factor
-            geo1.computeBoundingBox();
-            const bbox1Before = geo1.boundingBox;
-            const currentHeight1 = bbox1Before.max.y - bbox1Before.min.y;
-            const scaleY1 = targetHeight / currentHeight1;
-            
-            geo2.computeBoundingBox();
-            const bbox2Before = geo2.boundingBox;
-            const currentHeight2 = bbox2Before.max.y - bbox2Before.min.y;
-            const scaleY2 = targetHeight / currentHeight2;
+            const scale1 = targetHeight / actualHeight1;
+            debug('Letter 1 scale:', scale1);
 
-            console.log(`[V3] 縮放計算：letter1 當前高度=${currentHeight1.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY1.toFixed(4)}`);
-            console.log(`[V3] 縮放計算：letter2 當前高度=${currentHeight2.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY2.toFixed(4)}`);
-
-            // 套用均勻縮放（X、Y、Z 都要等比例縮放以保持形狀）
-            const scaleMat1 = new THREE.Matrix4().makeScale(scaleY1, scaleY1, scaleY1);
-            geo1.applyMatrix4(scaleMat1);
-
-            const scaleMat2 = new THREE.Matrix4().makeScale(scaleY2, scaleY2, scaleY2);
-            geo2.applyMatrix4(scaleMat2);
-
-            // 步驟 3：空間對位旋轉
-            // Letter 1：XZ 平面（正面），沿 Y 軸 extrude
-            const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            geo1.applyMatrix4(rotMat1);
-
-            // Letter 2：YZ 平面（側面），先繞 X 再繞 Z
-            const rotMat2X = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            const rotMat2Z = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-            geo2.applyMatrix4(rotMat2X);
-            geo2.applyMatrix4(rotMat2Z);
-
-            // 步驟 4：center() 再次對齊（保險，旋轉後可能輕微偏移）
-            geo1.computeBoundingBox();
+            geo1.scale(scale1, scale1, scale1);
             geo1.center();
-            
-            geo2.computeBoundingBox();
-            geo2.center();
 
-            // ── 記錄 BBox（供後端參考，center() 之後、旋轉之前）──
+            // 保存 Letter 1 的 BBox 信息（center 之後，rotate 之前）
             geo1.computeBoundingBox();
             const bbox1AfterScale = geo1.boundingBox;
             window.letter1BBox = {
@@ -2833,6 +2747,33 @@
                 offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
             };
 
+            // === 使用全域軸旋轉（更清晰、易維護）===
+            // Letter 1: XZ 平面，沿 Y 軸 extrude
+            // Geometry 沒有 rotateOnWorldAxis，需要用旋轉矩陣
+            const rotationMatrix1 = new THREE.Matrix4();
+            rotationMatrix1.makeRotationX(Math.PI / 2);
+            geo1.applyMatrix4(rotationMatrix1);
+
+            const brush1 = new Brush(geo1, baseMat);
+            brush1.updateMatrixWorld();
+
+            // === 字母 2 (側面)：YZ 平面，沿 X 軸 extrude ===
+            const geo2 = new TextGeometry(l2, { ...params, font: f2 });
+            geo2.computeBoundingBox();
+            const bbox2 = geo2.boundingBox;
+            const actualHeight2 = bbox2.max.y - bbox2.min.y;
+            const actualWidth2 = bbox2.max.x - bbox2.min.x;
+
+            // 🔍 Debug: 原始尺寸（scale 之前）
+            debug('Letter 2 原始 bbox:', bbox2);
+
+            const scale2 = targetHeight / actualHeight2;
+            debug('Letter 2 scale:', scale2);
+
+            geo2.scale(scale2, scale2, scale2);
+            geo2.center();
+
+            // 保存 Letter 2 的 BBox 信息（center 之後，rotate 之前）
             geo2.computeBoundingBox();
             const bbox2AfterScale = geo2.boundingBox;
             window.letter2BBox = {
@@ -2844,44 +2785,45 @@
                 offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
             };
 
-            // ── CSG 前必須 toNonIndexed() ──
-            geo1 = geo1.toNonIndexed();
-            geo2 = geo2.toNonIndexed();
+            // === 使用全域軸旋轉（更清晰、易維護）===
+            // Letter 2: 先繞 X 軸轉 90 度，再繞 Z 軸轉 90 度
+            const rotationMatrix2X = new THREE.Matrix4();
+            rotationMatrix2X.makeRotationX(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2X);
 
-            // ── 取消 epsilon offset：Z-fighting 問題需要幾何體洗滌而非位移 ──
-            // const EPSILON_OFFSET = 0.001;
-            // geo2.translate(EPSILON_OFFSET, EPSILON_OFFSET, EPSILON_OFFSET);
+            const rotationMatrix2Z = new THREE.Matrix4();
+            rotationMatrix2Z.makeRotationZ(Math.PI / 2);
+            geo2.applyMatrix4(rotationMatrix2Z);
 
-            const evaluator = new Evaluator();
-            const baseMat = new THREE.MeshStandardMaterial();
-
-            const brush1 = new Brush(geo1, baseMat);
-            brush1.updateMatrixWorld();
             const brush2 = new Brush(geo2, baseMat);
             brush2.updateMatrixWorld();
 
-            debug('[V3] 執行 CSG 交集...');
+            debug('Calculating intersection...'); // Debug
+
+            // 🔍 Debug: CSG 前檢查兩個 Brush 的實際範圍
             brush1.geometry.computeBoundingBox();
             brush2.geometry.computeBoundingBox();
-            debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
-            debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
+            debug('🔍 Brush1 (Letter1) BBox:', {
+                min: brush1.geometry.boundingBox.min,
+                max: brush1.geometry.boundingBox.max,
+                size: {
+                    x: (brush1.geometry.boundingBox.max.x - brush1.geometry.boundingBox.min.x).toFixed(2),
+                    y: (brush1.geometry.boundingBox.max.y - brush1.geometry.boundingBox.min.y).toFixed(2),
+                    z: (brush1.geometry.boundingBox.max.z - brush1.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
+            debug('🔍 Brush2 (Letter2) BBox:', {
+                min: brush2.geometry.boundingBox.min,
+                max: brush2.geometry.boundingBox.max,
+                size: {
+                    x: (brush2.geometry.boundingBox.max.x - brush2.geometry.boundingBox.min.x).toFixed(2),
+                    y: (brush2.geometry.boundingBox.max.y - brush2.geometry.boundingBox.min.y).toFixed(2),
+                    z: (brush2.geometry.boundingBox.max.z - brush2.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
 
-            // 布林交集運算（包 try-catch 確保錯誤不被靜默）
-            let result;
-            try {
-                console.log('[V3] 執行 CSG 交集運算...');
-                result = evaluator.evaluate(brush1, brush2, INTERSECTION);
-                console.log('[V3] CSG 交集完成');
-            } catch (csgError) {
-                console.error('❌ CSG 交集失敗:', csgError);
-                // 顯示初始球體，不崩潰
-                if (!mainMesh || mainMesh.geometry.type !== 'SphereGeometry') showInitialSphere();
-                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
-                });
-                return;
-            }
+            // 布林交集運算
+            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
@@ -2901,30 +2843,25 @@
             }
 
             debug('Fixing geometry...'); // Debug
-            // === V2 幾何體洗滌程序（還原絲滑感）===
-            // A. 轉為非索引格式
+            // === 修復幾何體 ===
             result.geometry = result.geometry.toNonIndexed();
-            // B. 刪除破碎的法向量屬性（先刪除舊法向量）
             result.geometry.deleteAttribute('normal');
-            // C. 焊接頂點（0.0001mm 容差）- 讓相鄰三角形共用頂點
-            result.geometry = BufferGeometryUtils.mergeVertices(result.geometry, 0.0001);
-            // D. 重新計算平滑法向量
             result.geometry.computeVertexNormals();
-            // D. Normal Offset 絲滑化（V2 黑科技）
-            const normalOffset = 0.001;
+
+            const offset = 0.001;
             const positions = result.geometry.attributes.position;
             const normals = result.geometry.attributes.normal;
-            
+
             for (let i = 0; i < positions.count; i++) {
                 const nx = normals.getX(i);
                 const ny = normals.getY(i);
                 const nz = normals.getZ(i);
-                
+
                 positions.setXYZ(
                     i,
-                    positions.getX(i) + nx * normalOffset,
-                    positions.getY(i) + ny * normalOffset,
-                    positions.getZ(i) + nz * normalOffset
+                    positions.getX(i) + nx * offset,
+                    positions.getY(i) + ny * offset,
+                    positions.getZ(i) + nz * offset
                 );
             }
             positions.needsUpdate = true;
@@ -2959,7 +2896,12 @@
                 height: window.letter2BBox.height.toFixed(3) + 'mm',
                 depth: window.letter2BBox.depth.toFixed(3) + 'mm'
             });
-            // ⚠️ V3 使用 ExtrudeGeometry，沒有 bevel 參數，不再輸出這些資訊
+            debug('🔍 Bevel 參數:', {
+                bevelEnabled: params.bevelEnabled,
+                bevelThickness: params.bevelThickness,
+                bevelSize: params.bevelSize,
+                bevelSegments: params.bevelSegments
+            });
             debug('📏 前端 Model 最終實際尺寸 (CSG 交集後):');
             console.log('  寬度 (X):', modelWidth.toFixed(3), 'mm');
             console.log('  深度 (Y):', modelDepth.toFixed(3), 'mm');
@@ -3263,539 +3205,6 @@
             }
         }
 
-        // ============================================================
-        // V3 幾何引擎：opentype.js + ClipperLib Offset Pipeline
-        // ============================================================
-
-        // 快取：字體 ArrayBuffer（供 V3 pipeline 使用）
-        const loadedTTFBuffers = {};
-
-        // 🔒 載入鎖定：防止同一字體重複 fetch（key: fontName, value: Promise）
-        const loadingTTFState = {};
-
-        // 快取：fonts.json 的完整字體資料（含 offset_r）
-        let fontMetaMap = {};
-
-        /**
-         * 載入 fonts.json 並建立 name → meta 的查詢表
-         * 包含 offset_r 欄位
-         */
-        async function initFontMeta() {
-            try {
-                const res = await fetch('fonts.json');
-                const data = await res.json();
-                const list = data.fonts || [];
-                list.forEach(f => {
-                    const key = typeof f === 'string' ? f : f.name;
-                    fontMetaMap[key] = typeof f === 'string'
-                        ? { name: f, offset_r: 0, weight: 400 }
-                        : f;
-                });
-                console.log(`✅ [V3] fontMetaMap 建立完成，共 ${Object.keys(fontMetaMap).length} 種字體`);
-            } catch (e) {
-                console.warn('⚠️ [V3] 無法載入 fonts.json，offset_r 全部使用 0:', e.message);
-            }
-        }
-
-        /**
-         * 從後端 /assets/fonts/ttf/ 取得 TTF ArrayBuffer
-         * 格式：FontName-Regular.ttf，例如 Alex_Brush-Regular.ttf
-         * 🔒 加入載入鎖定，防止同一字體重複 fetch
-         */
-        async function loadTTFBuffer(fontName) {
-            // 如果已載入，直接回傳
-            if (loadedTTFBuffers[fontName]) return loadedTTFBuffers[fontName];
-
-            // 🔒 如果正在載入中，等待該 Promise 完成
-            if (loadingTTFState[fontName]) {
-                console.log(`[V3] 等待字體載入中: ${fontName}`);
-                return loadingTTFState[fontName];
-            }
-
-            const meta = fontMetaMap[fontName] || { weight: 400 };
-            const weight = meta.weight || 400;
-            // 檔名格式：Google Fonts 命名慣例 - FontName-Regular.ttf
-            // 所有 weight 400 的字體都是 Regular 版本
-            const style = weight === 400 ? 'Regular' : 'Bold';
-            const fileName = fontName.replace(/ /g, '_') + '-' + style + '.ttf';
-            const backendBase = window.BACKEND_URL || 'https://duet-backend-wlw8.onrender.com';
-            const url = `${backendBase}/assets/fonts/ttf/${fileName}`;
-
-            console.log(`[V3] 載入 TTF: ${url}`);
-
-            // 🔒 設定載入鎖定（使用 Promise）
-            loadingTTFState[fontName] = (async () => {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error(`TTF 載入失敗 (${res.status}): ${url}`);
-                    const buffer = await res.arrayBuffer();
-                    loadedTTFBuffers[fontName] = buffer;
-                    console.log(`✅ [V3] TTF 已快取: ${fontName}`);
-                    return buffer;
-                } finally {
-                    // 載入完成後清除鎖定
-                    delete loadingTTFState[fontName];
-                }
-            })();
-
-            return loadingTTFState[fontName];
-        }
-
-        /**
-         * 將 opentype.js Path commands 轉為 Clipper 整數路徑陣列
-         * 一個 glyph 可能包含多個子路徑（外輪廓 + 孔洞）
-         * @param {Array} commands - opentype path.commands
-         * @param {number} scale - 整數縮放因子（例如 1000）
-         * @returns {Array} paths - ClipperLib.Paths（整數多邊形陣列）
-         */
-        function opentypeCommandsToClipperPaths(commands, scale) {
-            const paths = [];
-            let current = [];
-            // 曲線平坦化精度（段數越多越精確，但效能越低）
-            const CURVE_STEPS = 12;
-
-            let cx = 0, cy = 0; // 目前游標位置
-
-            for (const cmd of commands) {
-                switch (cmd.type) {
-                    case 'M':
-                        // 開始新子路徑（先儲存上一個）
-                        if (current.length > 1) paths.push(current);
-                        current = [];
-                        cx = cmd.x; cy = cmd.y;
-                        current.push({ X: Math.round(cx * scale), Y: Math.round(cy * scale) });
-                        break;
-
-                    case 'L':
-                        cx = cmd.x; cy = cmd.y;
-                        current.push({ X: Math.round(cx * scale), Y: Math.round(cy * scale) });
-                        break;
-
-                    case 'Q': {
-                        // 二次貝茲曲線平坦化
-                        const x0 = cx, y0 = cy;
-                        const x1 = cmd.x1, y1 = cmd.y1;
-                        const x2 = cmd.x, y2 = cmd.y;
-                        for (let i = 1; i <= CURVE_STEPS; i++) {
-                            const t = i / CURVE_STEPS;
-                            const mt = 1 - t;
-                            const px = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
-                            const py = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
-                            current.push({ X: Math.round(px * scale), Y: Math.round(py * scale) });
-                        }
-                        cx = x2; cy = y2;
-                        break;
-                    }
-
-                    case 'C': {
-                        // 三次貝茲曲線平坦化
-                        const x0 = cx, y0 = cy;
-                        const x1 = cmd.x1, y1 = cmd.y1;
-                        const x2 = cmd.x2, y2 = cmd.y2;
-                        const x3 = cmd.x, y3 = cmd.y;
-                        for (let i = 1; i <= CURVE_STEPS; i++) {
-                            const t = i / CURVE_STEPS;
-                            const mt = 1 - t;
-                            const px = mt*mt*mt*x0 + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x3;
-                            const py = mt*mt*mt*y0 + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*y3;
-                            current.push({ X: Math.round(px * scale), Y: Math.round(py * scale) });
-                        }
-                        cx = x3; cy = y3;
-                        break;
-                    }
-
-                    case 'Z':
-                        if (current.length > 1) {
-                            // 確保路徑閉合（起點終點相同）
-                            const first = current[0];
-                            const last = current[current.length - 1];
-                            if (first.X !== last.X || first.Y !== last.Y) {
-                                current.push({ X: first.X, Y: first.Y });
-                            }
-                            paths.push(current);
-                        }
-                        current = [];
-                        break;
-                }
-            }
-            // 處理未被 Z 關閉的最後一段
-            if (current.length > 1) paths.push(current);
-
-            return paths;
-        }
-
-        /**
-         * 對 Clipper 路徑執行 Offset（膨脹）
-         * 修復：先 Union 合併拓撲，再統一 offset，避免碎裂
-         * @param {Array} paths - ClipperLib.Paths
-         * @param {number} offsetUnits - 偏移量（Clipper 整數單位）
-         * @returns {Array} 偏移後的 ClipperLib.Paths
-         */
-        function clipperOffset(paths, offsetUnits) {
-            if (offsetUnits === 0) return paths;
-
-            const ClipperLib = window.ClipperLib;
-
-            // Step 1: CleanPolygons 移除自相交點，避免碎裂
-            const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
-            console.log(`[V3] CleanPolygons 後路徑數: ${cleaned.length}`);
-
-            // Step 2: 先 Union 合併所有路徑，建立正確的拓撲關係
-            const co = new ClipperLib.Clipper();
-            co.AddPaths(cleaned, ClipperLib.PolyType.ptSubject, true);
-
-            const polyTree = new ClipperLib.PolyTree();
-            co.Execute(
-                ClipperLib.ClipType.ctUnion,
-                polyTree,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd
-            );
-            console.log(`[V3] Union PolyTree 節點數: ${polyTree.Childs().length}`);
-
-            // Step 3: 將 PolyTree 展平為路徑陣列，準備做 offset
-            const flatPaths = [];
-            const flattenPolyTreeToPaths = (node) => {
-                if (node.Contour && node.Contour().length > 0) {
-                    flatPaths.push(node.Contour());
-                }
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    flattenPolyTreeToPaths(children[i]);
-                }
-            };
-            flattenPolyTreeToPaths(polyTree);
-            console.log(`[V3] 展平后路徑數: ${flatPaths.length}`);
-
-            // Step 4: 對合併後的路徑做統一 offset（正向膨脹）
-            const coOffset = new ClipperLib.ClipperOffset();
-            coOffset.MiterLimit = 2.0;
-            coOffset.AddPaths(flatPaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
-
-            const offsetResult = new ClipperLib.PolyTree();
-            coOffset.Execute(offsetResult, offsetUnits); // 正值 = 向外膨脹
-
-            // Step 5: 將 offset 後的 PolyTree 展平回傳
-            const resultPaths = [];
-            const flattenResult = (node) => {
-                if (node.Contour && node.Contour().length > 0) {
-                    resultPaths.push(node.Contour());
-                }
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    flattenResult(children[i]);
-                }
-            };
-            flattenResult(offsetResult);
-            console.log(`[V3] Offset 後路徑數: ${resultPaths.length}`);
-
-            return resultPaths;
-        }
-
-        /**
-         * 遞迴遍歷 PolyTree 節點，建立 THREE.Shape（含正確孔洞）
-         * @param {ClipperLib.PolyNode} node - PolyTree 節點
-         * @param {number} scale - 整數縮放因子（需除回）
-         * @param {Array} allShapes - 收集結果的 Shape 陣列
-         * @param {Object} container - 父節點的 Shape（孔洞會被加入這裡）
-         */
-        function traversePolyTreeNode(node, scale, allShapes, container) {
-            const ClipperLib = window.ClipperLib;
-
-            if (!node) return;
-
-            // 取得輪廓座標
-            const pts = node.Contour().map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-
-            if (!node.IsHole()) {
-                // 外輪廓：建立新的 Shape
-                const shape = new THREE.Shape(pts);
-                allShapes.push(shape);
-                console.log(`[V3] 建立 Shape: ${allShapes.length}`);
-
-                // 遞迴處理子節點（可能是孔洞或嵌套輪廓）
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    traversePolyTreeNode(children[i], scale, allShapes, shape);
-                }
-            } else {
-                // 孔洞：加入父節點的 holes
-                if (container) {
-                    const holePath = new THREE.Path(pts);
-                    container.holes.push(holePath);
-                    console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${container.holes.length}`);
-                }
-
-                // 遞迴處理子節點（孔洞內可能有嵌套實心）
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    traversePolyTreeNode(children[i], scale, allShapes, container);
-                }
-            }
-        }
-
-        /**
-         * 將 Clipper 路徑陣列重新組裝成 THREE.Shape 陣列
-         * 使用 PolyTree + IsHole() 進行正確的孔洞偵測
-         * @param {Array} clipperPaths - 偏移後的 ClipperLib.Paths 或 PolyTree
-         * @param {number} scale - 整數縮放因子（需除回）
-         * @returns {Array} THREE.Shape[]
-         */
-        function clipperPathsToThreeShapes(clipperPaths, scale) {
-            const ClipperLib = window.ClipperLib;
-            const shapes = [];
-
-            if (clipperPaths.length === 0) {
-                return shapes;
-            }
-
-            // 檢查是否為 PolyTree（若是，Childs 是方法）
-            var rootChildren;
-            var isPolyTree = false;
-
-            try {
-                rootChildren = clipperPaths.Childs();
-                if (rootChildren && rootChildren.length !== undefined) {
-                    isPolyTree = true;
-                }
-            } catch (e) {
-                // 不是 PolyTree，是普通的 Paths 陣列
-                rootChildren = null;
-            }
-
-            if (isPolyTree) {
-                // 直接遍歷 PolyTree
-                console.log(`[V3] PolyTree 根節點數: ${rootChildren.length}`);
-
-                for (var i = 0; i < rootChildren.length; i++) {
-                    var child = rootChildren[i];
-                    // 根節點的 container 是 null（最外層不需要加入孔洞）
-                    traversePolyTreeNode(child, scale, shapes, null);
-                }
-            } else {
-                // 普通 Paths 陣列：使用 Clipper.BoolOp 建立 PolyTree
-                const co = new ClipperLib.Clipper();
-                co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
-
-                const polyTree = new ClipperLib.PolyTree();
-                co.Execute(
-                    ClipperLib.ClipType.ctUnion,
-                    polyTree,
-                    ClipperLib.PolyFillType.pftEvenOdd,
-                    ClipperLib.PolyFillType.pftEvenOdd
-                );
-
-                console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
-
-                // 遍歷 PolyTree 的根節點
-                var rootChildren = polyTree.Childs();
-                for (var i = 0; i < rootChildren.length; i++) {
-                    var child = rootChildren[i];
-                    traversePolyTreeNode(child, scale, shapes, null);
-                }
-            }
-
-            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
-            return shapes;
-        }
-
-        /**
-         * Fallback：使用 Orientation 排序（舊方法）
-         * 當 PolyTree 方法失敗時使用
-         */
-        function clipperPathsToThreeShapes_OldFallback(clipperPaths, scale) {
-            const ClipperLib = window.ClipperLib;
-            const shapes = [];
-            let currentShape = null;
-
-            // 先排序：外輪廓優先（CW），孔洞（CCW）跟在後面
-            const sorted = [...clipperPaths].sort((a, b) => {
-                const aOuter = ClipperLib.Clipper.Orientation(a) ? 0 : 1;
-                const bOuter = ClipperLib.Clipper.Orientation(b) ? 0 : 1;
-                return aOuter - bOuter;
-            });
-
-            for (const path of sorted) {
-                const pts = path.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                const isCW = ClipperLib.Clipper.Orientation(path);
-
-                if (isCW) {
-                    // 外輪廓：建立新 Shape
-                    currentShape = new THREE.Shape(pts);
-                    shapes.push(currentShape);
-                } else {
-                    // 孔洞：掛在最近的外輪廓上
-                    if (currentShape) {
-                        const hole = new THREE.Path(pts);
-                        currentShape.holes.push(hole);
-                    } else {
-                        console.warn('[V3] 孔洞路徑找不到對應的外輪廓，跳過');
-                    }
-                }
-            }
-
-            return shapes;
-        }
-
-        // ============================================================
-        // V3 JSON 預處理資料快取
-        // ============================================================
-        const v3FontDataCache = new Map();
-
-        /**
-         * 載入 V3 預處理過的字體 JSON 資料
-         * 使用快取避免重複載入
-         * 
-         * @param {string} fontName - 字體名稱
-         * @returns {Promise<object>} - 字體資料物件
-         */
-        async function loadV3FontData(fontName) {
-            if (v3FontDataCache.has(fontName)) {
-                return v3FontDataCache.get(fontName);
-            }
-
-            // 將空格置換為底線，並進行 URL 編碼
-            const fileName = fontName.replace(/ /g, '_');
-            const jsonUrl = `assets/v3-data/${encodeURIComponent(fileName)}.json`;
-            console.log(`[V3] 載入預處理字體資料：${jsonUrl}`);
-            
-            try {
-                const response = await fetch(jsonUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const fontData = await response.json();
-                v3FontDataCache.set(fontName, fontData);
-                console.log(`[V3] 字體資料載入成功：${fontName}，glyphs 數量：${Object.keys(fontData.glyphs).length}`);
-                return fontData;
-            } catch (err) {
-                console.error(`[V3] 載入字體資料失敗：${fontName}`, err);
-                throw err;
-            }
-        }
-
-        /**
-         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
-         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
-         * 
-         * @param {Array} points - JSON 中的 path 陣列
-         * @param {number} CLIP_SCALE - 縮放因子
-         * @returns {Array} - Clipper 路徑格式
-         */
-        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
-            const path = [];
-            for (const pt of points) {
-                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
-                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
-                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
-                path.push({
-                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
-                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
-                });
-            }
-            return path;
-        }
-
-        /**
-         * V3 核心：從預處理 JSON 資料產生字母幾何體
-         * 
-         * Pipeline（歸一化版）：
-         *   1. 載入 v3-data JSON（已預處理好 metrics 和路徑，歸一化為 0-1 範圍）
-         *   2. 取出 glyph 路徑（已離散化），乘以 targetHeight 轉為實際 mm，再轉 Clipper 路徑
-         *   3. 執行 Clipper Offset（依 fonts.json 的 offset_r，直接為 mm 單位）
-         *   4. 轉回 THREE.Shape（含孔洞）
-         *   5. ExtrudeGeometry 擠出
-         *   6. Y 軸 180 度旋轉（Y-up → Z-up）
-         *   7. geometry.center() 置中
-         *
-         * @param {string} fontName - 字體名稱（對應 fonts.json）
-         * @param {string} letter - 單一字母字符
-         * @param {number} targetHeight - 目標高度（mm）
-         * @param {number} depthFactor - 擠出深度係數（預設 18）
-         * @returns {THREE.BufferGeometry}
-         */
-        async function createV3LetterGeometry(fontName, letter, targetHeight, depthFactor = 18) {
-            console.log(`[V3] 開始生成字母 "${letter}"，字體：${fontName}，目標高度：${targetHeight}mm`);
-
-            // ── 步驟 1：載入 V3 預處理 JSON ───────────────────────────
-            const fontData = await loadV3FontData(fontName);
-            const { fontHeight, glyphs } = fontData;
-
-            // 取得字元的 charCode
-            const charCode = letter.charCodeAt(0);
-            const glyphKey = String(charCode);
-            const glyphData = glyphs[glyphKey];
-
-            if (!glyphData) {
-                throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
-            }
-
-            const { path: pathPoints } = glyphData;
-            console.log(`[V3] Glyph 資料：path 點數=${pathPoints.length}`);
-
-            // ── 步驟 2：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
-            // JSON 是歸一化（0-1 範圍）和 Y-up
-            // CLIP_SCALE = 100000 表示 1mm 的整數精度
-            const CLIP_SCALE = 100000;
-            // 先乘以 targetHeight 將座標從歸一化轉為實際 mm（如 0.5 → 5mm）
-            const clipperPaths = [v3PathToClipperPath(pathPoints, CLIP_SCALE, targetHeight)];
-
-            if (clipperPaths[0].length === 0) {
-                throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
-            }
-
-            // ── 步驟 3：Clipper Offset（座標已縮放到實際 mm）────────────
-            const meta = fontMetaMap[fontName] || { offset_r: 0 };
-            const offsetR = meta.offset_r || 0;
-
-            let finalPaths = clipperPaths;
-            if (offsetR > 0) {
-                // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
-                // 例如：offsetR = 0.1mm, CLIP_SCALE = 100000 → offsetUnits = 10000（代表 0.1mm）
-                const offsetUnits = offsetR * CLIP_SCALE;
-                console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
-                finalPaths = clipperOffset(clipperPaths, offsetUnits);
-                console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
-            } else {
-                console.log(`[V3] 字體 "${fontName}" offset_r=0，跳過 Offset`);
-            }
-
-            // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-            const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
-
-            if (shapes.length === 0) {
-                throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
-            }
-
-            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
-
-            // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
-            // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
-            // curveSegments 提升到 24 解決邊緣折線問題（工業級平滑度）
-            // bevelEnabled 加入倒角讓邊緣圓潤
-            const depth = fontHeight * depthFactor;
-            const extrudeSettings = {
-                depth: depth,
-                bevelEnabled: true,
-                bevelThickness: 0.15,  // 倒角深度（mm）- V2 小而精參數
-                bevelSize: 0.15,       // 倒角半徑
-                bevelSegments: 5,      // 倒角平滑度 - V2 小而精參數
-                curveSegments: 24
-            };
-            let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
-
-            // ⚠️ 方向修正：這是為了把 OpenType Y-up 座標轉為 Web 座標
-            // 不是對位，只是方向校正
-            geo.rotateX(Math.PI);
-
-            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成（已修正方向，待 generateModel 對齊）`);
-            return geo;
-        }
-
-        // ============================================================
-        // V3 generateModel：完全取代原有的 generateModel
-        // ============================================================
-
         // 從 opentype.js 字體轉換為 Three.js typeface 格式
         function convertOpentypeToThreejs(opentypeFont, fontName) {
             const glyphs = {};
@@ -4015,7 +3424,7 @@
             const z_height_adj = parseFloat(document.getElementById('ringZ').value);
             const rotation = parseFloat(document.getElementById('ringRotation').value);
 
-            const baseZ = modelTopZ + 1.2; // 在 Z (高度) 軸上定位
+            const baseZ = modelTopZ + 2.0; // 在 Z (高度) 軸上定位
 
             // 調整：X 不變, Y 軸為 modelCenter.y + 深度調整, Z 軸為 baseZ + 高度調整
             ringMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
@@ -4116,8 +3525,7 @@
             // 使用從 fonts.json 載入的可用字體清單
             const fontsToDisplay = availableFonts.length > 0 ? availableFonts : [];
 
-            fontsToDisplay.forEach((fontObj) => {
-                const font = fontObj.name;  // fonts.json 的格式為物件
+            fontsToDisplay.forEach((font) => {
                 const item = document.createElement('div');
                 item.className = 'font-list-item';
 
@@ -4248,16 +3656,15 @@
             const startTime = Date.now();
             let successCount = 0;
 
-            // 並行載入所有字體（使用 V3 的 TTF 預載入）
+            // 並行載入所有字體（不阻塞 UI）
             const loadPromises = fontNames.map(async (fontName) => {
                 try {
-                    // 使用 V3 的 TTF 載入方式預載入
-                    await loadTTFBuffer(fontName);
+                    await loadFont(fontName);
                     successCount++;
                     progressText.textContent = `${successCount} / ${fontNames.length}`;
-                    console.log(`✓ [V3] 預載入成功: ${fontName} (${successCount}/${fontNames.length})`);
+                    console.log(`✓ 預載入成功: ${fontName} (${successCount}/${fontNames.length})`);
                 } catch (error) {
-                    console.warn(`✗ [V3] 預載入失敗: ${fontName}`, error);
+                    console.warn(`✗ 預載入失敗: ${fontName}`, error);
                 }
             });
 
@@ -4307,11 +3714,10 @@
             letter1Select.value = inputChars[0];
             letter2Select.value = inputChars[1];
 
-            // 直接使用 checkedFonts，因為 Set 會維持插入順序
             const selectedFonts = Array.from(checkedFonts);
 
             // 更新字體按鈕為下拉選單
-            ['font1', 'font2'].forEach((target, idx) => {
+            ['font1', 'font2'].forEach(target => {
                 const btn = document.getElementById(`${target}-btn`);
 
                 // 隱藏按鈕，創建下拉選單
@@ -4407,7 +3813,7 @@
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
 
-            // 選擇字體後自動生成模型
+            // 選擇字體後自動使用第一個字體並生成模型
             generateModel();
             isReselect = false;  // 重置標記
         }
@@ -6400,7 +5806,7 @@
             for (let i = 0; i < availableFonts.length; i += batchSize) {
                 const batch = availableFonts.slice(i, i + batchSize);
                 const link = document.createElement('link');
-                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.name.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
                 link.rel = 'stylesheet';
                 document.head.appendChild(link);
             }
