@@ -2904,9 +2904,11 @@
             // === V2 幾何體洗滌程序（還原絲滑感）===
             // A. 轉為非索引格式
             result.geometry = result.geometry.toNonIndexed();
-            // B. 刪除破碎的法向量屬性
+            // B. 刪除破碎的法向量屬性（先刪除舊法向量）
             result.geometry.deleteAttribute('normal');
-            // C. 重新計算平滑法向量
+            // C. 焊接頂點（0.0001mm 容差）- 讓相鄰三角形共用頂點
+            result.geometry = BufferGeometryUtils.mergeVertices(result.geometry, 0.0001);
+            // D. 重新計算平滑法向量
             result.geometry.computeVertexNormals();
             // D. Normal Offset 絲滑化（V2 黑科技）
             const normalOffset = 0.001;
