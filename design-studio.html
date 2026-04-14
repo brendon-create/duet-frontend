@@ -3935,10 +3935,13 @@
                 console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
                 shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
             } else {
-                // 不需要 Offset：直接用真實曲線建 THREE.Shape，保留最高精度
-                // v2 JSON 可用真實貝茲曲線；v1 JSON 用直線段（精度較低但可用）
-                console.log(`[V3] offset_r=0，直接用曲線建 Shape（格式：${jsonVersion}）`);
-                shapes = v3CommandsToThreeShapes(pathInput);
+                // 不需要 Offset：仍走 Clipper 流程以正確處理孔洞
+                // offsetUnits=0 時 clipperOffset 會執行 CleanPolygons + Union
+                // 這樣 clipperPathsToThreeShapes 才能正確識別孔洞
+                console.log(`[V3] offset_r=0，走 Clipper 流程以正確處理孔洞`);
+                const finalPaths = clipperOffset(clipperPaths, 0);
+                console.log(`[V3] Clipper 處理後路徑數：${clipperPaths.length} → ${finalPaths.length}`);
+                shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
             }
 
             // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
