@@ -3675,25 +3675,144 @@
         }
 
         /**
-         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
-         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
-         * 
-         * @param {Array} points - JSON 中的 path 陣列
-         * @param {number} CLIP_SCALE - 縮放因子
-         * @returns {Array} - Clipper 路徑格式
+         * 將 v2 JSON 的曲線命令轉為高精度 Clipper 路徑
+         * 二次曲線用 16 段，三次曲線用 24 段，確保 10mm 字高下每段 < 0.07mm
          */
-        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
+        function v3CommandsToClipperPath(commands, CLIP_SCALE, targetHeight) {
             const path = [];
-            for (const pt of points) {
-                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
-                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
-                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
-                path.push({
-                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
-                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
-                });
+            let cx = 0, cy = 0;
+            const STEPS_Q = 16;
+            const STEPS_C = 24;
+
+            const push = (x, y) => path.push({
+                X: Math.round(x * targetHeight * CLIP_SCALE),
+                Y: Math.round(y * targetHeight * CLIP_SCALE)
+            });
+
+            for (const cmd of commands) {
+                switch (cmd.type) {
+                    case 'M':
+                    case 'L':
+                        cx = cmd.x; cy = cmd.y;
+                        push(cx, cy);
+                        break;
+                    case 'Q':
+                        for (let i = 1; i <= STEPS_Q; i++) {
+                            const t = i / STEPS_Q, mt = 1 - t;
+                            push(
+                                mt*mt*cx + 2*mt*t*cmd.x1 + t*t*cmd.x,
+                                mt*mt*cy + 2*mt*t*cmd.y1 + t*t*cmd.y
+                            );
+                        }
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+                    case 'C':
+                        for (let i = 1; i <= STEPS_C; i++) {
+                            const t = i / STEPS_C, mt = 1 - t;
+                            push(
+                                mt*mt*mt*cx + 3*mt*mt*t*cmd.x1 + 3*mt*t*t*cmd.x2 + t*t*t*cmd.x,
+                                mt*mt*mt*cy + 3*mt*mt*t*cmd.y1 + 3*mt*t*t*cmd.y2 + t*t*t*cmd.y
+                            );
+                        }
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+                    case 'Z':
+                        // 確保閉合
+                        if (path.length > 0) {
+                            const first = path[0];
+                            const last = path[path.length - 1];
+                            if (first.X !== last.X || first.Y !== last.Y) {
+                                path.push({ X: first.X, Y: first.Y });
+                            }
+                        }
+                        break;
+                }
             }
             return path;
+        }
+
+        /**
+         * 將 v2 JSON 的曲線命令直接建立 THREE.Shape（含真實貝茲曲線）
+         * 僅在 offset_r = 0 時使用，保留最高曲線精度
+         * 注意：Y 軸已在 font-preprocessor v2 保持 Y-up，
+         *       需在此翻轉（乘以 -1）以符合 Three.js 座標
+         */
+        function v3CommandsToThreeShapes(commands) {
+            const shapes = [];
+            let currentShape = null;
+            let currentPath = null;
+            let startX = 0, startY = 0;
+            let cx = 0, cy = 0;
+
+            // Y 軸翻轉：opentype Y-up → Three.js
+            const fy = y => -y;
+
+            for (const cmd of commands) {
+                switch (cmd.type) {
+                    case 'M':
+                        // 儲存上一個 path
+                        if (currentShape && currentPath) {
+                            // 判斷是外輪廓還是孔洞（用 Three.js ShapeUtils）
+                            const pts = currentShape.getPoints();
+                            if (THREE.ShapeUtils.isClockWise(pts)) {
+                                shapes.push(currentShape);
+                                currentPath = currentShape;
+                            } else {
+                                // 孔洞：掛在最後一個外輪廓上
+                                if (shapes.length > 0) {
+                                    shapes[shapes.length - 1].holes.push(currentPath);
+                                }
+                            }
+                        }
+                        startX = cmd.x; startY = cmd.y;
+                        cx = cmd.x; cy = cmd.y;
+                        currentShape = new THREE.Shape();
+                        currentShape.moveTo(cmd.x, fy(cmd.y));
+                        currentPath = new THREE.Path();
+                        currentPath.moveTo(cmd.x, fy(cmd.y));
+                        break;
+
+                    case 'L':
+                        cx = cmd.x; cy = cmd.y;
+                        currentShape && currentShape.lineTo(cmd.x, fy(cmd.y));
+                        break;
+
+                    case 'Q':
+                        currentShape && currentShape.quadraticCurveTo(
+                            cmd.x1, fy(cmd.y1),
+                            cmd.x,  fy(cmd.y)
+                        );
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+
+                    case 'C':
+                        currentShape && currentShape.bezierCurveTo(
+                            cmd.x1, fy(cmd.y1),
+                            cmd.x2, fy(cmd.y2),
+                            cmd.x,  fy(cmd.y)
+                        );
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+
+                    case 'Z':
+                        currentShape && currentShape.closePath();
+                        break;
+                }
+            }
+
+            // 處理最後一個 path
+            if (currentShape && currentPath) {
+                const pts = currentShape.getPoints();
+                if (THREE.ShapeUtils.isClockWise(pts)) {
+                    shapes.push(currentShape);
+                } else {
+                    if (shapes.length > 0) {
+                        shapes[shapes.length - 1].holes.push(currentPath);
+                    }
+                }
+            }
+
+            return shapes;
         }
 
         /**
@@ -3730,15 +3849,15 @@
                 throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
             }
 
-            const { path: pathPoints } = glyphData;
-            console.log(`[V3] Glyph 資料：path 點數=${pathPoints.length}`);
+            const { commands: pathCommands } = glyphData;
+            console.log(`[V3] Glyph 資料：commands 數=${pathCommands.length}`);
 
             // ── 步驟 2：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
             // JSON 是歸一化（0-1 範圍）和 Y-up
             // CLIP_SCALE = 100000 表示 1mm 的整數精度
             const CLIP_SCALE = 100000;
             // 先乘以 targetHeight 將座標從歸一化轉為實際 mm（如 0.5 → 5mm）
-            const clipperPaths = [v3PathToClipperPath(pathPoints, CLIP_SCALE, targetHeight)];
+            const clipperPaths = [v3CommandsToClipperPath(pathCommands, CLIP_SCALE, targetHeight)];
 
             if (clipperPaths[0].length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
@@ -3748,20 +3867,21 @@
             const meta = fontMetaMap[fontName] || { offset_r: 0 };
             const offsetR = meta.offset_r || 0;
 
-            let finalPaths = clipperPaths;
+            let shapes;
             if (offsetR > 0) {
-                // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
-                // 例如：offsetR = 0.1mm, CLIP_SCALE = 100000 → offsetUnits = 10000（代表 0.1mm）
+                // 需要 Offset：走 Clipper 路徑（離散化多邊形 → Offset → 轉回 Shape）
                 const offsetUnits = offsetR * CLIP_SCALE;
                 console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
-                finalPaths = clipperOffset(clipperPaths, offsetUnits);
+                const finalPaths = clipperOffset(clipperPaths, offsetUnits);
                 console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
+                shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
             } else {
-                console.log(`[V3] 字體 "${fontName}" offset_r=0，跳過 Offset`);
+                // 不需要 Offset：直接用真實曲線建 THREE.Shape，保留最高精度
+                console.log(`[V3] 字體 "${fontName}" offset_r=0，直接用曲線建 Shape`);
+                shapes = v3CommandsToThreeShapes(pathCommands);
             }
 
             // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-            const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
             if (shapes.length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
