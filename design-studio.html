@@ -2776,11 +2776,11 @@
             geom1.center();
             geom2.center();
 
-            // 執行標準縮放（以 Y 軸為高度）
+            // 執行標準縮放（以 Z 軸為高度，rotateX 後原本的 Y 變成 Z）
             const size1 = new THREE.Vector3();
             geom1.computeBoundingBox();
             geom1.boundingBox.getSize(size1);
-            const s = targetHeight / size1.y; 
+            const s = targetHeight / size1.z; 
             
             geom1.scale(s, s, s);
             geom2.scale(s, s, s);
@@ -2789,17 +2789,17 @@
             const finalSize1 = new THREE.Vector3();
             geom1.computeBoundingBox();
             geom1.boundingBox.getSize(finalSize1);
-            window.letter1BBox = { width: finalSize1.x, height: finalSize1.y, depth: finalSize1.z };
+            window.letter1BBox = { width: finalSize1.x, height: finalSize1.z, depth: finalSize1.y };
 
             const finalSize2 = new THREE.Vector3();
             geom2.computeBoundingBox();
             geom2.boundingBox.getSize(finalSize2);
-            window.letter2BBox = { width: finalSize2.x, height: finalSize2.y, depth: finalSize2.z };
+            window.letter2BBox = { width: finalSize2.x, height: finalSize2.z, depth: finalSize2.y };
 
             // 執行標準交集對位
             const mesh1 = new THREE.Mesh(geom1);
             const mesh2 = new THREE.Mesh(geom2);
-            mesh2.rotation.y = Math.PI / 2; // 繞垂直的 Y 軸旋轉
+            mesh2.rotation.z = Math.PI / 2; // 在 Z-up 系統，繞 Z 軸旋轉形成十字交叉
             
             mesh1.updateMatrix();
             mesh2.updateMatrix();
