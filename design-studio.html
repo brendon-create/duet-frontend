@@ -3649,23 +3649,93 @@
         }
 
         /**
-         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
-         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
-         * 
-         * @param {Array} points - JSON 中的 path 陣列
-         * @param {number} CLIP_SCALE - 縮放因子
-         * @returns {Array} - Clipper 路徑格式
+         * 將 v3-data JSON 的路徑資料轉為高精度 Clipper 路徑
+         * 同時相容 v1 格式（path 點陣列）和 v2 格式（commands 曲線命令陣列）
+         *
+         * v1 格式（path）：每個點 { x, y, type } 已離散化，type 只是來源標記，
+         *   全部當直線點處理，每條 Q 曲線 4 點、C 曲線 8 點。
+         * v2 格式（commands）：保留原始貝茲控制點，
+         *   Q 用 16 段、C 用 24 段做高精度離散化。
          */
-        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
+        function v3CommandsToClipperPath(input, CLIP_SCALE, targetHeight) {
             const path = [];
-            for (const pt of points) {
-                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
-                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
-                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
-                path.push({
-                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
-                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
-                });
+            let cx = 0, cy = 0;
+            const STEPS_Q = 16;
+            const STEPS_C = 24;
+
+            // 不需要 Y 軸翻轉：opentype Y-up = Three.js Y-up（兩者座標系統相同）
+            
+            const push = (x, y) => path.push({
+                X: Math.round(x * targetHeight * CLIP_SCALE),
+                Y: Math.round(y * targetHeight * CLIP_SCALE)
+            });
+
+            // 判定格式：V1 為 [ [x,y], ... ] 或 [ {x,y}, ... ]，V2 為 [ {type:'M', x,y}, ... ]
+            // V2 的命令物件有 'type' 欄位
+            const isV2 = (typeof input[0] === 'object' && 'type' in input[0]);
+
+            console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}, firstType=${input[0]?.type}`);
+
+            if (!isV2) {
+                // v1：所有點都是直線端點，直接 push
+                // 格式可能是 [ [x,y], ... ] 或 [ {x,y}, ... ]
+                for (const pt of input) {
+                    if (pt.type === 'Z') {
+                        if (path.length > 0) {
+                            const first = path[0];
+                            const last = path[path.length - 1];
+                            if (first.X !== last.X || first.Y !== last.Y) {
+                                path.push({ X: first.X, Y: first.Y });
+                            }
+                        }
+                    } else {
+                        // 支援兩種格式：[x,y] 或 {x,y}
+                        const px = pt[0] !== undefined ? pt[0] : pt.x;
+                        const py = pt[1] !== undefined ? pt[1] : pt.y;
+                        push(px, py);
+                    }
+                }
+                return path;
+            }
+
+            // v2：保留原始曲線，做高精度離散化
+            for (const cmd of input) {
+                switch (cmd.type) {
+                    case 'M':
+                    case 'L':
+                        cx = cmd.x; cy = cmd.y;
+                        push(cx, cy);
+                        break;
+                    case 'Q':
+                        for (let i = 1; i <= STEPS_Q; i++) {
+                            const t = i / STEPS_Q, mt = 1 - t;
+                            push(
+                                mt*mt*cx + 2*mt*t*cmd.x1 + t*t*cmd.x,
+                                mt*mt*cy + 2*mt*t*cmd.y1 + t*t*cmd.y
+                            );
+                        }
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+                    case 'C':
+                        for (let i = 1; i <= STEPS_C; i++) {
+                            const t = i / STEPS_C, mt = 1 - t;
+                            push(
+                                mt*mt*mt*cx + 3*mt*mt*t*cmd.x1 + 3*mt*t*t*cmd.x2 + t*t*t*cmd.x,
+                                mt*mt*mt*cy + 3*mt*mt*t*cmd.y1 + 3*mt*t*t*cmd.y2 + t*t*t*cmd.y
+                            );
+                        }
+                        cx = cmd.x; cy = cmd.y;
+                        break;
+                    case 'Z':
+                        if (path.length > 0) {
+                            const first = path[0];
+                            const last = path[path.length - 1];
+                            if (first.X !== last.X || first.Y !== last.Y) {
+                                path.push({ X: first.X, Y: first.Y });
+                            }
+                        }
+                        break;
+                }
             }
             return path;
         }
@@ -3704,15 +3774,19 @@
                 throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
             }
 
-            const { path: pathPoints } = glyphData;
-            console.log(`[V3] Glyph 資料：path 點數=${pathPoints.length}`);
+            // 相容 v1（path 點陣列）和 v2（commands 曲線命令陣列）
+            const pathInput = glyphData.commands || glyphData.path;
+            if (!pathInput || pathInput.length === 0) {
+                throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 路徑資料為空（glyphData 缺少 commands 或 path 欄位）`);
+            }
+            const jsonVersion = glyphData.commands ? 'v2' : 'v1';
+            console.log(`[V3] Glyph 資料：格式=${jsonVersion}，資料點數=${pathInput.length}`);
 
             // ── 步驟 2：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
-            // JSON 是歸一化（0-1 範圍）和 Y-up
-            // CLIP_SCALE = 100000 表示 1mm 的整數精度
+            // JSON 座標已歸一化（0-1 範圍），需乘以 targetHeight 換算為 mm
+            // CLIP_SCALE = 100000 → 精度 0.00001mm，遠超 3D 列印需求
             const CLIP_SCALE = 100000;
-            // 先乘以 targetHeight 將座標從歸一化轉為實際 mm（如 0.5 → 5mm）
-            const clipperPaths = [v3PathToClipperPath(pathPoints, CLIP_SCALE, targetHeight)];
+            const clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
 
             if (clipperPaths[0].length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
@@ -3745,12 +3819,12 @@
 
             // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
             // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
-            // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
+            // curveSegments 提升到 28 解決邊緣折線問題（工業級平滑度）
             const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 16
+                curveSegments: 28
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
