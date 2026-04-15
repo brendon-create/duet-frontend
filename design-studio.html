@@ -2751,10 +2751,10 @@
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
-            // ── V3 Pipeline：createV3LetterGeometry 幾何體 ──
-            let geom1, geom2;
+            // ── V3 Pipeline：opentype.js + Clipper Offset → ExtrudeGeometry ──
+            let geo1, geo2;
             try {
-                [geom1, geom2] = await Promise.all([
+                [geo1, geo2] = await Promise.all([
                     createV3LetterGeometry(f1Name, l1, targetHeight, 18),
                     createV3LetterGeometry(f2Name, l2, targetHeight, 18)
                 ]);
@@ -2767,53 +2767,112 @@
                 return;
             }
 
-            // 【關鍵修正】：強制將 V3 產出的幾何體轉向，使其「站立」在 XY 平面上
-            // 這樣 size.y 就會是正確的高度
-            geom1.rotateX(Math.PI / 2); 
-            geom2.rotateX(Math.PI / 2);
-
-            // 執行標準置中
-            geom1.center();
-            geom2.center();
-
-            // 執行標準縮放（以 Z 軸為高度，rotateX 後原本的 Y 變成 Z）
-            const size1 = new THREE.Vector3();
-            geom1.computeBoundingBox();
-            geom1.boundingBox.getSize(size1);
-            const s = targetHeight / size1.z; 
+            // ── 物理幾何中心對齊（0409 精神）────────────────────────────
+            // 確保 Offset 完成並擠出後，才執行 center()
+            // 順序：Offset → Extrude → center → scale → rotate → center (保險)
             
-            geom1.scale(s, s, s);
-            geom2.scale(s, s, s);
+            // 步驟 1：center() 將 BBox 中心對齊原點
+            geo1.computeBoundingBox();
+            geo1.center();  // BBox 中心對齊原點
 
-            // 儲存 letter BBox（V3 pipeline 需手動計算）
-            const finalSize1 = new THREE.Vector3();
-            geom1.computeBoundingBox();
-            geom1.boundingBox.getSize(finalSize1);
-            window.letter1BBox = { width: finalSize1.x, height: finalSize1.z, depth: finalSize1.y };
+            geo2.computeBoundingBox();
+            geo2.center();  // BBox 中心對齊原點
 
-            const finalSize2 = new THREE.Vector3();
-            geom2.computeBoundingBox();
-            geom2.boundingBox.getSize(finalSize2);
-            window.letter2BBox = { width: finalSize2.x, height: finalSize2.z, depth: finalSize2.y };
-
-            // 執行標準交集對位
-            const mesh1 = new THREE.Mesh(geom1);
-            const mesh2 = new THREE.Mesh(geom2);
-            mesh2.rotation.z = Math.PI / 2; // 在 Z-up 系統，繞 Z 軸旋轉形成十字交叉
+            // 步驟 2：計算縮放係數，確保 targetHeight 正確應用
+            // 根據實際 BBox 高度與 targetHeight 的比例計算 scale factor
+            geo1.computeBoundingBox();
+            const bbox1Before = geo1.boundingBox;
+            const currentHeight1 = bbox1Before.max.y - bbox1Before.min.y;
+            const scaleY1 = targetHeight / currentHeight1;
             
-            mesh1.updateMatrix();
-            mesh2.updateMatrix();
+            geo2.computeBoundingBox();
+            const bbox2Before = geo2.boundingBox;
+            const currentHeight2 = bbox2Before.max.y - bbox2Before.min.y;
+            const scaleY2 = targetHeight / currentHeight2;
+
+            console.log(`[V3] 縮放計算：letter1 當前高度=${currentHeight1.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY1.toFixed(4)}`);
+            console.log(`[V3] 縮放計算：letter2 當前高度=${currentHeight2.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY2.toFixed(4)}`);
+
+            // 套用均勻縮放（X、Y、Z 都要等比例縮放以保持形狀）
+            const scaleMat1 = new THREE.Matrix4().makeScale(scaleY1, scaleY1, scaleY1);
+            geo1.applyMatrix4(scaleMat1);
+
+            const scaleMat2 = new THREE.Matrix4().makeScale(scaleY2, scaleY2, scaleY2);
+            geo2.applyMatrix4(scaleMat2);
+
+            // 步驟 3：空間對位旋轉
+            // Letter 1：XZ 平面（正面），沿 Y 軸 extrude
+            const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+            geo1.applyMatrix4(rotMat1);
+
+            // Letter 2：YZ 平面（側面），先繞 X 再繞 Z
+            const rotMat2X = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+            const rotMat2Z = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
+            geo2.applyMatrix4(rotMat2X);
+            geo2.applyMatrix4(rotMat2Z);
+
+            // 步驟 4：center() 再次對齊（保險，旋轉後可能輕微偏移）
+            geo1.computeBoundingBox();
+            geo1.center();
             
-            // 使用 Evaluator 執行交集
+            geo2.computeBoundingBox();
+            geo2.center();
+
+            // ── 記錄 BBox（供後端參考，center() 之後、旋轉之前）──
+            geo1.computeBoundingBox();
+            const bbox1AfterScale = geo1.boundingBox;
+            window.letter1BBox = {
+                width: bbox1AfterScale.max.x - bbox1AfterScale.min.x,
+                height: bbox1AfterScale.max.y - bbox1AfterScale.min.y,
+                depth: bbox1AfterScale.max.z - bbox1AfterScale.min.z,
+                offsetX: (bbox1AfterScale.max.x + bbox1AfterScale.min.x) / 2,
+                offsetY: (bbox1AfterScale.max.y + bbox1AfterScale.min.y) / 2,
+                offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
+            };
+
+            geo2.computeBoundingBox();
+            const bbox2AfterScale = geo2.boundingBox;
+            window.letter2BBox = {
+                width: bbox2AfterScale.max.x - bbox2AfterScale.min.x,
+                height: bbox2AfterScale.max.y - bbox2AfterScale.min.y,
+                depth: bbox2AfterScale.max.z - bbox2AfterScale.min.z,
+                offsetX: (bbox2AfterScale.max.x + bbox2AfterScale.min.x) / 2,
+                offsetY: (bbox2AfterScale.max.y + bbox2AfterScale.min.y) / 2,
+                offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
+            };
+
+            // ── CSG 前必須 toNonIndexed() ──
+            geo1 = geo1.toNonIndexed();
+            geo2 = geo2.toNonIndexed();
+
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
-            const brush1 = new Brush(geom1, baseMat);
-            const brush2 = new Brush(geom2, baseMat);
+
+            const brush1 = new Brush(geo1, baseMat);
             brush1.updateMatrixWorld();
+            const brush2 = new Brush(geo2, baseMat);
             brush2.updateMatrixWorld();
 
             debug('[V3] 執行 CSG 交集...');
+            brush1.geometry.computeBoundingBox();
+            brush2.geometry.computeBoundingBox();
+            debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
+            debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
+
+            // 布林交集運算
             let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+
+            // 🔍 Debug: CSG 後檢查結果
+            result.geometry.computeBoundingBox();
+            debug('🔍 CSG Result BBox:', {
+                min: result.geometry.boundingBox.min,
+                max: result.geometry.boundingBox.max,
+                size: {
+                    x: (result.geometry.boundingBox.max.x - result.geometry.boundingBox.min.x).toFixed(2),
+                    y: (result.geometry.boundingBox.max.y - result.geometry.boundingBox.min.y).toFixed(2),
+                    z: (result.geometry.boundingBox.max.z - result.geometry.boundingBox.min.z).toFixed(2)
+                }
+            });
 
             if (result.geometry.attributes.position.count === 0) {
                 debugWarn('交集為空');
@@ -2821,7 +2880,7 @@
             }
 
             debug('Fixing geometry...'); // Debug
-            // 修復幾何體
+            // === 修復幾何體 ===
             result.geometry = result.geometry.toNonIndexed();
             result.geometry.deleteAttribute('normal');
             result.geometry.computeVertexNormals();
@@ -3590,13 +3649,30 @@
         }
 
         /**
-         * 將 v3-data JSON 的路徑資料轉為高精度 Clipper 路徑
-         * 同時相容 v1 格式（path 點陣列）和 v2 格式（commands 曲線命令陣列）
-         *
-         * v1 格式（path）：每個點 { x, y, type } 已離散化，type 只是來源標記，
-         *   全部當直線點處理，每條 Q 曲線 4 點、C 曲線 8 點。
-         * v2 格式（commands）：保留原始貝茲控制點，
-         *   Q 用 16 段、C 用 24 段做高精度離散化。
+         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
+         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
+         * 
+         * @param {Array} points - JSON 中的 path 陣列
+         * @param {number} CLIP_SCALE - 縮放因子
+         * @returns {Array} - Clipper 路徑格式
+         */
+        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
+            const path = [];
+            for (const pt of points) {
+                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
+                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
+                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
+                path.push({
+                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
+                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
+                });
+            }
+            return path;
+        }
+
+        /**
+         * 將 v3-data JSON v2 格式（commands 曲線命令）轉為高精度 Clipper 路徑
+         * v2 格式保留原始貝茲控制點，Q 用 16 段、C 用 24 段離散化
          */
         function v3CommandsToClipperPath(input, CLIP_SCALE, targetHeight) {
             const path = [];
@@ -3604,42 +3680,27 @@
             const STEPS_Q = 16;
             const STEPS_C = 24;
 
-            // 不需要 Y 軸翻轉：opentype Y-up = Three.js Y-up（兩者座標系統相同）
-            
             const push = (x, y) => path.push({
                 X: Math.round(x * targetHeight * CLIP_SCALE),
                 Y: Math.round(y * targetHeight * CLIP_SCALE)
             });
 
-            // 判定格式：V1 為 [ [x,y], ... ] 或 [ {x,y}, ... ]，V2 為 [ {type:'M', x,y}, ... ]
-            // V2 的命令物件有 'type' 欄位
+            // 判定是否為 v2 格式（有 type 欄位）
             const isV2 = (typeof input[0] === 'object' && 'type' in input[0]);
 
-            console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}, firstType=${input[0]?.type}`);
+            console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}`);
 
             if (!isV2) {
-                // v1：所有點都是直線端點，直接 push
-                // 格式可能是 [ [x,y], ... ] 或 [ {x,y}, ... ]
+                // v1：當直線點處理
                 for (const pt of input) {
-                    if (pt.type === 'Z') {
-                        if (path.length > 0) {
-                            const first = path[0];
-                            const last = path[path.length - 1];
-                            if (first.X !== last.X || first.Y !== last.Y) {
-                                path.push({ X: first.X, Y: first.Y });
-                            }
-                        }
-                    } else {
-                        // 支援兩種格式：[x,y] 或 {x,y}
-                        const px = pt[0] !== undefined ? pt[0] : pt.x;
-                        const py = pt[1] !== undefined ? pt[1] : pt.y;
-                        push(px, py);
-                    }
+                    const px = pt[0] !== undefined ? pt[0] : pt.x;
+                    const py = pt[1] !== undefined ? pt[1] : pt.y;
+                    push(px, py);
                 }
                 return path;
             }
 
-            // v2：保留原始曲線，做高精度離散化
+            // v2：貝茲曲線離散化
             for (const cmd of input) {
                 switch (cmd.type) {
                     case 'M':
@@ -3715,18 +3776,16 @@
                 throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
             }
 
-            // 相容 v1（path 點陣列）和 v2（commands 曲線命令陣列）
+            // ── 步驟 2：取出路徑資料 ──────
+            // 相容 v1 (path 點陣列) 和 v2 (commands 曲線命令陣列)
             const pathInput = glyphData.commands || glyphData.path;
-            if (!pathInput || pathInput.length === 0) {
-                throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 路徑資料為空（glyphData 缺少 commands 或 path 欄位）`);
-            }
-            const jsonVersion = glyphData.commands ? 'v2' : 'v1';
-            console.log(`[V3] Glyph 資料：格式=${jsonVersion}，資料點數=${pathInput.length}`);
+            console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
 
-            // ── 步驟 2：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
-            // JSON 座標已歸一化（0-1 範圍），需乘以 targetHeight 換算為 mm
-            // CLIP_SCALE = 100000 → 精度 0.00001mm，遠超 3D 列印需求
+            // ── 步驟 3：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
+            // JSON 是歸一化（0-1 範圍）和 Y-up
+            // CLIP_SCALE = 100000 表示 1mm 的整數精度
             const CLIP_SCALE = 100000;
+            // 根據資料格式選擇轉換函數
             const clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
 
             if (clipperPaths[0].length === 0) {
@@ -3760,12 +3819,12 @@
 
             // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
             // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
-            // curveSegments 提升到 28 解決邊緣折線問題（工業級平滑度）
+            // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
             const depth = fontHeight * depthFactor;
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 28
+                curveSegments: 16
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
