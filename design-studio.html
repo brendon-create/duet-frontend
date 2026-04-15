@@ -2751,7 +2751,7 @@
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
-            // ── V3 Pipeline：opentype.js + Clipper Offset → ExtrudeGeometry ──
+            // ── V3 Pipeline：createV3LetterGeometry 幾何體 ──
             let geo1, geo2;
             try {
                 [geo1, geo2] = await Promise.all([
@@ -2767,112 +2767,42 @@
                 return;
             }
 
-            // ── 物理幾何中心對齊（0409 精神）────────────────────────────
-            // 確保 Offset 完成並擠出後，才執行 center()
-            // 順序：Offset → Extrude → center → scale → rotate → center (保險)
+            // 【關鍵修正】：強制將 V3 產出的幾何體轉向，使其「站立」在 XY 平面上
+            // 這樣 size.y 就會是正確的高度
+            geo1.rotateX(Math.PI / 2); 
+            geo2.rotateX(Math.PI / 2);
+
+            // 執行標準置中
+            geom1.center();
+            geom2.center();
+
+            // 執行標準縮放（以 Y 軸為高度）
+            const size1 = new THREE.Vector3();
+            geom1.computeBoundingBox();
+            geom1.boundingBox.getSize(size1);
+            const s = targetHeight / size1.y; 
             
-            // 步驟 1：center() 將 BBox 中心對齊原點
-            geo1.computeBoundingBox();
-            geo1.center();  // BBox 中心對齊原點
+            geom1.scale(s, s, s);
+            geom2.scale(s, s, s);
 
-            geo2.computeBoundingBox();
-            geo2.center();  // BBox 中心對齊原點
-
-            // 步驟 2：計算縮放係數，確保 targetHeight 正確應用
-            // 根據實際 BBox 高度與 targetHeight 的比例計算 scale factor
-            geo1.computeBoundingBox();
-            const bbox1Before = geo1.boundingBox;
-            const currentHeight1 = bbox1Before.max.y - bbox1Before.min.y;
-            const scaleY1 = targetHeight / currentHeight1;
+            // 執行標準交集對位
+            const mesh1 = new THREE.Mesh(geom1);
+            const mesh2 = new THREE.Mesh(geom2);
+            mesh2.rotation.y = Math.PI / 2; // 繞垂直的 Y 軸旋轉
             
-            geo2.computeBoundingBox();
-            const bbox2Before = geo2.boundingBox;
-            const currentHeight2 = bbox2Before.max.y - bbox2Before.min.y;
-            const scaleY2 = targetHeight / currentHeight2;
-
-            console.log(`[V3] 縮放計算：letter1 當前高度=${currentHeight1.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY1.toFixed(4)}`);
-            console.log(`[V3] 縮放計算：letter2 當前高度=${currentHeight2.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY2.toFixed(4)}`);
-
-            // 套用均勻縮放（X、Y、Z 都要等比例縮放以保持形狀）
-            const scaleMat1 = new THREE.Matrix4().makeScale(scaleY1, scaleY1, scaleY1);
-            geo1.applyMatrix4(scaleMat1);
-
-            const scaleMat2 = new THREE.Matrix4().makeScale(scaleY2, scaleY2, scaleY2);
-            geo2.applyMatrix4(scaleMat2);
-
-            // 步驟 3：空間對位旋轉
-            // Letter 1：XZ 平面（正面），沿 Y 軸 extrude
-            const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            geo1.applyMatrix4(rotMat1);
-
-            // Letter 2：YZ 平面（側面），先繞 X 再繞 Z
-            const rotMat2X = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            const rotMat2Z = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-            geo2.applyMatrix4(rotMat2X);
-            geo2.applyMatrix4(rotMat2Z);
-
-            // 步驟 4：center() 再次對齊（保險，旋轉後可能輕微偏移）
-            geo1.computeBoundingBox();
-            geo1.center();
+            mesh1.updateMatrix();
+            mesh2.updateMatrix();
             
-            geo2.computeBoundingBox();
-            geo2.center();
-
-            // ── 記錄 BBox（供後端參考，center() 之後、旋轉之前）──
-            geo1.computeBoundingBox();
-            const bbox1AfterScale = geo1.boundingBox;
-            window.letter1BBox = {
-                width: bbox1AfterScale.max.x - bbox1AfterScale.min.x,
-                height: bbox1AfterScale.max.y - bbox1AfterScale.min.y,
-                depth: bbox1AfterScale.max.z - bbox1AfterScale.min.z,
-                offsetX: (bbox1AfterScale.max.x + bbox1AfterScale.min.x) / 2,
-                offsetY: (bbox1AfterScale.max.y + bbox1AfterScale.min.y) / 2,
-                offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
-            };
-
-            geo2.computeBoundingBox();
-            const bbox2AfterScale = geo2.boundingBox;
-            window.letter2BBox = {
-                width: bbox2AfterScale.max.x - bbox2AfterScale.min.x,
-                height: bbox2AfterScale.max.y - bbox2AfterScale.min.y,
-                depth: bbox2AfterScale.max.z - bbox2AfterScale.min.z,
-                offsetX: (bbox2AfterScale.max.x + bbox2AfterScale.min.x) / 2,
-                offsetY: (bbox2AfterScale.max.y + bbox2AfterScale.min.y) / 2,
-                offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
-            };
-
-            // ── CSG 前必須 toNonIndexed() ──
-            geo1 = geo1.toNonIndexed();
-            geo2 = geo2.toNonIndexed();
-
+            // 使用 Evaluator 執行交集
             const evaluator = new Evaluator();
             const baseMat = new THREE.MeshStandardMaterial();
-
-            const brush1 = new Brush(geo1, baseMat);
+            const brush1 = new Brush(geom1, baseMat);
+            const brush2 = new Brush(geom2, baseMat);
             brush1.updateMatrixWorld();
-            const brush2 = new Brush(geo2, baseMat);
             brush2.updateMatrixWorld();
 
             debug('[V3] 執行 CSG 交集...');
-            brush1.geometry.computeBoundingBox();
-            brush2.geometry.computeBoundingBox();
-            debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
-            debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
-
-            // 布林交集運算
             let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
-
-            // 🔍 Debug: CSG 後檢查結果
-            result.geometry.computeBoundingBox();
-            debug('🔍 CSG Result BBox:', {
-                min: result.geometry.boundingBox.min,
-                max: result.geometry.boundingBox.max,
-                size: {
-                    x: (result.geometry.boundingBox.max.x - result.geometry.boundingBox.min.x).toFixed(2),
-                    y: (result.geometry.boundingBox.max.y - result.geometry.boundingBox.min.y).toFixed(2),
-                    z: (result.geometry.boundingBox.max.z - result.geometry.boundingBox.min.z).toFixed(2)
-                }
-            });
 
             if (result.geometry.attributes.position.count === 0) {
                 debugWarn('交集為空');
@@ -2880,7 +2810,7 @@
             }
 
             debug('Fixing geometry...'); // Debug
-            // === 修復幾何體 ===
+            // 修復幾何體
             result.geometry = result.geometry.toNonIndexed();
             result.geometry.deleteAttribute('normal');
             result.geometry.computeVertexNormals();
