@@ -2752,9 +2752,9 @@
             const oldRingMesh = ringMesh;
 
             // ── V3 Pipeline：createV3LetterGeometry 幾何體 ──
-            let geo1, geo2;
+            let geom1, geom2;
             try {
-                [geo1, geo2] = await Promise.all([
+                [geom1, geom2] = await Promise.all([
                     createV3LetterGeometry(f1Name, l1, targetHeight, 18),
                     createV3LetterGeometry(f2Name, l2, targetHeight, 18)
                 ]);
@@ -2769,8 +2769,8 @@
 
             // 【關鍵修正】：強制將 V3 產出的幾何體轉向，使其「站立」在 XY 平面上
             // 這樣 size.y 就會是正確的高度
-            geo1.rotateX(Math.PI / 2); 
-            geo2.rotateX(Math.PI / 2);
+            geom1.rotateX(Math.PI / 2); 
+            geom2.rotateX(Math.PI / 2);
 
             // 執行標準置中
             geom1.center();
