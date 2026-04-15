@@ -2785,6 +2785,17 @@
             geom1.scale(s, s, s);
             geom2.scale(s, s, s);
 
+            // 儲存 letter BBox（V3 pipeline 需手動計算）
+            const finalSize1 = new THREE.Vector3();
+            geom1.computeBoundingBox();
+            geom1.boundingBox.getSize(finalSize1);
+            window.letter1BBox = { width: finalSize1.x, height: finalSize1.y, depth: finalSize1.z };
+
+            const finalSize2 = new THREE.Vector3();
+            geom2.computeBoundingBox();
+            geom2.boundingBox.getSize(finalSize2);
+            window.letter2BBox = { width: finalSize2.x, height: finalSize2.y, depth: finalSize2.z };
+
             // 執行標準交集對位
             const mesh1 = new THREE.Mesh(geom1);
             const mesh2 = new THREE.Mesh(geom2);
