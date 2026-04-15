@@ -4308,11 +4308,11 @@
             const startTime = Date.now();
             let successCount = 0;
 
-            // 並行載入所有字體（使用 V3 的 TTF 預載入）
+            // 並行載入所有字體（使用 V3 的 JSON 預載入）
             const loadPromises = fontNames.map(async (fontName) => {
                 try {
-                    // 使用 V3 的 TTF 載入方式預載入
-                    await loadTTFBuffer(fontName);
+                    // 使用 V3 的 JSON 載入方式預載入
+                    await loadV3FontData(fontName);
                     successCount++;
                     progressText.textContent = `${successCount} / ${fontNames.length}`;
                     console.log(`✓ [V3] 預載入成功: ${fontName} (${successCount}/${fontNames.length})`);
