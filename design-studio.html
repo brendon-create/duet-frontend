@@ -2770,77 +2770,76 @@
                 return;
             }
 
-            // ── 物理幾何中心對齊（0409 精神）────────────────────────────
-            // 確保 Offset 完成並擠出後，才執行 center()
-            // 順序：Offset → Extrude → center → scale → rotate → center (保險)
-            
-            // 步驟 1：center() 將 BBox 中心對齊原點
-            geo1.computeBoundingBox();
-            geo1.center();  // BBox 中心對齊原點
+            // ── 對位流程（與 0409 原始邏輯一致）──────────────────────
+            // createV3LetterGeometry 回傳的幾何體狀態：
+            //   X = 字母寬度，Y = 字母高度，Z = 擠出深度（fontHeight × 18）
+            // 對位目標：
+            //   Letter 1：XZ 平面正面，沿 Y 軸擠出（高度在 Z 軸）
+            //   Letter 2：YZ 平面側面，沿 X 軸擠出（高度在 Z 軸）
 
-            geo2.computeBoundingBox();
-            geo2.center();  // BBox 中心對齊原點
-
-            // 步驟 2：計算縮放係數，確保 targetHeight 正確應用
-            // 根據實際 BBox 高度與 targetHeight 的比例計算 scale factor
-            geo1.computeBoundingBox();
-            const bbox1Before = geo1.boundingBox;
-            const currentHeight1 = bbox1Before.max.y - bbox1Before.min.y;
-            const scaleY1 = targetHeight / currentHeight1;
-            
-            geo2.computeBoundingBox();
-            const bbox2Before = geo2.boundingBox;
-            const currentHeight2 = bbox2Before.max.y - bbox2Before.min.y;
-            const scaleY2 = targetHeight / currentHeight2;
-
-            console.log(`[V3] 縮放計算：letter1 當前高度=${currentHeight1.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY1.toFixed(4)}`);
-            console.log(`[V3] 縮放計算：letter2 當前高度=${currentHeight2.toFixed(3)}mm，targetHeight=${targetHeight}mm，scaleY=${scaleY2.toFixed(4)}`);
-
-            // 套用均勻縮放（X、Y、Z 都要等比例縮放以保持形狀）
-            const scaleMat1 = new THREE.Matrix4().makeScale(scaleY1, scaleY1, scaleY1);
-            geo1.applyMatrix4(scaleMat1);
-
-            const scaleMat2 = new THREE.Matrix4().makeScale(scaleY2, scaleY2, scaleY2);
-            geo2.applyMatrix4(scaleMat2);
-
-            // 步驟 3：空間對位旋轉
-            // Letter 1：不需要旋轉，高度保持在 Y 軸，前面朝向 +Z
-            // const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-            // geo1.applyMatrix4(rotMat1);
-
-            // Letter 2：繞 Y 軸旋轉 90°，與 Letter1 垂直交叉，高度也在 Y 軸
-            const rotMat2Y = new THREE.Matrix4().makeRotationY(Math.PI / 2);
-            geo2.applyMatrix4(rotMat2Y);
-
-            // 步驟 4：center() 再次對齊（保險，旋轉後可能輕微偏移）
+            // 步驟 1：center() — BBox 中心對齊原點
             geo1.computeBoundingBox();
             geo1.center();
-            
             geo2.computeBoundingBox();
             geo2.center();
 
-            // ── 記錄 BBox（供後端參考，center() 之後、旋轉之前）──
+            // 步驟 2：縮放 — 此時 Y 軸才是字母高度，用 Y 軸計算縮放係數
             geo1.computeBoundingBox();
-            const bbox1AfterScale = geo1.boundingBox;
-            window.letter1BBox = {
-                width: bbox1AfterScale.max.x - bbox1AfterScale.min.x,
-                height: bbox1AfterScale.max.y - bbox1AfterScale.min.y,
-                depth: bbox1AfterScale.max.z - bbox1AfterScale.min.z,
-                offsetX: (bbox1AfterScale.max.x + bbox1AfterScale.min.x) / 2,
-                offsetY: (bbox1AfterScale.max.y + bbox1AfterScale.min.y) / 2,
-                offsetZ: (bbox1AfterScale.max.z + bbox1AfterScale.min.z) / 2
-            };
+            const currentHeight1 = geo1.boundingBox.max.y - geo1.boundingBox.min.y;
+            const scale1 = targetHeight / currentHeight1;
+            console.log(`[V3] 縮放：letter1 Y軸高度=${currentHeight1.toFixed(3)}mm → ${targetHeight}mm，scale=${scale1.toFixed(4)}`);
+            geo1.scale(scale1, scale1, scale1);
 
             geo2.computeBoundingBox();
-            const bbox2AfterScale = geo2.boundingBox;
-            window.letter2BBox = {
-                width: bbox2AfterScale.max.x - bbox2AfterScale.min.x,
-                height: bbox2AfterScale.max.y - bbox2AfterScale.min.y,
-                depth: bbox2AfterScale.max.z - bbox2AfterScale.min.z,
-                offsetX: (bbox2AfterScale.max.x + bbox2AfterScale.min.x) / 2,
-                offsetY: (bbox2AfterScale.max.y + bbox2AfterScale.min.y) / 2,
-                offsetZ: (bbox2AfterScale.max.z + bbox2AfterScale.min.z) / 2
+            const currentHeight2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+            const scale2 = targetHeight / currentHeight2;
+            console.log(`[V3] 縮放：letter2 Y軸高度=${currentHeight2.toFixed(3)}mm → ${targetHeight}mm，scale=${scale2.toFixed(4)}`);
+            geo2.scale(scale2, scale2, scale2);
+
+            // 步驟 3：center() — 縮放後再對齊
+            geo1.computeBoundingBox();
+            geo1.center();
+            geo2.computeBoundingBox();
+            geo2.center();
+
+            // 步驟 4：記錄 BBox（縮放後、旋轉前，Y 軸 = targetHeight）
+            geo1.computeBoundingBox();
+            window.letter1BBox = {
+                width:   geo1.boundingBox.max.x - geo1.boundingBox.min.x,
+                height:  geo1.boundingBox.max.y - geo1.boundingBox.min.y,
+                depth:   geo1.boundingBox.max.z - geo1.boundingBox.min.z,
+                offsetX: (geo1.boundingBox.max.x + geo1.boundingBox.min.x) / 2,
+                offsetY: (geo1.boundingBox.max.y + geo1.boundingBox.min.y) / 2,
+                offsetZ: (geo1.boundingBox.max.z + geo1.boundingBox.min.z) / 2
             };
+            geo2.computeBoundingBox();
+            window.letter2BBox = {
+                width:   geo2.boundingBox.max.x - geo2.boundingBox.min.x,
+                height:  geo2.boundingBox.max.y - geo2.boundingBox.min.y,
+                depth:   geo2.boundingBox.max.z - geo2.boundingBox.min.z,
+                offsetX: (geo2.boundingBox.max.x + geo2.boundingBox.min.x) / 2,
+                offsetY: (geo2.boundingBox.max.y + geo2.boundingBox.min.y) / 2,
+                offsetZ: (geo2.boundingBox.max.z + geo2.boundingBox.min.z) / 2
+            };
+
+            // 步驟 5：旋轉對位
+            // Letter 1：XY 平面 → rotateX(+90°) → 字母轉到 XZ 平面，擠出方向沿 Y 軸
+            //   旋轉後：X=字寬, Y=擠出深度(舊Z), Z=字高(舊Y)
+            const rotMat1 = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+            geo1.applyMatrix4(rotMat1);
+
+            // Letter 2：XY 平面 → rotateX(+90°) 再 rotateZ(+90°) → 字母轉到 YZ 平面，擠出方向沿 X 軸
+            //   與 Letter 1 垂直交叉，高度（Z 軸）對齊
+            const rotMat2X = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+            geo2.applyMatrix4(rotMat2X);
+            const rotMat2Z = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
+            geo2.applyMatrix4(rotMat2Z);
+
+            // 步驟 6：最終 center()（旋轉後消除浮點偏移）
+            geo1.computeBoundingBox();
+            geo1.center();
+            geo2.computeBoundingBox();
+            geo2.center();
 
             // ── CSG 前必須 toNonIndexed() ──
             geo1 = geo1.toNonIndexed();
@@ -4022,10 +4021,9 @@
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // 不在此旋轉，保持高度在 Y 軸，交由 generateModel 中的 Letter2 rotateY(π/2) 處理
-            // geo.rotateX(-Math.PI / 2);
-
-            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成（高度在 Y 軸，待 generateModel 對齊）`);
+            // 幾何體以 XY 平面原始狀態回傳，由 generateModel 統一做對位旋轉
+            // X = 字母寬度，Y = 字母高度，Z = 擠出深度
+            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成`);
             return geo;
         }
 
