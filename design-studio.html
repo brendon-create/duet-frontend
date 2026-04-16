@@ -3691,9 +3691,12 @@
             const STEPS_Q = 16;
             const STEPS_C = 24;
 
+            // 縮放因子：統一乘以 10000 再轉為整數，避免 Clipper 運算時幾何體碎裂
+            const SCALE = 10000;
+
             const push = (x, y) => path.push({
-                X: Math.round(x * targetHeight * CLIP_SCALE),
-                Y: Math.round(y * targetHeight * CLIP_SCALE)
+                X: Math.round(x * targetHeight * SCALE),
+                Y: Math.round(y * targetHeight * SCALE)
             });
 
             // 判定是否為 v2 格式（有 type 欄位）
@@ -3702,44 +3705,54 @@
             console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}`);
 
             if (!isV2) {
-                // v1：當直線點處理
+                // v1：當直線點處理（每個點是 [x, y] 或 {x, y}）
                 for (const pt of input) {
                     const px = pt[0] !== undefined ? pt[0] : pt.x;
                     const py = pt[1] !== undefined ? pt[1] : pt.y;
-                    push(px, py);
+                    if (px !== undefined && py !== undefined) {
+                        push(px, py);
+                    }
                 }
                 return path;
             }
 
             // v2：貝茲曲線離散化
+            // 明確區分 M/L 只讀取 x, y；Q 讀取 x1, y1, x, y；C 讀取 x1, y1, x2, y2, x, y
             for (const cmd of input) {
                 switch (cmd.type) {
                     case 'M':
                     case 'L':
-                        cx = cmd.x; cy = cmd.y;
+                        // M/L 只讀取 x, y，不要讀取 x1 欄位（避免 NaN）
+                        cx = cmd.x;
+                        cy = cmd.y;
                         push(cx, cy);
                         break;
                     case 'Q':
+                        // Q: 二次貝茲，讀取 x1, y1 (控制點) 與 x, y (終點)
                         for (let i = 1; i <= STEPS_Q; i++) {
                             const t = i / STEPS_Q, mt = 1 - t;
                             push(
-                                mt*mt*cx + 2*mt*t*cmd.x1 + t*t*cmd.x,
-                                mt*mt*cy + 2*mt*t*cmd.y1 + t*t*cmd.y
+                                mt * mt * cx + 2 * mt * t * cmd.x1 + t * t * cmd.x,
+                                mt * mt * cy + 2 * mt * t * cmd.y1 + t * t * cmd.y
                             );
                         }
-                        cx = cmd.x; cy = cmd.y;
+                        cx = cmd.x;
+                        cy = cmd.y;
                         break;
                     case 'C':
+                        // C: 三次貝茲，讀取 x1, y1, x2, y2 (控制點) 與 x, y (終點)
                         for (let i = 1; i <= STEPS_C; i++) {
                             const t = i / STEPS_C, mt = 1 - t;
                             push(
-                                mt*mt*mt*cx + 3*mt*mt*t*cmd.x1 + 3*mt*t*t*cmd.x2 + t*t*t*cmd.x,
-                                mt*mt*mt*cy + 3*mt*mt*t*cmd.y1 + 3*mt*t*t*cmd.y2 + t*t*t*cmd.y
+                                mt * mt * mt * cx + 3 * mt * mt * t * cmd.x1 + 3 * mt * t * t * cmd.x2 + t * t * t * cmd.x,
+                                mt * mt * mt * cy + 3 * mt * mt * t * cmd.y1 + 3 * mt * t * t * cmd.y2 + t * t * t * cmd.y
                             );
                         }
-                        cx = cmd.x; cy = cmd.y;
+                        cx = cmd.x;
+                        cy = cmd.y;
                         break;
                     case 'Z':
+                        // Auto-Close Path：檢查最後一點是否等於第一點，若否則自動封閉
                         if (path.length > 0) {
                             const first = path[0];
                             const last = path[path.length - 1];
@@ -3794,8 +3807,8 @@
 
             // ── 步驟 3：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
             // JSON 是歸一化（0-1 範圍）和 Y-up
-            // CLIP_SCALE = 100000 表示 1mm 的整數精度
-            const CLIP_SCALE = 100000;
+            // 統一乘以 10000 轉為整數，避免 Clipper 運算時幾何體碎裂
+            const CLIP_SCALE = 10000;
             // 根據資料格式選擇轉換函數
             const clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
 
@@ -3810,7 +3823,7 @@
             let finalPaths = clipperPaths;
             if (offsetR > 0) {
                 // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
-                // 例如：offsetR = 0.1mm, CLIP_SCALE = 100000 → offsetUnits = 10000（代表 0.1mm）
+                // 例如：offsetR = 0.1mm, CLIP_SCALE = 10000 → offsetUnits = 1000（代表 0.1mm）
                 const offsetUnits = offsetR * CLIP_SCALE;
                 console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
                 finalPaths = clipperOffset(clipperPaths, offsetUnits);
@@ -3840,8 +3853,9 @@
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
             // ⚠️ 方向修正：這是為了把 OpenType Y-up 座標轉為 Web 座標
-            // 不是對位，只是方向校正
-            geo.rotateX(Math.PI);
+            // Y-up → Z-up 對齊：旋轉 90 度讓高度軸變成 Z
+            // 這樣 targetHeight / size.y 縮放邏輯才能量到正確的高度軸
+            geo.rotateX(Math.PI / 2);
 
             // B. 確認幾何體方向：在 return 之前印出 BBox
             geo.computeBoundingBox();
