@@ -2467,6 +2467,11 @@
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
 
+        // ✨ 變身特效全域物件
+        let glowSphere = null;           // 光暈球體
+        let transformationLight = null;  // 變身專用 PointLight
+        let isTransforming = false;      // 防呆：防止動畫重複觸發
+
         // 優惠碼相關變數
         let appliedPromoCode = '';
         let promoDiscount = 0;
@@ -2597,6 +2602,24 @@
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
+            // ✨ 預先建立變身特效所需的光暈球體（初始為隱藏）
+            const glowGeometry = new THREE.SphereGeometry(6, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffd700,
+                transparent: true,
+                opacity: 0,
+                side: THREE.BackSide
+            });
+            glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
+            glowSphere.name = 'glowSphere';
+            glowSphere.visible = false;
+            scene.add(glowSphere);
+
+            // ✨ 預先建立變身專用 PointLight（初始為關閉）
+            transformationLight = new THREE.PointLight(0xffd700, 0, 20);
+            transformationLight.position.set(0, 0, 0);
+            scene.add(transformationLight);
+
             // ✅ HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
             const hdrUrls = [
                 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：GitHub Raw
@@ -2679,6 +2702,128 @@
                 console.log(`🧹 共清理 ${removedCount} 個殘留球體`);
             }
             return removedCount;
+        }
+
+        // ============================================================
+        // ✨ 變身特效動畫函數
+        // ============================================================
+        /**
+         * 觸發華麗的變身特效，銜接圓球與新生成的模型
+         * @param {Object} newMesh - 已經建立好幾何體的新模型（但尚未加入 scene）
+         * @param {Function} onComplete - 動畫完成後的回調（用於執行後續如 createRing 等）
+         */
+        function triggerTransformationEffect(newMesh, onComplete) {
+            if (isTransforming) {
+                console.warn('⚠️ 變身動畫正在進行中，忽略此次觸發');
+                return;
+            }
+            isTransforming = true;
+
+            console.log('✨ 觸發變身特效...');
+
+            // Phase 1: 能量匯聚 (0-300ms)
+            // 讓光暈球體顯現並開始放大，同時開啟 PointLight
+            const startTime = performance.now();
+            const phase1Duration = 300;
+            const phase2Time = 300;    // 瞬間替換時間點
+            const phase3Start = 300;  // 光暈消散開始
+            const totalDuration = 700; // 總動畫時長
+
+            // 確保 placeholderSphere 存在
+            const placeholder = scene.children.find(c => c.name === 'placeholderSphere');
+            if (!placeholder) {
+                console.warn('⚠️ 找不到 placeholderSphere，直接添加新模型');
+                scene.add(newMesh);
+                isTransforming = false;
+                if (onComplete) onComplete();
+                return;
+            }
+
+            // 初始化 glowSphere
+            glowSphere.scale.set(1, 1, 1);
+            glowSphere.material.opacity = 0;
+            glowSphere.visible = true;
+            transformationLight.intensity = 0;
+
+            // 動畫主迴圈
+            function animate() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / totalDuration, 1);
+
+                if (elapsed < phase1Duration) {
+                    // Phase 1: 能量匯聚 (0-300ms)
+                    const t = elapsed / phase1Duration; // 0 → 1
+                    const easeOut = 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+                    // 光暈球體放大（1 → 1.5）
+                    const scale = 1 + 0.5 * easeOut;
+                    glowSphere.scale.set(scale, scale, scale);
+
+                    // 光暈球體漸漸顯現（0 → 0.8）
+                    glowSphere.material.opacity = 0.8 * easeOut;
+
+                    // PointLight 亮度增加（0 → 4）
+                    transformationLight.intensity = 4 * easeOut;
+
+                    // 圓球亮度提升（Emissive）
+                    if (placeholder.material) {
+                        placeholder.material.emissive = new THREE.Color(0xffd700);
+                        placeholder.material.emissiveIntensity = easeOut * 0.5;
+                    }
+
+                } else if (elapsed >= phase2Time && elapsed < phase3Start + 50) {
+                    // Phase 2: 瞬間替換 (300ms 時刻)
+                    // 移除圓球，添加新模型
+                    scene.remove(placeholder);
+                    placeholder.geometry?.dispose();
+                    placeholder.material?.dispose();
+
+                    // 設置新模型初始透明度（透明）
+                    newMesh.material.transparent = true;
+                    newMesh.material.opacity = 0;
+                    scene.add(newMesh);
+                    mainMesh = newMesh;
+                    window.mainMesh = mainMesh;
+
+                    console.log('✨ 瞬間替換完成');
+
+                } else if (elapsed >= phase3Start && elapsed < totalDuration) {
+                    // Phase 3: 光暈消散 + 新模型淡入 (300-700ms)
+                    const t = (elapsed - phase3Start) / (totalDuration - phase3Start); // 0 → 1
+                    const easeOut = 1 - Math.pow(1 - t, 3);
+
+                    // 光暈球體快速放大並消失（1.5 → 8）
+                    const glowScale = 1.5 + 6.5 * easeOut;
+                    glowSphere.scale.set(glowScale, glowScale, glowScale);
+
+                    // 光暈球體漸漸消失（0.8 → 0）
+                    glowSphere.material.opacity = 0.8 * (1 - easeOut);
+
+                    // PointLight 逐漸熄滅（4 → 0）
+                    transformationLight.intensity = 4 * (1 - easeOut);
+
+                    // 新模型淡入（0 → 1）
+                    newMesh.material.opacity = easeOut;
+
+                } else if (elapsed >= totalDuration) {
+                    // 動畫結束
+                    glowSphere.visible = false;
+                    glowSphere.material.opacity = 0;
+                    transformationLight.intensity = 0;
+                    newMesh.material.transparent = false;
+                    newMesh.material.opacity = 1;
+
+                    console.log('✅ 變身特效完成');
+                    isTransforming = false;
+
+                    if (onComplete) onComplete();
+                    return;
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            requestAnimationFrame(animate);
         }
 
         function showInitialSphere() {
@@ -3002,76 +3147,78 @@
                 document.getElementById('plating').value
             );
 
-            mainMesh = result;
-            scene.add(mainMesh);
+            // 備份舊 mesh 參考（動畫完成後會 dispose）
+            const previousMainMesh = mainMesh;
 
-            // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
-            removeAllPlaceholderSpheres();
+            // ✨ 觸發變身特效，取代直接的 scene.add
+            triggerTransformationEffect(result, () => {
+                // 動畫完成後的回調
+                console.log('[generateModel] 變身完成，執行後續處理');
 
-            // 新物件已添加，現在可以安全移除舊物件
-            if (oldMainMesh) {
-                scene.remove(oldMainMesh);
-                oldMainMesh.geometry?.dispose();
-                oldMainMesh.material?.dispose();
-            }
-            if (oldRingMesh) {
-                scene.remove(oldRingMesh);
-                oldRingMesh.geometry?.dispose();
-                oldRingMesh.material?.dispose();
-            }
+                // 清理舊 mesh（如果還在 scene 中）
+                if (previousMainMesh && previousMainMesh !== mainMesh) {
+                    scene.remove(previousMainMesh);
+                    previousMainMesh.geometry?.dispose();
+                    previousMainMesh.material?.dispose();
+                }
+                if (oldRingMesh) {
+                    scene.remove(oldRingMesh);
+                    oldRingMesh.geometry?.dispose();
+                    oldRingMesh.material?.dispose();
+                }
 
-            debug('Model generated, creating ring...'); // Debug
-            createRing();
-            
-            // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
-            setTimeout(() => updateVolumeWeight(), 100);
-            
-            debug('Generation complete!'); // Debug
-            console.log('[generateModel] 模型生成完成，隱藏指示器');
+                debug('Model generated, creating ring...'); // Debug
+                createRing();
+                
+                // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
+                setTimeout(() => updateVolumeWeight(), 100);
+                
+                debug('Generation complete!'); // Debug
+                console.log('[generateModel] 模型生成完成，隱藏指示器');
 
-            // 隱藏重建提示（渲染完成後立即隱藏）
-            const indicatorsToHide2 = [
-                'model-rebuilding-indicator-top',
-                'model-rebuilding-indicator-cleanup'
-            ];
-            indicatorsToHide2.forEach(id => {
-                const ind = document.getElementById(id);
-                if (ind) ind.style.display = 'none';
+                // 隱藏重建提示（渲染完成後立即隱藏）
+                const indicatorsToHide2 = [
+                    'model-rebuilding-indicator-top',
+                    'model-rebuilding-indicator-cleanup'
+                ];
+                indicatorsToHide2.forEach(id => {
+                    const ind = document.getElementById(id);
+                    if (ind) ind.style.display = 'none';
+                });
+
+                // 🧹 啟用清理 toggle + 重置狀態
+                const cleanupToggle = document.getElementById('cleanup-toggle');
+                const cleanupLabel = document.getElementById('cleanup-label');
+                
+                if (cleanupToggle) {
+                    cleanupToggle.disabled = false;  // 啟用 toggle
+                    cleanupToggle.checked = false;   // 重置為 OFF
+                }
+                
+                if (cleanupLabel) {
+                    cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
+                    cleanupLabel.style.color = '';  // 重置顏色
+                }
+                
+                modelNeedsCleanup = false;  // 重置清理狀態
+
+                // 更新佩戴模擬預覽
+                if (window.updateWearingPreview) {
+                    setTimeout(() => {
+                        console.log('🔄 商品生成完成，更新佩戴模擬');
+                        window.updateWearingPreview();
+                    }, 300);
+                }
+                
+                // ==========================================
+                // 🔧 更新產品攝影模組的 mesh 引用（加入 null check 避免 ReferenceError）
+                // ==========================================
+                if (typeof gridHelper !== 'undefined' && typeof axesHelper !== 'undefined') {
+                    ProductPhotoStudio.setMeshes(mainMesh, ringMesh, gridHelper, axesHelper);
+                } else {
+                    ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
+                }
             });
-
-            // 🧹 啟用清理 toggle + 重置狀態
-            const cleanupToggle = document.getElementById('cleanup-toggle');
-            const cleanupLabel = document.getElementById('cleanup-label');
-            
-            if (cleanupToggle) {
-                cleanupToggle.disabled = false;  // 啟用 toggle
-                cleanupToggle.checked = false;   // 重置為 OFF
-            }
-            
-            if (cleanupLabel) {
-                cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
-                cleanupLabel.style.color = '';  // 重置顏色
-            }
-            
-            modelNeedsCleanup = false;  // 重置清理狀態
-
-            // 更新佩戴模擬預覽
-            if (window.updateWearingPreview) {
-                setTimeout(() => {
-                    console.log('🔄 商品生成完成，更新佩戴模擬');
-                    window.updateWearingPreview();
-                }, 300);
-            }
-            
-            // ==========================================
-            // 🔧 更新產品攝影模組的 mesh 引用（加入 null check 避免 ReferenceError）
-            // ==========================================
-            if (typeof gridHelper !== 'undefined' && typeof axesHelper !== 'undefined') {
-                ProductPhotoStudio.setMeshes(mainMesh, ringMesh, gridHelper, axesHelper);
-            } else {
-                ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
-            }
-        }
 
         // 🧹 清除零碎部件（用於 Toggle 開關）
         async function cleanupFragments() {
