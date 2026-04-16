@@ -3700,7 +3700,9 @@
             });
 
             // 判定是否為 v2 格式（有 type 欄位）
-            const isV2 = (typeof input[0] === 'object' && 'type' in input[0]);
+            // v2: commands = [{type: "M", x, y}, {type: "Q", x1, y1, x, y}, ...]
+            // v1: path = [{x, y}, {x, y}, ...]（沒有 type 欄位）
+            const isV2 = (typeof input[0] === 'object' && input[0] !== null && 'type' in input[0]);
 
             console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}`);
 
@@ -3801,8 +3803,12 @@
             }
 
             // ── 步驟 2：取出路徑資料 ──────
-            // 相容 v1 (path 點陣列) 和 v2 (commands 曲線命令陣列)
+            // v2: glyphData.commands = [{type: "M", x, y}, ...]
+            // v1: glyphData.path = [{x, y}, ...]（沒有 type 欄位）
             const pathInput = glyphData.commands || glyphData.path;
+            if (!pathInput || pathInput.length === 0) {
+                throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
+            }
             console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
 
             // ── 步驟 3：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
