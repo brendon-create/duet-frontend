@@ -2457,7 +2457,7 @@
         
         // 全域變數
         let scene, camera, renderer, controls, envMap;
-        let mainMesh = null, ringMesh = null;
+        let mainMesh = null, ringMesh = null, bailMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
@@ -3022,6 +3022,9 @@
 
             debug('Model generated, creating ring...'); // Debug
             createRing();
+            
+            // 🔧 建立 Bail
+            createBail();
             
             // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
             setTimeout(() => updateVolumeWeight(), 100);
@@ -4105,6 +4108,89 @@
             updateRingPosition();
         }
 
+        // ==========================================
+        // 🔧 建立 Bail（墜飾上方的環扣）
+        // ==========================================
+        function createBail() {
+            // 先移除舊的 bailMesh
+            if (bailMesh) {
+                scene.remove(bailMesh);
+                bailMesh.geometry?.dispose();
+                bailMesh.material?.dispose();
+                bailMesh = null;
+                window.bailMesh = null;
+            }
+
+            if (!mainMesh) return;
+
+            const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/models/bail.stl`;
+            console.log('🔽 載入 Bail STL:', bailUrl);
+
+            const loader = new THREE.STLLoader();
+            loader.load(
+                bailUrl,
+                (geometry) => {
+                    console.log('✅ Bail STL 載入成功');
+
+                    // 計算 geometry 的中心
+                    geometry.computeBoundingBox();
+                    const bbox = geometry.boundingBox;
+                    const center = bbox.getCenter(new THREE.Vector3());
+
+                    // 移動到原點（以幾何中心為準）
+                    geometry.translate(-center.x, -center.y, -center.z);
+
+                    // 分析 bail 的方向：比較 X 和 Y 方向的範圍
+                    const sizeX = bbox.max.x - bbox.min.x;
+                    const sizeY = bbox.max.y - bbox.min.y;
+                    const sizeZ = bbox.max.z - bbox.min.z;
+
+                    console.log(`📐 Bail 尺寸: X=${sizeX.toFixed(2)}, Y=${sizeY.toFixed(2)}, Z=${sizeZ.toFixed(2)}`);
+
+                    // 套用材質
+                    const material = getMaterial(
+                        document.getElementById('material').value,
+                        document.getElementById('finish').value,
+                        document.getElementById('plating').value
+                    );
+
+                    bailMesh = new THREE.Mesh(geometry, material);
+
+                    // 定位：放在 ring 的位置，bail 的 narrow end（窄端）在 ring 中心
+                    // Bail 預設是 Y-axis 方向，我們需要讓它垂直於 ring（穿過 ring 的孔洞）
+                    // Ring 的孔洞是沿著 Y 軸，所以 bail 也應該沿著 Y 軸
+                    // narrow end 朝下（負 Y），wide end 朝上（正 Y）
+
+                    // 先設為預設位置（與 ring 相同）
+                    if (ringMesh) {
+                        bailMesh.position.copy(ringMesh.position);
+                    } else {
+                        bailMesh.position.set(modelCenter.x, modelCenter.y + 5, modelCenter.z);
+                    }
+
+                    // Bail 預設已經是沿著 Y 軸（從 STL 載入後的位置）
+                    // 如果需要調整方向，可以在這裡旋轉
+
+                    scene.add(bailMesh);
+                    window.bailMesh = bailMesh;
+
+                    console.log('✅ Bail 已添加到場景');
+
+                    // 更新佩戴模擬
+                    if (typeof updateWearingPreview === 'function') {
+                        updateWearingPreview();
+                    }
+                },
+                (progress) => {
+                    console.log(`⏳ Bail 載入進度: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
+                },
+                (error) => {
+                    console.error('❌ Bail STL 載入失敗:', error);
+                    console.log('⚠️ 繼續使用，不使用 Bail');
+                }
+            );
+        }
+
         function updateRingPosition() {
             if (!ringMesh) return;
             const x = parseFloat(document.getElementById('ringX').value);
@@ -4140,7 +4226,7 @@
 
         // 只更新材質，不重建模型（即時切換！）
         function updateMaterial() {
-            if (!mainMesh || !ringMesh) return;
+            if (!mainMesh) return;
 
             const materialType = document.getElementById('material').value;
             const finish = document.getElementById('finish').value;
@@ -4149,7 +4235,13 @@
 
             // 更換主體和圓環的材質
             mainMesh.material = newMaterial;
-            ringMesh.material = newMaterial.clone();
+            if (ringMesh) {
+                ringMesh.material = newMaterial.clone();
+            }
+            // 更換 Bail 的材質
+            if (bailMesh) {
+                bailMesh.material = newMaterial.clone();
+            }
 
             // 更新重量顯示（密度改變了）
             updateVolumeWeight();
@@ -4793,6 +4885,7 @@
             // 複製當前場景的物件
             thumbnailScene.add(mainMesh.clone());
             if (ringMesh) thumbnailScene.add(ringMesh.clone());
+            if (bailMesh) thumbnailScene.add(bailMesh.clone());
 
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
@@ -4840,6 +4933,8 @@
                 thumbnail: thumbnailDataURL,
                 // 🧹 儲存是否需要清理碎片
                 cleanFragments: modelNeedsCleanup,
+                // 🔧 儲存 Bail 款式（目前為 "default"，未來擴充用）
+                bailStyle: 'default',
                 // 📸 儲存三視圖（用於 Email 附件）
                 threeViews: threeViews
             };
