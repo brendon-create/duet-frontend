@@ -3853,9 +3853,8 @@
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
             // ⚠️ 方向修正：這是為了把 OpenType Y-up 座標轉為 Web 座標
-            // Y-up → Z-up 對齊：旋轉 90 度讓高度軸變成 Z
-            // 這樣 targetHeight / size.y 縮放邏輯才能量到正確的高度軸
-            geo.rotateX(Math.PI / 2);
+            // Y-up → Z-up 方向校正
+            geo.rotateX(Math.PI);
 
             // B. 確認幾何體方向：在 return 之前印出 BBox
             geo.computeBoundingBox();
