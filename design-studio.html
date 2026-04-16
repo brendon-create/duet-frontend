@@ -4126,7 +4126,7 @@
             const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/models/bail.stl`;
             console.log('🔽 載入 Bail STL:', bailUrl);
 
-            const loader = new THREE.STLLoader();
+            const loader = new STLLoader();
             loader.load(
                 bailUrl,
                 (geometry) => {
