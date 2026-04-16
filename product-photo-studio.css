@@ -4,7 +4,8 @@
 
 /* 開發者功能按鈕容器 */
 #devFeaturesContainer {
-    display: flex;
+    display: none;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
