@@ -3699,27 +3699,10 @@
                 Y: Math.round(y * targetHeight * SCALE)
             });
 
-            // 判定是否為 v2 格式（有 type 欄位）
-            // v2: commands = [{type: "M", x, y}, {type: "Q", x1, y1, x, y}, ...]
-            // v1: path = [{x, y}, {x, y}, ...]（沒有 type 欄位）
-            const isV2 = (typeof input[0] === 'object' && input[0] !== null && 'type' in input[0]);
+            console.log(`[V3] v3CommandsToClipperPath: input.length=${input.length}`);
 
-            console.log(`[V3] v3CommandsToClipperPath: isV2=${isV2}, input.length=${input.length}`);
-
-            if (!isV2) {
-                // v1：當直線點處理（每個點是 [x, y] 或 {x, y}）
-                for (const pt of input) {
-                    const px = pt[0] !== undefined ? pt[0] : pt.x;
-                    const py = pt[1] !== undefined ? pt[1] : pt.y;
-                    if (px !== undefined && py !== undefined) {
-                        push(px, py);
-                    }
-                }
-                return path;
-            }
-
-            // v2：貝茲曲線離散化
-            // 明確區分 M/L 只讀取 x, y；Q 讀取 x1, y1, x, y；C 讀取 x1, y1, x2, y2, x, y
+            // V3 格式：commands = [{type: "M/L/Q/C", x, y, ...}, ...]
+            // M/L 只讀取 x, y；Q 讀取 x1, y1, x, y；C 讀取 x1, y1, x2, y2, x, y
             for (const cmd of input) {
                 switch (cmd.type) {
                     case 'M':
