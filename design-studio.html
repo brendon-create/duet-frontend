@@ -3840,7 +3840,6 @@
             }
 
             // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-            console.log(`[V3] finalPaths debug:`, JSON.stringify(finalPaths).substring(0, 500));
             const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
             if (shapes.length === 0) {
