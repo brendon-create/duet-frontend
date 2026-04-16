@@ -2597,10 +2597,10 @@
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
-            // ✅ HDR 載入備援機制
+            // ✅ HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
             const hdrUrls = [
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：jsdelivr CDN
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：GitHub Raw
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：GitHub Raw
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：jsdelivr CDN
             ];
             
             let currentHdrIndex = 0;
@@ -2616,7 +2616,7 @@
                 }
 
                 const hdrUrl = hdrUrls[currentHdrIndex];
-                const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
+                const sourceName = currentHdrIndex === 0 ? 'GitHub Raw' : 'jsdelivr CDN';
                 console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
 
                 // 設定 5 秒超時
