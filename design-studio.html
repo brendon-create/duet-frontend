@@ -1839,7 +1839,7 @@
         import { STLExporter } from 'three/addons/exporters/STLExporter.js';
         import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-        import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+        import { Evaluator, Brush, INTERSECTION, ADDITION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
@@ -2856,42 +2856,22 @@
             geo1 = geo1.toNonIndexed();
             geo2 = geo2.toNonIndexed();
 
-            // ⚠️ 暫時跳過 CSG 取交集，方便 debug 看到兩個字母獨立呈現的狀態
-            debug('[V3] ⚠️ 跳過 CSG 取交集，直接使用 geo1 + geo2');
-            
-            // 創建兩個獨立的 mesh 來顯示（不做交集）
-            const geo1Copy = geo1.clone();
-            const geo2Copy = geo2.clone();
-            
-            geo1Copy.computeBoundingBox();
-            geo2Copy.computeBoundingBox();
+            const evaluator = new Evaluator();
+            const baseMat = new THREE.MeshStandardMaterial();
 
-            // 直接用 result = { geometry: geo1Copy } 讓後續程式可以運行
-            // 但這樣會導致只有 letter1 可見（因為 letter2 沒有被使用）
-            // 所以我們用一個簡單的 merge 代替 CSG（僅供 debug）
-            const resultGeo = new THREE.BufferGeometry();
-            // 實際上這裡我們應該報告錯誤，讓用戶知道需要恢復 CSG
-            // 但為了顯示兩個字母，我們臨時把它們都加進去
-            console.warn('[V3] 警告：CSG 取交集已暫時停用，模型可能不正常');
-            console.log('[V3] geo1 位置:', geo1Copy.attributes.position.count, '頂點');
-            console.log('[V3] geo2 位置:', geo2Copy.attributes.position.count, '頂點');
-            
-            // 把 letter1 和 letter2 都暫存起來，讓 displayModel 可以顯示兩個
-            window._debugLetter1Geo = geo1Copy;
-            window._debugLetter2Geo = geo2Copy;
-            
-            // 建立一個虛擬 result（事實上 CSG 被跳過了）
-            const dummyGeo = geo1Copy.clone();
-            const result = { 
-                geometry: dummyGeo,
-                // 額外標記表示 CSG 被跳過
-                _csgSkipped: true,
-                _letter1Geo: geo1Copy,
-                _letter2Geo: geo2Copy
-            };
-            
-            // 布林交集運算（這行被註解掉）
-            // let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+            const brush1 = new Brush(geo1, baseMat);
+            brush1.updateMatrixWorld();
+            const brush2 = new Brush(geo2, baseMat);
+            brush2.updateMatrixWorld();
+
+            debug('[V3] 執行 CSG 聯集（DEBUG MODE）...');
+            brush1.geometry.computeBoundingBox();
+            brush2.geometry.computeBoundingBox();
+            debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
+            debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
+
+            // 布林聯集運算（DEBUG: 從 INTERSECTION 改為 ADDITION）
+            let result = evaluator.evaluate(brush1, brush2, ADDITION);
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
