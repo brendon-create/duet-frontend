@@ -6621,7 +6621,8 @@
                 ringRelativeX: ringRelativeX,
                 ringRelativeY: ringRelativeY,
                 ringRelativeZ: ringRelativeZ,
-                ringRotation: ringRot
+                ringRotation: ringRot,
+                cleanFragments: modelNeedsCleanup  // 🧹 傳送清理狀態
             };
 
             console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
