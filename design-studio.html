@@ -2870,8 +2870,8 @@
             debug('[V3] Brush1 BBox:', brush1.geometry.boundingBox);
             debug('[V3] Brush2 BBox:', brush2.geometry.boundingBox);
 
-            // 布林聯集運算（DEBUG: 從 INTERSECTION 改為 ADDITION）
-            let result = evaluator.evaluate(brush1, brush2, ADDITION);
+            // 布林交集運算
+            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
@@ -3837,7 +3837,7 @@
             const extrudeSettings = {
                 depth: depth,
                 bevelEnabled: false,
-                curveSegments: 64
+                curveSegments: 20
             };
             let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
