@@ -17,3 +17,5 @@ frontend backup/
 .DS_Store
 
 # Font library selector (private tool) - renamed to root FontLabV2.html
+font-preprocessor.js
+font-preprocessor_old.js
