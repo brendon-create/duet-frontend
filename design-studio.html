@@ -2656,10 +2656,39 @@
             ProductPhotoStudio.init(scene, camera, renderer, controls);
         }
 
+        // ============================================================
+        // 輔助函數：清理所有預覽球體（防止圓球殘留）
+        // ============================================================
+        function removeAllPlaceholderSpheres() {
+            const sphereName = 'placeholderSphere';
+            let removedCount = 0;
+            
+            // 遍歷 scene 中所有物件
+            for (let i = scene.children.length - 1; i >= 0; i--) {
+                const child = scene.children[i];
+                if (child.name === sphereName) {
+                    scene.remove(child);
+                    child.geometry?.dispose();
+                    child.material?.dispose();
+                    removedCount++;
+                    console.log(`🧹 已清理殘留球體: ${child.uuid}`);
+                }
+            }
+            
+            if (removedCount > 0) {
+                console.log(`🧹 共清理 ${removedCount} 個殘留球體`);
+            }
+            return removedCount;
+        }
+
         function showInitialSphere() {
+            // 清理任何已存在的球體（防禦性清理）
+            removeAllPlaceholderSpheres();
+            
             const geometry = new THREE.SphereGeometry(5, 64, 64);
             const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
             mainMesh = new THREE.Mesh(geometry, material);
+            mainMesh.name = 'placeholderSphere';  // 設定名稱方便後續清理
             scene.add(mainMesh);
             // 暴露 mainMesh 給全局，供佩戴模擬使用
             window.mainMesh = mainMesh;
@@ -2693,6 +2722,11 @@
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
             console.log('[V3 generateModel] 開始生成模型');
+
+            // 🛡️ 防禦性清理：如果 mainMesh 已存在但 placeholderSphere 還在，順手清掉
+            if (mainMesh && mainMesh.geometry?.type !== 'SphereGeometry') {
+                removeAllPlaceholderSpheres();
+            }
 
             // 顯示重建提示
             ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
@@ -2970,6 +3004,9 @@
 
             mainMesh = result;
             scene.add(mainMesh);
+
+            // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
+            removeAllPlaceholderSpheres();
 
             // 新物件已添加，現在可以安全移除舊物件
             if (oldMainMesh) {
