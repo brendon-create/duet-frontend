@@ -2467,6 +2467,9 @@
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
 
+        // 🔧 Bail 與 Ring 的相對位移偏移量（用於聯動）
+        let bailRelativeOffset = new THREE.Vector3();
+
         // 優惠碼相關變數
         let appliedPromoCode = '';
         let promoDiscount = 0;
@@ -4183,6 +4186,14 @@
                             ringMesh.position.z
                         );
                         
+                        // 🔧 儲存 Bail 與 Ring 的相對位移偏移量（用於聯動）
+                        bailRelativeOffset.set(
+                            bailMesh.position.x - ringMesh.position.x,
+                            bailMesh.position.y - ringMesh.position.y,
+                            bailMesh.position.z - ringMesh.position.z
+                        );
+                        console.log(`🔗 Bail-Ring 相對偏移已儲存: (${bailRelativeOffset.x.toFixed(2)}, ${bailRelativeOffset.y.toFixed(2)}, ${bailRelativeOffset.z.toFixed(2)})`);
+                        
                         // 🔄 旋轉讓 bail 垂直於 ring
                         // 測試後發现代码已经是垂直的，如果需要调整可以修改这里
                         // bailMesh.rotation.x = Math.PI / 2; // X 軸旋轉 90 度
@@ -4232,6 +4243,18 @@
 
             // 旋轉以 Z 軸為軸心
             ringMesh.rotation.z = (rotation * Math.PI) / 180;
+
+            // 🔗 Bail 聯動：跟隨 Ring 移動（保持相對偏移）
+            if (bailMesh && bailRelativeOffset) {
+                bailMesh.position.set(
+                    ringMesh.position.x + bailRelativeOffset.x,
+                    ringMesh.position.y + bailRelativeOffset.y,
+                    ringMesh.position.z + bailRelativeOffset.z
+                );
+                // Bail 跟隨 Ring 旋轉
+                bailMesh.rotation.z = ringMesh.rotation.z;
+                console.log(`🔗 Bail 已聯動至新位置: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
+            }
 
             // 🔍 Debug: 圓環位置
             console.log('🔍 圓環絕對位置:', {
@@ -4325,6 +4348,9 @@
             if (typeof fontsLoadedPromise !== 'undefined') {
                 await fontsLoadedPromise;
             }
+
+            // 等待所有瀏覽器字體載入完成，確保字體選擇器正確渲染
+            await document.fonts.ready;
 
             const listContainer = document.getElementById('font-list-container');
             const displayArea = document.getElementById('font-display-area');
