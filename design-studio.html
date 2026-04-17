@@ -4177,16 +4177,15 @@
                     const scaledSizeZ = scaledBbox.max.z - scaledBbox.min.z;
                     console.log(`📐 Bail 縮放後尺寸: X=${scaledSizeX.toFixed(2)}, Y=${scaledSizeY.toFixed(2)}, Z=${scaledSizeZ.toFixed(2)}`);
 
-                    // 定位：bail 的 narrow end（窄端）在 ring 中心
-                    // Bail STL 載入後 narrow end 在 geometry 的負 Y 端（幾何中心為準）
-                    // 需要往上移動 halfHeight，讓 narrow end 對齊 ring 中心
+                    // 定位：Bail 中心點在 modelTopZ + 1.2 + bail高度的一半
+                    // X、Y 跟 Ring 一樣，Z 在 Ring 上方
                     
                     if (ringMesh) {
-                        const halfHeight = scaledSizeY / 2; // narrow end 在負 Y，所以要往上移動 halfHeight
+                        const bailCenterZ = modelTopZ + 1.2 + scaledSizeZ / 2;
                         bailMesh.position.set(
                             ringMesh.position.x,
-                            ringMesh.position.y + halfHeight,
-                            ringMesh.position.z
+                            ringMesh.position.y,
+                            bailCenterZ
                         );
                         
                         // 🔧 儲存 Bail 與 Ring 的相對位移偏移量（用於聯動）
@@ -4202,7 +4201,7 @@
                         // bailMesh.rotation.x = Math.PI / 2; // X 軸旋轉 90 度
                         
                         console.log(`🔍 Ring 位置: (${ringMesh.position.x.toFixed(2)}, ${ringMesh.position.y.toFixed(2)}, ${ringMesh.position.z.toFixed(2)})`);
-                        console.log(`🔍 Bail 位置（narrow end對齐ring中心）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
+                        console.log(`🔍 Bail 位置（中心在ring上方 ${1.2 + scaledSizeZ/2}mm）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
                     } else {
                         bailMesh.position.set(modelCenter.x, modelCenter.y + 5, modelCenter.z);
                     }
