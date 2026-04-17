@@ -4092,8 +4092,8 @@
 
             // 將 Torus 從 XY 平面轉到 XZ 平面 (站立)
             geometry.rotateX(Math.PI / 2);
-            // 繞新的高度軸 Z 旋轉 90 度
-            geometry.rotateZ(Math.PI / 2);
+            // 移除原本的 Z 軸 90 度旋轉，讓 ring 與 Letter 1 平行（垂直於 Letter 2）
+            // geometry.rotateZ(Math.PI / 2);  // 註解掉：原本讓 ring 平行於 Letter 2
 
             const material = getMaterial(
                 document.getElementById('material').value,
@@ -4156,34 +4156,47 @@
 
                     bailMesh = new THREE.Mesh(geometry, material);
 
-                    // 🔧 Bail 縮放調整：根據 ring 大小決定 bail 的縮放比例
-                    // Ring 外徑約 2.6mm（1+0.3*2），Bail Z 方向 11.5mm 太大，需要縮放
-                    // 目標：bail 寬度約為 ring 直徑的 2-3 倍（約 6-8mm）
-                    const targetBailWidth = 4; // 目標寬度 4mm
-                    const scaleFactor = targetBailWidth / Math.max(sizeX, sizeY);
-                    geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+                    // 🔧 Bail 分項縮放調整
+                    // 可調整參數：targetBailWidth（寬度）、scaleY（高度倍率）、scaleZ（深度倍率）
+                    const targetBailWidth = 4; // 目標寬度 4mm（X 和 Y 方向的基準）
+                    const scaleX = targetBailWidth / Math.max(sizeX, sizeY); // X 方向
+                    const scaleY = targetBailWidth / Math.max(sizeX, sizeY); // Y 方向（等於寬度）
+                    const scaleZ = 1.0; // Z 方向深度倍率（預設 1.0，不縮放）
+                    geometry.scale(scaleX, scaleY, scaleZ);
                     
-                    console.log(`🔧 Bail 縮放比例: ${scaleFactor.toFixed(3)}（原始尺寸過大，縮放至 ${targetBailWidth}mm 寬度）`);
+                    console.log(`🔧 Bail 縮放: scaleX=${scaleX.toFixed(3)}, scaleY=${scaleY.toFixed(3)}, scaleZ=${scaleZ.toFixed(3)}（寬度=${targetBailWidth}mm）`);
 
-                    // 定位：放在 ring 的位置，bail 的 narrow end（窄端）在 ring 中心
-                    // Bail 預設是 Y-axis 方向，我們需要讓它垂直於 ring（穿過 ring 的孔洞）
-                    // Ring 的孔洞是沿著 Y 軸，所以 bail 也應該沿著 Y 軸
-                    // narrow end 朝下（負 Y），wide end 朝上（正 Y）
+                    // 重新計算縮放後的 BBox
+                    geometry.computeBoundingBox();
+                    const scaledBbox = geometry.boundingBox;
+                    const scaledSizeX = scaledBbox.max.x - scaledBbox.min.x;
+                    const scaledSizeY = scaledBbox.max.y - scaledBbox.min.y;
+                    const scaledSizeZ = scaledBbox.max.z - scaledBbox.min.z;
+                    console.log(`📐 Bail 縮放後尺寸: X=${scaledSizeX.toFixed(2)}, Y=${scaledSizeY.toFixed(2)}, Z=${scaledSizeZ.toFixed(2)}`);
 
-                    // 先設為預設位置（與 ring 相同）
+                    // 定位：bail 的 narrow end（窄端）在 ring 中心
+                    // Bail STL 載入後 narrow end 在 geometry 的負 Y 端（幾何中心為準）
+                    // 需要往上移動 halfHeight，讓 narrow end 對齊 ring 中心
+                    
                     if (ringMesh) {
-                        bailMesh.position.copy(ringMesh.position);
+                        const halfHeight = scaledSizeY / 2; // narrow end 在負 Y，所以要往上移動 halfHeight
+                        bailMesh.position.set(
+                            ringMesh.position.x,
+                            ringMesh.position.y + halfHeight,
+                            ringMesh.position.z
+                        );
+                        
+                        // 🔄 旋轉讓 bail 垂直於 ring
+                        // 測試後發现代码已经是垂直的，如果需要调整可以修改这里
+                        // bailMesh.rotation.x = Math.PI / 2; // X 軸旋轉 90 度
+                        
+                        console.log(`🔍 Ring 位置: (${ringMesh.position.x.toFixed(2)}, ${ringMesh.position.y.toFixed(2)}, ${ringMesh.position.z.toFixed(2)})`);
+                        console.log(`🔍 Bail 位置（narrow end對齐ring中心）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
                     } else {
                         bailMesh.position.set(modelCenter.x, modelCenter.y + 5, modelCenter.z);
                     }
 
-                    // Bail 預設已經是沿著 Y 軸（從 STL 載入後的位置）
-                    // 如果需要調整方向，可以在這裡旋轉
-
                     // 🔍 Debug: 檢查 bail 狀態
-                    geometry.computeBoundingBox();
-                    const newBbox = geometry.boundingBox;
-                    console.log(`🔍 Bail 縮放後 BBox: x=[${newBbox.min.x.toFixed(2)},${newBbox.max.x.toFixed(2)}] y=[${newBbox.min.y.toFixed(2)},${newBbox.max.y.toFixed(2)}] z=[${newBbox.min.z.toFixed(2)},${newBbox.max.z.toFixed(2)}]`);
                     console.log(`🔍 Bail 可見性: ${bailMesh.visible}, position: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
 
                     scene.add(bailMesh);
