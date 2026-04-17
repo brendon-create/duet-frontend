@@ -3376,8 +3376,6 @@
                         : f;
                 });
                 console.log(`✅ [V3] fontMetaMap 建立完成，共 ${Object.keys(fontMetaMap).length} 種字體`);
-                // 🔗 通知 fontsLoadedPromise：initFontMeta 也完成了
-                if (fontsLoadedResolve) fontsLoadedResolve();
             } catch (e) {
                 console.warn('⚠️ [V3] 無法載入 fonts.json，offset_r 全部使用 0:', e.message);
             }
