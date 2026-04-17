@@ -385,51 +385,6 @@
             display: block;
         }
 
-        /* 🔒 第二道防線：字體載入 Loading 遮罩 */
-        #font-selector-loading-shield {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease;
-        }
-
-        #font-selector-loading-shield.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-shield-content {
-            text-align: center;
-            color: #d4af37;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(212, 175, 55, 0.2);
-            border-top-color: #d4af37;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-shield-content p {
-            font-size: 14px;
-            margin: 0;
-        }
-
         .close-modal-btn {
             position: absolute;
             top: 20px;
@@ -1484,14 +1439,6 @@
     <!-- Font Selector Modal -->
     <div id="font-selector-modal">
         <button class="close-modal-btn" id="close-modal">×</button>
-
-        <!-- 🔒 第二道防線：字體載入 Loading 遮罩 -->
-        <div id="font-selector-loading-shield">
-            <div class="loading-shield-content">
-                <div class="loading-spinner"></div>
-                <p>字體載入中...</p>
-            </div>
-        </div>
 
         <div class="modal-layout">
             <aside class="font-sidebar">
@@ -4408,13 +4355,6 @@
             // 等待所有瀏覽器字體載入完成，確保字體選擇器正確渲染
             await document.fonts.ready;
 
-            // 🔓 解鎖：所有條件都滿足了，移除 Loading 遮罩
-            const loadingShield = document.getElementById('font-selector-loading-shield');
-            if (loadingShield) {
-                loadingShield.classList.add('hidden');
-                console.log('🔓 字體選擇器已解鎖');
-            }
-
             const listContainer = document.getElementById('font-list-container');
             const displayArea = document.getElementById('font-display-area');
 
@@ -4521,12 +4461,6 @@
         }
 
         function openFontSelector() {
-            // 🔒 每次打開時，先顯示 Loading 遮罩（確保使用者看到的是完整載入的畫面）
-            const loadingShield = document.getElementById('font-selector-loading-shield');
-            if (loadingShield) {
-                loadingShield.classList.remove('hidden');
-            }
-
             // 讀取當前字母並自動填入字體選擇視窗
             const letter1 = document.getElementById('letter1').value;
             const letter2 = document.getElementById('letter2').value;
