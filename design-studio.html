@@ -4156,15 +4156,12 @@
 
                     bailMesh = new THREE.Mesh(geometry, material);
 
-                    // 🔧 Bail 分項縮放調整
-                    // 可調整參數：targetBailWidth（寬度）、scaleY（高度倍率）、scaleZ（深度倍率）
-                    const targetBailWidth = 4; // 目標寬度 4mm（X 和 Y 方向的基準）
-                    const scaleX = targetBailWidth / Math.max(sizeX, sizeY); // X 方向
-                    const scaleY = targetBailWidth / Math.max(sizeX, sizeY); // Y 方向（等於寬度）
-                    const scaleZ = 1.0; // Z 方向深度倍率（預設 1.0，不縮放）
-                    geometry.scale(scaleX, scaleY, scaleZ);
+                    // 🔧 Bail 縮放調整：根據 targetBailWidth 等比例縮放
+                    const targetBailWidth = 4; // 目標寬度 4mm
+                    const scaleFactor = targetBailWidth / Math.max(sizeX, sizeY);
+                    geometry.scale(scaleFactor, scaleFactor, scaleFactor);
                     
-                    console.log(`🔧 Bail 縮放: scaleX=${scaleX.toFixed(3)}, scaleY=${scaleY.toFixed(3)}, scaleZ=${scaleZ.toFixed(3)}（寬度=${targetBailWidth}mm）`);
+                    console.log(`🔧 Bail 縮放: scaleFactor=${scaleFactor.toFixed(3)}（等比例，寬度=${targetBailWidth}mm）`);
 
                     // 重新計算縮放後的 BBox
                     geometry.computeBoundingBox();
