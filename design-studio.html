@@ -4159,7 +4159,7 @@
                     // 🔧 Bail 縮放調整：根據 ring 大小決定 bail 的縮放比例
                     // Ring 外徑約 2.6mm（1+0.3*2），Bail Z 方向 11.5mm 太大，需要縮放
                     // 目標：bail 寬度約為 ring 直徑的 2-3 倍（約 6-8mm）
-                    const targetBailWidth = 6; // 目標寬度 6mm
+                    const targetBailWidth = 4; // 目標寬度 4mm
                     const scaleFactor = targetBailWidth / Math.max(sizeX, sizeY);
                     geometry.scale(scaleFactor, scaleFactor, scaleFactor);
                     
