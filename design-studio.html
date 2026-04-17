@@ -4405,8 +4405,14 @@
                 await fontsLoadedPromise;
             }
 
-            // 等待所有瀏覽器字體載入完成，確保字體選擇器正確渲染
-            await document.fonts.ready;
+            // 等待 fontMetaMap 建立完成（initFontMeta 也是 fetch fonts.json，應該差不多同時完成）
+            // 使用 poll 機制確保 fontMetaMap 真的就緒
+            let attempts = 0;
+            while (Object.keys(fontMetaMap).length === 0 && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            console.log(`✅ 字體 meta 確認就緒（等待 ${attempts * 100}ms）`);
 
             // 🔓 解鎖：所有條件都滿足了，移除 Loading 遮罩
             const loadingShield = document.getElementById('font-selector-loading-shield');
