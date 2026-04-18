@@ -4310,7 +4310,14 @@
             }
             // 更換 Bail 的材質
             if (bailMesh) {
-                bailMesh.material = newMaterial.clone();
+                // 🔧 先 dispose 舊材質，避免記憶體洩漏
+                if (bailMesh.material) {
+                    bailMesh.material.dispose();
+                }
+                const clonedMaterial = newMaterial.clone();
+                clonedMaterial.needsUpdate = true;
+                bailMesh.material = clonedMaterial;
+                console.log(`🔧 Bail 材質已更新`);
             }
 
             // 更新重量顯示（密度改變了）
