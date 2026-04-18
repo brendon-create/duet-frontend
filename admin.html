@@ -1776,13 +1776,37 @@
 
         // Order Detail
         async function viewOrder(orderId) {
+            // 顯示 Loading 提示
+            const orderDetailContent = document.getElementById('orderDetailContent');
+            orderDetailContent.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-muted);">
+                    <div style="width: 40px; height: 40px; border: 3px solid rgba(212, 175, 55, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+                    <div style="font-size: 14px;">載入訂單資料中...</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">可能需要 10-30 秒（冷啟動較慢）</div>
+                </div>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+            document.getElementById('orderModal').classList.add('active');
+            
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
                 if (data.success) showOrderModal(data.order);
-            } catch (err) { alert('載入失敗'); }
+            } catch (err) { 
+                orderDetailContent.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #ef4444;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⚠</div>
+                        <div style="font-size: 14px;">載入失敗</div>
+                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">請檢查網路連線或稍後再試</div>
+                    </div>
+                `;
+            }
         }
         
         function showOrderModal(order) {
