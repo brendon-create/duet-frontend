@@ -6424,10 +6424,17 @@
             const letter1 = document.getElementById('letter1');
             const letter2 = document.getElementById('letter2');
 
+            // 數字 0-9 (char code 48-57)
+            for (let i = 48; i <= 57; i++) {
+                letter1.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
+                letter2.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
+            }
+            // 大寫字母 A-Z (char code 65-90)
             for (let i = 65; i <= 90; i++) {
                 letter1.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
                 letter2.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
             }
+            // 小寫字母 a-z (char code 97-122)
             for (let i = 97; i <= 122; i++) {
                 letter1.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
                 letter2.add(new Option(String.fromCharCode(i), String.fromCharCode(i)));
