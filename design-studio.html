@@ -2472,6 +2472,9 @@
 
         // 🔧 Bail 與 Ring 的相對位移偏移量（用於聯動）
         let bailRelativeOffset = new THREE.Vector3();
+        
+        // 🔧 Bail 初始化標記（避免重建時重新計算 offset）
+        let bailInitialized = false;
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -4118,7 +4121,20 @@
         // 🔧 建立 Bail（墜飾上方的環扣）
         // ==========================================
         function createBail() {
-            // 先移除舊的 bailMesh
+            // 🔧 如果 bail 已存在且已初始化，只更新位置（不重新建立）
+            if (bailMesh && bailInitialized && ringMesh) {
+                // Bail 已初始化過，只更新位置（保持相對偏移）
+                bailMesh.position.set(
+                    ringMesh.position.x + bailRelativeOffset.x,
+                    ringMesh.position.y + bailRelativeOffset.y,
+                    ringMesh.position.z + bailRelativeOffset.z
+                );
+                bailMesh.rotation.z = ringMesh.rotation.z;
+                console.log(`🔗 Bail 位置已更新（保持偏移）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
+                return;
+            }
+
+            // 先移除舊的 bailMesh（只有在第一次或需要重建時）
             if (bailMesh) {
                 scene.remove(bailMesh);
                 bailMesh.geometry?.dispose();
@@ -4208,6 +4224,10 @@
 
                     // 🔍 Debug: 檢查 bail 狀態
                     console.log(`🔍 Bail 可見性: ${bailMesh.visible}, position: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
+
+                    // 🔧 標記 Bail 已初始化（之後不再重新建立，只更新位置）
+                    bailInitialized = true;
+                    console.log('✅ Bail 已初始化，之後將保持相對偏移');
 
                     scene.add(bailMesh);
                     window.bailMesh = bailMesh;
@@ -4684,7 +4704,10 @@
                 ringZ: document.getElementById('ringZ').value,
                 ringRotation: document.getElementById('ringRotation').value,
                 mesh: mainMesh.clone(),
-                ring: ringMesh ? ringMesh.clone() : null
+                ring: ringMesh ? ringMesh.clone() : null,
+                // 🔧 保存 Bail 和相對偏移
+                bail: bailMesh ? bailMesh.clone() : null,
+                bailRelativeOffset: bailRelativeOffset.clone()
             };
 
             // 創建縮略圖
@@ -4729,6 +4752,11 @@
             if (ringMesh) {
                 const ringClone = ringMesh.clone();
                 slotScene.add(ringClone);
+            }
+            // 🔧 添加 Bail 到 Slot 預覽
+            if (bailMesh) {
+                const bailClone = bailMesh.clone();
+                slotScene.add(bailClone);
             }
 
             slotRenderer.render(slotScene, slotCamera);
@@ -4804,6 +4832,18 @@
                 ringMesh = slotData.ring.clone();
                 ringMesh.material = ringMesh.material.clone();
                 scene.add(ringMesh);
+            }
+
+            // 🔧 恢復 Bail 和相對偏移
+            if (slotData.bail) {
+                bailMesh = slotData.bail.clone();
+                bailMesh.material = bailMesh.material.clone();
+                scene.add(bailMesh);
+                window.bailMesh = bailMesh;
+            }
+            if (slotData.bailRelativeOffset) {
+                bailRelativeOffset.copy(slotData.bailRelativeOffset);
+                bailInitialized = true;
             }
 
             updateVolumeWeight();
