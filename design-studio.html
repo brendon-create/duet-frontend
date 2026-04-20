@@ -3826,13 +3826,13 @@
 
         /**
          * 將 v3-data JSON v2 格式（commands 曲線命令）轉為高精度 Clipper 路徑
-         * v2 格式保留原始貝茲控制點，Q 用 16 段、C 用 24 段離散化
+         * v2 格式保留原始貝茲控制點，Q 用 24 段、C 用 36 段離散化
          */
         function v3CommandsToClipperPath(input, CLIP_SCALE, targetHeight) {
             const path = [];
             let cx = 0, cy = 0;
-            const STEPS_Q = 16;
-            const STEPS_C = 24;
+            const STEPS_Q = 24;
+            const STEPS_C = 36;
 
             // 縮放因子：統一乘以 10000 再轉為整數，避免 Clipper 運算時幾何體碎裂
             const SCALE = 10000;
