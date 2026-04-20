@@ -4288,6 +4288,9 @@
 
                     // 移動到原點（以幾何中心為準）
                     geometry.translate(-center.x, -center.y, -center.z);
+                    
+                    // 確保法向量正確（STL 載入後必須重新計算）
+                    geometry.computeVertexNormals();
 
                     // 分析 bail 的方向：比較 X 和 Y 方向的範圍
                     const sizeX = bbox.max.x - bbox.min.x;
