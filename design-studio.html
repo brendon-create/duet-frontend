@@ -2598,11 +2598,11 @@
             controls.dampingFactor = 0.05;
             controls.target.set(0, 0, 0);
 
-            // ⚡ 優化：提升光照亮度 20%
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);  // 1.25 → 1.5 (+20%)
+            // ⚡ 提升光照亮度
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
             scene.add(ambientLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);  // 1.5 → 1.8 (+20%)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
