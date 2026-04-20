@@ -3472,7 +3472,12 @@
 
             // Step 1: CleanPolygons 移除自相交點，避免碎裂
             const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
-            console.log(`[V3] CleanPolygons 後路徑數: ${cleaned.length}`);
+            console.log(`[V3] Offset 前路徑數: ${paths.length}, CleanPolygons 後: ${cleaned.length}`);
+
+            // 🔍 Debug: 列出每條路徑的方向
+            cleaned.forEach((p, i) => {
+                console.log(`[V3]   cleaned[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
+            });
 
             // Step 2: 先 Union 合併所有路徑，建立正確的拓撲關係
             const co = new ClipperLib.Clipper();
@@ -3485,7 +3490,22 @@
                 ClipperLib.PolyFillType.pftEvenOdd,
                 ClipperLib.PolyFillType.pftEvenOdd
             );
-            console.log(`[V3] Union PolyTree 節點數: ${polyTree.Childs().length}`);
+            console.log(`[V3] Union PolyTree 根節點數: ${polyTree.Childs().length}`);
+
+            // 🔍 Debug: 顯示 PolyTree 結構
+            const dumpPolyTreeNode = (node, indent) => {
+                const isHole = node.IsHole ? node.IsHole() : node.IsHole;
+                const contour = node.Contour ? node.Contour() : node.Contour;
+                console.log(`${indent}[${isHole ? '孔洞' : '外輪廓'} ${contour.length}點]`);
+                const children = node.Childs ? node.Childs() : node.Childs;
+                for (var i = 0; i < children.length; i++) {
+                    dumpPolyTreeNode(children[i], indent + '  ');
+                }
+            };
+            console.log(`[V3] PolyTree 結構:`);
+            for (var i = 0; i < polyTree.Childs().length; i++) {
+                dumpPolyTreeNode(polyTree.Childs()[i], '  ');
+            }
 
             // Step 3: 將 PolyTree 展平為路徑陣列，準備做 offset
             const flatPaths = [];
@@ -3499,7 +3519,10 @@
                 }
             };
             flattenPolyTreeToPaths(polyTree);
-            console.log(`[V3] 展平后路徑數: ${flatPaths.length}`);
+            console.log(`[V3] 展平後路徑數: ${flatPaths.length}`);
+            flatPaths.forEach((p, i) => {
+                console.log(`[V3]   flat[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
+            });
 
             // Step 4: 對合併後的路徑做統一 offset（正向膨脹）
             const coOffset = new ClipperLib.ClipperOffset();
@@ -3522,6 +3545,9 @@
             };
             flattenResult(offsetResult);
             console.log(`[V3] Offset 後路徑數: ${resultPaths.length}`);
+            resultPaths.forEach((p, i) => {
+                console.log(`[V3]   result[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
+            });
 
             return resultPaths;
         }
