@@ -4956,6 +4956,14 @@
                 if (ringMesh.geometry) ringMesh.geometry.dispose();
                 if (ringMesh.material) ringMesh.material.dispose();
             }
+            // 🔧 也清除舊 Bail（避免從 slot 恢復時殘留多個 Bail）
+            if (bailMesh) {
+                scene.remove(bailMesh);
+                if (bailMesh.geometry) bailMesh.geometry.dispose();
+                if (bailMesh.material) bailMesh.material.dispose();
+                bailMesh = null;
+                window.bailMesh = null;
+            }
 
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
