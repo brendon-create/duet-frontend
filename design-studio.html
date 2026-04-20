@@ -3603,6 +3603,8 @@
 
                 for (var i = 0; i < rootChildren.length; i++) {
                     var child = rootChildren[i];
+                    // 🔍 Debug: 列出每個根節點的輪廓點數和是否為孔洞
+                    console.log(`[V3]   根節點[${i}]: 點數=${child.Contour().length}, IsHole=${child.IsHole()}`);
                     // 根節點的 container 是 null（最外層不需要加入孔洞）
                     traversePolyTreeNode(child, scale, shapes, null);
                 }
@@ -3620,6 +3622,13 @@
                 );
 
                 console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
+
+                // 🔍 Debug: 列出所有路徑的方向（協助識別問題）
+                console.log(`[V3] Offset 後 ${clipperPaths.length} 條路徑的方向:`);
+                clipperPaths.forEach((path, idx) => {
+                    const isCW = ClipperLib.Clipper.Orientation(path);
+                    console.log(`[V3]   路徑[${idx}]: 點數=${path.length}, ${isCW ? 'CW (外輪廓)' : 'CCW (孔洞)'}`);
+                });
 
                 // 遍歷 PolyTree 的根節點
                 var rootChildren = polyTree.Childs();
