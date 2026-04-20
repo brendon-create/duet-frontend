@@ -3764,7 +3764,9 @@
                         cx = cmd.x;
                         cy = cmd.y;
                         if (lastPushedX !== null && cx === lastPushedX && cy === lastPushedY) {
-                            // 座標相同，忽略這個點（不 push）
+                            // 座標相同，更新 lastPushed 但不 push（避免重複點）
+                            lastPushedX = cx;
+                            lastPushedY = cy;
                             break;
                         }
                         push(cx, cy);
