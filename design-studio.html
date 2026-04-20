@@ -2551,7 +2551,7 @@
         const MATERIALS = {
             gold18k: { color: 0xFFD700, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
             whitegold18k: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
-            rosegold18k: { color: 0xECC5B0, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.0 },
+            rosegold18k: { color: 0xC9A386, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.0 },
             silver925: { color: 0xC0C0C0, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 10.3 },
             brass: { color: 0xB5A642, metalness: 0.9, roughness: { glossy: 0.0, matte: 0.6 }, density: 8.5 },
             platinum: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 21.4 }
@@ -2567,7 +2567,7 @@
             none: null,  // 無電鍍，使用基礎材質顏色
             gold18k: 0xFFD700,      // 18K 金色
             whitegold18k: 0xE5E5E5, // 18K 白K金色
-            rosegold18k: 0xECC5B0   // 18K 玫瑰金色
+            rosegold18k: 0xC9A386   // 18K 玫瑰金色（溫暖粉金）
         };
 
         // 初始化場景（Z-up 系統）
@@ -2598,18 +2598,18 @@
             controls.dampingFactor = 0.05;
             controls.target.set(0, 0, 0);
 
-            // ⚡ 優化：提升光照亮度 20%
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);  // 1.25 → 1.5 (+20%)
+            // ⚡ 提升光照亮度
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
             scene.add(ambientLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);  // 1.5 → 1.8 (+20%)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
             directionalLight.position.set(5, 5, 10);
             scene.add(directionalLight);
 
             // ✅ HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
             const hdrUrls = [
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/Jewelry_studio_c.hdr',  // 優先：GitHub Raw
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/Jewelry_studio_c.hdr'  // 備援：jsdelivr CDN
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_kontrast_04_4k.hdr',  // 優先：GitHub Raw
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_kontrast_04_4k.hdr'  // 備援：jsdelivr CDN
             ];
             
             let currentHdrIndex = 0;
@@ -4288,6 +4288,9 @@
 
                     // 移動到原點（以幾何中心為準）
                     geometry.translate(-center.x, -center.y, -center.z);
+                    
+                    // 確保法向量正確（STL 載入後必須重新計算）
+                    geometry.computeVertexNormals();
 
                     // 分析 bail 的方向：比較 X 和 Y 方向的範圍
                     const sizeX = bbox.max.x - bbox.min.x;
@@ -6959,7 +6962,9 @@
                 ringRelativeY: ringRelativeY,
                 ringRelativeZ: ringRelativeZ,
                 ringRotation: ringRot,
-                cleanFragments: modelNeedsCleanup  // 🧹 傳送清理狀態
+                cleanFragments: modelNeedsCleanup,  // 🧹 傳送清理狀態
+                include_ring: true,      // 🎯 開發者下載包含 Ring + Bail
+                separate_ring: true      // 🎯 Ring 保持為獨立 Body
             };
 
             console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
