@@ -3595,6 +3595,65 @@
         }
 
         /**
+         * 使用 subPaths 的 isHole 資訊直接建立 THREE.Shape 陣列
+         * 這個方法繞過 PolyTree 的 IsHole() 推斷，直接使用 JSON 中的 isHole 欄位
+         * 
+         * @param {Array} finalPaths - Offset 後的 Clipper 路徑陣列
+         * @param {Array} subPathsInfo - 原始的 subPaths 資訊（含 isHole 欄位）
+         * @param {number} scale - 整數縮放因子（需除回）
+         * @returns {Array} THREE.Shape[]
+         */
+        function buildShapesFromSubPaths(finalPaths, subPathsInfo, scale) {
+            const shapes = [];
+            
+            // 找出外輪廓（isHole = false）和孔洞（isHole = true）
+            // 外輪廓應該只有一個（第一個是最大的）
+            let outerShape = null;
+            const holes = [];
+            
+            for (let i = 0; i < finalPaths.length; i++) {
+                const path = finalPaths[i];
+                const isHole = subPathsInfo[i]?.isHole ?? false;
+                const pts = path.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
+                
+                if (!isHole) {
+                    // 外輪廓
+                    const shape = new THREE.Shape(pts);
+                    shapes.push(shape);
+                    if (!outerShape || path.length > (outerShape.shape ? outerShape.path.length : 0)) {
+                        outerShape = { shape, path };
+                    }
+                    console.log(`[V3] 建立外輪廓 Shape: ${shapes.length}`);
+                } else {
+                    // 孔洞
+                    holes.push(pts);
+                    console.log(`[V3] 加入孔洞: ${holes.length}`);
+                }
+            }
+            
+            // 將孔洞加入外輪廓
+            // 如果只有一個 Shape，把所有孔洞都加進去
+            // 如果有多個 Shape，嘗試把孔洞加入最大的那個
+            if (shapes.length === 1) {
+                for (const holePts of holes) {
+                    const holePath = new THREE.Path(holePts);
+                    shapes[0].holes.push(holePath);
+                    console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${shapes[0].holes.length}`);
+                }
+            } else if (shapes.length > 1 && outerShape) {
+                // 多個外輪廓的情況（很少見），把孔洞加入最大的
+                for (const holePts of holes) {
+                    const holePath = new THREE.Path(holePts);
+                    outerShape.shape.holes.push(holePath);
+                    console.log(`[V3] 加入孔洞至最大 Shape，孔洞數: ${outerShape.shape.holes.length}`);
+                }
+            }
+            
+            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
+            return shapes;
+        }
+
+        /**
          * 將 Clipper 路徑陣列重新組裝成 THREE.Shape 陣列
          * 使用 PolyTree + IsHole() 進行正確的孔洞偵測
          * @param {Array} clipperPaths - 偏移後的 ClipperLib.Paths 或 PolyTree
@@ -3882,22 +3941,36 @@
             }
 
             // ── 步驟 2：取出路徑資料 ──────
+            // v2.1: glyphData.subPaths = [{commands, isHole}, ...]
             // v2: glyphData.commands = [{type: "M", x, y}, ...]
             // v1: glyphData.path = [{x, y}, ...]（沒有 type 欄位）
-            const pathInput = glyphData.commands || glyphData.path;
-            if (!pathInput || pathInput.length === 0) {
-                throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
-            }
-            console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
-
-            // ── 步驟 3：將歸一化座標轉為實際 mm，再轉 Clipper 路徑 ──────
-            // JSON 是歸一化（0-1 範圍）和 Y-up
-            // 統一乘以 10000 轉為整數，避免 Clipper 運算時幾何體碎裂
             const CLIP_SCALE = 10000;
-            // 根據資料格式選擇轉換函數
-            const clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
+            
+            let clipperPaths = [];
+            let subPathsInfo = null;
+            
+            if (glyphData.subPaths && glyphData.subPaths.length > 0) {
+                // v2.1 格式：使用 subPaths，直接用 isHole 欄位
+                console.log(`[V3] Glyph 資料：v2.1 (subPaths)，子路徑數=${glyphData.subPaths.length}`);
+                
+                for (let i = 0; i < glyphData.subPaths.length; i++) {
+                    const sp = glyphData.subPaths[i];
+                    const path = v3CommandsToClipperPath(sp.commands, CLIP_SCALE, targetHeight);
+                    clipperPaths.push(path);
+                    console.log(`[V3]   subPath[${i}]: ${path.length}點, isHole=${sp.isHole}`);
+                }
+                subPathsInfo = glyphData.subPaths;
+            } else {
+                // 舊格式 fallback
+                const pathInput = glyphData.commands || glyphData.path;
+                if (!pathInput || pathInput.length === 0) {
+                    throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
+                }
+                console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
+                clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
+            }
 
-            if (clipperPaths[0].length === 0) {
+            if (clipperPaths.length === 0 || clipperPaths[0].length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
             }
 
@@ -3918,7 +3991,14 @@
             }
 
             // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-            const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
+            let shapes;
+            if (subPathsInfo) {
+                // v2.1 格式：使用 subPathsInfo 直接建立 Shapes 和孔洞
+                shapes = buildShapesFromSubPaths(finalPaths, subPathsInfo, CLIP_SCALE);
+            } else {
+                // 舊格式：依靠 PolyTree 推斷孔洞
+                shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
+            }
 
             if (shapes.length === 0) {
                 throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
