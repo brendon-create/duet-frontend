@@ -3752,14 +3752,24 @@
 
             // V3 格式：commands = [{type: "M/L/Q/C", x, y, ...}, ...]
             // M/L 只讀取 x, y；Q 讀取 x1, y1, x, y；C 讀取 x1, y1, x2, y2, x, y
+            // 追蹤上一個 push 的座標，過濾零長度線段
+            let lastPushedX = null, lastPushedY = null;
+            
             for (const cmd of input) {
                 switch (cmd.type) {
                     case 'M':
                     case 'L':
                         // M/L 只讀取 x, y，不要讀取 x1 欄位（避免 NaN）
+                        // 跳過零長度線段（M->L 或 L->L 座標相同的情況）
                         cx = cmd.x;
                         cy = cmd.y;
+                        if (lastPushedX !== null && cx === lastPushedX && cy === lastPushedY) {
+                            // 座標相同，忽略這個點（不 push）
+                            break;
+                        }
                         push(cx, cy);
+                        lastPushedX = cx;
+                        lastPushedY = cy;
                         break;
                     case 'Q':
                         // Q: 二次貝茲，讀取 x1, y1 (控制點) 與 x, y (終點)
