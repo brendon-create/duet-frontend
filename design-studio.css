@@ -946,15 +946,16 @@
         }
 
         .cleanup-confirm-dialog {
-            background: rgba(20, 20, 30, 0.95);
-            backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(14, 14, 20, 0.96);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
+            border: 1px solid rgba(212, 175, 55, 0.45);
             border-radius: 24px;
             padding: 32px;
             max-width: 400px;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            box-shadow:
+                0 8px 40px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
             transform: scale(0.9);
             transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
@@ -972,11 +973,12 @@
         }
 
         .cleanup-confirm-message {
-            font-size: 14px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            line-height: 1.7;
+            color: #e8d5a0;
             margin-bottom: 24px;
             text-align: center;
+            letter-spacing: 0.2px;
         }
 
         .cleanup-confirm-buttons {
@@ -988,33 +990,31 @@
             flex: 1;
             padding: 12px 24px;
             border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
             cursor: pointer;
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
         }
 
         .cleanup-confirm-btn.confirm {
-            background: rgba(212, 175, 55, 0.2);
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            color: #d4af37;
+            background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
+            color: #000;
         }
 
         .cleanup-confirm-btn.confirm:hover {
-            background: rgba(212, 175, 55, 0.3);
-            border-color: rgba(212, 175, 55, 0.6);
+            background: linear-gradient(135deg, #e0bc42 0%, #b8963a 100%);
         }
 
         .cleanup-confirm-btn.cancel {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(232, 213, 160, 0.8);
         }
 
         .cleanup-confirm-btn.cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.13);
         }
         
         /* 脈衝動畫 - 用於提示生成按鈕 */
