@@ -1634,6 +1634,8 @@
             const newBbox = result.geometry.boundingBox;
             modelTopZ = newBbox.max.z; // 新的高度軸是 Z
             modelCenter.set(0, 0, 0);  // ✅ 強制設為原點（與後端 OpenSCAD 一致，避免浮點誤差）
+            window.modelTopZ = modelTopZ;
+            window.modelCenter = modelCenter;
 
             // 輸出實際尺寸
             const modelWidth = newBbox.max.x - newBbox.min.x;
@@ -1912,7 +1914,9 @@
                 const newBbox = cleanGeometry.boundingBox;
                 modelTopZ = newBbox.max.z;
                 modelCenter.set(0, 0, 0);  // 強制設為原點（與後端 OpenSCAD 一致）
-                
+                window.modelTopZ = modelTopZ;
+                window.modelCenter = modelCenter;
+
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
                 
