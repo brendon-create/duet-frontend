@@ -707,6 +707,9 @@
         // 材質系統
         import { MATERIALS, PLATING_COLORS } from './js/materials.js';
 
+        // 3D 場景系統
+        import { initScene, animate, onResize, getScene, getCamera } from './js/3d-scene.js';
+
         // 暴露給全域（供其他模組和 inline script 使用）
         window.MATERIALS = MATERIALS;
         window.PLATING_COLORS = PLATING_COLORS;
@@ -1325,14 +1328,14 @@
         const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
         
         // 全域變數
-        let scene, camera, renderer, controls, envMap;
+        // 注意：scene, camera, renderer, controls, envMap 已移至 3d-scene.js
+        // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
         let mainMesh = null, ringMesh = null, bailMesh = null;
         let loadedFonts = {};
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
         let savedVersions = [null, null];
-        let slot1Scene, slot2Scene, slot1Renderer, slot2Renderer, slot1Camera, slot2Camera;
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
 
@@ -1413,101 +1416,6 @@
             }
         }
 
-        // 初始化場景（Z-up 系統）
-        function initScene() {
-            scene = new THREE.Scene();
-
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.up.set(0, 0, 1); // Z-up 系統
-            // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
-            camera.position.set(40, -57, 12);  // 半徑7.5→5，按比例縮小（原: 60, -85, 18）
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            document.getElementById('viewport').appendChild(renderer.domElement);
-            renderer.domElement.style.pointerEvents = 'none';
-            // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
-            window.renderer = renderer;
-            window.scene = scene;
-            window.camera = camera;
-
-            controls = new OrbitControls(camera, document.getElementById('viewport'));
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.target.set(0, 0, 0);
-
-            // ⚡ 提升光照亮度
-            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
-            directionalLight.position.set(5, 5, 10);
-            scene.add(directionalLight);
-
-            // ✅ HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
-            const hdrUrls = [
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_kontrast_04_4k.hdr',  // 優先：GitHub Raw
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_kontrast_04_4k.hdr'  // 備援：jsdelivr CDN
-            ];
-            
-            let currentHdrIndex = 0;
-            let hdrLoadTimeout = null;
-            const rgbeLoader = new RGBELoader();
-
-            function loadHDRWithFallback() {
-                if (currentHdrIndex >= hdrUrls.length) {
-                    console.error('❌ 所有 HDR 來源都失敗，使用無 HDR 模式');
-                    envMap = null;
-                    showInitialSphere();
-                    return;
-                }
-
-                const hdrUrl = hdrUrls[currentHdrIndex];
-                const sourceName = currentHdrIndex === 0 ? 'GitHub Raw' : 'jsdelivr CDN';
-                console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
-
-                // 設定 5 秒超時
-                hdrLoadTimeout = setTimeout(() => {
-                    console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
-                    currentHdrIndex++;
-                    loadHDRWithFallback();
-                }, 5000);
-
-                rgbeLoader.load(
-                    hdrUrl,
-                    (texture) => {
-                        clearTimeout(hdrLoadTimeout);
-                        texture.mapping = THREE.EquirectangularReflectionMapping;
-                        envMap = texture;
-                        scene.environment = envMap;
-                        console.log(`✅ HDR 載入成功 (${sourceName})`);
-                        showInitialSphere();
-                    },
-                    undefined,
-                    (error) => {
-                        clearTimeout(hdrLoadTimeout);
-                        console.error(`❌ HDR 載入失敗 (${sourceName}):`, error);
-                        currentHdrIndex++;
-                        loadHDRWithFallback();
-                    }
-                );
-            }
-
-            loadHDRWithFallback();
-
-            window.addEventListener('resize', onResize);
-            
-            // ==========================================
-            // 🔧 初始化產品攝影模組
-            // ==========================================
-            ProductPhotoStudio.init(scene, camera, renderer, controls);
-        }
-
         // ============================================================
         // 輔助函數：清理所有預覽球體（防止圓球殘留）
         // ============================================================
@@ -1516,10 +1424,10 @@
             let removedCount = 0;
             
             // 遍歷 scene 中所有物件
-            for (let i = scene.children.length - 1; i >= 0; i--) {
-                const child = scene.children[i];
+            for (let i = window.scene.children.length - 1; i >= 0; i--) {
+                const child = window.scene.children[i];
                 if (child.name === sphereName) {
-                    scene.remove(child);
+                    window.scene.remove(child);
                     child.geometry?.dispose();
                     child.material?.dispose();
                     removedCount++;
@@ -1541,7 +1449,7 @@
             const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
             mainMesh = new THREE.Mesh(geometry, material);
             mainMesh.name = 'placeholderSphere';  // 設定名稱方便後續清理
-            scene.add(mainMesh);
+            window.scene.add(mainMesh);
             // 暴露 mainMesh 給全局，供佩戴模擬使用
             window.mainMesh = mainMesh;
             document.getElementById('loader').classList.add('fade-out');
@@ -1855,19 +1763,19 @@
             );
 
             mainMesh = result;
-            scene.add(mainMesh);
+            window.scene.add(mainMesh);
 
             // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
             removeAllPlaceholderSpheres();
 
             // 新物件已添加，現在可以安全移除舊物件
             if (oldMainMesh) {
-                scene.remove(oldMainMesh);
+                window.scene.remove(oldMainMesh);
                 oldMainMesh.geometry?.dispose();
                 oldMainMesh.material?.dispose();
             }
             if (oldRingMesh) {
-                scene.remove(oldRingMesh);
+                window.scene.remove(oldRingMesh);
                 oldRingMesh.geometry?.dispose();
                 oldRingMesh.material?.dispose();
             }
@@ -3054,7 +2962,7 @@
         function createRing() {
             // 先移除舊的 ringMesh
             if (ringMesh) {
-                scene.remove(ringMesh);
+                window.scene.remove(ringMesh);
                 ringMesh.geometry?.dispose();
                 ringMesh.material?.dispose();
                 ringMesh = null;
@@ -3080,7 +2988,7 @@
                 document.getElementById('plating').value
             );
             ringMesh = new THREE.Mesh(geometry, material);
-            scene.add(ringMesh);
+            window.scene.add(ringMesh);
             // 暴露給佩戴模擬（用於截取墜飾）
             window.ringMesh = ringMesh;
 
@@ -3106,7 +3014,7 @@
 
             // 先移除舊的 bailMesh（只有在第一次或需要重建時）
             if (bailMesh) {
-                scene.remove(bailMesh);
+                window.scene.remove(bailMesh);
                 bailMesh.geometry?.dispose();
                 bailMesh.material?.dispose();
                 bailMesh = null;
@@ -3202,7 +3110,7 @@
                     bailInitialized = true;
                     console.log('✅ Bail 已初始化，之後將保持相對偏移');
 
-                    scene.add(bailMesh);
+                    window.scene.add(bailMesh);
                     window.bailMesh = bailMesh;
 
                     console.log('✅ Bail 已添加到場景');
@@ -3743,13 +3651,13 @@
 
             // 保存到全域變數以便同步旋轉
             if (slotIndex === 0) {
-                slot1Renderer = slotRenderer;
-                slot1Scene = slotScene;
-                slot1Camera = slotCamera;
+                window.slot1Renderer = slotRenderer;
+                window.slot1Scene = slotScene;
+                window.slot1Camera = slotCamera;
             } else {
-                slot2Renderer = slotRenderer;
-                slot2Scene = slotScene;
-                slot2Camera = slotCamera;
+                window.slot2Renderer = slotRenderer;
+                window.slot2Scene = slotScene;
+                window.slot2Camera = slotCamera;
             }
 
             const label = document.createElement('div');
@@ -3793,18 +3701,18 @@
 
             // 清除舊模型
             if (mainMesh) {
-                scene.remove(mainMesh);
+                window.scene.remove(mainMesh);
                 if (mainMesh.geometry) mainMesh.geometry.dispose();
                 if (mainMesh.material) mainMesh.material.dispose();
             }
             if (ringMesh) {
-                scene.remove(ringMesh);
+                window.scene.remove(ringMesh);
                 if (ringMesh.geometry) ringMesh.geometry.dispose();
                 if (ringMesh.material) ringMesh.material.dispose();
             }
             // 🔧 也清除舊 Bail（避免從 slot 恢復時殘留多個 Bail）
             if (bailMesh) {
-                scene.remove(bailMesh);
+                window.scene.remove(bailMesh);
                 if (bailMesh.geometry) bailMesh.geometry.dispose();
                 if (bailMesh.material) bailMesh.material.dispose();
                 bailMesh = null;
@@ -3814,19 +3722,19 @@
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
             mainMesh.material = mainMesh.material.clone();
-            scene.add(mainMesh);
+            window.scene.add(mainMesh);
 
             if (slotData.ring) {
                 ringMesh = slotData.ring.clone();
                 ringMesh.material = ringMesh.material.clone();
-                scene.add(ringMesh);
+                window.scene.add(ringMesh);
             }
 
             // 🔧 恢復 Bail 和相對偏移
             if (slotData.bail) {
                 bailMesh = slotData.bail.clone();
                 bailMesh.material = bailMesh.material.clone();
-                scene.add(bailMesh);
+                window.scene.add(bailMesh);
                 window.bailMesh = bailMesh;
             }
             if (slotData.bailRelativeOffset) {
@@ -3844,8 +3752,8 @@
             
             // 儲存原始相機狀態
             const originalCamera = {
-                position: camera.position.clone(),
-                rotation: camera.rotation.clone()
+                position: window.camera.position.clone(),
+                rotation: window.camera.rotation.clone()
             };
             
             // 計算模型的 BBox 中心和大小
@@ -3857,58 +3765,58 @@
             const distance = maxDim * 3;  // 適當的距離
             
             // 正視圖 (Letter 1 正面 - 從 -Y 看向 +Y，看到 XZ 平面)
-            camera.position.set(center.x, center.y - distance, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
+            window.camera.position.set(center.x, center.y - distance, center.z);
+            window.camera.lookAt(center);
+            window.controls.update();
+            window.renderer.render(window.scene, window.camera);
             views.push({
                 name: 'letter1_view',
                 label: 'Front View (Letter 1)',
-                dataURL: renderer.domElement.toDataURL('image/png')
+                dataURL: window.renderer.domElement.toDataURL('image/png')
             });
             
             // 側視圖 (Letter 2 正面 - 從 +X 看向 -X，看到 YZ 平面)
-            camera.position.set(center.x + distance, center.y, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
+            window.camera.position.set(center.x + distance, center.y, center.z);
+            window.camera.lookAt(center);
+            window.controls.update();
+            window.renderer.render(window.scene, window.camera);
             views.push({
                 name: 'letter2_view',
                 label: 'Side View (Letter 2)',
-                dataURL: renderer.domElement.toDataURL('image/png')
+                dataURL: window.renderer.domElement.toDataURL('image/png')
             });
             
             // 上視圖 (從 +Z 看向 -Z，看到 XY 平面)
-            camera.position.set(center.x, center.y, center.z + distance);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
+            window.camera.position.set(center.x, center.y, center.z + distance);
+            window.camera.lookAt(center);
+            window.controls.update();
+            window.renderer.render(window.scene, window.camera);
             views.push({
                 name: 'top_view',
                 label: 'Top View',
-                dataURL: renderer.domElement.toDataURL('image/png')
+                dataURL: window.renderer.domElement.toDataURL('image/png')
             });
             
             // Hero 視角 (45度角) - 拉近鏡頭，使物品看起來和三視圖一樣大
-            camera.position.set(
+            window.camera.position.set(
                 center.x + distance * 0.4,
                 center.y - distance * 0.6,
                 center.z + distance * 0.3
             );
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
+            window.camera.lookAt(center);
+            window.controls.update();
+            window.renderer.render(window.scene, window.camera);
             views.push({
                 name: 'hero_view',
                 label: 'Hero View (45°)',
-                dataURL: renderer.domElement.toDataURL('image/png')
+                dataURL: window.renderer.domElement.toDataURL('image/png')
             });
             
             // 恢復原始視角
-            camera.position.copy(originalCamera.position);
-            camera.rotation.copy(originalCamera.rotation);
-            controls.update();
-            renderer.render(scene, camera);
+            window.camera.position.copy(originalCamera.position);
+            window.camera.rotation.copy(originalCamera.rotation);
+            window.controls.update();
+            window.renderer.render(window.scene, window.camera);
             
             console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
@@ -5603,31 +5511,6 @@
 
             // 初始化卡片樣式
             updateCardStyle();
-        }
-
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-
-            // 同步 Slot 相機位置和渲染
-            if (slot1Camera && slot1Renderer && slot1Scene) {
-                slot1Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
-                slot1Camera.lookAt(0, 0, 0);
-                slot1Renderer.render(slot1Scene, slot1Camera);
-            }
-            if (slot2Camera && slot2Renderer && slot2Scene) {
-                slot2Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
-                slot2Camera.lookAt(0, 0, 0);
-                slot2Renderer.render(slot2Scene, slot2Camera);
-            }
-
-            renderer.render(scene, camera);
         }
 
         // 啟動
