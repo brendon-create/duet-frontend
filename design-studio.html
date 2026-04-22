@@ -1862,40 +1862,51 @@
             toast.innerHTML = `
                 <div style="
                     position: fixed;
-                    bottom: 108px;
+                    bottom: 100px;
                     left: 50%;
                     transform: translateX(-50%);
                     background: rgba(12, 12, 12, 0.93);
                     backdrop-filter: blur(20px) saturate(150%);
                     -webkit-backdrop-filter: blur(20px) saturate(150%);
-                    border: 1px solid rgba(212, 175, 55, 0.55);
-                    border-radius: 16px;
-                    padding: 20px 28px;
-                    text-align: center;
+                    border: 1px solid rgba(212, 175, 55, 0.5);
+                    border-radius: 14px;
+                    padding: 14px 18px;
                     z-index: 9000;
-                    box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 0 1px rgba(212,175,55,0.08);
-                    max-width: 320px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.07);
+                    max-width: 280px;
                     width: calc(100vw - 48px);
                     animation: slideUpFadeIn 0.35s ease-out;
                 ">
-                    <p style="
-                        color: #e8d5a0;
-                        font-size: 13px;
-                        line-height: 1.75;
-                        margin: 0 0 16px;
-                        letter-spacing: 0.3px;
-                    ">作品有零碎部件，請先清理並確認作品樣貌，之後再放入購物車。</p>
-                    <button onclick="document.getElementById('fragment-warning-toast').remove()" style="
-                        background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
-                        border: none;
-                        color: #000;
-                        padding: 9px 28px;
-                        font-size: 13px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 600;
-                        letter-spacing: 0.5px;
-                    ">知道了</button>
+                    <!-- 箭頭 + 訊息 -->
+                    <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+                        <div style="
+                            flex-shrink: 0;
+                            font-size: 20px;
+                            color: #d4af37;
+                            line-height: 1.4;
+                            margin-top: 1px;
+                        ">←</div>
+                        <p style="
+                            color: #e8d5a0;
+                            font-size: 12px;
+                            line-height: 1.7;
+                            margin: 0;
+                            letter-spacing: 0.2px;
+                        ">作品有零碎部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關清理，確認作品樣貌後再放入購物車。</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button onclick="document.getElementById('fragment-warning-toast').remove()" style="
+                            background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
+                            border: none;
+                            color: #000;
+                            padding: 7px 22px;
+                            font-size: 12px;
+                            border-radius: 7px;
+                            cursor: pointer;
+                            font-weight: 600;
+                            letter-spacing: 0.5px;
+                        ">知道了</button>
+                    </div>
                 </div>
             `;
             document.body.appendChild(toast);
