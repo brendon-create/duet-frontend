@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 // Ring & Bail 狀態（使用 window.xxx 暴露供外部存取）
 export let ringMesh = null;
@@ -98,7 +99,7 @@ export function createBail() {
     const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/models/bail.stl`;
     console.log('🔽 載入 Bail STL:', bailUrl);
 
-    const loader = new THREE.STLLoader();
+    const loader = new STLLoader();
     loader.load(
         bailUrl,
         (geometry) => {
