@@ -1351,20 +1351,13 @@
         // 全域變數
         // 注意：scene, camera, renderer, controls, envMap 已移至 3d-scene.js
         // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
-        let mainMesh = null, ringMesh = null, bailMesh = null;
-        let loadedFonts = {};
+        let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
         let savedVersions = [null, null];
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
-
-        // 🔧 Bail 與 Ring 的相對位移偏移量（用於聯動）
-        let bailRelativeOffset = new THREE.Vector3();
-        
-        // 🔧 Bail 初始化標記（避免重建時重新計算 offset）
-        let bailInitialized = false;
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
