@@ -903,6 +903,27 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
+        /* 零碎部件提醒：清理 toggle 金色脈衝光暈 */
+        .cleanup-needs-attention .toggle-label {
+            border-color: rgba(212, 175, 55, 0.9) !important;
+            animation: cleanupGlow 1.6s ease-in-out infinite;
+        }
+
+        @keyframes cleanupGlow {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15), 0 0 10px rgba(212, 175, 55, 0.3); }
+            50%       { box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3), 0 0 22px rgba(212, 175, 55, 0.65); }
+        }
+
+        .cleanup-needs-attention-label {
+            color: #d4af37 !important;
+        }
+
+        /* Fragment warning toast 出現動畫 */
+        @keyframes slideUpFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         /* Liquid Glass 確認對話框 */
         .cleanup-confirm-overlay {
             position: fixed;
