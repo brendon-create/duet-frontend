@@ -191,4 +191,5 @@ export function showInitialSphere() {
     scene.add(mesh);
     window.mainMesh = mesh;
     console.log('✅ showInitialSphere: 顯示初始球體');
+    document.getElementById('loader').classList.add('fade-out');
 }
