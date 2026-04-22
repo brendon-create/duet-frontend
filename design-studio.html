@@ -704,6 +704,13 @@
         import { Evaluator, Brush, INTERSECTION, ADDITION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
+        // 材質系統
+        import { MATERIALS, PLATING_COLORS } from './js/materials.js';
+
+        // 暴露給全域（供其他模組和 inline script 使用）
+        window.MATERIALS = MATERIALS;
+        window.PLATING_COLORS = PLATING_COLORS;
+
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
         window.THREE = THREE;
@@ -1405,29 +1412,6 @@
                 if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
             }
         }
-
-        // 材質設定
-        const MATERIALS = {
-            gold18k: { color: 0xFFD700, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
-            whitegold18k: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
-            rosegold18k: { color: 0xC9A386, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.0 },
-            silver925: { color: 0xC0C0C0, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 10.3 },
-            brass: { color: 0xB5A642, metalness: 0.9, roughness: { glossy: 0.0, matte: 0.6 }, density: 8.5 },
-            platinum: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 21.4 }
-        };
-
-        // 🧹 碎片清理相關變數
-        let modelNeedsCleanup = false;  // 標記：訂單是否需要清理碎片
-        let isCleanupInProgress = false; // 防止重複點擊
-
-
-        // 電鍍顏色定義
-        const PLATING_COLORS = {
-            none: null,  // 無電鍍，使用基礎材質顏色
-            gold18k: 0xFFD700,      // 18K 金色
-            whitegold18k: 0xE5E5E5, // 18K 白K金色
-            rosegold18k: 0xC9A386   // 18K 玫瑰金色（溫暖粉金）
-        };
 
         // 初始化場景（Z-up 系統）
         function initScene() {
