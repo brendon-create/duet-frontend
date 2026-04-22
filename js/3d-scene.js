@@ -48,6 +48,21 @@ export function initScene() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
+    controls.zoomSpeed = 0.8;       // 稍微降低縮放速度，減少暴衝感
+    controls.minDistance = 5;       // 最近距離限制，防止穿模
+    controls.maxDistance = 500;
+
+    // Safari（尤其 macOS Sequoia 15+）會同時觸發 gesturechange 和 wheel 事件
+    // 導致瀏覽器原生 pinch-zoom 和 OrbitControls 同時作用，畫面暴衝
+    // 攔截 gesture 事件，只讓 OrbitControls 的 wheel 處理縮放
+    const viewportEl = document.getElementById('viewport');
+    const blockGesture = (e) => e.preventDefault();
+    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
+    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
+    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
+
+    // 同時攔截 viewport 上的 wheel 事件預設行為（防止頁面滾動干擾）
+    viewportEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
     // 光照
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
