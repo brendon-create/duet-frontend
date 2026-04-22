@@ -1358,6 +1358,8 @@
         let savedVersions = [null, null];
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
+        let modelNeedsCleanup = false;   // 標記：模型是否存在零碎部件需要清理
+        let isCleanupInProgress = false; // 防止清理重複執行
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -2621,6 +2623,12 @@
 
         function addToCart() {
             if (!mainMesh) return;
+
+            // 🧹 如果模型有零碎部件尚未清理，提示用戶先清理
+            if (modelNeedsCleanup) {
+                showToast('⚠️ 作品含有零碎部件，請先開啟「清理作品零碎部件」確認清理後再加入購物車');
+                return;
+            }
 
             // ✅ 限制購物車最多 3 個物件
             if (cartItems.length >= 3) {
