@@ -2556,8 +2556,11 @@
             canvas.height = 160;
             slotElement.appendChild(canvas);
 
-            const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            canvas.style.backdropFilter = 'blur(10px) saturate(100%)';
+            canvas.style.webkitBackdropFilter = 'blur(10px) saturate(100%)';
+            const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
             slotRenderer.setSize(160, 160);
+            slotRenderer.setClearColor(0x0d0d0d, 1);
             slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
             slotRenderer.outputColorSpace = THREE.SRGBColorSpace;
 
