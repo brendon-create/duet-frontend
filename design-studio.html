@@ -716,6 +716,9 @@
         // Ring & Bail 系統
         import { createRing, createBail, updateRingPosition, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
 
+        // 字體載入系統
+        import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
+
         // 暴露 ring-bail 狀態給全域（供外部存取）
         window.ringMesh = ringMesh;
         window.bailMesh = bailMesh;
@@ -729,6 +732,8 @@
         window.loadedTTFBuffers = loadedTTFBuffers;
         window.loadingTTFState = loadingTTFState;
         window.v3FontDataCache = v3FontDataCache;
+        window.availableFonts = availableFonts;
+        window.fontsLoadedPromise = fontsLoadedPromise;
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
@@ -1367,70 +1372,8 @@
         let originalTotal = 0;
 
         // 120 種字體清單（來自 font-selector.htm）
-        // 可用字體清單（從外部 JSON 載入）
-        let availableFonts = [];
-
-        // 從外部 JSON 檔案載入字體庫
-        async function loadFontsFromJSON() {
-            try {
-                const response = await fetch('fonts.json');
-                const data = await response.json();
-                return data.fonts || [];
-            } catch (error) {
-                console.error('❌ 載入字體庫失敗，使用內建列表:', error);
-                // Fallback: 使用內建字體列表
-                return [
-                    "Abel", "Abril Fatface", "Advent Pro", "Alegreya", "Alex Brush",
-                    "Alfa Slab One", "Alice", "Allura", "Amatic SC", "Amiri",
-                    "Anton", "Arapey", "Archivo", "Armata", "Artifika",
-                    "Arvo", "Audiowide", "Average", "Baloo 2", "Bangers",
-                    "Bebas Neue", "Belgrano", "Bentham", "Bitter", "Bree Serif",
-                    "Bubblegum Sans", "Bungee", "Cabin", "Cantata One", "Caudex",
-                    "Caveat", "Chivo", "Cinzel", "Comfortaa", "Commissioner",
-                    "Cookie", "Copse", "Cormorant Garamond", "Courier Prime", "Coustard",
-                    "Creepster", "Cutive Mono", "DM Serif Text", "Dancing Script", "Dosis",
-                    "EB Garamond", "Eczar", "Encode Sans", "Fauna One", "Fira Code",
-                    "Fira Sans", "Fjalla One", "Fugaz One", "Gelasio", "Gloria Hallelujah",
-                    "Great Vibes", "Handlee", "Hind", "Holtwood One SC", "Inconsolata",
-                    "Indie Flower", "Jost", "Kalam", "Kanit", "Karla",
-                    "Lexend", "Lobster", "Merriweather", "Neuton", "Nunito",
-                    "Old Standard TT", "Orbitron", "Oswald", "Outfit", "Pacifico",
-                    "Passion One", "Pathway Gothic One", "Patrick Hand", "Paytone One", "Playfair Display",
-                    "Poppins", "Prata", "Quicksand", "Righteous", "Rubik",
-                    "Russo One", "Sacramento", "Secular One", "Shadows Into Light", "Share Tech Mono",
-                    "Shrikhand", "Sniglet", "Space Grotesk", "Space Mono", "Spectral",
-                    "Tangerine", "Titan One", "Varela Round", "Vollkorn", "Zilla Slab"
-                ];
-            }
-        }
-
-        // 字體載入完成的 Promise（供其他地方 await）
-        let fontsLoadedResolve;
-        const fontsLoadedPromise = new Promise(resolve => { fontsLoadedResolve = resolve; });
-
-        // 初始化：載入字體庫（fonts.json），並在載入完成後觸發 Google Fonts 預載
-        (async function initializeFonts() {
-            const loaded = await loadFontsFromJSON();
-            console.log(`✅ 字體庫已載入：${loaded.length} 種字體`);
-            availableFonts = loaded;
-            if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            // 通知其他等待字體載入的地方
-            if (fontsLoadedResolve) fontsLoadedResolve();
-        })();
-
-        // 初始化可用字體清單：一律從 fonts.json 載入（方便後續變更字體清單）
-        async function initAvailableFonts() {
-            try {
-                console.log('🔍 從 fonts.json 載入字體清單...');
-                availableFonts = await loadFontsFromJSON();
-                console.log(`✅ 共有 ${availableFonts.length} 種字體可用`);
-                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            } catch (error) {
-                console.error('❌ 載入 fonts.json 失敗:', error);
-                availableFonts = await loadFontsFromJSON().catch(() => []);
-                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            }
-        }
+        // availableFonts, loadFontsFromJSON, initAvailableFonts 已移至 resource-loader.js
+        // fontsLoadedPromise 已從 resource-loader.js 暴露到 window.fontsLoadedPromise
 
         // ============================================================
         // 輔助函數：清理所有預覽球體（防止圓球殘留）
