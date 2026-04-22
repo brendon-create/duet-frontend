@@ -1788,6 +1788,11 @@
                         if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
                         console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量`);
                     } else {
+                        modelNeedsCleanup = false;
+                        const toggleContainer = document.getElementById('cleanup-toggle-container');
+                        const cleanupLabel = document.getElementById('cleanup-label');
+                        if (toggleContainer) toggleContainer.classList.remove('cleanup-needs-attention');
+                        if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
                         console.log('✅ 片段偵測：模型無零碎部件');
                     }
                 } catch (e) {
