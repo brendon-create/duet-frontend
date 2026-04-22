@@ -6,6 +6,9 @@
  * 導出 showInitialSphere(), removeAllPlaceholderSpheres()
  */
 
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 // Slot 預覽變數（使用 window.xxx 暴露，供 saveToSlot() 寫入，animate() 讀取）
 export let slot1Scene = null, slot2Scene = null;
 export let slot1Renderer = null, slot2Renderer = null;
