@@ -708,7 +708,7 @@
         import { MATERIALS, PLATING_COLORS } from './js/materials.js';
 
         // 3D 場景系統
-        import { initScene, animate, onResize, getScene, getCamera } from './js/3d-scene.js';
+        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres } from './js/3d-scene.js';
 
         // V3 幾何引擎
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
@@ -1367,45 +1367,7 @@
         // 120 種字體清單（來自 font-selector.htm）
         // availableFonts, loadFontsFromJSON, initAvailableFonts 已移至 resource-loader.js
         // fontsLoadedPromise 已從 resource-loader.js 暴露到 window.fontsLoadedPromise
-
-        // ============================================================
-        // 輔助函數：清理所有預覽球體（防止圓球殘留）
-        // ============================================================
-        function removeAllPlaceholderSpheres() {
-            const sphereName = 'placeholderSphere';
-            let removedCount = 0;
-            
-            // 遍歷 scene 中所有物件
-            for (let i = window.scene.children.length - 1; i >= 0; i--) {
-                const child = window.scene.children[i];
-                if (child.name === sphereName) {
-                    window.scene.remove(child);
-                    child.geometry?.dispose();
-                    child.material?.dispose();
-                    removedCount++;
-                    console.log(`🧹 已清理殘留球體: ${child.uuid}`);
-                }
-            }
-            
-            if (removedCount > 0) {
-                console.log(`🧹 共清理 ${removedCount} 個殘留球體`);
-            }
-            return removedCount;
-        }
-
-        function showInitialSphere() {
-            // 清理任何已存在的球體（防禦性清理）
-            removeAllPlaceholderSpheres();
-            
-            const geometry = new THREE.SphereGeometry(5, 64, 64);
-            const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
-            mainMesh = new THREE.Mesh(geometry, material);
-            mainMesh.name = 'placeholderSphere';  // 設定名稱方便後續清理
-            window.scene.add(mainMesh);
-            // 暴露 mainMesh 給全局，供佩戴模擬使用
-            window.mainMesh = mainMesh;
-            document.getElementById('loader').classList.add('fade-out');
-        }
+        // showInitialSphere, removeAllPlaceholderSpheres 已移至 3d-scene.js
 
         function getMaterial(materialType, finish, plating = 'none') {
             const mat = MATERIALS[materialType];

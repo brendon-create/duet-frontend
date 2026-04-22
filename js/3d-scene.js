@@ -142,3 +142,38 @@ export function animate() {
 
     renderer.render(scene, camera);
 }
+
+export function removeAllPlaceholderSpheres() {
+    const sphereName = 'placeholderSphere';
+    let removedCount = 0;
+
+    // 遍歷 scene 中所有物件
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+        const child = scene.children[i];
+        if (child.name === sphereName) {
+            scene.remove(child);
+            child.geometry?.dispose();
+            child.material?.dispose();
+            removedCount++;
+            console.log(`🧹 已清理殘留球體: ${child.uuid}`);
+        }
+    }
+
+    if (removedCount > 0) {
+        console.log(`🧹 共清理 ${removedCount} 個殘留球體`);
+    }
+    return removedCount;
+}
+
+export function showInitialSphere() {
+    // 清理任何已存在的球體（防禦性清理）
+    removeAllPlaceholderSpheres();
+
+    const geometry = new THREE.SphereGeometry(5, 64, 64);
+    const material = new THREE.MeshStandardMaterial({ color: 0xC0C0C0, metalness: 1.0, roughness: 0.0 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = 'placeholderSphere';
+    scene.add(mesh);
+    window.mainMesh = mesh;
+    console.log('✅ showInitialSphere: 顯示初始球體');
+}
