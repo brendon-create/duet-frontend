@@ -1273,38 +1273,51 @@
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 1px solid #e94560;
-                    border-radius: 16px;
-                    padding: 32px 40px;
+                    background: rgba(10, 10, 10, 0.95);
+                    backdrop-filter: blur(24px) saturate(150%);
+                    -webkit-backdrop-filter: blur(24px) saturate(150%);
+                    border: 1px solid rgba(212, 175, 55, 0.4);
+                    border-radius: 20px;
+                    padding: 40px 48px;
                     text-align: center;
                     z-index: 10000;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                    max-width: 90%;
+                    box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(212,175,55,0.08);
+                    max-width: 380px;
+                    width: calc(100vw - 48px);
                 ">
-                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <div style="
+                        width: 48px; height: 48px;
+                        border: 1.5px solid rgba(212,175,55,0.6);
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        margin: 0 auto 20px;
+                        font-size: 22px;
+                        color: #d4af37;
+                    ">!</div>
                     <h3 style="
-                        color: #e94560;
-                        margin: 0 0 16px 0;
-                        font-size: 24px;
-                        font-weight: 600;
-                    ">網路連線問題</h3>
+                        color: #d4af37;
+                        margin: 0 0 12px;
+                        font-size: 18px;
+                        font-weight: 500;
+                        letter-spacing: 1px;
+                    ">連線中斷</h3>
                     <p style="
-                        color: #a0a0b0;
-                        margin: 0 0 24px 0;
-                        font-size: 16px;
-                        line-height: 1.6;
-                    ">無法連線到伺服器，請檢查網路後重新整理頁面</p>
+                        color: rgba(255,255,255,0.55);
+                        margin: 0 0 28px;
+                        font-size: 14px;
+                        line-height: 1.7;
+                    ">無法連線至伺服器<br>請確認網路後重新整理</p>
                     <button onclick="location.reload()" style="
-                        background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+                        background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none;
-                        color: white;
-                        padding: 14px 32px;
-                        font-size: 16px;
-                        border-radius: 8px;
+                        color: #000;
+                        padding: 12px 36px;
+                        font-size: 14px;
+                        border-radius: 10px;
                         cursor: pointer;
                         font-weight: 600;
-                        transition: transform 0.2s, box-shadow 0.2s;
+                        letter-spacing: 0.5px;
+                        box-shadow: 0 4px 16px rgba(212,175,55,0.3);
                     ">重新整理</button>
                 </div>
             `;
@@ -1358,8 +1371,9 @@
         let savedVersions = [null, null];
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
-        let modelNeedsCleanup = false;   // 標記：模型是否存在零碎部件需要清理
-        let isCleanupInProgress = false; // 防止清理重複執行
+        let modelNeedsCleanup = false;    // 標記：模型有零碎部件尚未處理（封鎖購物車）
+        let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
+        let isCleanupInProgress = false;  // 防止清理重複執行
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -1734,7 +1748,25 @@
                 cleanupLabel.style.color = '';  // 重置顏色
             }
             
-            modelNeedsCleanup = false;  // 重置清理狀態
+            modelNeedsCleanup = false;
+            cleanFragmentsApplied = false;
+
+            // 🔍 背景偵測零碎部件（不阻塞渲染，200ms 後執行）
+            setTimeout(() => {
+                if (!mainMesh) return;
+                const componentCount = detectFragments(mainMesh.geometry);
+                if (componentCount > 1) {
+                    console.log(`⚠️ 偵測到 ${componentCount} 個連通分量，模型有零碎部件`);
+                    modelNeedsCleanup = true;
+                    showFragmentWarning();
+                    const toggleContainer = document.getElementById('cleanup-toggle-container');
+                    const cleanupLabel = document.getElementById('cleanup-label');
+                    if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
+                    if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
+                } else {
+                    console.log('✅ 模型無零碎部件');
+                }
+            }, 200);
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
@@ -1752,6 +1784,95 @@
             } else {
                 ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
             }
+        }
+
+        // 🔍 偵測模型是否有零碎部件（連通分量分析）
+        function detectFragments(geometry) {
+            const position = geometry.attributes.position;
+            if (!position || position.count === 0) return 1;
+            const vertexCount = position.count;
+
+            // 以 0.01mm 精度 hash 頂點位置，消除 CSG 浮點誤差造成的假斷連
+            const posMap = new Map();
+            const canonical = new Int32Array(vertexCount);
+            for (let i = 0; i < vertexCount; i++) {
+                const x = Math.round(position.getX(i) * 100) / 100;
+                const y = Math.round(position.getY(i) * 100) / 100;
+                const z = Math.round(position.getZ(i) * 100) / 100;
+                const key = `${x},${y},${z}`;
+                if (!posMap.has(key)) posMap.set(key, i);
+                canonical[i] = posMap.get(key);
+            }
+
+            // Union-Find（路徑壓縮）
+            const parent = new Int32Array(vertexCount);
+            for (let i = 0; i < vertexCount; i++) parent[i] = i;
+            function find(x) {
+                while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+                return x;
+            }
+            function union(a, b) { parent[find(canonical[a])] = find(canonical[b]); }
+
+            const indexAttr = geometry.index;
+            if (indexAttr) {
+                const idx = indexAttr.array;
+                for (let i = 0; i < idx.length; i += 3) { union(idx[i], idx[i+1]); union(idx[i+1], idx[i+2]); }
+            } else {
+                for (let i = 0; i < vertexCount; i += 3) { union(i, i+1); union(i+1, i+2); }
+            }
+
+            // 計算獨立連通分量數（只計算 canonical 頂點）
+            const roots = new Set();
+            for (const idx of posMap.values()) roots.add(find(canonical[idx]));
+            return roots.size;
+        }
+
+        // ⚠️ 顯示零碎部件警告（DUET 風格）
+        function showFragmentWarning() {
+            if (document.getElementById('fragment-warning-toast')) return;
+            const toast = document.createElement('div');
+            toast.id = 'fragment-warning-toast';
+            toast.innerHTML = `
+                <div style="
+                    position: fixed;
+                    bottom: 108px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(12, 12, 12, 0.93);
+                    backdrop-filter: blur(20px) saturate(150%);
+                    -webkit-backdrop-filter: blur(20px) saturate(150%);
+                    border: 1px solid rgba(212, 175, 55, 0.55);
+                    border-radius: 16px;
+                    padding: 20px 28px;
+                    text-align: center;
+                    z-index: 9000;
+                    box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 0 1px rgba(212,175,55,0.08);
+                    max-width: 320px;
+                    width: calc(100vw - 48px);
+                    animation: slideUpFadeIn 0.35s ease-out;
+                ">
+                    <p style="
+                        color: #e8d5a0;
+                        font-size: 13px;
+                        line-height: 1.75;
+                        margin: 0 0 16px;
+                        letter-spacing: 0.3px;
+                    ">作品有零碎部件，請先清理並確認作品樣貌，之後再放入購物車。</p>
+                    <button onclick="document.getElementById('fragment-warning-toast').remove()" style="
+                        background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
+                        border: none;
+                        color: #000;
+                        padding: 9px 28px;
+                        font-size: 13px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        letter-spacing: 0.5px;
+                    ">知道了</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => { const el = document.getElementById('fragment-warning-toast'); if (el) el.remove(); }, 10000);
         }
 
         // 🧹 清除零碎部件（用於 Toggle 開關）
@@ -1936,8 +2057,14 @@
                 const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
                 console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
 
-                // 7. 設定標記：訂單需要清理
-                modelNeedsCleanup = true;
+                // 清理完成：標記後端需套用清理，並清除「有零碎部件」封鎖
+                cleanFragmentsApplied = true;
+                modelNeedsCleanup = false;
+
+                // 移除 toggle 光暈提示
+                const toggleContainer = document.getElementById('cleanup-toggle-container');
+                if (toggleContainer) toggleContainer.classList.remove('cleanup-needs-attention');
+                if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
 
                 // 更新 label 顯示
                 if (cleanupLabel) {
@@ -2726,7 +2853,7 @@
                 // ✅ 儲存縮略圖（用於購物車預覽）
                 thumbnail: thumbnailDataURL,
                 // 🧹 儲存是否需要清理碎片
-                cleanFragments: modelNeedsCleanup,
+                cleanFragments: cleanFragmentsApplied,
                 // 🔧 儲存 Bail 款式（目前為 "default"，未來擴充用）
                 bailStyle: 'default',
                 // 📸 儲存三視圖（用於 Email 附件）
@@ -4493,7 +4620,7 @@
                 ringRelativeY: ringRelativeY,
                 ringRelativeZ: ringRelativeZ,
                 ringRotation: ringRot,
-                cleanFragments: modelNeedsCleanup,  // 🧹 傳送清理狀態
+                cleanFragments: cleanFragmentsApplied,  // 🧹 傳送清理狀態
                 include_ring: true,      // 🎯 開發者下載包含 Ring + Bail
                 separate_ring: true      // 🎯 Ring 保持為獨立 Body
             };
