@@ -155,7 +155,7 @@
         <!-- 🧹 清理零碎部件開關 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品零碎部件</label>
+                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
                 
                 <!-- Toggle Switch -->
                 <div class="toggle-switch" id="cleanup-toggle-container">
@@ -1374,11 +1374,12 @@
         let savedVersions = [null, null];
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
-        let modelNeedsCleanup = false;    // 標記：模型有零碎部件尚未處理（封鎖購物車）
+        let modelNeedsCleanup = false;    // 標記：模型有分離部件尚未處理（封鎖購物車）
         let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
         let isCleanupInProgress = false;  // 防止清理重複執行
         let renderCount = 0;              // 成功 render 次數（用於下單統計）
         let fragmentCheckController = null; // 控制 check-fragments 請求的 AbortController
+        let fragmentCheckPending = false; // 標記：分離部件檢查尚未完成
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -1749,12 +1750,13 @@
             }
             
             if (cleanupLabel) {
-                cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
+                cleanupLabel.textContent = '清理作品分離部件';  // 重置文字
                 cleanupLabel.style.color = '';  // 重置顏色
             }
             
             modelNeedsCleanup = false;
             cleanFragmentsApplied = false;
+            fragmentCheckPending = true;
             renderCount++;
 
             // 🔍 背景片段偵測：中止上一個未完成的請求，再發新的
@@ -1779,7 +1781,8 @@
                     if (myController.signal.aborted) return;
                     const result = await resp.json();
                     if (myController.signal.aborted) return;
-                    if (result.has_fragments) {
+                    fragmentCheckPending = false;
+                    if (result.has_fragments && !cleanFragmentsApplied) {
                         modelNeedsCleanup = true;
                         showFragmentWarning();
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
@@ -1793,9 +1796,22 @@
                         const cleanupLabel = document.getElementById('cleanup-label');
                         if (toggleContainer) toggleContainer.classList.remove('cleanup-needs-attention');
                         if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
-                        console.log('✅ 片段偵測：模型無零碎部件');
+                        console.log('✅ 片段偵測：模型無分離部件');
+                    }
+                    // 若有人在 pending 期間就加入購物車，通知購物車更新狀態
+                    const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
+                    if (cartPendingMsg) {
+                        if (modelNeedsCleanup) {
+                            cartPendingMsg.innerHTML = '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。';
+                            cartPendingMsg.style.color = '#d4af37';
+                        } else {
+                            cartPendingMsg.innerHTML = '✅ 確認完畢，作品無分離部件，可以進行製作。';
+                            cartPendingMsg.style.color = '#8fd4a0';
+                            setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
+                        }
                     }
                 } catch (e) {
+                    fragmentCheckPending = false;
                     if (e.name !== 'AbortError') console.warn('⚠️ 片段偵測失敗（靜默）:', e.message);
                 }
             })();
@@ -1885,7 +1901,7 @@
                 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;">
                     <div style="flex-shrink:0; font-size:18px; color:#d4af37; line-height:1.5; margin-top:1px;">←</div>
                     <p style="color:#e8d5a0; font-size:13px; line-height:1.7; margin:0; letter-spacing:0.2px;">
-                        作品有零碎部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關清理，確認作品樣貌後再放入購物車。
+                        作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。
                     </p>
                 </div>
                 <div style="text-align:center;">
@@ -2093,7 +2109,7 @@
 
                 // 更新 label 顯示
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '零碎部件已清理';
+                    cleanupLabel.textContent = '分離部件已清理';
                     cleanupLabel.style.color = '#4caf50';
                 }
 
@@ -2109,7 +2125,7 @@
                 }
                 
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '清理作品零碎部件';
+                    cleanupLabel.textContent = '清理作品分離部件';
                     cleanupLabel.style.color = '';
                 }
                 
@@ -2737,9 +2753,9 @@
         function addToCart() {
             if (!mainMesh) return;
 
-            // 🧹 如果模型有零碎部件尚未清理，提示用戶先清理
+            // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
             if (modelNeedsCleanup) {
-                showToast('⚠️ 作品含有零碎部件，請先開啟「清理作品零碎部件」確認清理後再加入購物車');
+                showToast('⚠️ 作品含有分離部件，請先使用左側面板中正在發光的開關清理後再加入購物車');
                 return;
             }
 
@@ -2780,7 +2796,7 @@
             const thumbnailScene = new THREE.Scene();
             const thumbnailCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             thumbnailCamera.up.set(0, 0, 1);
-            thumbnailCamera.position.set(20, -28, 6);
+            thumbnailCamera.position.set(15, -21, 4.5);
             thumbnailCamera.lookAt(0, 0, 0);
 
             // 添加燈光
@@ -2848,6 +2864,26 @@
 
             cartItems.push(item);
             openCart();
+
+            // 若分離部件檢查尚未完成，在購物車頂端插入提示
+            if (fragmentCheckPending) {
+                const container = document.getElementById('cart-items');
+                const msg = document.createElement('div');
+                msg.id = 'cart-fragment-pending-msg';
+                msg.style.cssText = `
+                    background: rgba(14,14,20,0.96);
+                    border: 1px solid rgba(212,175,55,0.45);
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    margin-bottom: 14px;
+                    font-size: 13px;
+                    color: #e8d5a0;
+                    line-height: 1.6;
+                    letter-spacing: 0.2px;
+                `;
+                msg.innerHTML = '⏳ 正在確認作品是否有分離部件，請稍候⋯⋯';
+                container.insertBefore(msg, container.firstChild);
+            }
         }
 
         function openCart() {
@@ -4712,7 +4748,7 @@
     <!-- 🧹 清理確認對話框 -->
     <div class="cleanup-confirm-overlay" id="cleanup-confirm-overlay">
         <div class="cleanup-confirm-dialog">
-            <div class="cleanup-confirm-title">清理零碎部件</div>
+            <div class="cleanup-confirm-title">清理分離部件</div>
             <div class="cleanup-confirm-message">
                 清理運算約需 2–3 分鐘。若您喜歡目前作品的樣子，建議開啟清理、確認效果後再放入購物車；若目前設計尚未滿意，建議可以先嘗試其他字體組合，以節省您的時間。
             </div>
