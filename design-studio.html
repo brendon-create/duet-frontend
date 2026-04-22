@@ -734,6 +734,9 @@
         window.v3FontDataCache = v3FontDataCache;
         window.availableFonts = availableFonts;
         window.fontsLoadedPromise = fontsLoadedPromise;
+        // loadGoogleFonts 定義於本模組底部，但 resource-loader.js 需透過 window 存取
+        // 利用 function hoisting，此處可安全提前暴露
+        window.loadGoogleFonts = loadGoogleFonts;
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
@@ -1751,22 +1754,8 @@
             modelNeedsCleanup = false;
             cleanFragmentsApplied = false;
 
-            // 🔍 背景偵測零碎部件（不阻塞渲染，200ms 後執行）
-            setTimeout(() => {
-                if (!mainMesh) return;
-                const componentCount = detectFragments(mainMesh.geometry);
-                if (componentCount > 1) {
-                    console.log(`⚠️ 偵測到 ${componentCount} 個連通分量，模型有零碎部件`);
-                    modelNeedsCleanup = true;
-                    showFragmentWarning();
-                    const toggleContainer = document.getElementById('cleanup-toggle-container');
-                    const cleanupLabel = document.getElementById('cleanup-label');
-                    if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
-                    if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
-                } else {
-                    console.log('✅ 模型無零碎部件');
-                }
-            }, 200);
+            // 🔍 TODO: 零碎部件自動偵測（暫停）
+            // detectFragments() 目前在所有模型上都回傳 > 1（需先分析 CSG geometry 結構）
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {

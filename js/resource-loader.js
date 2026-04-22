@@ -65,11 +65,14 @@ export async function initAvailableFonts() {
 }
 
 // 初始化：載入字體庫（fonts.json），並在載入完成後觸發 Google Fonts 預載
+// 使用 setTimeout 0 延遲，確保主模組的 window.loadGoogleFonts 已設定完成
 (async function initializeFonts() {
     const loaded = await loadFontsFromJSON();
     console.log(`✅ 字體庫已載入：${loaded.length} 種字體`);
     availableFonts = loaded;
-    if (typeof window.loadGoogleFonts === 'function') window.loadGoogleFonts();
-    // 通知其他等待字體載入的地方
+    // 等主模組設定 window.loadGoogleFonts 後再呼叫（ES module import 順序問題）
+    setTimeout(() => {
+        if (typeof window.loadGoogleFonts === 'function') window.loadGoogleFonts();
+    }, 0);
     if (fontsLoadedResolve) fontsLoadedResolve();
 })();
