@@ -714,7 +714,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { createRing, createBail, updateRingPosition, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+        import { createRing, createBail, updateRingPosition, resetBailState, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
 
         // 字體載入系統
         import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
@@ -2542,10 +2542,9 @@
                 ringY: document.getElementById('ringY').value,
                 ringZ: document.getElementById('ringZ').value,
                 ringRotation: document.getElementById('ringRotation').value,
-                mesh: mainMesh.clone(),
-                ring: ringMesh ? ringMesh.clone() : null,
-                // 🔧 保存 Bail 和相對偏移
-                bail: bailMesh ? bailMesh.clone() : null,
+                mesh: (() => { const c = mainMesh.clone(); c.geometry = mainMesh.geometry.clone(); c.material = mainMesh.material.clone(); return c; })(),
+                ring: ringMesh ? (() => { const c = ringMesh.clone(); c.geometry = ringMesh.geometry.clone(); c.material = ringMesh.material.clone(); return c; })() : null,
+                bail: bailMesh ? (() => { const c = bailMesh.clone(); c.geometry = bailMesh.geometry.clone(); c.material = bailMesh.material.clone(); return c; })() : null,
                 bailRelativeOffset: bailRelativeOffset.clone()
             };
 
@@ -2661,14 +2660,8 @@
                 if (ringMesh.geometry) ringMesh.geometry.dispose();
                 if (ringMesh.material) ringMesh.material.dispose();
             }
-            // 🔧 也清除舊 Bail（避免從 slot 恢復時殘留多個 Bail）
-            if (bailMesh) {
-                window.scene.remove(bailMesh);
-                if (bailMesh.geometry) bailMesh.geometry.dispose();
-                if (bailMesh.material) bailMesh.material.dispose();
-                bailMesh = null;
-                window.bailMesh = null;
-            }
+            // 清除舊 Bail（透過 ring-bail.js 的函式正確重置 module 狀態）
+            resetBailState();
 
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
@@ -2697,78 +2690,46 @@
         }
 
         // 購物車
-        // 📸 生成三視圖（正視、側視、俯視）
+        // 📸 生成三視圖（正視、側視、俯視）- 使用獨立 off-screen renderer，不移動主相機
         function captureThreeViews() {
             const views = [];
-            
-            // 儲存原始相機狀態
-            const originalCamera = {
-                position: window.camera.position.clone(),
-                rotation: window.camera.rotation.clone()
-            };
-            
+
             // 計算模型的 BBox 中心和大小
             mainMesh.geometry.computeBoundingBox();
             const bbox = mainMesh.geometry.boundingBox;
             const center = bbox.getCenter(new THREE.Vector3());
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
-            const distance = maxDim * 3;  // 適當的距離
-            
-            // 正視圖 (Letter 1 正面 - 從 -Y 看向 +Y，看到 XZ 平面)
-            window.camera.position.set(center.x, center.y - distance, center.z);
-            window.camera.lookAt(center);
-            window.controls.update();
-            window.renderer.render(window.scene, window.camera);
-            views.push({
-                name: 'letter1_view',
-                label: 'Front View (Letter 1)',
-                dataURL: window.renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 側視圖 (Letter 2 正面 - 從 +X 看向 -X，看到 YZ 平面)
-            window.camera.position.set(center.x + distance, center.y, center.z);
-            window.camera.lookAt(center);
-            window.controls.update();
-            window.renderer.render(window.scene, window.camera);
-            views.push({
-                name: 'letter2_view',
-                label: 'Side View (Letter 2)',
-                dataURL: window.renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 上視圖 (從 +Z 看向 -Z，看到 XY 平面)
-            window.camera.position.set(center.x, center.y, center.z + distance);
-            window.camera.lookAt(center);
-            window.controls.update();
-            window.renderer.render(window.scene, window.camera);
-            views.push({
-                name: 'top_view',
-                label: 'Top View',
-                dataURL: window.renderer.domElement.toDataURL('image/png')
-            });
-            
-            // Hero 視角 (45度角) - 拉近鏡頭，使物品看起來和三視圖一樣大
-            window.camera.position.set(
-                center.x + distance * 0.4,
-                center.y - distance * 0.6,
-                center.z + distance * 0.3
-            );
-            window.camera.lookAt(center);
-            window.controls.update();
-            window.renderer.render(window.scene, window.camera);
-            views.push({
-                name: 'hero_view',
-                label: 'Hero View (45°)',
-                dataURL: window.renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 恢復原始視角
-            window.camera.position.copy(originalCamera.position);
-            window.camera.rotation.copy(originalCamera.rotation);
-            window.controls.update();
-            window.renderer.render(window.scene, window.camera);
-            
+            const distance = maxDim * 3;
+
+            // 建立獨立的 off-screen renderer，完全不影響主畫面
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 400;
+            offCanvas.height = 400;
+            const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
+            offRenderer.setSize(400, 400);
+            offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            offRenderer.toneMappingExposure = 1.2;
+            offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            offCamera.up.set(0, 0, 1);
+
+            const captureAngles = [
+                { name: 'letter1_view', label: 'Front View (Letter 1)', pos: [center.x, center.y - distance, center.z] },
+                { name: 'letter2_view', label: 'Side View (Letter 2)',  pos: [center.x + distance, center.y, center.z] },
+                { name: 'top_view',     label: 'Top View',              pos: [center.x, center.y, center.z + distance] },
+                { name: 'hero_view',    label: 'Hero View (45°)',       pos: [center.x + distance * 0.4, center.y - distance * 0.6, center.z + distance * 0.3] },
+            ];
+
+            for (const angle of captureAngles) {
+                offCamera.position.set(...angle.pos);
+                offCamera.lookAt(center);
+                offRenderer.render(window.scene, offCamera);
+                views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
+            }
+
+            offRenderer.dispose();
             console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
         }

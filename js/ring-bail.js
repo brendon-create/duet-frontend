@@ -203,6 +203,17 @@ export function createBail() {
     );
 }
 
+export function resetBailState() {
+    if (bailMesh) {
+        if (window.scene) window.scene.remove(bailMesh);
+        bailMesh.geometry?.dispose();
+        bailMesh.material?.dispose();
+        bailMesh = null;
+        window.bailMesh = null;
+    }
+    bailInitialized = false;
+}
+
 export function updateRingPosition() {
     if (!ringMesh) return;
     const x = parseFloat(document.getElementById('ringX').value);

@@ -51,6 +51,7 @@ export function initScene() {
     controls.zoomSpeed = 0.8;       // 稍微降低縮放速度，減少暴衝感
     controls.minDistance = 5;       // 最近距離限制，防止穿模
     controls.maxDistance = 500;
+    window.controls = controls;     // 暴露給 captureThreeViews 等使用
 
     // Safari（尤其 macOS Sequoia 15+）會同時觸發 gesturechange 和 wheel 事件
     // 導致瀏覽器原生 pinch-zoom 和 OrbitControls 同時作用，畫面暴衝
