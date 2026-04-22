@@ -1377,6 +1377,8 @@
         let modelNeedsCleanup = false;    // 標記：模型有零碎部件尚未處理（封鎖購物車）
         let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
         let isCleanupInProgress = false;  // 防止清理重複執行
+        let renderCount = 0;              // 成功 render 次數（用於下單統計）
+        let fragmentCheckController = null; // 控制 check-fragments 請求的 AbortController
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -1753,9 +1755,45 @@
             
             modelNeedsCleanup = false;
             cleanFragmentsApplied = false;
+            renderCount++;
 
-            // 🔍 TODO: 零碎部件自動偵測（暫停）
-            // detectFragments() 目前在所有模型上都回傳 > 1（需先分析 CSG geometry 結構）
+            // 🔍 背景片段偵測：中止上一個未完成的請求，再發新的
+            if (fragmentCheckController) fragmentCheckController.abort();
+            fragmentCheckController = new AbortController();
+            const myController = fragmentCheckController;
+            const checkParams = {
+                letter1: document.getElementById('letter1').value,
+                letter2: document.getElementById('letter2').value,
+                font1: document.getElementById('font1-btn')?.getAttribute('data-selected') || 'Alex Brush',
+                font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
+                size: parseInt(document.getElementById('size').value)
+            };
+            (async () => {
+                try {
+                    const resp = await fetch(`${window.BACKEND_URL}/api/check-fragments`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(checkParams),
+                        signal: myController.signal
+                    });
+                    if (myController.signal.aborted) return;
+                    const result = await resp.json();
+                    if (myController.signal.aborted) return;
+                    if (result.has_fragments) {
+                        modelNeedsCleanup = true;
+                        showFragmentWarning();
+                        const toggleContainer = document.getElementById('cleanup-toggle-container');
+                        const cleanupLabel = document.getElementById('cleanup-label');
+                        if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
+                        if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
+                        console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量`);
+                    } else {
+                        console.log('✅ 片段偵測：模型無零碎部件');
+                    }
+                } catch (e) {
+                    if (e.name !== 'AbortError') console.warn('⚠️ 片段偵測失敗（靜默）:', e.message);
+                }
+            })();
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
@@ -3668,7 +3706,8 @@
                         total: totalAmount,             // 確保是數字
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
-                        returnUrl: window.location.origin + '/payment-success.html'
+                        returnUrl: window.location.origin + '/payment-success.html',
+                        renderCount: renderCount        // 本次 session 的 render 次數（後台統計用）
                     })
                 });
 
