@@ -4633,9 +4633,9 @@
             // Step 2: 檢查是否有生成模型
             const letter1 = document.getElementById('letter1').value;
             const letter2 = document.getElementById('letter2').value;
-            const font1 = document.getElementById('font1-select')?.value || 
+            const font1 = document.getElementById('font1-select')?.value ||
                          document.getElementById('font1-btn')?.getAttribute('data-selected');
-            const font2 = document.getElementById('font2-select')?.value || 
+            const font2 = document.getElementById('font2-select')?.value ||
                          document.getElementById('font2-btn')?.getAttribute('data-selected');
 
             if (!letter1 || !letter2 || !font1 || !font2 || font1 === 'reselect' || font2 === 'reselect') {
@@ -4643,101 +4643,137 @@
                 return;
             }
 
-            // Step 3: 準備參數
-            // 使用全域的 modelCenter（和加入購物車一樣）
-            console.log('🔍 模型中心: x=' + modelCenter.x.toFixed(3) + ', y=' + modelCenter.y.toFixed(3) + ', z=' + modelCenter.z.toFixed(3));
-            
-            if (ringMesh) {
-                console.log('🔍 圓環絕對位置: x=' + ringMesh.position.x.toFixed(3) + ', y=' + ringMesh.position.y.toFixed(3) + ', z=' + ringMesh.position.z.toFixed(3));
-            }
-            
+            // Step 3: 計算位置參數
             const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
             const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
             const ringRelativeZ = ringMesh ? (ringMesh.position.z - modelCenter.z) : 0;
             const ringRot = ringMesh ? (ringMesh.rotation.z * 180 / Math.PI) : 0;
-            
-            console.log('🔍 圓環相對位置: x=' + ringRelativeX.toFixed(3) + ', y=' + ringRelativeY.toFixed(3) + ', z=' + ringRelativeZ.toFixed(3) + ', rotation=' + ringRot.toFixed(1) + '°');
-            
+            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
+            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
+            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
+
+            // Step 4: 顯示物件選擇對話框
+            const exportChoice = await new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+                const hasRing = !!ringMesh;
+                const hasBail = !!bailMesh;
+
+                overlay.innerHTML = `
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px 32px;width:320px;font-family:sans-serif;color:#e2e8f0;">
+                        <div style="font-size:16px;font-weight:600;margin-bottom:20px;">選擇匯出的物件</div>
+                        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid #334155;transition:border-color 0.2s;" id="stl-opt-main-label">
+                                <input type="radio" name="stl-export" value="main" checked style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">僅主物件</div>
+                                    <div style="font-size:12px;color:#64748b;">單一 .stl 檔案</div>
+                                </span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:${hasRing?'pointer':'default'};padding:10px 14px;border-radius:8px;border:1px solid #334155;opacity:${hasRing?'1':'0.4'};" id="stl-opt-ring-label">
+                                <input type="radio" name="stl-export" value="ring" ${!hasRing?'disabled':''} style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">主物件 + Ring</div>
+                                    <div style="font-size:12px;color:#64748b;">.zip（兩個獨立 STL）${!hasRing?' — 尚未加入 Ring':''}</div>
+                                </span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:${hasBail?'pointer':'default'};padding:10px 14px;border-radius:8px;border:1px solid #334155;opacity:${hasBail?'1':'0.4'};" id="stl-opt-bail-label">
+                                <input type="radio" name="stl-export" value="bail" ${!hasBail?'disabled':''} style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">主物件 + Ring + Bail</div>
+                                    <div style="font-size:12px;color:#64748b;">.zip（三個獨立 STL）${!hasBail?' — 尚未加入 Bail':''}</div>
+                                </span>
+                            </label>
+                        </div>
+                        <div style="display:flex;gap:10px;">
+                            <button id="stl-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer;font-size:14px;">取消</button>
+                            <button id="stl-download-btn" style="flex:2;padding:10px;border-radius:8px;border:none;background:#818cf8;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">下載</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                overlay.querySelector('#stl-cancel-btn').onclick = () => {
+                    document.body.removeChild(overlay);
+                    resolve(null);
+                };
+                overlay.querySelector('#stl-download-btn').onclick = () => {
+                    const val = overlay.querySelector('input[name="stl-export"]:checked')?.value || 'main';
+                    document.body.removeChild(overlay);
+                    resolve(val);
+                };
+            });
+
+            if (!exportChoice) return; // 取消
+
+            const include_ring = exportChoice === 'ring' || exportChoice === 'bail';
+            const include_bail = exportChoice === 'bail';
+
             const params = {
-                letter1: letter1,
-                letter2: letter2,
-                font1: font1,
-                font2: font2,
+                letter1, letter2, font1, font2,
                 size: parseInt(document.getElementById('size').value),
-                ringRelativeX: ringRelativeX,
-                ringRelativeY: ringRelativeY,
-                ringRelativeZ: ringRelativeZ,
+                ringRelativeX, ringRelativeY, ringRelativeZ,
                 ringRotation: ringRot,
-                cleanFragments: cleanFragmentsApplied,  // 🧹 傳送清理狀態
-                include_ring: true,      // 🎯 開發者下載包含 Ring + Bail
-                separate_ring: true      // 🎯 Ring 保持為獨立 Body
+                bailRelativeX, bailRelativeY, bailRelativeZ,
+                cleanFragments: cleanFragmentsApplied,
+                include_ring,
+                include_bail
             };
 
-            console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
-            console.log('🔍 圓環位置:', { ringRelativeX, ringRelativeY, ringRelativeZ, ringRot });
+            console.log('📤 STL 請求:', JSON.stringify(params, null, 2));
+            showToast('⏳ 生成中，請稍候...');
 
-            // Step 4: 呼叫後端（帶重試機制）
-            console.log('🌐 呼叫後端:', `${window.BACKEND_URL}/api/generate-stl`);
-            
+            // Step 5: 呼叫後端（帶重試機制）
             let retryCount = 0;
             const maxRetries = 2;
-            
+
             while (retryCount <= maxRetries) {
                 try {
                     if (retryCount > 0) {
-                        console.log(`🔄 重試第 ${retryCount} 次...`);
-                        // 等待 2 秒後重試
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
-                    
+
                     const response = await fetch(`${window.BACKEND_URL}/api/generate-stl`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(params)
                     });
 
-                    console.log('📡 後端回應狀態:', response.status);
-
                     if (!response.ok) {
                         if (response.status === 502 && retryCount < maxRetries) {
-                            console.warn('⚠️ 後端暫時無法回應 (502)，將重試...');
                             retryCount++;
-                            continue; // 重試
+                            continue;
                         }
-                        
                         const errorText = await response.text();
-                        console.error('❌ 後端錯誤:', errorText);
                         throw new Error(`HTTP ${response.status}: ${errorText}`);
                     }
 
-                    // Step 5: 下載 STL
-                    console.log('💾 開始下載 STL...');
                     const blob = await response.blob();
-                    console.log('📦 Blob 大小:', blob.size, 'bytes');
-                    
+                    const isZip = (include_ring || include_bail);
+                    const ext = isZip ? 'zip' : 'stl';
+                    const filename = `DUET_${letter1}${letter2}_${font1.replace(/ /g,'_')}_${font2.replace(/ /g,'_')}.${ext}`;
+
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `DUET_${letter1}${letter2}_${font1.replace(/ /g, '_')}_${font2.replace(/ /g, '_')}.stl`;
+                    a.download = filename;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
 
-                    console.log('✅ STL 下載完成');
-                    showToast('✅ STL 檔案已下載');
-                    break; // 成功，跳出重試迴圈
+                    showToast(`✅ ${isZip ? 'ZIP' : 'STL'} 已下載`);
+                    break;
 
                 } catch (error) {
                     if (retryCount < maxRetries && (error.message.includes('502') || error.message.includes('Load failed'))) {
-                        console.warn('⚠️ 請求失敗，將重試...', error.message);
                         retryCount++;
-                        continue; // 重試
+                        continue;
                     }
-                    
-                    // 重試次數用完或其他錯誤
                     console.error('❌ STL 生成失敗:', error);
-                    alert(`❌ STL 生成失敗: ${error.message}\n\n建議：請稍後再試，或聯繫客服`);
+                    alert(`❌ 生成失敗: ${error.message}`);
                     break;
                 }
             }
