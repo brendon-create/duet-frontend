@@ -32,1149 +32,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="design-studio.css">
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-            background-color: #000;
-            /* 先設定黑色背景，避免白色閃爍 */
-            background-image: url('https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/backgrounds/Toscana.png');
-            background-position: center 14%;
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            color: #fff;
-            overflow: hidden;
-            height: 100vh;
-        }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(10px) saturate(100%);
-            -webkit-backdrop-filter: blur(10px) saturate(100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-        }
-
-        #control-panel {
-            position: absolute;
-            left: 20px;
-            top: 20px;
-            width: 320px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            padding: 24px;
-            border-radius: 20px;
-            z-index: 100;
-        }
-
-        #control-panel::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #control-panel::-webkit-scrollbar-track {
-            margin: 20px 0;
-        }
-
-        #control-panel::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-        }
-
-        .panel-header {
-            text-align: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .panel-header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 4px;
-        }
-
-        .panel-header .subtitle {
-            font-size: 11px;
-            color: #d4af37;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 300;
-        }
-
-        .section {
-            margin-bottom: 24px;
-        }
-
-        .section-title {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: #d4af37;
-            margin-bottom: 16px;
-        }
-
-        .control-group {
-            margin-bottom: 16px;
-        }
-
-        label {
-            display: block;
-            font-size: 12px;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 8px;
-        }
-
-        .flex-row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .flex-row>div:first-child {
-            flex: 1;
-        }
-
-        .flex-row>div:last-child {
-            flex: 2;
-        }
-
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            color: #fff;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        input:focus,
-        select:focus {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: #d4af37;
-        }
-
-        .font-select-btn {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(212, 175, 55, 0.15);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: 12px;
-            color: #d4af37;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: left;
-        }
-
-        /* 字體下拉選單中的選項以各自字體顯示 */
-        select.font-select-btn {
-            font-family: inherit;
-        }
-
-        select.font-select-btn option {
-            background: #1a1a2e;
-            color: #fff;
-            padding: 8px;
-            font-size: 14px;
-        }
-
-        .font-select-btn:hover {
-            background: rgba(212, 175, 55, 0.25);
-            border-color: #d4af37;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 4px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #d4af37;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
-        }
-
-        .slider-value {
-            float: right;
-            color: #d4af37;
-            font-weight: 600;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
-            color: #000;
-            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
-            display: flex;
-            align-items: center;
-        }
-
-        #addToCartBtn {
-            justify-content: space-between;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
-        }
-
-        .view-cart-section {
-            width: 70px;
-            border-left: 1px solid rgba(0, 0, 0, 0.2);
-            padding-left: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 9px;
-            cursor: pointer;
-        }
-
-        .view-cart-section:hover {
-            opacity: 0.8;
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .divider {
-            height: 1px;
-            background: rgba(255, 255, 255, 0.1);
-            margin: 20px 0;
-        }
-
-        .info-box {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
-        .info-label {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .info-value {
-            color: #d4af37;
-            font-weight: 600;
-            text-align: right;
-        }
-
-        #saved-versions {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 12px;
-            z-index: 100;
-        }
-
-        .version-slot {
-            width: 160px;
-            height: 160px;
-            border-radius: 16px;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .version-slot:hover {
-            transform: scale(1.05);
-        }
-
-        .version-slot.empty {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(10px) saturate(100%);
-            -webkit-backdrop-filter: blur(10px) saturate(100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .version-label {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            font-size: 10px;
-            text-align: center;
-            color: #d4af37;
-        }
-
-        #viewport {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 0;
-        }
-
-        /* Font Selector Modal */
-        #font-selector-modal {
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 360px;
-            right: 20px;
-            max-height: calc(100vh - 40px);
-            border-radius: 16px;
-            z-index: 2000;
-            overflow: hidden;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(20px) saturate(150%);
-            -webkit-backdrop-filter: blur(20px) saturate(150%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-        }
-
-        #font-selector-modal.active {
-            display: block;
-        }
-
-        .close-modal-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 40px;
-            cursor: pointer;
-            z-index: 2001;
-            width: auto;
-            padding: 0;
-            line-height: 1;
-        }
-
-        .close-modal-btn:hover {
-            color: #d4af37;
-        }
-
-        .modal-layout {
-            display: flex;
-            height: calc(100vh - 40px);
-        }
-
-        .font-sidebar {
-            width: 20%;
-            min-width: 200px;
-            background: rgba(255, 255, 255, 0.02);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .font-sidebar::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .font-sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .char-input-group {
-            margin-bottom: 20px;
-        }
-
-        .char-input-group input {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            text-align: center;
-            font-size: 18px;
-            border-radius: 8px;
-        }
-
-        .select-all-group {
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-        }
-
-        .select-all-group input {
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .font-list-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .font-list-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .font-list-item input[type="checkbox"] {
-            margin-right: 12px;
-            cursor: pointer;
-        }
-
-        .font-list-item span {
-            font-size: 13px;
-            color: #ccc;
-            font-display: block;
-        }
-
-        .font-display-area {
-            flex: 1;
-            padding: 40px;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 20px;
-            align-content: start;
-        }
-
-        .font-display-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .font-display-area::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-
-        .font-preview-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid transparent;
-            border-radius: 12px;
-            transition: all 0.3s;
-            cursor: pointer;
-            min-height: 140px;
-        }
-
-        .font-preview-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .font-preview-card.selected {
-            border-color: #d4af37;
-            background: rgba(212, 175, 55, 0.15);
-        }
-
-        .preview-char {
-            font-size: 48px;
-            margin-bottom: 8px;
-            color: #fff;
-            font-display: block;
-        }
-
-        .preview-name {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
-            text-align: center;
-            font-display: block;
-        }
-
-        .confirm-container {
-            position: absolute;
-            /* 改為 absolute，相對於 font-selector-modal */
-            bottom: 30px;
-            right: 30px;
-            z-index: 2002;
-        }
-
-        .confirm-btn {
-            background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
-            color: #000;
-            border: none;
-            padding: 16px 40px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
-            transition: all 0.3s;
-        }
-
-        .confirm-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
-        }
-
-        /* Cart Modal */
-        #cart-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #cart-modal.active {
-            display: flex;
-        }
-
-        .cart-container {
-            width: 80%;
-            max-width: 900px;
-            height: 80%;
-            background: rgba(10, 10, 10, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cart-header {
-            padding: 24px 32px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .cart-header h2 {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .cart-items {
-            flex: 1;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        .cart-item {
-            padding: 20px;
-            margin-bottom: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .cart-item-image {
-            width: 100px;
-            height: 100px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-            flex-shrink: 0;
-        }
-
-        .cart-item-info {
-            flex: 1;
-        }
-
-        .cart-item-info h3 {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-
-        .cart-item-details {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
-            line-height: 1.6;
-        }
-
-        .cart-item-price {
-            font-size: 20px;
-            font-weight: 700;
-            color: #d4af37;
-            margin-right: 20px;
-        }
-
-        .cart-item-quantity {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .quantity-input {
-            width: 60px;
-            padding: 8px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: #fff;
-            -moz-appearance: textfield;
-            appearance: none;
-        }
-
-        .quantity-input::-webkit-outer-spin-button,
-        .quantity-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        .quantity-btns {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .qty-btn {
-            width: 24px;
-            height: 20px;
-            padding: 0;
-            background: rgba(212, 175, 55, 0.2);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: #d4af37;
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .qty-btn:hover {
-            background: rgba(212, 175, 55, 0.3);
-        }
-
-        .delete-btn {
-            width: 36px;
-            height: 36px;
-            padding: 0;
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            color: #ff4444;
-            font-size: 18px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .delete-btn:hover {
-            background: rgba(255, 0, 0, 0.3);
-        }
-
-        .cart-footer {
-            padding: 24px 32px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .cart-total {
-            display: flex;
-            justify-content: space-between;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #d4af37;
-        }
-
-        .cart-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .cart-actions button {
-            flex: 1;
-            text-align: center;
-            justify-content: center;
-        }
-
-        #loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            pointer-events: none;
-            transition: opacity 0.8s ease-out, visibility 0.8s;
-        }
-
-        #loader.fade-out {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-top: 2px solid #d4af37;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .loading-text {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-            letter-spacing: 3px;
-        }
-
-        /* 優惠碼欄位樣式 */
-        #promo-code-input:focus {
-            border-color: #d4af37;
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
-        }
-
-        #promo-code-input:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        #apply-promo-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(212, 175, 55, 0.4);
-            box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        #apply-promo-btn:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        #apply-promo-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Modal 滾動條樣式 */
-        .modal-content::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .modal-content::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-        }
-
-        .modal-content::-webkit-scrollbar-thumb {
-            background: rgba(212, 175, 55, 0.5);
-            border-radius: 3px;
-        }
-
-        .modal-content::-webkit-scrollbar-thumb:hover {
-            background: rgba(212, 175, 55, 0.7);
-        }
-
-        /* ========== AI 諮詢連結樣式 (新增) ========== */
-        .ai-consultant-link {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-        }
-
-        .ai-consultant-link a {
-            color: #d4af37;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: 0.3s;
-            cursor: pointer;
-        }
-
-        .ai-consultant-link a:hover {
-            color: #f4d03f;
-        }
-
-        /* 隱藏設計理念卡片的滾軸 */
-        #story-content::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* 點點動畫 */
-        @keyframes dots {
-
-            0%,
-            20% {
-                content: '.';
-            }
-
-            40% {
-                content: '..';
-            }
-
-            60%,
-            100% {
-                content: '...';
-            }
-        }
-
-        .dots-animation::after {
-            content: '';
-            animation: dots 1.5s infinite;
-        }
-
-        /* 🧹 Toggle Switch 樣式 */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-        }
-
-        .toggle-checkbox {
-            display: none;
-        }
-
-        .toggle-label {
-            display: block;
-            width: 44px;
-            height: 24px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .toggle-button {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 18px;
-            height: 18px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .toggle-checkbox:checked + .toggle-label {
-            background: rgba(212, 175, 55, 0.3);
-            border-color: rgba(212, 175, 55, 0.5);
-        }
-
-        .toggle-checkbox:checked + .toggle-label .toggle-button {
-            left: 22px;
-            background: #d4af37;
-        }
-
-        .toggle-checkbox:disabled + .toggle-label {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .toggle-label:hover:not(.toggle-checkbox:disabled + .toggle-label) {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* Liquid Glass 確認對話框 */
-        .cleanup-confirm-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .cleanup-confirm-overlay.show {
-            opacity: 1;
-        }
-
-        .cleanup-confirm-dialog {
-            background: rgba(20, 20, 30, 0.95);
-            backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 32px;
-            max-width: 400px;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
-
-        .cleanup-confirm-overlay.show .cleanup-confirm-dialog {
-            transform: scale(1);
-        }
-
-        .cleanup-confirm-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #d4af37;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .cleanup-confirm-message {
-            font-size: 14px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .cleanup-confirm-buttons {
-            display: flex;
-            gap: 12px;
-        }
-
-        .cleanup-confirm-btn {
-            flex: 1;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .cleanup-confirm-btn.confirm {
-            background: rgba(212, 175, 55, 0.2);
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            color: #d4af37;
-        }
-
-        .cleanup-confirm-btn.confirm:hover {
-            background: rgba(212, 175, 55, 0.3);
-            border-color: rgba(212, 175, 55, 0.6);
-        }
-
-        .cleanup-confirm-btn.cancel {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .cleanup-confirm-btn.cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        /* 脈衝動畫 - 用於提示生成按鈕 */
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
-            }
-        }
-        
-        /* 低調的 Toast 提示 */
-        .custom-toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: rgba(40, 40, 40, 0.95);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            z-index: 10000;
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: none;
-            max-width: 90%;
-        }
-        
-        .custom-toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-            pointer-events: auto;
-        }
-        
-        .custom-toast-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .custom-toast-icon {
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-        
-        .custom-toast-message {
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        /* ========== 手機版 RWD ========== */
-        @media (max-width: 768px) {
-            /* Font Selector Modal 手機版 - 只顯示字體卡，隱藏左側清單 */
-            #font-selector-modal {
-                left: 0;
-                right: 0;
-                top: 0;
-                bottom: 0;
-                max-height: 100vh;
-                border-radius: 0;
-                overflow-y: auto;
-            }
-            
-            #font-selector-modal .modal-layout {
-                flex-direction: column;
-                height: 100vh;
-                padding-bottom: 70px; /* 為固定確認按鈕預留空間 */
-            }
-            
-            /* 隱藏左側字體清單 */
-            #font-selector-modal .font-sidebar {
-                display: none;
-            }
-            
-            /* 字體卡顯示區域 - 填滿可用空間 */
-            #font-selector-modal .font-display-area {
-                flex: 1;
-                padding: 20px;
-                padding-bottom: 80px; /* 確認按鈕上方一點 */
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            /* 確認按鈕固定在最下方 */
-            #font-selector-modal .confirm-container {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                padding: 12px 20px;
-                background: rgba(0, 0, 0, 0.9);
-                backdrop-filter: blur(10px);
-                z-index: 2002;
-                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-            }
-            
-            #font-selector-modal .confirm-btn {
-                width: 100%;
-                padding: 14px;
-            }
-            
-            #control-panel {
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                top: auto;
-                width: 100%;
-                max-height: 33vh;
-                border-radius: 20px 20px 0 0;
-                z-index: 1000;
-            }
-            
-            #saved-versions {
-                position: fixed;
-                top: 10px;
-                left: 10px;
-                right: 10px;
-                width: auto;
-                flex-direction: row;
-                gap: 8px;
-                justify-content: stretch;
-            }
-            
-            .version-slot {
-                width: 50%;
-                height: 0;
-                padding-bottom: 50%;
-                min-height: 0;
-                max-height: none;
-            }
-            
-            #viewport {
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 36vh;
-            }
-        }
-    </style>
     
     <!-- 🔧 開發者功能模組 -->
     <link rel="stylesheet" href="product-photo-studio.css">
@@ -1296,7 +155,7 @@
         <!-- 🧹 清理零碎部件開關 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品零碎部件</label>
+                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
                 
                 <!-- Toggle Switch -->
                 <div class="toggle-switch" id="cleanup-toggle-container">
@@ -1845,6 +704,40 @@
         import { Evaluator, Brush, INTERSECTION, ADDITION } from 'three-bvh-csg';
         import opentype from 'opentype';
 
+        // 材質系統
+        import { MATERIALS, PLATING_COLORS } from './js/materials.js';
+
+        // 3D 場景系統
+        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres } from './js/3d-scene.js';
+
+        // V3 幾何引擎
+        import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
+
+        // Ring & Bail 系統
+        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+
+        // 字體載入系統
+        import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
+
+        // 暴露 ring-bail 狀態給全域（供外部存取）
+        window.ringMesh = ringMesh;
+        window.bailMesh = bailMesh;
+        window.bailRelativeOffset = bailRelativeOffset;
+        window.bailInitialized = bailInitialized;
+
+        // 暴露給全域（供其他模組和 inline script 使用）
+        window.MATERIALS = MATERIALS;
+        window.PLATING_COLORS = PLATING_COLORS;
+        window.fontMetaMap = fontMetaMap;
+        window.loadedTTFBuffers = loadedTTFBuffers;
+        window.loadingTTFState = loadingTTFState;
+        window.v3FontDataCache = v3FontDataCache;
+        window.availableFonts = availableFonts;
+        window.fontsLoadedPromise = fontsLoadedPromise;
+        // loadGoogleFonts 定義於本模組底部，但 resource-loader.js 需透過 window 存取
+        // 利用 function hoisting，此處可安全提前暴露
+        window.loadGoogleFonts = loadGoogleFonts;
+
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
         window.THREE = THREE;
@@ -1992,8 +885,17 @@
             }
         }
 
+        // 動態決定 AI Consultant URL（正式站用 production URL，其他環境用相對路徑）
+        function getAIConsultantUrl() {
+            if (window.location.hostname === 'duet.brendonchen.com') {
+                return 'https://duet.brendonchen.com/ai-consultant';
+            }
+            return new URL('ai-consultant.html', window.location.href).href;
+        }
+
         window.startAIConsultation = function () {
-            window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+            localStorage.setItem('duet_return_url', window.location.href);
+            window.location.href = getAIConsultantUrl();
         }
 
         window.skipAIConsultation = function () {
@@ -2006,10 +908,12 @@
             if (existingData) {
                 if (confirm('重新開始 AI 設計諮詢？這將清除之前的推薦。')) {
                     localStorage.removeItem('duet_ai_consultation');
-                    window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+                    localStorage.setItem('duet_return_url', window.location.href);
+                    window.location.href = getAIConsultantUrl();
                 }
             } else {
-                window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+                localStorage.setItem('duet_return_url', window.location.href);
+                window.location.href = getAIConsultantUrl();
             }
         }
 
@@ -2241,7 +1145,7 @@
 
                 console.log('✅ 載入 AI 推薦資料:', aiData);
 
-                // 自動填入字母
+                // 自動填入字母並套用 AI 選定字體
                 setTimeout(() => {
                     const letter1Select = document.getElementById('letter1');
                     const letter2Select = document.getElementById('letter2');
@@ -2252,32 +1156,39 @@
                         console.log('✅ 已填入字母:', aiData.selectedLetters);
                     }
 
-                    // 自動勾選推薦字體
+                    // AI Consultant 返回流程：
+                    // 1. 全部 6 個推薦字體加入 checkedFonts
+                    // 2. 以使用者選定的字體為預設（排到 aiRecommendation 第一位）
+                    // 3. 呼叫 confirmFontSelection() 建立下拉選單並觸發第一個 render
+                    // 4. 重開字體選擇視窗讓使用者確認
                     if (aiData.recommendedFonts) {
-                        const allFonts = [
-                            ...aiData.recommendedFonts.letter1,
-                            ...aiData.recommendedFonts.letter2
-                        ];
+                        const sel1 = aiData.selectedFont1;
+                        const sel2 = aiData.selectedFont2;
 
-                        // 去重
-                        const uniqueFonts = [...new Set(allFonts)];
-                        console.log('✅ 推薦字體:', uniqueFonts);
+                        // 將使用者選定字體排到推薦清單最前面，確保 confirmFontSelection 以其為預設
+                        const l1Fonts = sel1
+                            ? [sel1, ...aiData.recommendedFonts.letter1.filter(f => f !== sel1)]
+                            : aiData.recommendedFonts.letter1;
+                        const l2Fonts = sel2
+                            ? [sel2, ...aiData.recommendedFonts.letter2.filter(f => f !== sel2)]
+                            : aiData.recommendedFonts.letter2;
 
-                        // 自動勾選這些字體
-                        uniqueFonts.forEach(font => {
-                            checkedFonts.add(font);
-                        });
+                        [...new Set([...l1Fonts, ...l2Fonts])].forEach(font => checkedFonts.add(font));
+                        window.aiRecommendation = { letter1: l1Fonts, letter2: l2Fonts };
 
-                        // 自動打開字體選擇視窗
-                        openFontSelector();
+                        // 設定 char-input（confirmFontSelection 需要讀取字母）
+                        const charInput = document.getElementById('char-input');
+                        if (charInput) charInput.value = (document.getElementById('letter1').value || '') + (document.getElementById('letter2').value || '');
 
-                        // 更新字體選擇視窗的勾選狀態
+                        // 建立下拉選單 + 觸發 generateModel()
+                        confirmFontSelection();
+
+                        // 重新開啟字體選擇視窗讓使用者確認 / 修改
                         setTimeout(() => {
+                            openFontSelector();
                             updateFontDisplay();
-
-                            // 顯示提示訊息
                             showAINotification();
-                        }, 500);
+                        }, 400);
                     }
                 }, 1000);
             }
@@ -2383,38 +1294,51 @@
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 1px solid #e94560;
-                    border-radius: 16px;
-                    padding: 32px 40px;
+                    background: rgba(10, 10, 10, 0.95);
+                    backdrop-filter: blur(24px) saturate(150%);
+                    -webkit-backdrop-filter: blur(24px) saturate(150%);
+                    border: 1px solid rgba(212, 175, 55, 0.4);
+                    border-radius: 20px;
+                    padding: 40px 48px;
                     text-align: center;
                     z-index: 10000;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                    max-width: 90%;
+                    box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(212,175,55,0.08);
+                    max-width: 380px;
+                    width: calc(100vw - 48px);
                 ">
-                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <div style="
+                        width: 48px; height: 48px;
+                        border: 1.5px solid rgba(212,175,55,0.6);
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        margin: 0 auto 20px;
+                        font-size: 22px;
+                        color: #d4af37;
+                    ">!</div>
                     <h3 style="
-                        color: #e94560;
-                        margin: 0 0 16px 0;
-                        font-size: 24px;
-                        font-weight: 600;
-                    ">網路連線問題</h3>
+                        color: #d4af37;
+                        margin: 0 0 12px;
+                        font-size: 18px;
+                        font-weight: 500;
+                        letter-spacing: 1px;
+                    ">連線中斷</h3>
                     <p style="
-                        color: #a0a0b0;
-                        margin: 0 0 24px 0;
-                        font-size: 16px;
-                        line-height: 1.6;
-                    ">無法連線到伺服器，請檢查網路後重新整理頁面</p>
+                        color: rgba(255,255,255,0.55);
+                        margin: 0 0 28px;
+                        font-size: 14px;
+                        line-height: 1.7;
+                    ">無法連線至伺服器<br>請確認網路後重新整理</p>
                     <button onclick="location.reload()" style="
-                        background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+                        background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none;
-                        color: white;
-                        padding: 14px 32px;
-                        font-size: 16px;
-                        border-radius: 8px;
+                        color: #000;
+                        padding: 12px 36px;
+                        font-size: 14px;
+                        border-radius: 10px;
                         cursor: pointer;
                         font-weight: 600;
-                        transition: transform 0.2s, box-shadow 0.2s;
+                        letter-spacing: 0.5px;
+                        box-shadow: 0 4px 16px rgba(212,175,55,0.3);
                     ">重新整理</button>
                 </div>
             `;
@@ -2459,22 +1383,21 @@
         const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
         
         // 全域變數
-        let scene, camera, renderer, controls, envMap;
-        let mainMesh = null, ringMesh = null, bailMesh = null;
-        let loadedFonts = {};
+        // 注意：scene, camera, renderer, controls, envMap 已移至 3d-scene.js
+        // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
+        let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
         let savedVersions = [null, null];
-        let slot1Scene, slot2Scene, slot1Renderer, slot2Renderer, slot1Camera, slot2Camera;
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
-
-        // 🔧 Bail 與 Ring 的相對位移偏移量（用於聯動）
-        let bailRelativeOffset = new THREE.Vector3();
-        
-        // 🔧 Bail 初始化標記（避免重建時重新計算 offset）
-        let bailInitialized = false;
+        let modelNeedsCleanup = false;    // 標記：模型有分離部件尚未處理（封鎖購物車）
+        let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
+        let isCleanupInProgress = false;  // 防止清理重複執行
+        let renderCount = 0;              // 成功 render 次數（用於下單統計）
+        let fragmentCheckController = null; // 控制 check-fragments 請求的 AbortController
+        let fragmentCheckPending = false; // 標記：分離部件檢查尚未完成
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -2482,227 +1405,9 @@
         let originalTotal = 0;
 
         // 120 種字體清單（來自 font-selector.htm）
-        // 可用字體清單（從外部 JSON 載入）
-        let availableFonts = [];
-
-        // 從外部 JSON 檔案載入字體庫
-        async function loadFontsFromJSON() {
-            try {
-                const response = await fetch('fonts.json');
-                const data = await response.json();
-                return data.fonts || [];
-            } catch (error) {
-                console.error('❌ 載入字體庫失敗，使用內建列表:', error);
-                // Fallback: 使用內建字體列表
-                return [
-                    "Abel", "Abril Fatface", "Advent Pro", "Alegreya", "Alex Brush",
-                    "Alfa Slab One", "Alice", "Allura", "Amatic SC", "Amiri",
-                    "Anton", "Arapey", "Archivo", "Armata", "Artifika",
-                    "Arvo", "Audiowide", "Average", "Baloo 2", "Bangers",
-                    "Bebas Neue", "Belgrano", "Bentham", "Bitter", "Bree Serif",
-                    "Bubblegum Sans", "Bungee", "Cabin", "Cantata One", "Caudex",
-                    "Caveat", "Chivo", "Cinzel", "Comfortaa", "Commissioner",
-                    "Cookie", "Copse", "Cormorant Garamond", "Courier Prime", "Coustard",
-                    "Creepster", "Cutive Mono", "DM Serif Text", "Dancing Script", "Dosis",
-                    "EB Garamond", "Eczar", "Encode Sans", "Fauna One", "Fira Code",
-                    "Fira Sans", "Fjalla One", "Fugaz One", "Gelasio", "Gloria Hallelujah",
-                    "Great Vibes", "Handlee", "Hind", "Holtwood One SC", "Inconsolata",
-                    "Indie Flower", "Jost", "Kalam", "Kanit", "Karla",
-                    "Lexend", "Lobster", "Merriweather", "Neuton", "Nunito",
-                    "Old Standard TT", "Orbitron", "Oswald", "Outfit", "Pacifico",
-                    "Passion One", "Pathway Gothic One", "Patrick Hand", "Paytone One", "Playfair Display",
-                    "Poppins", "Prata", "Quicksand", "Righteous", "Rubik",
-                    "Russo One", "Sacramento", "Secular One", "Shadows Into Light", "Share Tech Mono",
-                    "Shrikhand", "Sniglet", "Space Grotesk", "Space Mono", "Spectral",
-                    "Tangerine", "Titan One", "Varela Round", "Vollkorn", "Zilla Slab"
-                ];
-            }
-        }
-
-        // 字體載入完成的 Promise（供其他地方 await）
-        let fontsLoadedResolve;
-        const fontsLoadedPromise = new Promise(resolve => { fontsLoadedResolve = resolve; });
-
-        // 初始化：載入字體庫（fonts.json），並在載入完成後觸發 Google Fonts 預載
-        (async function initializeFonts() {
-            const loaded = await loadFontsFromJSON();
-            console.log(`✅ 字體庫已載入：${loaded.length} 種字體`);
-            availableFonts = loaded;
-            if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            // 通知其他等待字體載入的地方
-            if (fontsLoadedResolve) fontsLoadedResolve();
-        })();
-
-        // 初始化可用字體清單：一律從 fonts.json 載入（方便後續變更字體清單）
-        async function initAvailableFonts() {
-            try {
-                console.log('🔍 從 fonts.json 載入字體清單...');
-                availableFonts = await loadFontsFromJSON();
-                console.log(`✅ 共有 ${availableFonts.length} 種字體可用`);
-                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            } catch (error) {
-                console.error('❌ 載入 fonts.json 失敗:', error);
-                availableFonts = await loadFontsFromJSON().catch(() => []);
-                if (typeof loadGoogleFonts === 'function') loadGoogleFonts();
-            }
-        }
-
-        // 材質設定
-        const MATERIALS = {
-            gold18k: { color: 0xFFD700, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
-            whitegold18k: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.3 },
-            rosegold18k: { color: 0xC9A386, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 15.0 },
-            silver925: { color: 0xC0C0C0, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 10.3 },
-            brass: { color: 0xB5A642, metalness: 0.9, roughness: { glossy: 0.0, matte: 0.6 }, density: 8.5 },
-            platinum: { color: 0xE5E5E5, metalness: 1.0, roughness: { glossy: 0.0, matte: 0.6 }, density: 21.4 }
-        };
-
-        // 🧹 碎片清理相關變數
-        let modelNeedsCleanup = false;  // 標記：訂單是否需要清理碎片
-        let isCleanupInProgress = false; // 防止重複點擊
-
-
-        // 電鍍顏色定義
-        const PLATING_COLORS = {
-            none: null,  // 無電鍍，使用基礎材質顏色
-            gold18k: 0xFFD700,      // 18K 金色
-            whitegold18k: 0xE5E5E5, // 18K 白K金色
-            rosegold18k: 0xC9A386   // 18K 玫瑰金色（溫暖粉金）
-        };
-
-        // 初始化場景（Z-up 系統）
-        function initScene() {
-            scene = new THREE.Scene();
-
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.up.set(0, 0, 1); // Z-up 系統
-            // 從物件前方稍微偏右上，15度俯角觀看 45 度夾角
-            camera.position.set(40, -57, 12);  // 半徑7.5→5，按比例縮小（原: 60, -85, 18）
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            document.getElementById('viewport').appendChild(renderer.domElement);
-            renderer.domElement.style.pointerEvents = 'none';
-            // 暴露 renderer, scene, camera 給全局，供佩戴模擬使用
-            window.renderer = renderer;
-            window.scene = scene;
-            window.camera = camera;
-
-            controls = new OrbitControls(camera, document.getElementById('viewport'));
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.target.set(0, 0, 0);
-
-            // ⚡ 提升光照亮度
-            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
-            directionalLight.position.set(5, 5, 10);
-            scene.add(directionalLight);
-
-            // ✅ HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
-            const hdrUrls = [
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/hdr/studio_kontrast_04_4k.hdr',  // 優先：GitHub Raw
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@main/assets/images/hdr/studio_kontrast_04_4k.hdr'  // 備援：jsdelivr CDN
-            ];
-            
-            let currentHdrIndex = 0;
-            let hdrLoadTimeout = null;
-            const rgbeLoader = new RGBELoader();
-
-            function loadHDRWithFallback() {
-                if (currentHdrIndex >= hdrUrls.length) {
-                    console.error('❌ 所有 HDR 來源都失敗，使用無 HDR 模式');
-                    envMap = null;
-                    showInitialSphere();
-                    return;
-                }
-
-                const hdrUrl = hdrUrls[currentHdrIndex];
-                const sourceName = currentHdrIndex === 0 ? 'GitHub Raw' : 'jsdelivr CDN';
-                console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
-
-                // 設定 5 秒超時
-                hdrLoadTimeout = setTimeout(() => {
-                    console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
-                    currentHdrIndex++;
-                    loadHDRWithFallback();
-                }, 5000);
-
-                rgbeLoader.load(
-                    hdrUrl,
-                    (texture) => {
-                        clearTimeout(hdrLoadTimeout);
-                        texture.mapping = THREE.EquirectangularReflectionMapping;
-                        envMap = texture;
-                        scene.environment = envMap;
-                        console.log(`✅ HDR 載入成功 (${sourceName})`);
-                        showInitialSphere();
-                    },
-                    undefined,
-                    (error) => {
-                        clearTimeout(hdrLoadTimeout);
-                        console.error(`❌ HDR 載入失敗 (${sourceName}):`, error);
-                        currentHdrIndex++;
-                        loadHDRWithFallback();
-                    }
-                );
-            }
-
-            loadHDRWithFallback();
-
-            window.addEventListener('resize', onResize);
-            
-            // ==========================================
-            // 🔧 初始化產品攝影模組
-            // ==========================================
-            ProductPhotoStudio.init(scene, camera, renderer, controls);
-        }
-
-        // ============================================================
-        // 輔助函數：清理所有預覽球體（防止圓球殘留）
-        // ============================================================
-        function removeAllPlaceholderSpheres() {
-            const sphereName = 'placeholderSphere';
-            let removedCount = 0;
-            
-            // 遍歷 scene 中所有物件
-            for (let i = scene.children.length - 1; i >= 0; i--) {
-                const child = scene.children[i];
-                if (child.name === sphereName) {
-                    scene.remove(child);
-                    child.geometry?.dispose();
-                    child.material?.dispose();
-                    removedCount++;
-                    console.log(`🧹 已清理殘留球體: ${child.uuid}`);
-                }
-            }
-            
-            if (removedCount > 0) {
-                console.log(`🧹 共清理 ${removedCount} 個殘留球體`);
-            }
-            return removedCount;
-        }
-
-        function showInitialSphere() {
-            // 清理任何已存在的球體（防禦性清理）
-            removeAllPlaceholderSpheres();
-            
-            const geometry = new THREE.SphereGeometry(5, 64, 64);
-            const material = getMaterial('silver925', 'glossy', 'none');  // 預設：925銀，亮面，無電鍍
-            mainMesh = new THREE.Mesh(geometry, material);
-            mainMesh.name = 'placeholderSphere';  // 設定名稱方便後續清理
-            scene.add(mainMesh);
-            // 暴露 mainMesh 給全局，供佩戴模擬使用
-            window.mainMesh = mainMesh;
-            document.getElementById('loader').classList.add('fade-out');
-        }
+        // availableFonts, loadFontsFromJSON, initAvailableFonts 已移至 resource-loader.js
+        // fontsLoadedPromise 已從 resource-loader.js 暴露到 window.fontsLoadedPromise
+        // showInitialSphere, removeAllPlaceholderSpheres 已移至 3d-scene.js
 
         function getMaterial(materialType, finish, plating = 'none') {
             const mat = MATERIALS[materialType];
@@ -2969,6 +1674,8 @@
             const newBbox = result.geometry.boundingBox;
             modelTopZ = newBbox.max.z; // 新的高度軸是 Z
             modelCenter.set(0, 0, 0);  // ✅ 強制設為原點（與後端 OpenSCAD 一致，避免浮點誤差）
+            window.modelTopZ = modelTopZ;
+            window.modelCenter = modelCenter;
 
             // 輸出實際尺寸
             const modelWidth = newBbox.max.x - newBbox.min.x;
@@ -3012,19 +1719,19 @@
             );
 
             mainMesh = result;
-            scene.add(mainMesh);
+            window.scene.add(mainMesh);
 
             // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
             removeAllPlaceholderSpheres();
 
             // 新物件已添加，現在可以安全移除舊物件
             if (oldMainMesh) {
-                scene.remove(oldMainMesh);
+                window.scene.remove(oldMainMesh);
                 oldMainMesh.geometry?.dispose();
                 oldMainMesh.material?.dispose();
             }
             if (oldRingMesh) {
-                scene.remove(oldRingMesh);
+                window.scene.remove(oldRingMesh);
                 oldRingMesh.geometry?.dispose();
                 oldRingMesh.material?.dispose();
             }
@@ -3061,11 +1768,71 @@
             }
             
             if (cleanupLabel) {
-                cleanupLabel.textContent = '清理作品零碎部件';  // 重置文字
+                cleanupLabel.textContent = '清理作品分離部件';  // 重置文字
                 cleanupLabel.style.color = '';  // 重置顏色
             }
             
-            modelNeedsCleanup = false;  // 重置清理狀態
+            modelNeedsCleanup = false;
+            cleanFragmentsApplied = false;
+            fragmentCheckPending = true;
+            renderCount++;
+
+            // 🔍 背景片段偵測：中止上一個未完成的請求，再發新的
+            if (fragmentCheckController) fragmentCheckController.abort();
+            fragmentCheckController = new AbortController();
+            const myController = fragmentCheckController;
+            const checkParams = {
+                letter1: document.getElementById('letter1').value,
+                letter2: document.getElementById('letter2').value,
+                font1: document.getElementById('font1-btn')?.getAttribute('data-selected') || 'Alex Brush',
+                font2: document.getElementById('font2-btn')?.getAttribute('data-selected') || 'Alex Brush',
+                size: parseInt(document.getElementById('size').value)
+            };
+            (async () => {
+                try {
+                    const resp = await fetch(`${window.BACKEND_URL}/api/check-fragments`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(checkParams),
+                        signal: myController.signal
+                    });
+                    if (myController.signal.aborted) return;
+                    const result = await resp.json();
+                    if (myController.signal.aborted) return;
+                    fragmentCheckPending = false;
+                    if (result.has_fragments && !cleanFragmentsApplied && !isCleanupInProgress) {
+                        modelNeedsCleanup = true;
+                        showFragmentWarning();
+                        const toggleContainer = document.getElementById('cleanup-toggle-container');
+                        const cleanupLabel = document.getElementById('cleanup-label');
+                        if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
+                        if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
+                        console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量`);
+                    } else {
+                        modelNeedsCleanup = false;
+                        const toggleContainer = document.getElementById('cleanup-toggle-container');
+                        const cleanupLabel = document.getElementById('cleanup-label');
+                        if (toggleContainer) toggleContainer.classList.remove('cleanup-needs-attention');
+                        if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
+                        console.log('✅ 片段偵測：模型無分離部件');
+                    }
+                    // 若有人在 pending 期間就加入購物車，通知購物車更新狀態
+                    const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
+                    if (cartPendingMsg) {
+                        if (modelNeedsCleanup) {
+                            cartPendingMsg.innerHTML = '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。';
+                            cartPendingMsg.style.color = '#d4af37';
+                        } else {
+                            cartPendingMsg.innerHTML = '✅ 確認完畢，作品無分離部件，可以進行製作。';
+                            cartPendingMsg.style.color = '#8fd4a0';
+                            setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
+                        }
+                    }
+                } catch (e) {
+                    fragmentCheckPending = false;
+                    if (e.name !== 'AbortError') console.warn('⚠️ 片段偵測失敗（靜默）:', e.message);
+                }
+            })();
 
             // 更新佩戴模擬預覽
             if (window.updateWearingPreview) {
@@ -3083,6 +1850,88 @@
             } else {
                 ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
             }
+        }
+
+        // 🔍 偵測模型是否有零碎部件（連通分量分析）
+        function detectFragments(geometry) {
+            const position = geometry.attributes.position;
+            if (!position || position.count === 0) return 1;
+            const vertexCount = position.count;
+
+            // 以 0.01mm 精度 hash 頂點位置，消除 CSG 浮點誤差造成的假斷連
+            const posMap = new Map();
+            const canonical = new Int32Array(vertexCount);
+            for (let i = 0; i < vertexCount; i++) {
+                const x = Math.round(position.getX(i) * 100) / 100;
+                const y = Math.round(position.getY(i) * 100) / 100;
+                const z = Math.round(position.getZ(i) * 100) / 100;
+                const key = `${x},${y},${z}`;
+                if (!posMap.has(key)) posMap.set(key, i);
+                canonical[i] = posMap.get(key);
+            }
+
+            // Union-Find（路徑壓縮）
+            const parent = new Int32Array(vertexCount);
+            for (let i = 0; i < vertexCount; i++) parent[i] = i;
+            function find(x) {
+                while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+                return x;
+            }
+            function union(a, b) { parent[find(canonical[a])] = find(canonical[b]); }
+
+            const indexAttr = geometry.index;
+            if (indexAttr) {
+                const idx = indexAttr.array;
+                for (let i = 0; i < idx.length; i += 3) { union(idx[i], idx[i+1]); union(idx[i+1], idx[i+2]); }
+            } else {
+                for (let i = 0; i < vertexCount; i += 3) { union(i, i+1); union(i+1, i+2); }
+            }
+
+            // 計算獨立連通分量數（只計算 canonical 頂點）
+            const roots = new Set();
+            for (const idx of posMap.values()) roots.add(find(canonical[idx]));
+            return roots.size;
+        }
+
+        // ⚠️ 顯示零碎部件警告（DUET 風格）
+        function showFragmentWarning() {
+            if (document.getElementById('fragment-warning-toast')) return;
+            const toast = document.createElement('div');
+            toast.id = 'fragment-warning-toast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(14, 14, 20, 0.96);
+                backdrop-filter: blur(30px) saturate(150%);
+                -webkit-backdrop-filter: blur(30px) saturate(150%);
+                border: 1px solid rgba(212, 175, 55, 0.45);
+                border-radius: 16px;
+                padding: 16px 20px;
+                z-index: 99999;
+                box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+                max-width: 300px;
+                width: calc(100vw - 48px);
+                animation: slideUpFadeIn 0.35s ease-out;
+            `;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;">
+                    <div style="flex-shrink:0; font-size:18px; color:#d4af37; line-height:1.5; margin-top:1px;">←</div>
+                    <p style="color:#e8d5a0; font-size:13px; line-height:1.7; margin:0; letter-spacing:0.2px;">
+                        作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。
+                    </p>
+                </div>
+                <div style="text-align:center;">
+                    <button onclick="document.getElementById('fragment-warning-toast').remove()" style="
+                        background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
+                        border: none; color: #000; padding: 8px 24px; font-size: 13px;
+                        border-radius: 8px; cursor: pointer; font-weight: 600; letter-spacing: 0.5px;
+                    ">知道了</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => { const el = document.getElementById('fragment-warning-toast'); if (el) el.remove(); }, 10000);
         }
 
         // 🧹 清除零碎部件（用於 Toggle 開關）
@@ -3247,7 +2096,9 @@
                 const newBbox = cleanGeometry.boundingBox;
                 modelTopZ = newBbox.max.z;
                 modelCenter.set(0, 0, 0);  // 強制設為原點（與後端 OpenSCAD 一致）
-                
+                window.modelTopZ = modelTopZ;
+                window.modelCenter = modelCenter;
+
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
                 
@@ -3265,12 +2116,18 @@
                 const totalTime = ((Date.now() - t0) / 1000).toFixed(1);
                 console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
 
-                // 7. 設定標記：訂單需要清理
-                modelNeedsCleanup = true;
+                // 清理完成：標記後端需套用清理，並清除「有零碎部件」封鎖
+                cleanFragmentsApplied = true;
+                modelNeedsCleanup = false;
+
+                // 移除 toggle 光暈提示
+                const toggleContainer = document.getElementById('cleanup-toggle-container');
+                if (toggleContainer) toggleContainer.classList.remove('cleanup-needs-attention');
+                if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
 
                 // 更新 label 顯示
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '零碎部件已清理';
+                    cleanupLabel.textContent = '分離部件已清理';
                     cleanupLabel.style.color = '#4caf50';
                 }
 
@@ -3286,7 +2143,7 @@
                 }
                 
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '清理作品零碎部件';
+                    cleanupLabel.textContent = '清理作品分離部件';
                     cleanupLabel.style.color = '';
                 }
                 
@@ -3298,1131 +2155,10 @@
         }
 
         // ============================================================
-        // V3 幾何引擎：opentype.js + ClipperLib Offset Pipeline
+        // Ring & Bail functions moved to js/ring-bail.js
         // ============================================================
 
-        // 快取：字體 ArrayBuffer（供 V3 pipeline 使用）
-        const loadedTTFBuffers = {};
-
-        // 🔒 載入鎖定：防止同一字體重複 fetch（key: fontName, value: Promise）
-        const loadingTTFState = {};
-
-        // 快取：fonts.json 的完整字體資料（含 offset_r）
-        let fontMetaMap = {};
-
-        /**
-         * 載入 fonts.json 並建立 name → meta 的查詢表
-         * 包含 offset_r 欄位
-         */
-        async function initFontMeta() {
-            try {
-                const res = await fetch('fonts.json');
-                const data = await res.json();
-                const list = data.fonts || [];
-                list.forEach(f => {
-                    const key = typeof f === 'string' ? f : f.name;
-                    fontMetaMap[key] = typeof f === 'string'
-                        ? { name: f, offset_r: 0, weight: 400 }
-                        : f;
-                });
-                console.log(`✅ [V3] fontMetaMap 建立完成，共 ${Object.keys(fontMetaMap).length} 種字體`);
-            } catch (e) {
-                console.warn('⚠️ [V3] 無法載入 fonts.json，offset_r 全部使用 0:', e.message);
-            }
-        }
-
-        /**
-         * 從後端 /assets/fonts/ttf/ 取得 TTF ArrayBuffer
-         * 格式：FontName-Regular.ttf，例如 Alex_Brush-Regular.ttf
-         * 🔒 加入載入鎖定，防止同一字體重複 fetch
-         */
-        async function loadTTFBuffer(fontName) {
-            // 如果已載入，直接回傳
-            if (loadedTTFBuffers[fontName]) return loadedTTFBuffers[fontName];
-
-            // 🔒 如果正在載入中，等待該 Promise 完成
-            if (loadingTTFState[fontName]) {
-                console.log(`[V3] 等待字體載入中: ${fontName}`);
-                return loadingTTFState[fontName];
-            }
-
-            const meta = fontMetaMap[fontName] || { weight: 400 };
-            const weight = meta.weight || 400;
-            // 檔名格式：Google Fonts 命名慣例 - FontName-Regular.ttf
-            // 所有 weight 400 的字體都是 Regular 版本
-            const style = weight === 400 ? 'Regular' : 'Bold';
-            const fileName = fontName.replace(/ /g, '_') + '-' + style + '.ttf';
-            const backendBase = window.BACKEND_URL || 'https://duet-backend-wlw8.onrender.com';
-            const url = `${backendBase}/assets/fonts/ttf/${fileName}`;
-
-            console.log(`[V3] 載入 TTF: ${url}`);
-
-            // 🔒 設定載入鎖定（使用 Promise）
-            loadingTTFState[fontName] = (async () => {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error(`TTF 載入失敗 (${res.status}): ${url}`);
-                    const buffer = await res.arrayBuffer();
-                    loadedTTFBuffers[fontName] = buffer;
-                    console.log(`✅ [V3] TTF 已快取: ${fontName}`);
-                    return buffer;
-                } finally {
-                    // 載入完成後清除鎖定
-                    delete loadingTTFState[fontName];
-                }
-            })();
-
-            return loadingTTFState[fontName];
-        }
-
-        /**
-         * 將 opentype.js Path commands 轉為 Clipper 整數路徑陣列
-         * 一個 glyph 可能包含多個子路徑（外輪廓 + 孔洞）
-         * @param {Array} commands - opentype path.commands
-         * @param {number} scale - 整數縮放因子（例如 1000）
-         * @returns {Array} paths - ClipperLib.Paths（整數多邊形陣列）
-         */
-        function opentypeCommandsToClipperPaths(commands, scale) {
-            const paths = [];
-            let current = [];
-            // 曲線平坦化精度（段數越多越精確，但效能越低）
-            const CURVE_STEPS = 12;
-
-            let cx = 0, cy = 0; // 目前游標位置
-
-            for (const cmd of commands) {
-                switch (cmd.type) {
-                    case 'M':
-                        // 開始新子路徑（先儲存上一個）
-                        if (current.length > 1) paths.push(current);
-                        current = [];
-                        cx = cmd.x; cy = cmd.y;
-                        current.push({ X: Math.round(cx * scale), Y: Math.round(cy * scale) });
-                        break;
-
-                    case 'L':
-                        cx = cmd.x; cy = cmd.y;
-                        current.push({ X: Math.round(cx * scale), Y: Math.round(cy * scale) });
-                        break;
-
-                    case 'Q': {
-                        // 二次貝茲曲線平坦化
-                        const x0 = cx, y0 = cy;
-                        const x1 = cmd.x1, y1 = cmd.y1;
-                        const x2 = cmd.x, y2 = cmd.y;
-                        for (let i = 1; i <= CURVE_STEPS; i++) {
-                            const t = i / CURVE_STEPS;
-                            const mt = 1 - t;
-                            const px = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
-                            const py = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
-                            current.push({ X: Math.round(px * scale), Y: Math.round(py * scale) });
-                        }
-                        cx = x2; cy = y2;
-                        break;
-                    }
-
-                    case 'C': {
-                        // 三次貝茲曲線平坦化
-                        const x0 = cx, y0 = cy;
-                        const x1 = cmd.x1, y1 = cmd.y1;
-                        const x2 = cmd.x2, y2 = cmd.y2;
-                        const x3 = cmd.x, y3 = cmd.y;
-                        for (let i = 1; i <= CURVE_STEPS; i++) {
-                            const t = i / CURVE_STEPS;
-                            const mt = 1 - t;
-                            const px = mt*mt*mt*x0 + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x3;
-                            const py = mt*mt*mt*y0 + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*y3;
-                            current.push({ X: Math.round(px * scale), Y: Math.round(py * scale) });
-                        }
-                        cx = x3; cy = y3;
-                        break;
-                    }
-
-                    case 'Z':
-                        if (current.length > 1) {
-                            // 確保路徑閉合（起點終點相同）
-                            const first = current[0];
-                            const last = current[current.length - 1];
-                            if (first.X !== last.X || first.Y !== last.Y) {
-                                current.push({ X: first.X, Y: first.Y });
-                            }
-                            paths.push(current);
-                        }
-                        current = [];
-                        break;
-                }
-            }
-            // 處理未被 Z 關閉的最後一段
-            if (current.length > 1) paths.push(current);
-
-            return paths;
-        }
-
-        /**
-         * 對 Clipper 路徑執行 Offset（膨脹）
-         * 修復：先 Union 合併拓撲，再統一 offset，避免碎裂
-         * @param {Array} paths - ClipperLib.Paths
-         * @param {number} offsetUnits - 偏移量（Clipper 整數單位）
-         * @returns {Array} 偏移後的 ClipperLib.Paths
-         */
-        function clipperOffset(paths, offsetUnits) {
-            if (offsetUnits === 0) return paths;
-
-            const ClipperLib = window.ClipperLib;
-
-            // Step 1: CleanPolygons 移除自相交點，避免碎裂
-            const cleaned = ClipperLib.Clipper.CleanPolygons(paths, 0.001);
-            console.log(`[V3] Offset 前路徑數: ${paths.length}, CleanPolygons 後: ${cleaned.length}`);
-
-            // 🔍 Debug: 列出每條路徑的方向
-            cleaned.forEach((p, i) => {
-                console.log(`[V3]   cleaned[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
-            });
-
-            // Step 2: 先 Union 合併所有路徑，建立正確的拓撲關係
-            const co = new ClipperLib.Clipper();
-            co.AddPaths(cleaned, ClipperLib.PolyType.ptSubject, true);
-
-            const polyTree = new ClipperLib.PolyTree();
-            co.Execute(
-                ClipperLib.ClipType.ctUnion,
-                polyTree,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd
-            );
-            console.log(`[V3] Union PolyTree 根節點數: ${polyTree.Childs().length}`);
-
-            // 🔍 Debug: 顯示 PolyTree 結構
-            const dumpPolyTreeNode = (node, indent) => {
-                const isHole = node.IsHole ? node.IsHole() : node.IsHole;
-                const contour = node.Contour ? node.Contour() : node.Contour;
-                console.log(`${indent}[${isHole ? '孔洞' : '外輪廓'} ${contour.length}點]`);
-                const children = node.Childs ? node.Childs() : node.Childs;
-                for (var i = 0; i < children.length; i++) {
-                    dumpPolyTreeNode(children[i], indent + '  ');
-                }
-            };
-            console.log(`[V3] PolyTree 結構:`);
-            for (var i = 0; i < polyTree.Childs().length; i++) {
-                dumpPolyTreeNode(polyTree.Childs()[i], '  ');
-            }
-
-            // Step 3: 將 PolyTree 展平為路徑陣列，準備做 offset
-            const flatPaths = [];
-            const flattenPolyTreeToPaths = (node) => {
-                if (node.Contour && node.Contour().length > 0) {
-                    flatPaths.push(node.Contour());
-                }
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    flattenPolyTreeToPaths(children[i]);
-                }
-            };
-            flattenPolyTreeToPaths(polyTree);
-            console.log(`[V3] 展平後路徑數: ${flatPaths.length}`);
-            flatPaths.forEach((p, i) => {
-                console.log(`[V3]   flat[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
-            });
-
-            // Step 4: 對合併後的路徑做統一 offset（正向膨脹）
-            const coOffset = new ClipperLib.ClipperOffset();
-            coOffset.MiterLimit = 2.0;
-            coOffset.AddPaths(flatPaths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
-
-            const offsetResult = new ClipperLib.PolyTree();
-            coOffset.Execute(offsetResult, offsetUnits); // 正值 = 向外膨脹
-
-            // Step 5: 將 offset 後的 PolyTree 展平回傳
-            const resultPaths = [];
-            const flattenResult = (node) => {
-                if (node.Contour && node.Contour().length > 0) {
-                    resultPaths.push(node.Contour());
-                }
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    flattenResult(children[i]);
-                }
-            };
-            flattenResult(offsetResult);
-            console.log(`[V3] Offset 後路徑數: ${resultPaths.length}`);
-            resultPaths.forEach((p, i) => {
-                console.log(`[V3]   result[${i}]: ${p.length}點, ${ClipperLib.Clipper.Orientation(p) ? 'CW' : 'CCW'}`);
-            });
-
-            return resultPaths;
-        }
-
-        /**
-         * 遞迴遍歷 PolyTree 節點，建立 THREE.Shape（含正確孔洞）
-         * @param {ClipperLib.PolyNode} node - PolyTree 節點
-         * @param {number} scale - 整數縮放因子（需除回）
-         * @param {Array} allShapes - 收集結果的 Shape 陣列
-         * @param {Object} container - 父節點的 Shape（孔洞會被加入這裡）
-         */
-        function traversePolyTreeNode(node, scale, allShapes, container) {
-            const ClipperLib = window.ClipperLib;
-
-            if (!node) return;
-
-            // 取得輪廓座標
-            const pts = node.Contour().map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-
-            if (!node.IsHole()) {
-                // 外輪廓：建立新的 Shape
-                const shape = new THREE.Shape(pts);
-                allShapes.push(shape);
-                console.log(`[V3] 建立 Shape: ${allShapes.length}`);
-
-                // 遞迴處理子節點（可能是孔洞或嵌套輪廓）
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    traversePolyTreeNode(children[i], scale, allShapes, shape);
-                }
-            } else {
-                // 孔洞：加入父節點的 holes
-                if (container) {
-                    const holePath = new THREE.Path(pts);
-                    container.holes.push(holePath);
-                    console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${container.holes.length}`);
-                }
-
-                // 遞迴處理子節點（孔洞內可能有嵌套實心）
-                const children = node.Childs();
-                for (var i = 0; i < children.length; i++) {
-                    traversePolyTreeNode(children[i], scale, allShapes, container);
-                }
-            }
-        }
-
-        /**
-         * 使用 subPaths 的 isHole 資訊直接建立 THREE.Shape 陣列
-         * 這個方法繞過 PolyTree 的 IsHole() 推斷，直接使用 JSON 中的 isHole 欄位
-         * 
-         * @param {Array} finalPaths - Offset 後的 Clipper 路徑陣列
-         * @param {Array} subPathsInfo - 原始的 subPaths 資訊（含 isHole 欄位）
-         * @param {number} scale - 整數縮放因子（需除回）
-         * @returns {Array} THREE.Shape[]
-         */
-        function buildShapesFromSubPaths(finalPaths, subPathsInfo, scale) {
-            const shapes = [];
-            
-            // 找出外輪廓（isHole = false）和孔洞（isHole = true）
-            // 外輪廓應該只有一個（第一個是最大的）
-            let outerShape = null;
-            const holes = [];
-            
-            for (let i = 0; i < finalPaths.length; i++) {
-                const path = finalPaths[i];
-                const isHole = subPathsInfo[i]?.isHole ?? false;
-                const pts = path.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                
-                if (!isHole) {
-                    // 外輪廓
-                    const shape = new THREE.Shape(pts);
-                    shapes.push(shape);
-                    if (!outerShape || path.length > (outerShape.shape ? outerShape.path.length : 0)) {
-                        outerShape = { shape, path };
-                    }
-                    console.log(`[V3] 建立外輪廓 Shape: ${shapes.length}`);
-                } else {
-                    // 孔洞
-                    holes.push(pts);
-                    console.log(`[V3] 加入孔洞: ${holes.length}`);
-                }
-            }
-            
-            // 將孔洞加入外輪廓
-            // 如果只有一個 Shape，把所有孔洞都加進去
-            // 如果有多個 Shape，嘗試把孔洞加入最大的那個
-            if (shapes.length === 1) {
-                for (const holePts of holes) {
-                    const holePath = new THREE.Path(holePts);
-                    shapes[0].holes.push(holePath);
-                    console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${shapes[0].holes.length}`);
-                }
-            } else if (shapes.length > 1 && outerShape) {
-                // 多個外輪廓的情況（很少見），把孔洞加入最大的
-                for (const holePts of holes) {
-                    const holePath = new THREE.Path(holePts);
-                    outerShape.shape.holes.push(holePath);
-                    console.log(`[V3] 加入孔洞至最大 Shape，孔洞數: ${outerShape.shape.holes.length}`);
-                }
-            }
-            
-            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
-            return shapes;
-        }
-
-        /**
-         * 將 Clipper 路徑陣列重新組裝成 THREE.Shape 陣列
-         * 使用 PolyTree + IsHole() 進行正確的孔洞偵測
-         * @param {Array} clipperPaths - 偏移後的 ClipperLib.Paths 或 PolyTree
-         * @param {number} scale - 整數縮放因子（需除回）
-         * @returns {Array} THREE.Shape[]
-         */
-        function clipperPathsToThreeShapes(clipperPaths, scale) {
-            const ClipperLib = window.ClipperLib;
-            const shapes = [];
-
-            if (clipperPaths.length === 0) {
-                return shapes;
-            }
-
-            // 檢查是否為 PolyTree（若是，Childs 是方法）
-            var rootChildren;
-            var isPolyTree = false;
-
-            try {
-                rootChildren = clipperPaths.Childs();
-                if (rootChildren && rootChildren.length !== undefined) {
-                    isPolyTree = true;
-                }
-            } catch (e) {
-                // 不是 PolyTree，是普通的 Paths 陣列
-                rootChildren = null;
-            }
-
-            if (isPolyTree) {
-                // 直接遍歷 PolyTree
-                console.log(`[V3] PolyTree 根節點數: ${rootChildren.length}`);
-
-                for (var i = 0; i < rootChildren.length; i++) {
-                    var child = rootChildren[i];
-                    // 🔍 Debug: 列出每個根節點的輪廓點數和是否為孔洞
-                    console.log(`[V3]   根節點[${i}]: 點數=${child.Contour().length}, IsHole=${child.IsHole()}`);
-                    // 根節點的 container 是 null（最外層不需要加入孔洞）
-                    traversePolyTreeNode(child, scale, shapes, null);
-                }
-            } else {
-                // 普通 Paths 陣列：使用 Clipper.BoolOp 建立 PolyTree
-                const co = new ClipperLib.Clipper();
-                co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
-
-                const polyTree = new ClipperLib.PolyTree();
-                co.Execute(
-                    ClipperLib.ClipType.ctUnion,
-                    polyTree,
-                    ClipperLib.PolyFillType.pftEvenOdd,
-                    ClipperLib.PolyFillType.pftEvenOdd
-                );
-
-                console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
-
-                // 🔍 Debug: 列出所有路徑的方向（協助識別問題）
-                console.log(`[V3] Offset 後 ${clipperPaths.length} 條路徑的方向:`);
-                clipperPaths.forEach((path, idx) => {
-                    const isCW = ClipperLib.Clipper.Orientation(path);
-                    console.log(`[V3]   路徑[${idx}]: 點數=${path.length}, ${isCW ? 'CW (外輪廓)' : 'CCW (孔洞)'}`);
-                });
-
-                // 遍歷 PolyTree 的根節點
-                var rootChildren = polyTree.Childs();
-                for (var i = 0; i < rootChildren.length; i++) {
-                    var child = rootChildren[i];
-                    traversePolyTreeNode(child, scale, shapes, null);
-                }
-            }
-
-            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
-            return shapes;
-        }
-
-        /**
-         * Fallback：使用 Orientation 排序（舊方法）
-         * 當 PolyTree 方法失敗時使用
-         */
-        function clipperPathsToThreeShapes_OldFallback(clipperPaths, scale) {
-            const ClipperLib = window.ClipperLib;
-            const shapes = [];
-            let currentShape = null;
-
-            // 先排序：外輪廓優先（CW），孔洞（CCW）跟在後面
-            const sorted = [...clipperPaths].sort((a, b) => {
-                const aOuter = ClipperLib.Clipper.Orientation(a) ? 0 : 1;
-                const bOuter = ClipperLib.Clipper.Orientation(b) ? 0 : 1;
-                return aOuter - bOuter;
-            });
-
-            for (const path of sorted) {
-                const pts = path.map(p => new THREE.Vector2(p.X / scale, p.Y / scale));
-                const isCW = ClipperLib.Clipper.Orientation(path);
-
-                if (isCW) {
-                    // 外輪廓：建立新 Shape
-                    currentShape = new THREE.Shape(pts);
-                    shapes.push(currentShape);
-                } else {
-                    // 孔洞：掛在最近的外輪廓上
-                    if (currentShape) {
-                        const hole = new THREE.Path(pts);
-                        currentShape.holes.push(hole);
-                    } else {
-                        console.warn('[V3] 孔洞路徑找不到對應的外輪廓，跳過');
-                    }
-                }
-            }
-
-            return shapes;
-        }
-
-        // ============================================================
-        // V3 JSON 預處理資料快取
-        // ============================================================
-        const v3FontDataCache = new Map();
-
-        /**
-         * 載入 V3 預處理過的字體 JSON 資料
-         * 使用快取避免重複載入
-         * 
-         * @param {string} fontName - 字體名稱
-         * @returns {Promise<object>} - 字體資料物件
-         */
-        async function loadV3FontData(fontName) {
-            if (v3FontDataCache.has(fontName)) {
-                return v3FontDataCache.get(fontName);
-            }
-
-            // 將空格置換為底線，並進行 URL 編碼
-            const fileName = fontName.replace(/ /g, '_');
-            const jsonUrl = `assets/v3-data/${encodeURIComponent(fileName)}.json`;
-            console.log(`[V3] 載入預處理字體資料：${jsonUrl}`);
-            
-            try {
-                const response = await fetch(jsonUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const fontData = await response.json();
-                v3FontDataCache.set(fontName, fontData);
-                console.log(`[V3] 字體資料載入成功：${fontName}，glyphs 數量：${Object.keys(fontData.glyphs).length}`);
-                return fontData;
-            } catch (err) {
-                console.error(`[V3] 載入字體資料失敗：${fontName}`, err);
-                throw err;
-            }
-        }
-
-        /**
-         * 將 V3 JSON 的路徑點轉換為 Clipper 路徑
-         * JSON 中的路徑已經過離散化處理（貝茲曲線已轉為線段）
-         * 
-         * @param {Array} points - JSON 中的 path 陣列
-         * @param {number} CLIP_SCALE - 縮放因子
-         * @returns {Array} - Clipper 路徑格式
-         */
-        function v3PathToClipperPath(points, CLIP_SCALE, targetHeight) {
-            const path = [];
-            for (const pt of points) {
-                // 先乘以 targetHeight 將歸一化座標轉為實際 mm，再轉 Clipper 整數單位
-                // 例如：pt.x = 0.5, targetHeight = 10, CLIP_SCALE = 100000
-                // X = 0.5 * 10 * 100000 = 500000（代表 5mm）
-                path.push({
-                    X: Math.round(pt.x * targetHeight * CLIP_SCALE),
-                    Y: Math.round(pt.y * targetHeight * CLIP_SCALE)
-                });
-            }
-            return path;
-        }
-
-        /**
-         * 將 v3-data JSON v2 格式（commands 曲線命令）轉為高精度 Clipper 路徑
-         * v2 格式保留原始貝茲控制點，Q 用 24 段、C 用 36 段離散化
-         */
-        function v3CommandsToClipperPath(input, CLIP_SCALE, targetHeight) {
-            const path = [];
-            let cx = 0, cy = 0;
-            const STEPS_Q = 24;
-            const STEPS_C = 36;
-
-            // 縮放因子：統一乘以 10000 再轉為整數，避免 Clipper 運算時幾何體碎裂
-            const SCALE = 10000;
-
-            const push = (x, y) => path.push({
-                X: Math.round(x * targetHeight * SCALE),
-                Y: Math.round(y * targetHeight * SCALE)
-            });
-
-            console.log(`[V3] v3CommandsToClipperPath: input.length=${input.length}`);
-
-            // V3 格式：commands = [{type: "M/L/Q/C", x, y, ...}, ...]
-            // M/L 只讀取 x, y；Q 讀取 x1, y1, x, y；C 讀取 x1, y1, x2, y2, x, y
-            // 追蹤上一個 push 的座標，過濾零長度線段
-            let lastPushedX = null, lastPushedY = null;
-            
-            for (const cmd of input) {
-                switch (cmd.type) {
-                    case 'M':
-                    case 'L':
-                        // M/L 只讀取 x, y，不要讀取 x1 欄位（避免 NaN）
-                        // 跳過零長度線段（M->L 或 L->L 座標相同的情況）
-                        cx = cmd.x;
-                        cy = cmd.y;
-                        if (lastPushedX !== null && cx === lastPushedX && cy === lastPushedY) {
-                            // 座標相同，更新 lastPushed 但不 push（避免重複點）
-                            lastPushedX = cx;
-                            lastPushedY = cy;
-                            break;
-                        }
-                        push(cx, cy);
-                        lastPushedX = cx;
-                        lastPushedY = cy;
-                        break;
-                    case 'Q':
-                        // Q: 二次貝茲，讀取 x1, y1 (控制點) 與 x, y (終點)
-                        for (let i = 1; i <= STEPS_Q; i++) {
-                            const t = i / STEPS_Q, mt = 1 - t;
-                            push(
-                                mt * mt * cx + 2 * mt * t * cmd.x1 + t * t * cmd.x,
-                                mt * mt * cy + 2 * mt * t * cmd.y1 + t * t * cmd.y
-                            );
-                        }
-                        cx = cmd.x;
-                        cy = cmd.y;
-                        break;
-                    case 'C':
-                        // C: 三次貝茲，讀取 x1, y1, x2, y2 (控制點) 與 x, y (終點)
-                        for (let i = 1; i <= STEPS_C; i++) {
-                            const t = i / STEPS_C, mt = 1 - t;
-                            push(
-                                mt * mt * mt * cx + 3 * mt * mt * t * cmd.x1 + 3 * mt * t * t * cmd.x2 + t * t * t * cmd.x,
-                                mt * mt * mt * cy + 3 * mt * mt * t * cmd.y1 + 3 * mt * t * t * cmd.y2 + t * t * t * cmd.y
-                            );
-                        }
-                        cx = cmd.x;
-                        cy = cmd.y;
-                        break;
-                    case 'Z':
-                        // Auto-Close Path：檢查最後一點是否等於第一點，若否則自動封閉
-                        if (path.length > 0) {
-                            const first = path[0];
-                            const last = path[path.length - 1];
-                            if (first.X !== last.X || first.Y !== last.Y) {
-                                path.push({ X: first.X, Y: first.Y });
-                            }
-                        }
-                        break;
-                }
-            }
-            return path;
-        }
-
-        /**
-         * V3 核心：從預處理 JSON 資料產生字母幾何體
-         * 
-         * Pipeline（歸一化版）：
-         *   1. 載入 v3-data JSON（已預處理好 metrics 和路徑，歸一化為 0-1 範圍）
-         *   2. 取出 glyph 路徑（已離散化），乘以 targetHeight 轉為實際 mm，再轉 Clipper 路徑
-         *   3. 執行 Clipper Offset（依 fonts.json 的 offset_r，直接為 mm 單位）
-         *   4. 轉回 THREE.Shape（含孔洞）
-         *   5. ExtrudeGeometry 擠出
-         *   6. Y 軸 180 度旋轉（Y-up → Z-up）
-         *   7. geometry.center() 置中
-         *
-         * @param {string} fontName - 字體名稱（對應 fonts.json）
-         * @param {string} letter - 單一字母字符
-         * @param {number} targetHeight - 目標高度（mm）
-         * @param {number} depthFactor - 擠出深度係數（預設 18）
-         * @returns {THREE.BufferGeometry}
-         */
-        async function createV3LetterGeometry(fontName, letter, targetHeight, depthFactor = 18) {
-            console.log(`[V3] 開始生成字母 "${letter}"，字體：${fontName}，目標高度：${targetHeight}mm`);
-
-            // ── 步驟 1：載入 V3 預處理 JSON ───────────────────────────
-            const fontData = await loadV3FontData(fontName);
-            const { fontHeight, glyphs } = fontData;
-
-            // 取得字元的 charCode
-            const charCode = letter.charCodeAt(0);
-            const glyphKey = String(charCode);
-            const glyphData = glyphs[glyphKey];
-
-            if (!glyphData) {
-                throw new Error(`[V3] 字體 "${fontName}" 找不到字母 "${letter}" (charCode: ${charCode}) 的 glyph`);
-            }
-
-            // ── 步驟 2：取出路徑資料 ──────
-            // v2.1: glyphData.subPaths = [{commands, isHole}, ...]
-            // v2: glyphData.commands = [{type: "M", x, y}, ...]
-            // v1: glyphData.path = [{x, y}, ...]（沒有 type 欄位）
-            const CLIP_SCALE = 10000;
-            
-            let clipperPaths = [];
-            let subPathsInfo = null;
-            
-            if (glyphData.subPaths && glyphData.subPaths.length > 0) {
-                // v2.1 格式：使用 subPaths，直接用 isHole 欄位
-                console.log(`[V3] Glyph 資料：v2.1 (subPaths)，子路徑數=${glyphData.subPaths.length}`);
-                
-                for (let i = 0; i < glyphData.subPaths.length; i++) {
-                    const sp = glyphData.subPaths[i];
-                    const path = v3CommandsToClipperPath(sp.commands, CLIP_SCALE, targetHeight);
-                    clipperPaths.push(path);
-                    console.log(`[V3]   subPath[${i}]: ${path.length}點, isHole=${sp.isHole}`);
-                }
-                subPathsInfo = glyphData.subPaths;
-            } else {
-                // 舊格式 fallback
-                const pathInput = glyphData.commands || glyphData.path;
-                if (!pathInput || pathInput.length === 0) {
-                    throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
-                }
-                console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
-                clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
-            }
-
-            if (clipperPaths.length === 0 || clipperPaths[0].length === 0) {
-                throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
-            }
-
-            // ── 步驟 3：Clipper Offset（座標已縮放到實際 mm）────────────
-            const meta = fontMetaMap[fontName] || { offset_r: 0 };
-            const offsetR = meta.offset_r || 0;
-
-            let finalPaths = clipperPaths;
-            if (offsetR > 0) {
-                // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
-                // 例如：offsetR = 0.1mm, CLIP_SCALE = 10000 → offsetUnits = 1000（代表 0.1mm）
-                const offsetUnits = offsetR * CLIP_SCALE;
-                console.log(`[V3] 執行 Offset：offset_r=${offsetR}mm，換算=${offsetUnits.toFixed(1)} Clipper 單位`);
-                finalPaths = clipperOffset(clipperPaths, offsetUnits);
-                console.log(`[V3] Offset 完成，路徑數：${clipperPaths.length} → ${finalPaths.length}`);
-            } else {
-                console.log(`[V3] 字體 "${fontName}" offset_r=0，跳過 Offset`);
-            }
-
-            // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-            let shapes;
-            if (subPathsInfo) {
-                // v2.1 格式：使用 subPathsInfo 直接建立 Shapes 和孔洞
-                shapes = buildShapesFromSubPaths(finalPaths, subPathsInfo, CLIP_SCALE);
-            } else {
-                // 舊格式：依靠 PolyTree 推斷孔洞
-                shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
-            }
-
-            if (shapes.length === 0) {
-                throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
-            }
-
-            console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
-
-            // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
-            // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
-            // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
-            const depth = fontHeight * depthFactor;
-            const extrudeSettings = {
-                depth: depth,
-                bevelEnabled: false,
-                curveSegments: 20
-            };
-            let geo = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
-
-            // ⚠️ 方向修正：這是為了把 OpenType Y-up 座標轉為 Web 座標
-            // Y-up → Z-up 方向校正
-            geo.rotateX(Math.PI);
-
-            // B. 確認幾何體方向：在 return 之前印出 BBox
-            geo.computeBoundingBox();
-            const bbox = geo.boundingBox;
-            console.log(`✅ [V3] 字母 "${letter}" 幾何體生成完成`);
-            console.log(`   BBox: x=[${bbox.min.x.toFixed(2)},${bbox.max.x.toFixed(2)}] y=[${bbox.min.y.toFixed(2)},${bbox.max.y.toFixed(2)}] z=[${bbox.min.z.toFixed(2)},${bbox.max.z.toFixed(2)}]`);
-            console.log(`   size: ${(bbox.max.x-bbox.min.x).toFixed(2)} x ${(bbox.max.y-bbox.min.y).toFixed(2)} x ${(bbox.max.z-bbox.min.z).toFixed(2)}`);
-            return geo;
-        }
-
-        // ============================================================
-        // V3 generateModel：完全取代原有的 generateModel
-        // ============================================================
-
-        // 從 opentype.js 字體轉換為 Three.js typeface 格式
-        function convertOpentypeToThreejs(opentypeFont, fontName) {
-            const glyphs = {};
-            const resolution = 1000;
-            const scale = resolution / opentypeFont.unitsPerEm;
-
-            // 獲取所有需要的字符
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-            for (const char of chars) {
-                const glyph = opentypeFont.charToGlyph(char);
-                if (!glyph || glyph.index === 0) continue;
-
-                // 使用原始單位獲取路徑，然後手動縮放
-                const path = glyph.getPath(0, 0, opentypeFont.unitsPerEm);
-                const commands = [];
-
-                for (const cmd of path.commands) {
-                    switch (cmd.type) {
-                        case 'M':
-                            commands.push({ type: 'm', args: [cmd.x * scale, cmd.y * scale] });
-                            break;
-                        case 'L':
-                            commands.push({ type: 'l', args: [cmd.x * scale, cmd.y * scale] });
-                            break;
-                        case 'Q':
-                            commands.push({ type: 'q', args: [cmd.x1 * scale, cmd.y1 * scale, cmd.x * scale, cmd.y * scale] });
-                            break;
-                        case 'C':
-                            commands.push({ type: 'b', args: [cmd.x1 * scale, cmd.y1 * scale, cmd.x2 * scale, cmd.y2 * scale, cmd.x * scale, cmd.y * scale] });
-                            break;
-                        case 'Z':
-                            commands.push({ type: 'z', args: [] });
-                            break;
-                    }
-                }
-
-                // 將 commands 轉換為 'o' 格式（Three.js typeface 格式）
-                let o = '';
-                for (const cmd of commands) {
-                    o += cmd.type;
-                    if (cmd.args.length > 0) {
-                        o += ' ' + cmd.args.map(n => Math.round(n)).join(' ') + ' ';
-                    }
-                }
-
-                glyphs[char] = {
-                    ha: Math.round((glyph.advanceWidth || opentypeFont.unitsPerEm * 0.5) * scale),
-                    x_min: Math.round((glyph.xMin || 0) * scale),
-                    x_max: Math.round((glyph.xMax || glyph.advanceWidth || opentypeFont.unitsPerEm * 0.5) * scale),
-                    o: o.trim()
-                };
-            }
-
-            return {
-                glyphs: glyphs,
-                familyName: fontName,
-                ascender: Math.round(opentypeFont.ascender * scale),
-                descender: Math.round(opentypeFont.descender * scale),
-                underlinePosition: Math.round((opentypeFont.tables.post?.underlinePosition || -100) * scale),
-                underlineThickness: Math.round((opentypeFont.tables.post?.underlineThickness || 50) * scale),
-                boundingBox: {
-                    xMin: Math.round((opentypeFont.tables.head?.xMin || 0) * scale),
-                    yMin: Math.round((opentypeFont.tables.head?.yMin || 0) * scale),
-                    xMax: Math.round((opentypeFont.tables.head?.xMax || 1000) * scale),
-                    yMax: Math.round((opentypeFont.tables.head?.yMax || 1000) * scale)
-                },
-                resolution: resolution,
-                original_font_information: {
-                    format: 0,
-                    copyright: '',
-                    fontFamily: fontName,
-                    fontSubfamily: 'Regular',
-                    uniqueID: fontName,
-                    fullName: fontName,
-                    version: '1.0',
-                    postScriptName: fontName.replace(/ /g, '')
-                }
-            };
-        }
-
-        async function loadFont(fontName) {
-            if (loadedFonts[fontName]) return loadedFonts[fontName];
-
-            const loader = new FontLoader();
-
-            console.log(`Loading font: ${fontName}`);
-
-            // 將字體名稱轉換為 npm 套件名稱格式
-            // 例如：'Playfair Display' -> 'playfair-display'
-            const packageName = fontName.toLowerCase().replace(/ /g, '-');
-
-            // 嘗試從多個來源載入
-            const sources = [
-                // 0. 本地字體（優先）
-                `./assets/fonts/typeface/${fontName.replace(/ /g, '_')}.json`,
-                // 1. @compai/font-* 套件 (esm.sh CDN)
-                `https://esm.sh/@compai/font-${packageName}/data/typefaces/normal-400.json`,
-                // 2. components-ai/typefaces GitHub (jsDelivr)
-                `https://cdn.jsdelivr.net/gh/components-ai/typefaces/packages/font-${packageName}/data/typefaces/normal-400.json`,
-                // 3. 7dir/json-fonts GitHub
-                `https://cdn.jsdelivr.net/gh/7dir/json-fonts/Roboto/${fontName.replace(/ /g, '_')}_Regular.json`,
-                // 4. emreacar/google-fonts-as-json GitHub  
-                `https://cdn.jsdelivr.net/gh/emreacar/google-fonts-as-json/fonts/${fontName.replace(/ /g, '%20')}/regular.json`,
-            ];
-
-            for (const url of sources) {
-                try {
-                    console.log(`Trying: ${url}`);
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            const json = await response.json();
-                            // 檢查是否是有效的 typeface 格式
-                            if (json.glyphs || json.data) {
-                                const fontData = json.data || json;
-                                const font = loader.parse(fontData);
-                                loadedFonts[fontName] = font;
-                                console.log(`✓ Loaded ${fontName} from ${url}`);
-                                return font;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log(`✗ Failed: ${url}`, e.message);
-                }
-            }
-
-            // 如果 CDN 都失敗，嘗試用 opentype.js 從 Google Fonts 解析
-            try {
-                const fontUrlName = fontName.replace(/ /g, '+');
-                const cssUrl = `https://fonts.googleapis.com/css?family=${fontUrlName}`;
-
-                const cssResponse = await fetch(cssUrl);
-                if (cssResponse.ok) {
-                    const cssText = await cssResponse.text();
-                    const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
-
-                    if (urlMatch) {
-                        const fontFileUrl = urlMatch[1];
-                        console.log(`Trying Google Fonts: ${fontFileUrl}`);
-
-                        const fontResponse = await fetch(fontFileUrl);
-                        if (fontResponse.ok) {
-                            const fontBuffer = await fontResponse.arrayBuffer();
-
-                            try {
-                                const opentypeFont = opentype.parse(fontBuffer);
-                                const typefaceData = convertOpentypeToThreejs(opentypeFont, fontName);
-                                const font = loader.parse(typefaceData);
-                                loadedFonts[fontName] = font;
-                                console.log(`✓ Loaded ${fontName} via opentype.js`);
-                                return font;
-                            } catch (parseError) {
-                                console.log(`✗ Parse failed (likely woff2): ${parseError.message}`);
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn(`Failed Google Fonts: ${error.message}`);
-            }
-
-            // 最終備用：使用預設字體
-            console.warn(`⚠ Using Helvetiker for: ${fontName}`);
-            return new Promise((resolve) => {
-                loader.load(
-                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-                    (font) => resolve(font)
-                );
-            });
-        }
-
-        function createRing() {
-            // 先移除舊的 ringMesh
-            if (ringMesh) {
-                scene.remove(ringMesh);
-                ringMesh.geometry?.dispose();
-                ringMesh.material?.dispose();
-                ringMesh = null;
-                // 暴露給佩戴模擬（用於截取墜飾）
-                window.ringMesh = null;
-            }
-
-            if (!mainMesh) return;
-
-            const innerRadius = 1;     // 內半徑 1mm，內徑 2mm
-            const tubeRadius = 0.3;     // 管半徑 0.3mm，直徑 0.6mm
-            const ringRadius = innerRadius + tubeRadius;  // 外半徑 1.3mm
-            const geometry = new THREE.TorusGeometry(ringRadius, tubeRadius, 16, 32);
-
-            // 將 Torus 從 XY 平面轉到 XZ 平面 (站立)
-            geometry.rotateX(Math.PI / 2);
-            // 移除原本的 Z 軸 90 度旋轉，讓 ring 與 Letter 1 平行（垂直於 Letter 2）
-            // geometry.rotateZ(Math.PI / 2);  // 註解掉：原本讓 ring 平行於 Letter 2
-
-            const material = getMaterial(
-                document.getElementById('material').value,
-                document.getElementById('finish').value,
-                document.getElementById('plating').value
-            );
-            ringMesh = new THREE.Mesh(geometry, material);
-            scene.add(ringMesh);
-            // 暴露給佩戴模擬（用於截取墜飾）
-            window.ringMesh = ringMesh;
-
-            updateRingPosition();
-        }
-
-        // ==========================================
-        // 🔧 建立 Bail（墜飾上方的環扣）
-        // ==========================================
-        function createBail() {
-            // 🔧 如果 bail 已存在且已初始化，只更新位置（不重新建立）
-            if (bailMesh && bailInitialized && ringMesh) {
-                // Bail 已初始化過，只更新位置（保持相對偏移）
-                bailMesh.position.set(
-                    ringMesh.position.x + bailRelativeOffset.x,
-                    ringMesh.position.y + bailRelativeOffset.y,
-                    ringMesh.position.z + bailRelativeOffset.z
-                );
-                bailMesh.rotation.z = ringMesh.rotation.z;
-                console.log(`🔗 Bail 位置已更新（保持偏移）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
-                return;
-            }
-
-            // 先移除舊的 bailMesh（只有在第一次或需要重建時）
-            if (bailMesh) {
-                scene.remove(bailMesh);
-                bailMesh.geometry?.dispose();
-                bailMesh.material?.dispose();
-                bailMesh = null;
-                window.bailMesh = null;
-            }
-
-            if (!mainMesh) return;
-
-            const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/models/bail.stl`;
-            console.log('🔽 載入 Bail STL:', bailUrl);
-
-            const loader = new STLLoader();
-            loader.load(
-                bailUrl,
-                (geometry) => {
-                    console.log('✅ Bail STL 載入成功');
-
-                    // 計算 geometry 的中心
-                    geometry.computeBoundingBox();
-                    const bbox = geometry.boundingBox;
-                    const center = bbox.getCenter(new THREE.Vector3());
-
-                    // 移動到原點（以幾何中心為準）
-                    geometry.translate(-center.x, -center.y, -center.z);
-                    
-                    // 確保法向量正確（STL 載入後必須重新計算）
-                    geometry.computeVertexNormals();
-
-                    // 分析 bail 的方向：比較 X 和 Y 方向的範圍
-                    const sizeX = bbox.max.x - bbox.min.x;
-                    const sizeY = bbox.max.y - bbox.min.y;
-                    const sizeZ = bbox.max.z - bbox.min.z;
-
-                    console.log(`📐 Bail 尺寸: X=${sizeX.toFixed(2)}, Y=${sizeY.toFixed(2)}, Z=${sizeZ.toFixed(2)}`);
-
-                    // 套用材質
-                    const material = getMaterial(
-                        document.getElementById('material').value,
-                        document.getElementById('finish').value,
-                        document.getElementById('plating').value
-                    );
-
-                    bailMesh = new THREE.Mesh(geometry, material);
-
-                    // 🔧 Bail 縮放調整：根據 targetBailWidth 等比例縮放
-                    const targetBailWidth = 4; // 目標寬度 4mm
-                    const scaleFactor = targetBailWidth / Math.max(sizeX, sizeY);
-                    geometry.scale(scaleFactor, scaleFactor, scaleFactor);
-                    
-                    console.log(`🔧 Bail 縮放: scaleFactor=${scaleFactor.toFixed(3)}（等比例，寬度=${targetBailWidth}mm）`);
-
-                    // 重新計算縮放後的 BBox
-                    geometry.computeBoundingBox();
-                    const scaledBbox = geometry.boundingBox;
-                    const scaledSizeX = scaledBbox.max.x - scaledBbox.min.x;
-                    const scaledSizeY = scaledBbox.max.y - scaledBbox.min.y;
-                    const scaledSizeZ = scaledBbox.max.z - scaledBbox.min.z;
-                    console.log(`📐 Bail 縮放後尺寸: X=${scaledSizeX.toFixed(2)}, Y=${scaledSizeY.toFixed(2)}, Z=${scaledSizeZ.toFixed(2)}`);
-
-                    // 定位：Bail 中心點在 modelTopZ + 1.2 + bail高度的一半
-                    // X、Y 跟 Ring 一樣，Z 在 Ring 上方
-                    
-                    if (ringMesh) {
-                        const bailCenterZ = modelTopZ + 1.2 + scaledSizeZ / 2;
-                        bailMesh.position.set(
-                            ringMesh.position.x,
-                            ringMesh.position.y,
-                            bailCenterZ
-                        );
-                        
-                        // 🔧 儲存 Bail 與 Ring 的相對位移偏移量（用於聯動）
-                        bailRelativeOffset.set(
-                            bailMesh.position.x - ringMesh.position.x,
-                            bailMesh.position.y - ringMesh.position.y,
-                            bailMesh.position.z - ringMesh.position.z
-                        );
-                        console.log(`🔗 Bail-Ring 相對偏移已儲存: (${bailRelativeOffset.x.toFixed(2)}, ${bailRelativeOffset.y.toFixed(2)}, ${bailRelativeOffset.z.toFixed(2)})`);
-                        
-                        // 🔄 旋轉讓 bail 垂直於 ring
-                        // 測試後發现代码已经是垂直的，如果需要调整可以修改这里
-                        // bailMesh.rotation.x = Math.PI / 2; // X 軸旋轉 90 度
-                        
-                        console.log(`🔍 Ring 位置: (${ringMesh.position.x.toFixed(2)}, ${ringMesh.position.y.toFixed(2)}, ${ringMesh.position.z.toFixed(2)})`);
-                        console.log(`🔍 Bail 位置（中心在ring上方 ${1.2 + scaledSizeZ/2}mm）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
-                    } else {
-                        bailMesh.position.set(modelCenter.x, modelCenter.y + 5, modelCenter.z);
-                    }
-
-                    // 🔍 Debug: 檢查 bail 狀態
-                    console.log(`🔍 Bail 可見性: ${bailMesh.visible}, position: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
-
-                    // 🔧 標記 Bail 已初始化（之後不再重新建立，只更新位置）
-                    bailInitialized = true;
-                    console.log('✅ Bail 已初始化，之後將保持相對偏移');
-
-                    scene.add(bailMesh);
-                    window.bailMesh = bailMesh;
-
-                    console.log('✅ Bail 已添加到場景');
-
-                    // 更新佩戴模擬
-                    if (typeof updateWearingPreview === 'function') {
-                        updateWearingPreview();
-                    }
-                },
-                (progress) => {
-                    console.log(`⏳ Bail 載入進度: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
-                },
-                (error) => {
-                    console.error('❌ Bail STL 載入失敗:', error);
-                    console.log('⚠️ 繼續使用，不使用 Bail');
-                }
-            );
-        }
-
-        function updateRingPosition() {
-            if (!ringMesh) return;
-            const x = parseFloat(document.getElementById('ringX').value);
-            // ringY 對應 UI 的 Position Y (Depth)
-            const y_depth_adj = parseFloat(document.getElementById('ringY').value);
-            // ringZ 對應 UI 的 Position Z (Height)
-            const z_height_adj = parseFloat(document.getElementById('ringZ').value);
-            const rotation = parseFloat(document.getElementById('ringRotation').value);
-
-            const baseZ = modelTopZ + 1.2; // 在 Z (高度) 軸上定位
-
-            // 調整：X 不變, Y 軸為 modelCenter.y + 深度調整, Z 軸為 baseZ + 高度調整
-            ringMesh.position.set(modelCenter.x + x, modelCenter.y + y_depth_adj, baseZ + z_height_adj);
-
-            // 旋轉以 Z 軸為軸心
-            ringMesh.rotation.z = (rotation * Math.PI) / 180;
-
-            // 🔗 Bail 聯動：跟隨 Ring 移動（保持相對偏移）
-            if (bailMesh && bailRelativeOffset) {
-                bailMesh.position.set(
-                    ringMesh.position.x + bailRelativeOffset.x,
-                    ringMesh.position.y + bailRelativeOffset.y,
-                    ringMesh.position.z + bailRelativeOffset.z
-                );
-                // Bail 跟隨 Ring 旋轉
-                bailMesh.rotation.z = ringMesh.rotation.z;
-                console.log(`🔗 Bail 已聯動至新位置: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
-            }
-
-            // 🔍 Debug: 圓環位置
-            console.log('🔍 圓環絕對位置:', {
-                x: ringMesh.position.x.toFixed(3),
-                y: ringMesh.position.y.toFixed(3),
-                z: ringMesh.position.z.toFixed(3),
-                rotation: rotation + '°'
-            });
-            console.log('🔍 模型中心:', {
-                x: modelCenter.x.toFixed(3),
-                y: modelCenter.y.toFixed(3),
-                z: modelCenter.z.toFixed(3)
-            });
-            console.log('🔍 模型頂部 Z:', modelTopZ.toFixed(3));
-            console.log('═══════════════════════════════════════');
-        }
+        // (createRing, createBail, updateRingPosition are imported from ring-bail.js)
 
         // 只更新材質，不重建模型（即時切換！）
         function updateMaterial() {
@@ -4840,10 +2576,9 @@
                 ringY: document.getElementById('ringY').value,
                 ringZ: document.getElementById('ringZ').value,
                 ringRotation: document.getElementById('ringRotation').value,
-                mesh: mainMesh.clone(),
-                ring: ringMesh ? ringMesh.clone() : null,
-                // 🔧 保存 Bail 和相對偏移
-                bail: bailMesh ? bailMesh.clone() : null,
+                mesh: (() => { const c = mainMesh.clone(); c.geometry = mainMesh.geometry.clone(); c.material = mainMesh.material.clone(); return c; })(),
+                ring: ringMesh ? (() => { const c = ringMesh.clone(); c.geometry = ringMesh.geometry.clone(); c.material = ringMesh.material.clone(); return c; })() : null,
+                bail: bailMesh ? (() => { const c = bailMesh.clone(); c.geometry = bailMesh.geometry.clone(); c.material = bailMesh.material.clone(); return c; })() : null,
                 bailRelativeOffset: bailRelativeOffset.clone()
             };
 
@@ -4900,13 +2635,13 @@
 
             // 保存到全域變數以便同步旋轉
             if (slotIndex === 0) {
-                slot1Renderer = slotRenderer;
-                slot1Scene = slotScene;
-                slot1Camera = slotCamera;
+                window.slot1Renderer = slotRenderer;
+                window.slot1Scene = slotScene;
+                window.slot1Camera = slotCamera;
             } else {
-                slot2Renderer = slotRenderer;
-                slot2Scene = slotScene;
-                slot2Camera = slotCamera;
+                window.slot2Renderer = slotRenderer;
+                window.slot2Scene = slotScene;
+                window.slot2Camera = slotCamera;
             }
 
             const label = document.createElement('div');
@@ -4950,129 +2685,93 @@
 
             // 清除舊模型
             if (mainMesh) {
-                scene.remove(mainMesh);
+                window.scene.remove(mainMesh);
                 if (mainMesh.geometry) mainMesh.geometry.dispose();
                 if (mainMesh.material) mainMesh.material.dispose();
             }
-            if (ringMesh) {
-                scene.remove(ringMesh);
-                if (ringMesh.geometry) ringMesh.geometry.dispose();
-                if (ringMesh.material) ringMesh.material.dispose();
-            }
-            // 🔧 也清除舊 Bail（避免從 slot 恢復時殘留多個 Bail）
-            if (bailMesh) {
-                scene.remove(bailMesh);
-                if (bailMesh.geometry) bailMesh.geometry.dispose();
-                if (bailMesh.material) bailMesh.material.dispose();
-                bailMesh = null;
-                window.bailMesh = null;
-            }
+            // 清除舊 Ring & Bail（透過 ring-bail.js 函式正確重置 module 內部狀態）
+            resetRingState();
+            resetBailState();
 
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
             mainMesh.material = mainMesh.material.clone();
-            scene.add(mainMesh);
+            window.scene.add(mainMesh);
+            window.mainMesh = mainMesh;
 
+            // 更新模型中心與頂部 Z，供 ring-bail.js 定位使用
+            mainMesh.geometry.computeBoundingBox();
+            const recalledBBox = mainMesh.geometry.boundingBox;
+            window.modelCenter = recalledBBox.getCenter(new THREE.Vector3());
+            window.modelTopZ = recalledBBox.max.z;
+
+            // 恢復 Ring（透過模組函式，避免直接寫入 ES module 匯入 binding）
             if (slotData.ring) {
-                ringMesh = slotData.ring.clone();
-                ringMesh.material = ringMesh.material.clone();
-                scene.add(ringMesh);
+                createRing();
+                updateRingPosition();
             }
 
-            // 🔧 恢復 Bail 和相對偏移
+            // 恢復 Bail（透過模組函式，STL 會重新載入並正確定位）
             if (slotData.bail) {
-                bailMesh = slotData.bail.clone();
-                bailMesh.material = bailMesh.material.clone();
-                scene.add(bailMesh);
-                window.bailMesh = bailMesh;
-            }
-            if (slotData.bailRelativeOffset) {
-                bailRelativeOffset.copy(slotData.bailRelativeOffset);
-                bailInitialized = true;
+                createBail();
             }
 
             updateVolumeWeight();
         }
 
         // 購物車
-        // 📸 生成三視圖（正視、側視、俯視）
+        // 📸 生成三視圖（正視、側視、俯視）- 使用獨立 off-screen renderer，不移動主相機
         function captureThreeViews() {
             const views = [];
-            
-            // 儲存原始相機狀態
-            const originalCamera = {
-                position: camera.position.clone(),
-                rotation: camera.rotation.clone()
-            };
-            
+
             // 計算模型的 BBox 中心和大小
             mainMesh.geometry.computeBoundingBox();
             const bbox = mainMesh.geometry.boundingBox;
             const center = bbox.getCenter(new THREE.Vector3());
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
-            const distance = maxDim * 3;  // 適當的距離
-            
-            // 正視圖 (Letter 1 正面 - 從 -Y 看向 +Y，看到 XZ 平面)
-            camera.position.set(center.x, center.y - distance, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'letter1_view',
-                label: 'Front View (Letter 1)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 側視圖 (Letter 2 正面 - 從 +X 看向 -X，看到 YZ 平面)
-            camera.position.set(center.x + distance, center.y, center.z);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'letter2_view',
-                label: 'Side View (Letter 2)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 上視圖 (從 +Z 看向 -Z，看到 XY 平面)
-            camera.position.set(center.x, center.y, center.z + distance);
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'top_view',
-                label: 'Top View',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // Hero 視角 (45度角) - 拉近鏡頭，使物品看起來和三視圖一樣大
-            camera.position.set(
-                center.x + distance * 0.4,
-                center.y - distance * 0.6,
-                center.z + distance * 0.3
-            );
-            camera.lookAt(center);
-            controls.update();
-            renderer.render(scene, camera);
-            views.push({
-                name: 'hero_view',
-                label: 'Hero View (45°)',
-                dataURL: renderer.domElement.toDataURL('image/png')
-            });
-            
-            // 恢復原始視角
-            camera.position.copy(originalCamera.position);
-            camera.rotation.copy(originalCamera.rotation);
-            controls.update();
-            renderer.render(scene, camera);
-            
+            const distance = maxDim * 3;
+
+            // 建立獨立的 off-screen renderer，完全不影響主畫面
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 400;
+            offCanvas.height = 400;
+            const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
+            offRenderer.setSize(400, 400);
+            offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            offRenderer.toneMappingExposure = 1.2;
+            offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            offCamera.up.set(0, 0, 1);
+
+            const captureAngles = [
+                { name: 'letter1_view', label: 'Front View (Letter 1)', pos: [center.x, center.y - distance, center.z] },
+                { name: 'letter2_view', label: 'Side View (Letter 2)',  pos: [center.x + distance, center.y, center.z] },
+                { name: 'top_view',     label: 'Top View',              pos: [center.x, center.y, center.z + distance] },
+                { name: 'hero_view',    label: 'Hero View (45°)',       pos: [center.x + distance * 0.4, center.y - distance * 0.6, center.z + distance * 0.3] },
+            ];
+
+            for (const angle of captureAngles) {
+                offCamera.position.set(...angle.pos);
+                offCamera.lookAt(center);
+                offRenderer.render(window.scene, offCamera);
+                views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
+            }
+
+            offRenderer.dispose();
             console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
         }
 
         function addToCart() {
             if (!mainMesh) return;
+
+            // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
+            if (modelNeedsCleanup) {
+                showToast('⚠️ 作品含有分離部件，請先使用左側面板中正在發光的開關清理後再加入購物車');
+                return;
+            }
 
             // ✅ 限制購物車最多 3 個物件
             if (cartItems.length >= 3) {
@@ -5111,7 +2810,7 @@
             const thumbnailScene = new THREE.Scene();
             const thumbnailCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             thumbnailCamera.up.set(0, 0, 1);
-            thumbnailCamera.position.set(20, -28, 6);
+            thumbnailCamera.position.set(15, -21, 4.5);
             thumbnailCamera.lookAt(0, 0, 0);
 
             // 添加燈光
@@ -5170,7 +2869,7 @@
                 // ✅ 儲存縮略圖（用於購物車預覽）
                 thumbnail: thumbnailDataURL,
                 // 🧹 儲存是否需要清理碎片
-                cleanFragments: modelNeedsCleanup,
+                cleanFragments: cleanFragmentsApplied,
                 // 🔧 儲存 Bail 款式（目前為 "default"，未來擴充用）
                 bailStyle: 'default',
                 // 📸 儲存三視圖（用於 Email 附件）
@@ -5179,6 +2878,26 @@
 
             cartItems.push(item);
             openCart();
+
+            // 若分離部件檢查尚未完成，在購物車頂端插入提示
+            if (fragmentCheckPending) {
+                const container = document.getElementById('cart-items');
+                const msg = document.createElement('div');
+                msg.id = 'cart-fragment-pending-msg';
+                msg.style.cssText = `
+                    background: rgba(14,14,20,0.96);
+                    border: 1px solid rgba(212,175,55,0.45);
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    margin-bottom: 14px;
+                    font-size: 13px;
+                    color: #e8d5a0;
+                    line-height: 1.6;
+                    letter-spacing: 0.2px;
+                `;
+                msg.innerHTML = '⏳ 正在確認作品是否有分離部件，請稍候⋯⋯';
+                container.insertBefore(msg, container.firstChild);
+            }
         }
 
         function openCart() {
@@ -5919,6 +3638,17 @@
 
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
+            // 分離部件檢查尚未完成，暫時封鎖結帳
+            if (fragmentCheckPending) {
+                const pendingMsg = document.getElementById('cart-fragment-pending-msg');
+                if (pendingMsg) {
+                    pendingMsg.style.animation = 'none';
+                    pendingMsg.offsetHeight; // reflow
+                    pendingMsg.style.animation = 'pulse-glow 0.6s ease 3';
+                }
+                return;
+            }
+
             // 檢查是否有經過 AI 諮詢
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
             const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
@@ -5996,7 +3726,8 @@
                         total: totalAmount,             // 確保是數字
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
-                        returnUrl: window.location.origin + '/payment-success.html'
+                        returnUrl: window.location.origin + '/payment-success.html',
+                        renderCount: renderCount        // 本次 session 的 render 次數（後台統計用）
                     })
                 });
 
@@ -6016,7 +3747,7 @@
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
                             showNotification('VIP 免費訂單已確認！正在為您準備諮詢服務...', 'success');
                             setTimeout(() => {
-                                window.location.href = `https://duet.brendonchen.com/design-studio?payment_success=true&order=${result.orderId}`;
+                                window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
                             // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
@@ -6234,12 +3965,12 @@
                             </div>
                             
                             <div style="display: flex; gap: 10px;">
-                                <button type="submit" class="btn" style="flex: 1;">
-                                    繼續付款
-                                </button>
-                                <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);" 
+                                <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
                                     取消
+                                </button>
+                                <button type="submit" class="btn" style="flex: 1;">
+                                    繼續付款
                                 </button>
                             </div>
                         </form>
@@ -6762,31 +4493,6 @@
             updateCardStyle();
         }
 
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-
-            // 同步 Slot 相機位置和渲染
-            if (slot1Camera && slot1Renderer && slot1Scene) {
-                slot1Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
-                slot1Camera.lookAt(0, 0, 0);
-                slot1Renderer.render(slot1Scene, slot1Camera);
-            }
-            if (slot2Camera && slot2Renderer && slot2Scene) {
-                slot2Camera.position.copy(camera.position).multiplyScalar(0.5); // 縮放距離
-                slot2Camera.lookAt(0, 0, 0);
-                slot2Renderer.render(slot2Scene, slot2Camera);
-            }
-
-            renderer.render(scene, camera);
-        }
-
         // 啟動
         initScene();
         initFontSelector();
@@ -6927,9 +4633,9 @@
             // Step 2: 檢查是否有生成模型
             const letter1 = document.getElementById('letter1').value;
             const letter2 = document.getElementById('letter2').value;
-            const font1 = document.getElementById('font1-select')?.value || 
+            const font1 = document.getElementById('font1-select')?.value ||
                          document.getElementById('font1-btn')?.getAttribute('data-selected');
-            const font2 = document.getElementById('font2-select')?.value || 
+            const font2 = document.getElementById('font2-select')?.value ||
                          document.getElementById('font2-btn')?.getAttribute('data-selected');
 
             if (!letter1 || !letter2 || !font1 || !font2 || font1 === 'reselect' || font2 === 'reselect') {
@@ -6937,101 +4643,137 @@
                 return;
             }
 
-            // Step 3: 準備參數
-            // 使用全域的 modelCenter（和加入購物車一樣）
-            console.log('🔍 模型中心: x=' + modelCenter.x.toFixed(3) + ', y=' + modelCenter.y.toFixed(3) + ', z=' + modelCenter.z.toFixed(3));
-            
-            if (ringMesh) {
-                console.log('🔍 圓環絕對位置: x=' + ringMesh.position.x.toFixed(3) + ', y=' + ringMesh.position.y.toFixed(3) + ', z=' + ringMesh.position.z.toFixed(3));
-            }
-            
+            // Step 3: 計算位置參數
             const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
             const ringRelativeY = ringMesh ? (ringMesh.position.y - modelCenter.y) : 0;
             const ringRelativeZ = ringMesh ? (ringMesh.position.z - modelCenter.z) : 0;
             const ringRot = ringMesh ? (ringMesh.rotation.z * 180 / Math.PI) : 0;
-            
-            console.log('🔍 圓環相對位置: x=' + ringRelativeX.toFixed(3) + ', y=' + ringRelativeY.toFixed(3) + ', z=' + ringRelativeZ.toFixed(3) + ', rotation=' + ringRot.toFixed(1) + '°');
-            
+            const bailRelativeX = bailMesh ? (bailMesh.position.x - modelCenter.x) : 0;
+            const bailRelativeY = bailMesh ? (bailMesh.position.y - modelCenter.y) : 0;
+            const bailRelativeZ = bailMesh ? (bailMesh.position.z - modelCenter.z) : 0;
+
+            // Step 4: 顯示物件選擇對話框
+            const exportChoice = await new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+                const hasRing = !!ringMesh;
+                const hasBail = !!bailMesh;
+
+                overlay.innerHTML = `
+                    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px 32px;width:320px;font-family:sans-serif;color:#e2e8f0;">
+                        <div style="font-size:16px;font-weight:600;margin-bottom:20px;">選擇匯出的物件</div>
+                        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid #334155;transition:border-color 0.2s;" id="stl-opt-main-label">
+                                <input type="radio" name="stl-export" value="main" checked style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">僅主物件</div>
+                                    <div style="font-size:12px;color:#64748b;">單一 .stl 檔案</div>
+                                </span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:${hasRing?'pointer':'default'};padding:10px 14px;border-radius:8px;border:1px solid #334155;opacity:${hasRing?'1':'0.4'};" id="stl-opt-ring-label">
+                                <input type="radio" name="stl-export" value="ring" ${!hasRing?'disabled':''} style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">主物件 + Ring</div>
+                                    <div style="font-size:12px;color:#64748b;">.zip（兩個獨立 STL）${!hasRing?' — 尚未加入 Ring':''}</div>
+                                </span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:${hasBail?'pointer':'default'};padding:10px 14px;border-radius:8px;border:1px solid #334155;opacity:${hasBail?'1':'0.4'};" id="stl-opt-bail-label">
+                                <input type="radio" name="stl-export" value="bail" ${!hasBail?'disabled':''} style="width:16px;height:16px;accent-color:#818cf8;">
+                                <span>
+                                    <div style="font-size:14px;font-weight:500;">主物件 + Ring + Bail</div>
+                                    <div style="font-size:12px;color:#64748b;">.zip（三個獨立 STL）${!hasBail?' — 尚未加入 Bail':''}</div>
+                                </span>
+                            </label>
+                        </div>
+                        <div style="display:flex;gap:10px;">
+                            <button id="stl-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer;font-size:14px;">取消</button>
+                            <button id="stl-download-btn" style="flex:2;padding:10px;border-radius:8px;border:none;background:#818cf8;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">下載</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                overlay.querySelector('#stl-cancel-btn').onclick = () => {
+                    document.body.removeChild(overlay);
+                    resolve(null);
+                };
+                overlay.querySelector('#stl-download-btn').onclick = () => {
+                    const val = overlay.querySelector('input[name="stl-export"]:checked')?.value || 'main';
+                    document.body.removeChild(overlay);
+                    resolve(val);
+                };
+            });
+
+            if (!exportChoice) return; // 取消
+
+            const include_ring = exportChoice === 'ring' || exportChoice === 'bail';
+            const include_bail = exportChoice === 'bail';
+
             const params = {
-                letter1: letter1,
-                letter2: letter2,
-                font1: font1,
-                font2: font2,
+                letter1, letter2, font1, font2,
                 size: parseInt(document.getElementById('size').value),
-                ringRelativeX: ringRelativeX,
-                ringRelativeY: ringRelativeY,
-                ringRelativeZ: ringRelativeZ,
+                ringRelativeX, ringRelativeY, ringRelativeZ,
                 ringRotation: ringRot,
-                cleanFragments: modelNeedsCleanup,  // 🧹 傳送清理狀態
-                include_ring: true,      // 🎯 開發者下載包含 Ring + Bail
-                separate_ring: true      // 🎯 Ring 保持為獨立 Body
+                bailRelativeX, bailRelativeY, bailRelativeZ,
+                cleanFragments: cleanFragmentsApplied,
+                include_ring,
+                include_bail
             };
 
-            console.log('📤 請求 STL:', JSON.stringify(params, null, 2));
-            console.log('🔍 圓環位置:', { ringRelativeX, ringRelativeY, ringRelativeZ, ringRot });
+            console.log('📤 STL 請求:', JSON.stringify(params, null, 2));
+            showToast('⏳ 生成中，請稍候...');
 
-            // Step 4: 呼叫後端（帶重試機制）
-            console.log('🌐 呼叫後端:', `${window.BACKEND_URL}/api/generate-stl`);
-            
+            // Step 5: 呼叫後端（帶重試機制）
             let retryCount = 0;
             const maxRetries = 2;
-            
+
             while (retryCount <= maxRetries) {
                 try {
                     if (retryCount > 0) {
-                        console.log(`🔄 重試第 ${retryCount} 次...`);
-                        // 等待 2 秒後重試
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
-                    
+
                     const response = await fetch(`${window.BACKEND_URL}/api/generate-stl`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(params)
                     });
 
-                    console.log('📡 後端回應狀態:', response.status);
-
                     if (!response.ok) {
                         if (response.status === 502 && retryCount < maxRetries) {
-                            console.warn('⚠️ 後端暫時無法回應 (502)，將重試...');
                             retryCount++;
-                            continue; // 重試
+                            continue;
                         }
-                        
                         const errorText = await response.text();
-                        console.error('❌ 後端錯誤:', errorText);
                         throw new Error(`HTTP ${response.status}: ${errorText}`);
                     }
 
-                    // Step 5: 下載 STL
-                    console.log('💾 開始下載 STL...');
                     const blob = await response.blob();
-                    console.log('📦 Blob 大小:', blob.size, 'bytes');
-                    
+                    const isZip = (include_ring || include_bail);
+                    const ext = isZip ? 'zip' : 'stl';
+                    const filename = `DUET_${letter1}${letter2}_${font1.replace(/ /g,'_')}_${font2.replace(/ /g,'_')}.${ext}`;
+
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `DUET_${letter1}${letter2}_${font1.replace(/ /g, '_')}_${font2.replace(/ /g, '_')}.stl`;
+                    a.download = filename;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
 
-                    console.log('✅ STL 下載完成');
-                    showToast('✅ STL 檔案已下載');
-                    break; // 成功，跳出重試迴圈
+                    showToast(`✅ ${isZip ? 'ZIP' : 'STL'} 已下載`);
+                    break;
 
                 } catch (error) {
                     if (retryCount < maxRetries && (error.message.includes('502') || error.message.includes('Load failed'))) {
-                        console.warn('⚠️ 請求失敗，將重試...', error.message);
                         retryCount++;
-                        continue; // 重試
+                        continue;
                     }
-                    
-                    // 重試次數用完或其他錯誤
                     console.error('❌ STL 生成失敗:', error);
-                    alert(`❌ STL 生成失敗: ${error.message}\n\n建議：請稍後再試，或聯繫客服`);
+                    alert(`❌ 生成失敗: ${error.message}`);
                     break;
                 }
             }
@@ -7067,9 +4809,9 @@
     <!-- 🧹 清理確認對話框 -->
     <div class="cleanup-confirm-overlay" id="cleanup-confirm-overlay">
         <div class="cleanup-confirm-dialog">
-            <div class="cleanup-confirm-title">清理零碎部件</div>
+            <div class="cleanup-confirm-title">清理分離部件</div>
             <div class="cleanup-confirm-message">
-                此功能運算約需 3-5 分鐘，為避免浪費您的時間，請先確認作品中有與主體分離的零碎物件，才需開啟此功能。
+                清理運算約需 2–3 分鐘。若您喜歡目前作品的樣子，建議開啟清理、確認效果後再放入購物車；若目前設計尚未滿意，建議可以先嘗試其他字體組合，以節省您的時間。
             </div>
             <div class="cleanup-confirm-buttons">
                 <button class="cleanup-confirm-btn cancel" id="cleanup-cancel-btn">取消</button>
