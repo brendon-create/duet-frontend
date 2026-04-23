@@ -36,14 +36,17 @@ export function initScene() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    document.getElementById('viewport').appendChild(renderer.domElement);
+    const viewportEl = document.getElementById('viewport');
+    viewportEl.appendChild(renderer.domElement);
+    renderer.domElement.style.pointerEvents = 'none'; // 讓事件穿透到 viewport div
+    viewportEl.style.touchAction = 'none'; // 防止 Safari 在 custom domain 上攔截 wheel 事件
 
     // 暴露給全域
     window.scene = scene;
     window.camera = camera;
     window.renderer = renderer;
 
-    controls = new OrbitControls(camera, renderer.domElement);
+    controls = new OrbitControls(camera, viewportEl);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
@@ -52,13 +55,13 @@ export function initScene() {
     controls.maxDistance = 500;
     window.controls = controls;
 
-    // Safari macOS 會在 trackpad pinch 時同時觸發 gesturechange 和 wheel，
-    // 導致頁面縮放和 3D 縮放疊加暴衝，攔截 gesture 事件避免頁面層級縮放
-    const canvasEl = renderer.domElement;
+    // Safari macOS 在 trackpad pinch 時同時觸發 gesturechange 和 wheel，
+    // 攔截 gesture 事件防止頁面層級縮放和 3D 縮放疊加暴衝
     const blockGesture = (e) => e.preventDefault();
-    canvasEl.addEventListener('gesturestart',  blockGesture, { passive: false });
-    canvasEl.addEventListener('gesturechange', blockGesture, { passive: false });
-    canvasEl.addEventListener('gestureend',    blockGesture, { passive: false });
+    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
+    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
+    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
+    viewportEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
     // 光照
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
