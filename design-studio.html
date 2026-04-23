@@ -2589,53 +2589,6 @@
             canvas.height = 160;
             slotElement.appendChild(canvas);
 
-            // 拖拽旋轉：帶動主相機旋轉，所有 slot 及主畫面同步
-            (function(slotCanvas) {
-                let isDragging = false;
-                let lastX = 0, lastY = 0;
-                slotCanvas.style.pointerEvents = 'auto';
-                slotCanvas.style.cursor = 'grab';
-
-                slotCanvas.addEventListener('pointerdown', (e) => {
-                    isDragging = true;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    slotCanvas.style.cursor = 'grabbing';
-                    slotCanvas.setPointerCapture(e.pointerId);
-                    // 暫停主 OrbitControls，避免其內部球坐標覆蓋手動旋轉結果
-                    if (window.controls) window.controls.enabled = false;
-                    e.stopPropagation();
-                });
-
-                slotCanvas.addEventListener('pointermove', (e) => {
-                    if (!isDragging) return;
-                    const dx = e.clientX - lastX;
-                    const dy = e.clientY - lastY;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-
-                    const cam = window.camera;
-                    if (!cam) return;
-                    const ctrlTarget = window.controls?.target ?? new THREE.Vector3();
-                    const offset = cam.position.clone().sub(ctrlTarget);
-                    const sph = new THREE.Spherical().setFromVector3(offset);
-                    const speed = 0.008;
-                    sph.theta -= dx * speed;
-                    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi - dy * speed));
-                    offset.setFromSpherical(sph);
-                    cam.position.copy(ctrlTarget).add(offset);
-                    cam.lookAt(ctrlTarget);
-                    e.stopPropagation();
-                });
-
-                slotCanvas.addEventListener('pointerup', () => {
-                    isDragging = false;
-                    slotCanvas.style.cursor = 'grab';
-                    // 恢復主 OrbitControls（它會重新從 camera.position 讀取狀態）
-                    if (window.controls) window.controls.enabled = true;
-                });
-            })(canvas);
-
             const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
             slotRenderer.setSize(160, 160);
             slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -3794,7 +3747,7 @@
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
                             showNotification('VIP 免費訂單已確認！正在為您準備諮詢服務...', 'success');
                             setTimeout(() => {
-                                window.location.href = `https://duet.brendonchen.com/design-studio?payment_success=true&order=${result.orderId}`;
+                                window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
                             // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
