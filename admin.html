@@ -580,6 +580,7 @@
                     <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
+                    <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
                 </div>
                 
                 <div class="table-container">
@@ -2184,6 +2185,159 @@
                     <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
                 </tr>
             `).join('');
+        }
+    </script>
+
+    <!-- Export Consultations Modal -->
+    <div class="modal-overlay" id="exportConsultationsModal" onclick="if(event.target===this)closeExportConsultationsModal()" style="display:none;align-items:center;justify-content:center;">
+        <div class="modal" style="max-width:480px;width:90%;">
+            <div class="modal-header">
+                <span class="modal-title">🗂 匯出 AI 諮詢對話記錄</span>
+                <button class="modal-close" onclick="closeExportConsultationsModal()">✕</button>
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+                <!-- 篩選方式 -->
+                <div>
+                    <label style="font-size:13px;color:#9ca3af;display:block;margin-bottom:8px;">篩選方式</label>
+                    <div style="display:flex;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                            <input type="radio" name="exp-filter-type" value="last_n" checked onchange="toggleExportFilter(this.value)">
+                            最近 N 筆
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                            <input type="radio" name="exp-filter-type" value="date_range" onchange="toggleExportFilter(this.value)">
+                            日期範圍
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                            <input type="radio" name="exp-filter-type" value="all" onchange="toggleExportFilter(this.value)">
+                            全部
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 最近 N 筆 -->
+                <div id="exp-last-n-row">
+                    <label style="font-size:13px;color:#9ca3af;display:block;margin-bottom:6px;">匯出筆數</label>
+                    <input type="number" id="exp-last-n" value="20" min="1" max="1000"
+                        style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:8px 12px;width:100%;font-size:14px;">
+                </div>
+
+                <!-- 日期範圍 -->
+                <div id="exp-date-range-row" style="display:none;gap:12px;flex-direction:column;">
+                    <div>
+                        <label style="font-size:13px;color:#9ca3af;display:block;margin-bottom:6px;">起始日期</label>
+                        <input type="date" id="exp-from-date"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:8px 12px;width:100%;font-size:14px;">
+                    </div>
+                    <div>
+                        <label style="font-size:13px;color:#9ca3af;display:block;margin-bottom:6px;">結束日期</label>
+                        <input type="date" id="exp-to-date"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:8px 12px;width:100%;font-size:14px;">
+                    </div>
+                </div>
+
+                <!-- 格式 -->
+                <div>
+                    <label style="font-size:13px;color:#9ca3af;display:block;margin-bottom:8px;">匯出格式</label>
+                    <div style="display:flex;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                            <input type="radio" name="exp-format" value="json" checked>
+                            JSON（完整資料）
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                            <input type="radio" name="exp-format" value="csv">
+                            CSV（試算表）
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 包含測試訂單 -->
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+                    <input type="checkbox" id="exp-include-test" style="width:16px;height:16px;">
+                    包含測試訂單
+                </label>
+
+                <!-- 說明 -->
+                <p id="exp-info-text" style="font-size:12px;color:#64748b;margin:0;">
+                    只會匯出有 AI 諮詢對話記錄的訂單。
+                </p>
+
+                <button onclick="doExportConsultations()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;cursor:pointer;font-weight:600;">
+                    下載匯出檔案
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showExportConsultationsModal() {
+            const modal = document.getElementById('exportConsultationsModal');
+            modal.style.display = 'flex';
+            // 預設結束日期為今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('exp-to-date').value = today;
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+            document.getElementById('exp-from-date').value = thirtyDaysAgo;
+        }
+
+        function closeExportConsultationsModal() {
+            document.getElementById('exportConsultationsModal').style.display = 'none';
+        }
+
+        function toggleExportFilter(type) {
+            document.getElementById('exp-last-n-row').style.display = type === 'last_n' ? 'block' : 'none';
+            document.getElementById('exp-date-range-row').style.display = type === 'date_range' ? 'flex' : 'none';
+        }
+
+        async function doExportConsultations() {
+            const filterType = document.querySelector('input[name="exp-filter-type"]:checked').value;
+            const fmt = document.querySelector('input[name="exp-format"]:checked').value;
+            const includeTest = document.getElementById('exp-include-test').checked;
+
+            const params = new URLSearchParams();
+            params.set('format', fmt);
+            if (includeTest) params.set('include_test', 'true');
+
+            if (filterType === 'last_n') {
+                const n = document.getElementById('exp-last-n').value;
+                if (!n || n < 1) { alert('請輸入有效筆數'); return; }
+                params.set('last_n', n);
+            } else if (filterType === 'date_range') {
+                const from = document.getElementById('exp-from-date').value;
+                const to = document.getElementById('exp-to-date').value;
+                if (!from || !to) { alert('請選擇起始與結束日期'); return; }
+                if (from > to) { alert('起始日期不能晚於結束日期'); return; }
+                params.set('from_date', from);
+                params.set('to_date', to);
+            }
+            // 全部：不加任何篩選參數
+
+            const url = `${API_BASE}/api/admin/export-consultations?${params.toString()}`;
+            try {
+                const resp = await fetch(url, {
+                    headers: {
+                        'X-Admin-Key': localStorage.getItem('adminKey') || '',
+                        'X-Admin-User': localStorage.getItem('adminUser') || 'admin'
+                    }
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    alert('匯出失敗：' + (err.error || resp.status));
+                    return;
+                }
+                const blob = await resp.blob();
+                const disposition = resp.headers.get('Content-Disposition') || '';
+                const filenameMatch = disposition.match(/filename=([^;]+)/);
+                const filename = filenameMatch ? filenameMatch[1] : `duet_consultations.${fmt}`;
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+                closeExportConsultationsModal();
+            } catch (e) {
+                alert('匯出時發生錯誤：' + e.message);
+            }
         }
     </script>
 </body>

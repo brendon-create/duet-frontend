@@ -295,6 +295,7 @@
 
         .version-slot:hover {
             transform: scale(1.2);
+            z-index: 200;
         }
 
         .version-slot.empty {
