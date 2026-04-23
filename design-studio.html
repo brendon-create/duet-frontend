@@ -1156,29 +1156,39 @@
                         console.log('✅ 已填入字母:', aiData.selectedLetters);
                     }
 
-                    // 若使用者在 AI Consultant 已選定字體，直接套用並產生模型
-                    if (aiData.selectedFont1 && aiData.selectedFont2) {
-                        console.log('✅ 套用 AI 選定字體:', aiData.selectedFont1, aiData.selectedFont2);
-                        const font1Btn = document.getElementById('font1-btn');
-                        const font2Btn = document.getElementById('font2-btn');
-                        if (font1Btn) font1Btn.setAttribute('data-selected', aiData.selectedFont1);
-                        if (font2Btn) font2Btn.setAttribute('data-selected', aiData.selectedFont2);
-                        checkedFonts.add(aiData.selectedFont1);
-                        checkedFonts.add(aiData.selectedFont2);
-                        showAINotification();
-                    } else if (aiData.recommendedFonts) {
-                        // 舊版相容：未選定則勾選所有推薦字體並開啟字體選擇器
-                        const allFonts = [
-                            ...aiData.recommendedFonts.letter1,
-                            ...aiData.recommendedFonts.letter2
-                        ];
-                        const uniqueFonts = [...new Set(allFonts)];
-                        uniqueFonts.forEach(font => checkedFonts.add(font));
-                        openFontSelector();
+                    // AI Consultant 返回流程：
+                    // 1. 全部 6 個推薦字體加入 checkedFonts
+                    // 2. 以使用者選定的字體為預設（排到 aiRecommendation 第一位）
+                    // 3. 呼叫 confirmFontSelection() 建立下拉選單並觸發第一個 render
+                    // 4. 重開字體選擇視窗讓使用者確認
+                    if (aiData.recommendedFonts) {
+                        const sel1 = aiData.selectedFont1;
+                        const sel2 = aiData.selectedFont2;
+
+                        // 將使用者選定字體排到推薦清單最前面，確保 confirmFontSelection 以其為預設
+                        const l1Fonts = sel1
+                            ? [sel1, ...aiData.recommendedFonts.letter1.filter(f => f !== sel1)]
+                            : aiData.recommendedFonts.letter1;
+                        const l2Fonts = sel2
+                            ? [sel2, ...aiData.recommendedFonts.letter2.filter(f => f !== sel2)]
+                            : aiData.recommendedFonts.letter2;
+
+                        [...new Set([...l1Fonts, ...l2Fonts])].forEach(font => checkedFonts.add(font));
+                        window.aiRecommendation = { letter1: l1Fonts, letter2: l2Fonts };
+
+                        // 設定 char-input（confirmFontSelection 需要讀取字母）
+                        const charInput = document.getElementById('char-input');
+                        if (charInput) charInput.value = (document.getElementById('letter1').value || '') + (document.getElementById('letter2').value || '');
+
+                        // 建立下拉選單 + 觸發 generateModel()
+                        confirmFontSelection();
+
+                        // 重新開啟字體選擇視窗讓使用者確認 / 修改
                         setTimeout(() => {
+                            openFontSelector();
                             updateFontDisplay();
                             showAINotification();
-                        }, 500);
+                        }, 400);
                     }
                 }, 1000);
             }
@@ -2592,6 +2602,8 @@
                     lastY = e.clientY;
                     slotCanvas.style.cursor = 'grabbing';
                     slotCanvas.setPointerCapture(e.pointerId);
+                    // 暫停主 OrbitControls，避免其內部球坐標覆蓋手動旋轉結果
+                    if (window.controls) window.controls.enabled = false;
                     e.stopPropagation();
                 });
 
@@ -2619,6 +2631,8 @@
                 slotCanvas.addEventListener('pointerup', () => {
                     isDragging = false;
                     slotCanvas.style.cursor = 'grab';
+                    // 恢復主 OrbitControls（它會重新從 camera.position 讀取狀態）
+                    if (window.controls) window.controls.enabled = true;
                 });
             })(canvas);
 
