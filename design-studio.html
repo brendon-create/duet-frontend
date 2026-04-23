@@ -885,9 +885,17 @@
             }
         }
 
+        // 動態決定 AI Consultant URL（正式站用 production URL，其他環境用相對路徑）
+        function getAIConsultantUrl() {
+            if (window.location.hostname === 'duet.brendonchen.com') {
+                return 'https://duet.brendonchen.com/ai-consultant';
+            }
+            return new URL('ai-consultant.html', window.location.href).href;
+        }
+
         window.startAIConsultation = function () {
             localStorage.setItem('duet_return_url', window.location.href);
-            window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+            window.location.href = getAIConsultantUrl();
         }
 
         window.skipAIConsultation = function () {
@@ -901,11 +909,11 @@
                 if (confirm('重新開始 AI 設計諮詢？這將清除之前的推薦。')) {
                     localStorage.removeItem('duet_ai_consultation');
                     localStorage.setItem('duet_return_url', window.location.href);
-                    window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+                    window.location.href = getAIConsultantUrl();
                 }
             } else {
                 localStorage.setItem('duet_return_url', window.location.href);
-                window.location.href = 'https://duet.brendonchen.com/ai-consultant';
+                window.location.href = getAIConsultantUrl();
             }
         }
 
@@ -1782,7 +1790,7 @@
                     const result = await resp.json();
                     if (myController.signal.aborted) return;
                     fragmentCheckPending = false;
-                    if (result.has_fragments && !cleanFragmentsApplied) {
+                    if (result.has_fragments && !cleanFragmentsApplied && !isCleanupInProgress) {
                         modelNeedsCleanup = true;
                         showFragmentWarning();
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
@@ -2570,6 +2578,49 @@
             canvas.width = 160;
             canvas.height = 160;
             slotElement.appendChild(canvas);
+
+            // 拖拽旋轉：帶動主相機旋轉，所有 slot 及主畫面同步
+            (function(slotCanvas) {
+                let isDragging = false;
+                let lastX = 0, lastY = 0;
+                slotCanvas.style.pointerEvents = 'auto';
+                slotCanvas.style.cursor = 'grab';
+
+                slotCanvas.addEventListener('pointerdown', (e) => {
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    slotCanvas.style.cursor = 'grabbing';
+                    slotCanvas.setPointerCapture(e.pointerId);
+                    e.stopPropagation();
+                });
+
+                slotCanvas.addEventListener('pointermove', (e) => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - lastX;
+                    const dy = e.clientY - lastY;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+
+                    const cam = window.camera;
+                    if (!cam) return;
+                    const ctrlTarget = window.controls?.target ?? new THREE.Vector3();
+                    const offset = cam.position.clone().sub(ctrlTarget);
+                    const sph = new THREE.Spherical().setFromVector3(offset);
+                    const speed = 0.008;
+                    sph.theta -= dx * speed;
+                    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi - dy * speed));
+                    offset.setFromSpherical(sph);
+                    cam.position.copy(ctrlTarget).add(offset);
+                    cam.lookAt(ctrlTarget);
+                    e.stopPropagation();
+                });
+
+                slotCanvas.addEventListener('pointerup', () => {
+                    isDragging = false;
+                    slotCanvas.style.cursor = 'grab';
+                });
+            })(canvas);
 
             const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
             slotRenderer.setSize(160, 160);
