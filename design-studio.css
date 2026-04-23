@@ -326,6 +326,7 @@
             right: 0;
             bottom: 0;
             z-index: 0;
+            touch-action: none; /* 防止 Safari 在自訂域名上攔截 wheel/gesture 事件 */
         }
 
         /* Font Selector Modal */
