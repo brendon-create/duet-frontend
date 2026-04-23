@@ -714,7 +714,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { createRing, createBail, updateRingPosition, resetBailState, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, ringMesh, bailMesh } from './js/ring-bail.js';
 
         // 字體載入系統
         import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
@@ -886,6 +886,7 @@
         }
 
         window.startAIConsultation = function () {
+            localStorage.setItem('duet_return_url', window.location.href);
             window.location.href = 'https://duet.brendonchen.com/ai-consultant';
         }
 
@@ -899,9 +900,11 @@
             if (existingData) {
                 if (confirm('重新開始 AI 設計諮詢？這將清除之前的推薦。')) {
                     localStorage.removeItem('duet_ai_consultation');
+                    localStorage.setItem('duet_return_url', window.location.href);
                     window.location.href = 'https://duet.brendonchen.com/ai-consultant';
                 }
             } else {
+                localStorage.setItem('duet_return_url', window.location.href);
                 window.location.href = 'https://duet.brendonchen.com/ai-consultant';
             }
         }
@@ -1134,7 +1137,7 @@
 
                 console.log('✅ 載入 AI 推薦資料:', aiData);
 
-                // 自動填入字母
+                // 自動填入字母並套用 AI 選定字體
                 setTimeout(() => {
                     const letter1Select = document.getElementById('letter1');
                     const letter2Select = document.getElementById('letter2');
@@ -1145,30 +1148,27 @@
                         console.log('✅ 已填入字母:', aiData.selectedLetters);
                     }
 
-                    // 自動勾選推薦字體
-                    if (aiData.recommendedFonts) {
+                    // 若使用者在 AI Consultant 已選定字體，直接套用並產生模型
+                    if (aiData.selectedFont1 && aiData.selectedFont2) {
+                        console.log('✅ 套用 AI 選定字體:', aiData.selectedFont1, aiData.selectedFont2);
+                        const font1Btn = document.getElementById('font1-btn');
+                        const font2Btn = document.getElementById('font2-btn');
+                        if (font1Btn) font1Btn.setAttribute('data-selected', aiData.selectedFont1);
+                        if (font2Btn) font2Btn.setAttribute('data-selected', aiData.selectedFont2);
+                        checkedFonts.add(aiData.selectedFont1);
+                        checkedFonts.add(aiData.selectedFont2);
+                        showAINotification();
+                    } else if (aiData.recommendedFonts) {
+                        // 舊版相容：未選定則勾選所有推薦字體並開啟字體選擇器
                         const allFonts = [
                             ...aiData.recommendedFonts.letter1,
                             ...aiData.recommendedFonts.letter2
                         ];
-
-                        // 去重
                         const uniqueFonts = [...new Set(allFonts)];
-                        console.log('✅ 推薦字體:', uniqueFonts);
-
-                        // 自動勾選這些字體
-                        uniqueFonts.forEach(font => {
-                            checkedFonts.add(font);
-                        });
-
-                        // 自動打開字體選擇視窗
+                        uniqueFonts.forEach(font => checkedFonts.add(font));
                         openFontSelector();
-
-                        // 更新字體選擇視窗的勾選狀態
                         setTimeout(() => {
                             updateFontDisplay();
-
-                            // 顯示提示訊息
                             showAINotification();
                         }, 500);
                     }
@@ -2671,35 +2671,31 @@
                 if (mainMesh.geometry) mainMesh.geometry.dispose();
                 if (mainMesh.material) mainMesh.material.dispose();
             }
-            if (ringMesh) {
-                window.scene.remove(ringMesh);
-                if (ringMesh.geometry) ringMesh.geometry.dispose();
-                if (ringMesh.material) ringMesh.material.dispose();
-            }
-            // 清除舊 Bail（透過 ring-bail.js 的函式正確重置 module 狀態）
+            // 清除舊 Ring & Bail（透過 ring-bail.js 函式正確重置 module 內部狀態）
+            resetRingState();
             resetBailState();
 
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
             mainMesh.material = mainMesh.material.clone();
             window.scene.add(mainMesh);
+            window.mainMesh = mainMesh;
 
+            // 更新模型中心與頂部 Z，供 ring-bail.js 定位使用
+            mainMesh.geometry.computeBoundingBox();
+            const recalledBBox = mainMesh.geometry.boundingBox;
+            window.modelCenter = recalledBBox.getCenter(new THREE.Vector3());
+            window.modelTopZ = recalledBBox.max.z;
+
+            // 恢復 Ring（透過模組函式，避免直接寫入 ES module 匯入 binding）
             if (slotData.ring) {
-                ringMesh = slotData.ring.clone();
-                ringMesh.material = ringMesh.material.clone();
-                window.scene.add(ringMesh);
+                createRing();
+                updateRingPosition();
             }
 
-            // 🔧 恢復 Bail 和相對偏移
+            // 恢復 Bail（透過模組函式，STL 會重新載入並正確定位）
             if (slotData.bail) {
-                bailMesh = slotData.bail.clone();
-                bailMesh.material = bailMesh.material.clone();
-                window.scene.add(bailMesh);
-                window.bailMesh = bailMesh;
-            }
-            if (slotData.bailRelativeOffset) {
-                bailRelativeOffset.copy(slotData.bailRelativeOffset);
-                bailInitialized = true;
+                createBail();
             }
 
             updateVolumeWeight();
@@ -3624,6 +3620,17 @@
 
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
+            // 分離部件檢查尚未完成，暫時封鎖結帳
+            if (fragmentCheckPending) {
+                const pendingMsg = document.getElementById('cart-fragment-pending-msg');
+                if (pendingMsg) {
+                    pendingMsg.style.animation = 'none';
+                    pendingMsg.offsetHeight; // reflow
+                    pendingMsg.style.animation = 'pulse-glow 0.6s ease 3';
+                }
+                return;
+            }
+
             // 檢查是否有經過 AI 諮詢
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
             const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
@@ -3940,12 +3947,12 @@
                             </div>
                             
                             <div style="display: flex; gap: 10px;">
-                                <button type="submit" class="btn" style="flex: 1;">
-                                    繼續付款
-                                </button>
-                                <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);" 
+                                <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
                                     取消
+                                </button>
+                                <button type="submit" class="btn" style="flex: 1;">
+                                    繼續付款
                                 </button>
                             </div>
                         </form>

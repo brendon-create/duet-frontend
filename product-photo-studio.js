@@ -360,3 +360,7 @@ const ProductPhotoStudio = {
         }
     }
 };
+
+// 掛到 window，讓 ES module (3d-scene.js) 可透過 window.ProductPhotoStudio 存取
+window.ProductPhotoStudio = ProductPhotoStudio;
+window.DevFeatures = DevFeatures;

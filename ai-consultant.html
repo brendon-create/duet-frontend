@@ -579,6 +579,30 @@
             line-height: 1.6;
         }
 
+        .font-select-card {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .font-select-card:hover {
+            border-color: rgba(212,175,55,0.4);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .font-card-selected {
+            border-color: rgba(212,175,55,0.7) !important;
+            background: rgba(212,175,55,0.08) !important;
+        }
+
+        .font-card-check {
+            color: #d4af37;
+            flex-shrink: 0;
+        }
+
         .continue-btn {
             background: linear-gradient(135deg, var(--gold), #f4d03f);
             color: #000;
@@ -698,6 +722,32 @@
         let maxTurns = 15;
         let selectedLetters = { letter1: '', letter2: '' };
         let isWaitingForResponse = false;
+        let selectedFont1 = '';
+        let selectedFont2 = '';
+
+        function selectFont(letterIndex, font, cardEl) {
+            const groupId = `letter${letterIndex}-cards`;
+            const group = document.getElementById(groupId);
+            if (!group) return;
+
+            // 清除同組所有卡片的選取狀態
+            group.querySelectorAll('.font-select-card').forEach(c => {
+                c.classList.remove('font-card-selected');
+                const check = c.querySelector('.font-card-check');
+                if (check) check.style.opacity = '0';
+            });
+
+            // 設定目前卡片
+            cardEl.classList.add('font-card-selected');
+            const check = cardEl.querySelector('.font-card-check');
+            if (check) check.style.opacity = '1';
+
+            if (letterIndex === 1) {
+                selectedFont1 = font;
+            } else {
+                selectedFont2 = font;
+            }
+        }
 
         // Start Design Journey
         document.addEventListener('DOMContentLoaded', function () {
@@ -999,24 +1049,30 @@
             const letter1 = data.letters.letter1;
             const letter2 = data.letters.letter2;
 
+            // 預設選擇各字母的第一個推薦字體
+            selectedFont1 = data.recommendations.letter1[0].font;
+            selectedFont2 = data.recommendations.letter2[0].font;
+
             recommendationsDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px;">
             <h3 style="color: #d4af37; font-size: 24px; margin-bottom: 15px;">為您精選的字體組合</h3>
             <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
                 ${data.summary || '根據您的分享，我為您挑選了以下字體'}
             </p>
+            <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 8px;">點選卡片可為每個字母選擇偏好字體</p>
         </div>
-        
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
             <!-- Letter 1 推薦 -->
             <div>
                 <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
                     字母 "${letter1}" 的推薦
                 </h4>
-                <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 15px;" id="letter1-cards">
                     ${data.recommendations.letter1.map((rec, index) => `
-                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; 
-                                    border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-select-card ${index === 0 ? 'font-card-selected' : ''}"
+                             onclick="selectFont(1, '${rec.font}', this)"
+                             data-font="${rec.font}">
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
                                 <div style="font-size: 48px; font-family: '${rec.font}', serif; color: #fff;">
                                     ${letter1}
@@ -1025,25 +1081,27 @@
                                     <div style="color: #d4af37; font-size: 16px; font-weight: 600; margin-bottom: 5px;">
                                         ${index === 0 ? '⭐ ' : ''}${rec.font}
                                     </div>
-                                    <div style="color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.5;">
+                                    <div style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.5;">
                                         ${rec.reason}
                                     </div>
                                 </div>
+                                <div class="font-card-check" style="font-size: 20px; opacity: ${index === 0 ? 1 : 0}; transition: opacity 0.2s;">✓</div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             </div>
-            
+
             <!-- Letter 2 推薦 -->
             <div>
                 <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
                     字母 "${letter2}" 的推薦
                 </h4>
-                <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 15px;" id="letter2-cards">
                     ${data.recommendations.letter2.map((rec, index) => `
-                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; 
-                                    border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-select-card ${index === 0 ? 'font-card-selected' : ''}"
+                             onclick="selectFont(2, '${rec.font}', this)"
+                             data-font="${rec.font}">
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
                                 <div style="font-size: 48px; font-family: '${rec.font}', serif; color: #fff;">
                                     ${letter2}
@@ -1052,10 +1110,11 @@
                                     <div style="color: #d4af37; font-size: 16px; font-weight: 600; margin-bottom: 5px;">
                                         ${index === 0 ? '⭐ ' : ''}${rec.font}
                                     </div>
-                                    <div style="color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.5;">
+                                    <div style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.5;">
                                         ${rec.reason}
                                     </div>
                                 </div>
+                                <div class="font-card-check" style="font-size: 20px; opacity: ${index === 0 ? 1 : 0}; transition: opacity 0.2s;">✓</div>
                             </div>
                         </div>
                     `).join('')}
@@ -1067,9 +1126,24 @@
 
         // Continue to Design
         function continueToDesign() {
-            // 跳轉到 design-studio，AI 推薦資料已經儲存在 localStorage
-            // design-studio 會自動讀取 'duet_ai_consultation' 並預填字體
-            window.top.location.href = 'https://duet.brendonchen.com/design-studio.html?from=ai';
+            // 將使用者選定的字體寫回 localStorage
+            if (selectedFont1 || selectedFont2) {
+                try {
+                    const existing = JSON.parse(localStorage.getItem('duet_ai_consultation') || '{}');
+                    existing.selectedFont1 = selectedFont1;
+                    existing.selectedFont2 = selectedFont2;
+                    localStorage.setItem('duet_ai_consultation', JSON.stringify(existing));
+                } catch (e) {
+                    console.warn('⚠️ 無法儲存選定字體:', e);
+                }
+            }
+
+            // 回到原本的 design-studio 頁面（由 localStorage 記錄），保留 ?from=ai 參數
+            const returnUrl = localStorage.getItem('duet_return_url');
+            const target = returnUrl
+                ? (returnUrl.includes('?') ? returnUrl + '&from=ai' : returnUrl + '?from=ai')
+                : 'https://duet.brendonchen.com/design-studio.html?from=ai';
+            window.top.location.href = target;
         }
     </script>
 </body>
