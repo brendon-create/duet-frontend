@@ -10,24 +10,37 @@ const ENV_STORAGE_KEY = 'duet_deploy_env';
 
 /**
  * 取得當前環境（優先順序：URL > localStorage > 預設）
+ *
+ * 注意：在正式域名（duet.brendonchen.com）上，
+ * 除非 URL 明確帶 ?env=staging，否則永遠使用 production，
+ * 並清除 localStorage 中殘留的 staging 設定，防止測試環境污染。
  */
 function getCurrentEnv() {
     const urlParams = new URLSearchParams(window.location.search);
     const urlEnv = urlParams.get('env');
-    
-    // 第一優先：URL 有 env 參數
+
+    // 正式域名：只允許 URL 明確指定 staging，否則強制 production
+    if (window.location.hostname === 'duet.brendonchen.com') {
+        if (urlEnv === 'staging') {
+            localStorage.setItem(ENV_STORAGE_KEY, 'staging');
+            return 'staging';
+        }
+        // 清除可能殘留的 staging localStorage，回到 production
+        localStorage.removeItem(ENV_STORAGE_KEY);
+        return 'production';
+    }
+
+    // 其他域名（Vercel preview、localhost）：URL > localStorage > 預設
     if (urlEnv === 'staging' || urlEnv === 'production') {
         localStorage.setItem(ENV_STORAGE_KEY, urlEnv);
         return urlEnv;
     }
-    
-    // 第二優先：檢查 localStorage
+
     const storedEnv = localStorage.getItem(ENV_STORAGE_KEY);
     if (storedEnv === 'staging' || storedEnv === 'production') {
         return storedEnv;
     }
-    
-    // 第三優先：預設為正式環境
+
     return 'production';
 }
 
