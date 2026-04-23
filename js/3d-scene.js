@@ -37,33 +37,28 @@ export function initScene() {
     renderer.toneMappingExposure = 1.2;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.getElementById('viewport').appendChild(renderer.domElement);
-    renderer.domElement.style.pointerEvents = 'none';
 
     // 暴露給全域
     window.scene = scene;
     window.camera = camera;
     window.renderer = renderer;
 
-    controls = new OrbitControls(camera, document.getElementById('viewport'));
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
-    controls.zoomSpeed = 0.8;       // 稍微降低縮放速度，減少暴衝感
-    controls.minDistance = 5;       // 最近距離限制，防止穿模
+    controls.zoomSpeed = 0.8;
+    controls.minDistance = 5;
     controls.maxDistance = 500;
-    window.controls = controls;     // 暴露給 captureThreeViews 等使用
+    window.controls = controls;
 
-    // Safari（尤其 macOS Sequoia 15+）會同時觸發 gesturechange 和 wheel 事件
-    // 導致瀏覽器原生 pinch-zoom 和 OrbitControls 同時作用，畫面暴衝
-    // 攔截 gesture 事件，只讓 OrbitControls 的 wheel 處理縮放
-    const viewportEl = document.getElementById('viewport');
+    // Safari macOS 會在 trackpad pinch 時同時觸發 gesturechange 和 wheel，
+    // 導致頁面縮放和 3D 縮放疊加暴衝，攔截 gesture 事件避免頁面層級縮放
+    const canvasEl = renderer.domElement;
     const blockGesture = (e) => e.preventDefault();
-    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
-    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
-    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
-
-    // 同時攔截 viewport 上的 wheel 事件預設行為（防止頁面滾動干擾）
-    viewportEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    canvasEl.addEventListener('gesturestart',  blockGesture, { passive: false });
+    canvasEl.addEventListener('gesturechange', blockGesture, { passive: false });
+    canvasEl.addEventListener('gestureend',    blockGesture, { passive: false });
 
     // 光照
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
