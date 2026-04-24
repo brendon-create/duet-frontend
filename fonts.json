@@ -46,7 +46,8 @@
     { "name": "Fraunces", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Freckle Face", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Fredoka", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    
+    { "name": "Fugaz One", "weight": 400, "offset_r": 0, "is_bold_required": false },
+
     { "name": "Gayathri", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Genos", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Gidugu", "weight": 400, "offset_r": 0, "is_bold_required": false },
