@@ -422,43 +422,66 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：兩步 union
-        // Step A：每個 subpath 分別做 even-odd union，清理自交多邊形，
-        //         輸出標準 winding（outer=CW，hole=CCW）
-        const allCleaned = [];
-        const flattenPT = (node) => {
-            const c = node.Contour ? node.Contour() : [];
-            if (c.length > 0) allCleaned.push(c);
+        // 普通 Paths 陣列：三步方案
+        // Step 1：all-paths even-odd union → 正確識別 outer/hole
+        //         不管原始 CW/CCW 方向，純粹依賴幾何包含關係
+        const co1 = new ClipperLib.Clipper();
+        co1.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
+        const pt1 = new ClipperLib.PolyTree();
+        co1.Execute(ClipperLib.ClipType.ctUnion, pt1,
+            ClipperLib.PolyFillType.pftEvenOdd,
+            ClipperLib.PolyFillType.pftEvenOdd);
+
+        // 從 PolyTree 分離 outer 和 hole 路徑
+        const outerPaths = [];
+        const holePaths = [];
+        const separatePaths = (node) => {
+            const contour = node.Contour ? node.Contour() : [];
+            if (contour.length > 0) {
+                if (node.IsHole()) holePaths.push(contour);
+                else outerPaths.push(contour);
+            }
             const ch = node.Childs ? node.Childs() : [];
-            for (let k = 0; k < ch.length; k++) flattenPT(ch[k]);
+            for (let k = 0; k < ch.length; k++) separatePaths(ch[k]);
         };
-        for (let pi = 0; pi < clipperPaths.length; pi++) {
-            const coA = new ClipperLib.Clipper();
-            coA.AddPath(clipperPaths[pi], ClipperLib.PolyType.ptSubject, true);
-            const ptA = new ClipperLib.PolyTree();
-            coA.Execute(ClipperLib.ClipType.ctUnion, ptA,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd);
-            flattenPT(ptA);
+        const roots1 = pt1.Childs();
+        for (let i = 0; i < roots1.length; i++) separatePaths(roots1[i]);
+
+        // Step 2：只對 outer 做 non-zero union → 合并外框連接點，保留重疊
+        //         outer(CW+1) + outer(CW+1) 重疊 winding=2≠0 → 填充（不消失）
+        if (outerPaths.length > 1) {
+            const co2 = new ClipperLib.Clipper();
+            co2.AddPaths(outerPaths, ClipperLib.PolyType.ptSubject, true);
+            const pt2 = new ClipperLib.PolyTree();
+            co2.Execute(ClipperLib.ClipType.ctUnion, pt2,
+                ClipperLib.PolyFillType.pftNonZero,
+                ClipperLib.PolyFillType.pftNonZero);
+            outerPaths.length = 0;
+            const flatOuter = (node) => {
+                const c = node.Contour ? node.Contour() : [];
+                if (c.length > 0) outerPaths.push(c);
+                const ch = node.Childs ? node.Childs() : [];
+                for (let k = 0; k < ch.length; k++) flatOuter(ch[k]);
+            };
+            const roots2 = pt2.Childs();
+            for (let i = 0; i < roots2.length; i++) flatOuter(roots2[i]);
         }
 
-        // Step B：non-zero union，合并重疊外框（保留重疊部分），同時保留洞
-        //         outer(CW,+1) + outer(CW,+1) 重疊 → winding=2≠0 → 填充（不消失）
-        //         outer(CW,+1) + hole(CCW,-1)    → winding=0   → 不填充（洞保留）
-        const coB = new ClipperLib.Clipper();
-        coB.AddPaths(allCleaned, ClipperLib.PolyType.ptSubject, true);
+        // Step 3：outer（合并後，CW）+ hole（CCW）一起做 non-zero union
+        //         重新建立層次關係 → PolyTree → traversePolyTreeNode
+        //         outer(+1) + hole(-1) 區域 winding=0 → 不填充（洞保留）
+        const co3 = new ClipperLib.Clipper();
+        co3.AddPaths([...outerPaths, ...holePaths], ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
-        coB.Execute(ClipperLib.ClipType.ctUnion, polyTree,
+        co3.Execute(ClipperLib.ClipType.ctUnion, polyTree,
             ClipperLib.PolyFillType.pftNonZero,
             ClipperLib.PolyFillType.pftNonZero);
 
         console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
 
-        // 遍歷 PolyTree 的根節點
         var rootChildren = polyTree.Childs();
         for (var i = 0; i < rootChildren.length; i++) {
-            var child = rootChildren[i];
-            traversePolyTreeNode(child, scale, shapes, null);
+            traversePolyTreeNode(rootChildren[i], scale, shapes, null);
         }
     }
 
