@@ -422,71 +422,65 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：自交清理 + 包含深度修正 + non-zero union
+        // 普通 Paths 陣列
+        //
+        // 第一性原理：
+        //   outer = 沒有被任何其他路徑完整包含（depth 偶數）
+        //   hole  = 被某個外框路徑完整包含（depth 奇數）
+        //
+        // Step 1：對原始路徑做全點包含法分類（不先做 SimplifyPolygon，避免分拆混淆判斷）
+        const outerOriginals = [];
+        const holeOriginals  = [];
 
-        // Step 1：識別自交路徑並清理；非自交路徑保留原始路徑（保留原始方向）
+        for (let i = 0; i < clipperPaths.length; i++) {
+            let depth = 0;
+            for (let j = 0; j < clipperPaths.length; j++) {
+                if (i === j) continue;
+                let fullyContained = true;
+                for (let k = 0; k < clipperPaths[i].length; k++) {
+                    if (ClipperLib.Clipper.PointInPolygon(clipperPaths[i][k], clipperPaths[j]) === 0) {
+                        fullyContained = false;
+                        break;
+                    }
+                }
+                if (fullyContained) depth++;
+            }
+            if (depth % 2 === 0) {
+                outerOriginals.push(clipperPaths[i]);
+            } else {
+                holeOriginals.push(clipperPaths[i]);
+            }
+        }
+
+        // Step 2：組合 workingPaths
+        // outer 路徑用 pftNonZero 清理自交（保留筆畫交叉區域），清理後設為 CCW
+        // hole  路徑直接設為 CW（洞路徑通常不自交）
         const workingPaths = [];
-        const isSplitPath = []; // true=自交分拆出的子路徑，false=原始路徑
 
-        for (let pi = 0; pi < clipperPaths.length; pi++) {
+        for (const path of outerOriginals) {
             const simplified = ClipperLib.Clipper.SimplifyPolygon(
-                clipperPaths[pi],
-                ClipperLib.PolyFillType.pftEvenOdd
+                path,
+                ClipperLib.PolyFillType.pftNonZero
             );
-            if (!simplified || simplified.length === 0) {
-                // 無效路徑，跳過
-            } else if (simplified.length > 1) {
-                // 自交路徑：用 even-odd 清理後的子路徑替換
-                // ClipperLib 已設置子路徑方向（Step 2 不再修正）
-                for (let si = 0; si < simplified.length; si++) {
-                    if (simplified[si].length >= 3) {
-                        workingPaths.push(simplified[si]);
-                        isSplitPath.push(true);
-                    }
-                }
-            } else {
-                // 非自交路徑：保留原始路徑
-                workingPaths.push(clipperPaths[pi]);
-                isSplitPath.push(false);
+            if (!simplified || simplified.length === 0) continue;
+            for (const sp of simplified) {
+                if (sp.length < 3) continue;
+                // 設為 CCW（outer）
+                if (!ClipperLib.Clipper.Orientation(sp)) sp.reverse();
+                workingPaths.push(sp);
             }
         }
 
-        // Step 2：修正每條路徑的方向
-        // 分拆子路徑：強制設為 CCW（outer），non-zero union 時筆畫交叉區域 winding=2 → 填充
-        // 原始路徑：全點包含法判斷，被其他路徑完整包覆 → hole（CW），否則 outer（CCW）
-        for (let i = 0; i < workingPaths.length; i++) {
-            const pathI = workingPaths[i];
-            let shouldBeOuter;
-
-            if (isSplitPath[i]) {
-                // 分拆子路徑一律設為 outer
-                shouldBeOuter = true;
-            } else {
-                // 原始路徑：全點包含法
-                let depth = 0;
-                for (let j = 0; j < workingPaths.length; j++) {
-                    if (i === j) continue;
-                    let fullyContained = true;
-                    for (let k = 0; k < pathI.length; k++) {
-                        if (ClipperLib.Clipper.PointInPolygon(pathI[k], workingPaths[j]) === 0) {
-                            fullyContained = false;
-                            break;
-                        }
-                    }
-                    if (fullyContained) depth++;
-                }
-                shouldBeOuter = (depth % 2 === 0);
-            }
-
-            const isCurrentlyOuter = ClipperLib.Clipper.Orientation(pathI);
-            if (shouldBeOuter !== isCurrentlyOuter) {
-                pathI.reverse();
-            }
+        for (const path of holeOriginals) {
+            const hp = path.slice();
+            // 設為 CW（hole）
+            if (ClipperLib.Clipper.Orientation(hp)) hp.reverse();
+            workingPaths.push(hp);
         }
 
-        // Step 3：non-zero union → 建立正確 PolyTree
-        // outer(+1) + hole(-1) 區域 winding=0 → 不填充（洞保留）
-        // outer(+1) + outer(+1) 重疊 winding=2 → 填充（外框重疊保留）
+        // Step 3：non-zero union → PolyTree
+        // outer(+1) + hole(-1) winding=0 → 洞
+        // outer(+1) + outer(+1) winding=2 → 填充（筆畫交叉保留）
         const coFinal = new ClipperLib.Clipper();
         coFinal.AddPaths(workingPaths, ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
