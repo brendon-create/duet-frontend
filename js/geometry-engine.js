@@ -425,8 +425,9 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
         // 普通 Paths 陣列：自交清理 + 包含深度修正 + non-zero union
 
         // Step 1：識別自交路徑並清理；非自交路徑保留原始路徑（保留原始方向）
-        // 關鍵：非自交路徑不經過 Clipper 方向標準化，確保 Step 2 的方向判斷基於原始方向
         const workingPaths = [];
+        const isSplitPath = []; // true=自交分拆出的子路徑，false=原始路徑
+
         for (let pi = 0; pi < clipperPaths.length; pi++) {
             const simplified = ClipperLib.Clipper.SimplifyPolygon(
                 clipperPaths[pi],
@@ -436,22 +437,29 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
                 // 無效路徑，跳過
             } else if (simplified.length > 1) {
                 // 自交路徑：用 even-odd 清理後的子路徑替換
-                // Clipper 已標準化方向（outer=Orientation=true，hole=Orientation=false）
+                // ClipperLib 已設置子路徑方向（Step 2 不再修正）
                 for (let si = 0; si < simplified.length; si++) {
-                    if (simplified[si].length >= 3) workingPaths.push(simplified[si]);
+                    if (simplified[si].length >= 3) {
+                        workingPaths.push(simplified[si]);
+                        isSplitPath.push(true);
+                    }
                 }
             } else {
-                // 非自交路徑：保留原始路徑，不用 SimplifyPolygon 的輸出
+                // 非自交路徑：保留原始路徑
                 workingPaths.push(clipperPaths[pi]);
+                isSplitPath.push(false);
             }
         }
 
-        // Step 2：包含深度分析，修正 outer/hole 方向
-        // 判斷標準：路徑 A 的「所有點」都在路徑 B 內 → A 被 B 完整包含
-        // 偶數 depth → outer（Orientation=true），奇數 depth → hole（Orientation=false）
+        // Step 2：原始路徑用全點包含法修正方向（孔洞識別準確）
+        // 分拆子路徑不修正——讓 ClipperLib 設置的方向生效，避免把 outer 子路徑誤判為 hole
+        // 這解決了兩個問題：
+        //   - 原始路徑（B/D/O/Q 的洞）→ 全點包含法正確識別為 hole
+        //   - 分拆子路徑（外框筆畫的薄殼）→ 保持 outer，non-zero union 後交叉區域填充
         for (let i = 0; i < workingPaths.length; i++) {
-            const pathI = workingPaths[i];
+            if (isSplitPath[i]) continue; // 分拆路徑跳過
 
+            const pathI = workingPaths[i];
             let depth = 0;
             for (let j = 0; j < workingPaths.length; j++) {
                 if (i === j) continue;
