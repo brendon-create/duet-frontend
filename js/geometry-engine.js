@@ -422,26 +422,37 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：使用 Clipper.BoolOp 建立 PolyTree
-        const co = new ClipperLib.Clipper();
-        co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
+        // 普通 Paths 陣列：兩步 union
+        // Step A：每個 subpath 分別做 even-odd union，清理自交多邊形，
+        //         輸出標準 winding（outer=CW，hole=CCW）
+        const allCleaned = [];
+        const flattenPT = (node) => {
+            const c = node.Contour ? node.Contour() : [];
+            if (c.length > 0) allCleaned.push(c);
+            const ch = node.Childs ? node.Childs() : [];
+            for (let k = 0; k < ch.length; k++) flattenPT(ch[k]);
+        };
+        for (let pi = 0; pi < clipperPaths.length; pi++) {
+            const coA = new ClipperLib.Clipper();
+            coA.AddPath(clipperPaths[pi], ClipperLib.PolyType.ptSubject, true);
+            const ptA = new ClipperLib.PolyTree();
+            coA.Execute(ClipperLib.ClipType.ctUnion, ptA,
+                ClipperLib.PolyFillType.pftEvenOdd,
+                ClipperLib.PolyFillType.pftEvenOdd);
+            flattenPT(ptA);
+        }
 
+        // Step B：non-zero union，合并重疊外框（保留重疊部分），同時保留洞
+        //         outer(CW,+1) + outer(CW,+1) 重疊 → winding=2≠0 → 填充（不消失）
+        //         outer(CW,+1) + hole(CCW,-1)    → winding=0   → 不填充（洞保留）
+        const coB = new ClipperLib.Clipper();
+        coB.AddPaths(allCleaned, ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
-        co.Execute(
-            ClipperLib.ClipType.ctUnion,
-            polyTree,
-            ClipperLib.PolyFillType.pftEvenOdd,
-            ClipperLib.PolyFillType.pftEvenOdd
-        );
+        coB.Execute(ClipperLib.ClipType.ctUnion, polyTree,
+            ClipperLib.PolyFillType.pftNonZero,
+            ClipperLib.PolyFillType.pftNonZero);
 
         console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
-
-        // 🔍 Debug: 列出所有路徑的方向（協助識別問題）
-        console.log(`[V3] Offset 後 ${clipperPaths.length} 條路徑的方向:`);
-        clipperPaths.forEach((path, idx) => {
-            const isCW = ClipperLib.Clipper.Orientation(path);
-            console.log(`[V3]   路徑[${idx}]: 點數=${path.length}, ${isCW ? 'CW (外輪廓)' : 'CCW (孔洞)'}`);
-        });
 
         // 遍歷 PolyTree 的根節點
         var rootChildren = polyTree.Childs();
