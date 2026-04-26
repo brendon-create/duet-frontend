@@ -451,29 +451,33 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             }
         }
 
-        // Step 2：原始路徑用全點包含法修正方向（孔洞識別準確）
-        // 分拆子路徑不修正——讓 ClipperLib 設置的方向生效，避免把 outer 子路徑誤判為 hole
-        // 這解決了兩個問題：
-        //   - 原始路徑（B/D/O/Q 的洞）→ 全點包含法正確識別為 hole
-        //   - 分拆子路徑（外框筆畫的薄殼）→ 保持 outer，non-zero union 後交叉區域填充
+        // Step 2：修正每條路徑的方向
+        // 分拆子路徑：強制設為 CCW（outer），non-zero union 時筆畫交叉區域 winding=2 → 填充
+        // 原始路徑：全點包含法判斷，被其他路徑完整包覆 → hole（CW），否則 outer（CCW）
         for (let i = 0; i < workingPaths.length; i++) {
-            if (isSplitPath[i]) continue; // 分拆路徑跳過
-
             const pathI = workingPaths[i];
-            let depth = 0;
-            for (let j = 0; j < workingPaths.length; j++) {
-                if (i === j) continue;
-                let fullyContained = true;
-                for (let k = 0; k < pathI.length; k++) {
-                    if (ClipperLib.Clipper.PointInPolygon(pathI[k], workingPaths[j]) === 0) {
-                        fullyContained = false;
-                        break;
+            let shouldBeOuter;
+
+            if (isSplitPath[i]) {
+                // 分拆子路徑一律設為 outer
+                shouldBeOuter = true;
+            } else {
+                // 原始路徑：全點包含法
+                let depth = 0;
+                for (let j = 0; j < workingPaths.length; j++) {
+                    if (i === j) continue;
+                    let fullyContained = true;
+                    for (let k = 0; k < pathI.length; k++) {
+                        if (ClipperLib.Clipper.PointInPolygon(pathI[k], workingPaths[j]) === 0) {
+                            fullyContained = false;
+                            break;
+                        }
                     }
+                    if (fullyContained) depth++;
                 }
-                if (fullyContained) depth++;
+                shouldBeOuter = (depth % 2 === 0);
             }
 
-            const shouldBeOuter = (depth % 2 === 0);
             const isCurrentlyOuter = ClipperLib.Clipper.Orientation(pathI);
             if (shouldBeOuter !== isCurrentlyOuter) {
                 pathI.reverse();
