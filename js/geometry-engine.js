@@ -341,20 +341,39 @@ function buildShapesFromSubPaths(finalPaths, subPathsInfo, scale) {
     }
 
     // 將孔洞加入外輪廓
-    // 如果只有一個 Shape，把所有孔洞都加進去
-    // 如果有多個 Shape，嘗試把孔洞加入最大的那個
+    // 用第一個點做 ray casting，找出真正包含這個 hole 的 outer shape
+    function pointInShape(pt, shapePts) {
+        let inside = false;
+        for (let i = 0, j = shapePts.length - 1; i < shapePts.length; j = i++) {
+            const xi = shapePts[i].x, yi = shapePts[i].y;
+            const xj = shapePts[j].x, yj = shapePts[j].y;
+            if (((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
     if (shapes.length === 1) {
         for (const holePts of holes) {
-            const holePath = new THREE.Path(holePts);
-            shapes[0].holes.push(holePath);
-            console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${shapes[0].holes.length}`);
+            shapes[0].holes.push(new THREE.Path(holePts));
         }
-    } else if (shapes.length > 1 && outerShape) {
-        // 多個外輪廓的情況（很少見），把孔洞加入最大的
+    } else if (shapes.length > 1) {
+        // 多個外輪廓：把每個 hole 加進真正包含它的那個 outer
         for (const holePts of holes) {
-            const holePath = new THREE.Path(holePts);
-            outerShape.shape.holes.push(holePath);
-            console.log(`[V3] 加入孔洞至最大 Shape，孔洞數: ${outerShape.shape.holes.length}`);
+            const testPt = holePts[0]; // 用第一個點測試
+            let matched = false;
+            for (const shape of shapes) {
+                if (pointInShape(testPt, shape.getPoints())) {
+                    shape.holes.push(new THREE.Path(holePts));
+                    matched = true;
+                    break;
+                }
+            }
+            // 若找不到包含它的 outer（理論上不應發生），加入最大的
+            if (!matched && outerShape) {
+                outerShape.shape.holes.push(new THREE.Path(holePts));
+            }
         }
     }
 
@@ -695,14 +714,9 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
     }
 
     // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-    let shapes;
-    if (subPathsInfo) {
-        // v2.1 格式：使用 subPathsInfo 直接建立 Shapes 和孔洞
-        shapes = buildShapesFromSubPaths(finalPaths, subPathsInfo, CLIP_SCALE);
-    } else {
-        // 舊格式：依靠 PolyTree 推斷孔洞
-        shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
-    }
+    // 統一用 clipperPathsToThreeShapes（內部做 union pftEvenOdd → PolyTree）
+    // 這樣能正確處理：自交多邊形、winding 方向錯誤、多外框重疊等所有情況
+    const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
     if (shapes.length === 0) {
         throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
