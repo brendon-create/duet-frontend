@@ -422,41 +422,44 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：逐路徑清理 + 包含深度修正 + non-zero union
+        // 普通 Paths 陣列：自交清理 + 包含深度修正 + non-zero union
 
-        // Step 1：每個路徑單獨做 even-odd union，只清理自交（頭尾重疊等）
-        //         路徑之間互不影響，不會把外框重疊挖空
-        const cleanedPaths = [];
-        const flattenPT = (node) => {
-            const c = node.Contour ? node.Contour() : [];
-            if (c.length > 0) cleanedPaths.push(c);
-            const ch = node.Childs ? node.Childs() : [];
-            for (let k = 0; k < ch.length; k++) flattenPT(ch[k]);
-        };
+        // Step 1：識別自交路徑並清理；非自交路徑保留原始路徑（保留原始方向）
+        // 關鍵：非自交路徑不經過 Clipper 方向標準化，確保 Step 2 的方向判斷基於原始方向
+        const workingPaths = [];
         for (let pi = 0; pi < clipperPaths.length; pi++) {
-            const co = new ClipperLib.Clipper();
-            co.AddPath(clipperPaths[pi], ClipperLib.PolyType.ptSubject, true);
-            const pt = new ClipperLib.PolyTree();
-            co.Execute(ClipperLib.ClipType.ctUnion, pt,
-                ClipperLib.PolyFillType.pftEvenOdd,
-                ClipperLib.PolyFillType.pftEvenOdd);
-            flattenPT(pt);
+            const simplified = ClipperLib.Clipper.SimplifyPolygon(
+                clipperPaths[pi],
+                ClipperLib.PolyFillType.pftEvenOdd
+            );
+            if (!simplified || simplified.length === 0) {
+                // 無效路徑，跳過
+            } else if (simplified.length > 1) {
+                // 自交路徑：用 even-odd 清理後的子路徑替換
+                // Clipper 已標準化方向（outer=Orientation=true，hole=Orientation=false）
+                for (let si = 0; si < simplified.length; si++) {
+                    if (simplified[si].length >= 3) workingPaths.push(simplified[si]);
+                }
+            } else {
+                // 非自交路徑：保留原始路徑，不用 SimplifyPolygon 的輸出
+                workingPaths.push(clipperPaths[pi]);
+            }
         }
 
-        // Step 2：計算每個路徑的包含深度，修正 CW 洞（方向錯誤的洞路徑）
-        //         depth = 路徑重心被多少其他路徑包含
-        //         depth 偶數 → outer，奇數 → hole
-        //         Clipper.Orientation(path) = true → outer 方向（與 fallback 一致）
-        for (let i = 0; i < cleanedPaths.length; i++) {
-            const path = cleanedPaths[i];
+        // Step 2：包含深度分析，修正 outer/hole 方向
+        // depth = 路徑重心被多少其他路徑包含
+        // 偶數 depth → outer（Orientation=true），奇數 depth → hole（Orientation=false）
+        // Orientation=true → outer（與 fallback 代碼一致）
+        for (let i = 0; i < workingPaths.length; i++) {
+            const path = workingPaths[i];
             const cx = Math.round(path.reduce((s, p) => s + p.X, 0) / path.length);
             const cy = Math.round(path.reduce((s, p) => s + p.Y, 0) / path.length);
             const centroid = { X: cx, Y: cy };
 
             let depth = 0;
-            for (let j = 0; j < cleanedPaths.length; j++) {
+            for (let j = 0; j < workingPaths.length; j++) {
                 if (i === j) continue;
-                if (ClipperLib.Clipper.PointInPolygon(centroid, cleanedPaths[j]) !== 0) {
+                if (ClipperLib.Clipper.PointInPolygon(centroid, workingPaths[j]) !== 0) {
                     depth++;
                 }
             }
@@ -469,12 +472,12 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
         }
 
         // Step 3：non-zero union → 建立正確 PolyTree
-        //         outer(+1) + hole(-1) 區域 winding=0 → 不填充（洞保留）
-        //         outer(+1) + outer(+1) 重疊 winding=2 → 填充（保留重疊）
-        const co3 = new ClipperLib.Clipper();
-        co3.AddPaths(cleanedPaths, ClipperLib.PolyType.ptSubject, true);
+        // outer(+1) + hole(-1) 區域 winding=0 → 不填充（洞保留）
+        // outer(+1) + outer(+1) 重疊 winding=2 → 填充（外框重疊保留）
+        const coFinal = new ClipperLib.Clipper();
+        coFinal.AddPaths(workingPaths, ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
-        co3.Execute(ClipperLib.ClipType.ctUnion, polyTree,
+        coFinal.Execute(ClipperLib.ClipType.ctUnion, polyTree,
             ClipperLib.PolyFillType.pftNonZero,
             ClipperLib.PolyFillType.pftNonZero);
 
