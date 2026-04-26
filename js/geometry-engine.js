@@ -447,27 +447,28 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
         }
 
         // Step 2：包含深度分析，修正 outer/hole 方向
-        // depth = 路徑重心被多少其他路徑包含
+        // 判斷標準：路徑 A 的「所有點」都在路徑 B 內 → A 被 B 完整包含
         // 偶數 depth → outer（Orientation=true），奇數 depth → hole（Orientation=false）
-        // Orientation=true → outer（與 fallback 代碼一致）
         for (let i = 0; i < workingPaths.length; i++) {
-            const path = workingPaths[i];
-            const cx = Math.round(path.reduce((s, p) => s + p.X, 0) / path.length);
-            const cy = Math.round(path.reduce((s, p) => s + p.Y, 0) / path.length);
-            const centroid = { X: cx, Y: cy };
+            const pathI = workingPaths[i];
 
             let depth = 0;
             for (let j = 0; j < workingPaths.length; j++) {
                 if (i === j) continue;
-                if (ClipperLib.Clipper.PointInPolygon(centroid, workingPaths[j]) !== 0) {
-                    depth++;
+                let fullyContained = true;
+                for (let k = 0; k < pathI.length; k++) {
+                    if (ClipperLib.Clipper.PointInPolygon(pathI[k], workingPaths[j]) === 0) {
+                        fullyContained = false;
+                        break;
+                    }
                 }
+                if (fullyContained) depth++;
             }
 
             const shouldBeOuter = (depth % 2 === 0);
-            const isCurrentlyOuter = ClipperLib.Clipper.Orientation(path);
+            const isCurrentlyOuter = ClipperLib.Clipper.Orientation(pathI);
             if (shouldBeOuter !== isCurrentlyOuter) {
-                path.reverse();
+                pathI.reverse();
             }
         }
 
