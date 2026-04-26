@@ -422,56 +422,57 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：三步方案
-        // Step 1：all-paths even-odd union → 正確識別 outer/hole
-        //         不管原始 CW/CCW 方向，純粹依賴幾何包含關係
-        const co1 = new ClipperLib.Clipper();
-        co1.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
-        const pt1 = new ClipperLib.PolyTree();
-        co1.Execute(ClipperLib.ClipType.ctUnion, pt1,
-            ClipperLib.PolyFillType.pftEvenOdd,
-            ClipperLib.PolyFillType.pftEvenOdd);
+        // 普通 Paths 陣列：逐路徑清理 + 包含深度修正 + non-zero union
 
-        // 從 PolyTree 分離 outer 和 hole 路徑
-        const outerPaths = [];
-        const holePaths = [];
-        const separatePaths = (node) => {
-            const contour = node.Contour ? node.Contour() : [];
-            if (contour.length > 0) {
-                if (node.IsHole()) holePaths.push(contour);
-                else outerPaths.push(contour);
-            }
+        // Step 1：每個路徑單獨做 even-odd union，只清理自交（頭尾重疊等）
+        //         路徑之間互不影響，不會把外框重疊挖空
+        const cleanedPaths = [];
+        const flattenPT = (node) => {
+            const c = node.Contour ? node.Contour() : [];
+            if (c.length > 0) cleanedPaths.push(c);
             const ch = node.Childs ? node.Childs() : [];
-            for (let k = 0; k < ch.length; k++) separatePaths(ch[k]);
+            for (let k = 0; k < ch.length; k++) flattenPT(ch[k]);
         };
-        const roots1 = pt1.Childs();
-        for (let i = 0; i < roots1.length; i++) separatePaths(roots1[i]);
-
-        // Step 2：只對 outer 做 non-zero union → 合并外框連接點，保留重疊
-        //         outer(CW+1) + outer(CW+1) 重疊 winding=2≠0 → 填充（不消失）
-        if (outerPaths.length > 1) {
-            const co2 = new ClipperLib.Clipper();
-            co2.AddPaths(outerPaths, ClipperLib.PolyType.ptSubject, true);
-            const pt2 = new ClipperLib.PolyTree();
-            co2.Execute(ClipperLib.ClipType.ctUnion, pt2,
-                ClipperLib.PolyFillType.pftNonZero,
-                ClipperLib.PolyFillType.pftNonZero);
-            outerPaths.length = 0;
-            const flatOuter = (node) => {
-                const c = node.Contour ? node.Contour() : [];
-                if (c.length > 0) outerPaths.push(c);
-                const ch = node.Childs ? node.Childs() : [];
-                for (let k = 0; k < ch.length; k++) flatOuter(ch[k]);
-            };
-            const roots2 = pt2.Childs();
-            for (let i = 0; i < roots2.length; i++) flatOuter(roots2[i]);
+        for (let pi = 0; pi < clipperPaths.length; pi++) {
+            const co = new ClipperLib.Clipper();
+            co.AddPath(clipperPaths[pi], ClipperLib.PolyType.ptSubject, true);
+            const pt = new ClipperLib.PolyTree();
+            co.Execute(ClipperLib.ClipType.ctUnion, pt,
+                ClipperLib.PolyFillType.pftEvenOdd,
+                ClipperLib.PolyFillType.pftEvenOdd);
+            flattenPT(pt);
         }
 
-        // Step 3：outer（合并後，CW）+ hole（CCW）一起做 non-zero union
-        //         重新建立層次關係 → PolyTree → traversePolyTreeNode
+        // Step 2：計算每個路徑的包含深度，修正 CW 洞（方向錯誤的洞路徑）
+        //         depth = 路徑重心被多少其他路徑包含
+        //         depth 偶數 → outer，奇數 → hole
+        //         Clipper.Orientation(path) = true → outer 方向（與 fallback 一致）
+        for (let i = 0; i < cleanedPaths.length; i++) {
+            const path = cleanedPaths[i];
+            const cx = Math.round(path.reduce((s, p) => s + p.X, 0) / path.length);
+            const cy = Math.round(path.reduce((s, p) => s + p.Y, 0) / path.length);
+            const centroid = { X: cx, Y: cy };
+
+            let depth = 0;
+            for (let j = 0; j < cleanedPaths.length; j++) {
+                if (i === j) continue;
+                if (ClipperLib.Clipper.PointInPolygon(centroid, cleanedPaths[j]) !== 0) {
+                    depth++;
+                }
+            }
+
+            const shouldBeOuter = (depth % 2 === 0);
+            const isCurrentlyOuter = ClipperLib.Clipper.Orientation(path);
+            if (shouldBeOuter !== isCurrentlyOuter) {
+                path.reverse();
+            }
+        }
+
+        // Step 3：non-zero union → 建立正確 PolyTree
         //         outer(+1) + hole(-1) 區域 winding=0 → 不填充（洞保留）
+        //         outer(+1) + outer(+1) 重疊 winding=2 → 填充（保留重疊）
         const co3 = new ClipperLib.Clipper();
-        co3.AddPaths([...outerPaths, ...holePaths], ClipperLib.PolyType.ptSubject, true);
+        co3.AddPaths(cleanedPaths, ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
         co3.Execute(ClipperLib.ClipType.ctUnion, polyTree,
             ClipperLib.PolyFillType.pftNonZero,
