@@ -403,32 +403,60 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列：使用 Clipper.BoolOp 建立 PolyTree
+        // Step 1: 全點包含法分類 outer / hole
+        // 路徑 i 的所有點都在路徑 j 內 → i 是洞（被 j 完整包含）
+        // PointInPolygon 回傳 0 = 外部，1 = 內部，-1 = 邊界
+        const outerPaths = [];
+        const holePaths  = [];
+
+        for (let i = 0; i < clipperPaths.length; i++) {
+            let isHole = false;
+            for (let j = 0; j < clipperPaths.length; j++) {
+                if (i === j) continue;
+                let allInside = true;
+                for (const pt of clipperPaths[i]) {
+                    if (ClipperLib.Clipper.PointInPolygon(pt, clipperPaths[j]) === 0) {
+                        allInside = false;
+                        break;
+                    }
+                }
+                if (allInside) { isHole = true; break; }
+            }
+            if (isHole) holePaths.push(clipperPaths[i]);
+            else        outerPaths.push(clipperPaths[i]);
+        }
+
+        console.log(`[V3] 全點包含法: outer=${outerPaths.length}, hole=${holePaths.length}`);
+
+        // Step 2: 強制方向
+        // 字型座標是 Y-up，ClipperLib 是 Y-down，方向剛好翻轉：
+        //   外框（Y-up CW）→ ClipperLib 看作 CCW → Orientation = false → pftNonZero +1
+        //   洞（Y-up CCW）→ ClipperLib 看作 CW  → Orientation = true  → pftNonZero -1
+        for (const path of outerPaths) {
+            if (ClipperLib.Clipper.Orientation(path)) path.reverse();  // 確保 Orientation = false
+        }
+        for (const path of holePaths) {
+            if (!ClipperLib.Clipper.Orientation(path)) path.reverse(); // 確保 Orientation = true
+        }
+
+        // Step 3: pftNonZero union → PolyTree
+        // 外框（+1）+ 洞（-1）= 0 → 洞；外框重疊（+2）≠ 0 → 填充（不消失）
         const co = new ClipperLib.Clipper();
-        co.AddPaths(clipperPaths, ClipperLib.PolyType.ptSubject, true);
+        co.AddPaths([...outerPaths, ...holePaths], ClipperLib.PolyType.ptSubject, true);
 
         const polyTree = new ClipperLib.PolyTree();
         co.Execute(
             ClipperLib.ClipType.ctUnion,
             polyTree,
-            ClipperLib.PolyFillType.pftEvenOdd,
-            ClipperLib.PolyFillType.pftEvenOdd
+            ClipperLib.PolyFillType.pftNonZero,
+            ClipperLib.PolyFillType.pftNonZero
         );
 
         console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
 
-        // 🔍 Debug: 列出所有路徑的方向（協助識別問題）
-        console.log(`[V3] Offset 後 ${clipperPaths.length} 條路徑的方向:`);
-        clipperPaths.forEach((path, idx) => {
-            const isCW = ClipperLib.Clipper.Orientation(path);
-            console.log(`[V3]   路徑[${idx}]: 點數=${path.length}, ${isCW ? 'CW (外輪廓)' : 'CCW (孔洞)'}`);
-        });
-
-        // 遍歷 PolyTree 的根節點
         var rootChildren = polyTree.Childs();
         for (var i = 0; i < rootChildren.length; i++) {
-            var child = rootChildren[i];
-            traversePolyTreeNode(child, scale, shapes, null);
+            traversePolyTreeNode(rootChildren[i], scale, shapes, null);
         }
     }
 
@@ -695,14 +723,8 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
     }
 
     // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-    let shapes;
-    if (subPathsInfo) {
-        // v2.1 格式：使用 subPathsInfo 直接建立 Shapes 和孔洞
-        shapes = buildShapesFromSubPaths(finalPaths, subPathsInfo, CLIP_SCALE);
-    } else {
-        // 舊格式：依靠 PolyTree 推斷孔洞
-        shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
-    }
+    // 一律用全點包含法 + pftNonZero union → PolyTree，不依賴 isHole 欄位
+    const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
     if (shapes.length === 0) {
         throw new Error(`[V3] 字母 "${letter}" 轉換 THREE.Shape 失敗`);
