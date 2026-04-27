@@ -341,39 +341,20 @@ function buildShapesFromSubPaths(finalPaths, subPathsInfo, scale) {
     }
 
     // 將孔洞加入外輪廓
-    // 用第一個點做 ray casting，找出真正包含這個 hole 的 outer shape
-    function pointInShape(pt, shapePts) {
-        let inside = false;
-        for (let i = 0, j = shapePts.length - 1; i < shapePts.length; j = i++) {
-            const xi = shapePts[i].x, yi = shapePts[i].y;
-            const xj = shapePts[j].x, yj = shapePts[j].y;
-            if (((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) {
-                inside = !inside;
-            }
-        }
-        return inside;
-    }
-
+    // 如果只有一個 Shape，把所有孔洞都加進去
+    // 如果有多個 Shape，嘗試把孔洞加入最大的那個
     if (shapes.length === 1) {
         for (const holePts of holes) {
-            shapes[0].holes.push(new THREE.Path(holePts));
+            const holePath = new THREE.Path(holePts);
+            shapes[0].holes.push(holePath);
+            console.log(`[V3] 加入孔洞至 Shape，孔洞數: ${shapes[0].holes.length}`);
         }
-    } else if (shapes.length > 1) {
-        // 多個外輪廓：把每個 hole 加進真正包含它的那個 outer
+    } else if (shapes.length > 1 && outerShape) {
+        // 多個外輪廓的情況（很少見），把孔洞加入最大的
         for (const holePts of holes) {
-            const testPt = holePts[0]; // 用第一個點測試
-            let matched = false;
-            for (const shape of shapes) {
-                if (pointInShape(testPt, shape.getPoints())) {
-                    shape.holes.push(new THREE.Path(holePts));
-                    matched = true;
-                    break;
-                }
-            }
-            // 若找不到包含它的 outer（理論上不應發生），加入最大的
-            if (!matched && outerShape) {
-                outerShape.shape.holes.push(new THREE.Path(holePts));
-            }
+            const holePath = new THREE.Path(holePts);
+            outerShape.shape.holes.push(holePath);
+            console.log(`[V3] 加入孔洞至最大 Shape，孔洞數: ${outerShape.shape.holes.length}`);
         }
     }
 
@@ -422,71 +403,54 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // 普通 Paths 陣列
-        //
-        // 第一性原理：
-        //   outer = 沒有被任何其他路徑完整包含（depth 偶數）
-        //   hole  = 被某個外框路徑完整包含（depth 奇數）
-        //
-        // Step 1：對原始路徑做全點包含法分類（不先做 SimplifyPolygon，避免分拆混淆判斷）
-        const outerOriginals = [];
-        const holeOriginals  = [];
+        // Step 1: 全點包含法分類 outer / hole
+        // 路徑 i 的所有點都在路徑 j 內 → i 是洞（被 j 完整包含）
+        // PointInPolygon 回傳 0 = 外部，1 = 內部，-1 = 邊界
+        const outerPaths = [];
+        const holePaths  = [];
 
         for (let i = 0; i < clipperPaths.length; i++) {
-            let depth = 0;
+            let isHole = false;
             for (let j = 0; j < clipperPaths.length; j++) {
                 if (i === j) continue;
-                let fullyContained = true;
-                for (let k = 0; k < clipperPaths[i].length; k++) {
-                    if (ClipperLib.Clipper.PointInPolygon(clipperPaths[i][k], clipperPaths[j]) === 0) {
-                        fullyContained = false;
+                let allInside = true;
+                for (const pt of clipperPaths[i]) {
+                    if (ClipperLib.Clipper.PointInPolygon(pt, clipperPaths[j]) === 0) {
+                        allInside = false;
                         break;
                     }
                 }
-                if (fullyContained) depth++;
+                if (allInside) { isHole = true; break; }
             }
-            if (depth % 2 === 0) {
-                outerOriginals.push(clipperPaths[i]);
-            } else {
-                holeOriginals.push(clipperPaths[i]);
-            }
+            if (isHole) holePaths.push(clipperPaths[i]);
+            else        outerPaths.push(clipperPaths[i]);
         }
 
-        // Step 2：組合 workingPaths
-        // outer 路徑用 pftNonZero 清理自交（保留筆畫交叉區域），清理後設為 CCW
-        // hole  路徑直接設為 CW（洞路徑通常不自交）
-        const workingPaths = [];
+        console.log(`[V3] 全點包含法: outer=${outerPaths.length}, hole=${holePaths.length}`);
 
-        for (const path of outerOriginals) {
-            const simplified = ClipperLib.Clipper.SimplifyPolygon(
-                path,
-                ClipperLib.PolyFillType.pftNonZero
-            );
-            if (!simplified || simplified.length === 0) continue;
-            for (const sp of simplified) {
-                if (sp.length < 3) continue;
-                // 設為 CCW（outer）
-                if (!ClipperLib.Clipper.Orientation(sp)) sp.reverse();
-                workingPaths.push(sp);
-            }
+        // Step 2: 強制方向
+        // 字型座標是 Y-up，ClipperLib 是 Y-down，方向剛好翻轉：
+        //   外框（Y-up CW）→ ClipperLib 看作 CCW → Orientation = false → pftNonZero +1
+        //   洞（Y-up CCW）→ ClipperLib 看作 CW  → Orientation = true  → pftNonZero -1
+        for (const path of outerPaths) {
+            if (ClipperLib.Clipper.Orientation(path)) path.reverse();  // 確保 Orientation = false
+        }
+        for (const path of holePaths) {
+            if (!ClipperLib.Clipper.Orientation(path)) path.reverse(); // 確保 Orientation = true
         }
 
-        for (const path of holeOriginals) {
-            const hp = path.slice();
-            // 設為 CW（hole）
-            if (ClipperLib.Clipper.Orientation(hp)) hp.reverse();
-            workingPaths.push(hp);
-        }
+        // Step 3: pftNonZero union → PolyTree
+        // 外框（+1）+ 洞（-1）= 0 → 洞；外框重疊（+2）≠ 0 → 填充（不消失）
+        const co = new ClipperLib.Clipper();
+        co.AddPaths([...outerPaths, ...holePaths], ClipperLib.PolyType.ptSubject, true);
 
-        // Step 3：non-zero union → PolyTree
-        // outer(+1) + hole(-1) winding=0 → 洞
-        // outer(+1) + outer(+1) winding=2 → 填充（筆畫交叉保留）
-        const coFinal = new ClipperLib.Clipper();
-        coFinal.AddPaths(workingPaths, ClipperLib.PolyType.ptSubject, true);
         const polyTree = new ClipperLib.PolyTree();
-        coFinal.Execute(ClipperLib.ClipType.ctUnion, polyTree,
+        co.Execute(
+            ClipperLib.ClipType.ctUnion,
+            polyTree,
             ClipperLib.PolyFillType.pftNonZero,
-            ClipperLib.PolyFillType.pftNonZero);
+            ClipperLib.PolyFillType.pftNonZero
+        );
 
         console.log(`[V3] PolyTree 根節點數: ${polyTree.Childs().length}`);
 
@@ -759,8 +723,7 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
     }
 
     // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
-    // 統一用 clipperPathsToThreeShapes（內部做 union pftEvenOdd → PolyTree）
-    // 這樣能正確處理：自交多邊形、winding 方向錯誤、多外框重疊等所有情況
+    // 一律用全點包含法 + pftNonZero union → PolyTree，不依賴 isHole 欄位
     const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
     if (shapes.length === 0) {
