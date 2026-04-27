@@ -27,7 +27,7 @@
     { "name": "Chango", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Chela One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Cherry Swash", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Cormorant Garamond", "weight": 400, "offset_r": 0, "is_bold_required": false },
+    { "name": "Cormorant Garamond", "weight": 400, "offset_r": 0.15, "is_bold_required": false },
     { "name": "Courgette", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Crafty Girls", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Creepster", "weight": 400, "offset_r": 0, "is_bold_required": false },
@@ -100,7 +100,7 @@
     { "name": "Stylish", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Supermercado One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Syncopate", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Text Me One", "weight": 400, "offset_r": 0, "is_bold_required": false },
+    { "name": "Text Me One", "weight": 400, "offset_r": 0.05, "is_bold_required": false },
     { "name": "Trocchi", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Varela Round", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Young Serif", "weight": 400, "offset_r": 0, "is_bold_required": false }
