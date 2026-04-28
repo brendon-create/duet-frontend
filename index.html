@@ -324,28 +324,83 @@
             background-color: rgba(44, 42, 38, 0.04);
         }
 
-        .hero-image {
+        /* ── Hero Showcase（影片擦洗） ── */
+        #hero-showcase {
             position: relative;
             overflow: hidden;
             border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            /* 讓影片在 Safari 上不閃爍 */
+            transform: translateZ(0);
         }
 
-        .hero-image img {
+        #hero-showcase.scrubbing {
+            cursor: grabbing;
+        }
+
+        #hero-video {
             width: 100%;
             height: auto;
             display: block;
+            pointer-events: none;
             animation: fadeInScale 0.8s ease-out;
         }
 
+        #hero-video-placeholder {
+            /* 影片尚未備妥時的佔位，維持版面比例 */
+            aspect-ratio: 4 / 5;
+            background: linear-gradient(135deg, #F0EDE8 0%, #E8E4DC 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            border-radius: 8px;
+        }
+
+        #hero-video-placeholder .placeholder-icon {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #C9A96E;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #C9A96E;
+            font-size: 18px;
+        }
+
+        #hero-video-placeholder p {
+            font-size: 13px;
+            color: #8B8680;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        #hero-video-placeholder a {
+            color: #C9A96E;
+            text-decoration: none;
+        }
+
+        #hero-drag-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(44, 42, 38, 0.35);
+            white-space: nowrap;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+        }
+
         @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1); }
         }
 
         /* ===== 品牌理念區塊 ===== */
@@ -1073,8 +1128,24 @@
                 <a href="#story" class="cta-button-secondary">了解更多 ↓</a>
             </div>
         </div>
-        <div class="hero-image">
-            <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1200&q=80" alt="DUET 交織墜飾">
+        <div id="hero-showcase">
+            <!-- 影片備妥後由 hero-showcase.js 控制播放與擦洗 -->
+            <video id="hero-video"
+                   src="assets/videos/hero-product.webm"
+                   loop muted playsinline preload="auto"
+                   style="display:none;"
+                   onerror="document.getElementById('hero-video').style.display='none'; document.getElementById('hero-video-placeholder').style.display='flex';">
+            </video>
+
+            <!-- 影片尚未生成時的佔位畫面 -->
+            <div id="hero-video-placeholder">
+                <div class="placeholder-icon">◎</div>
+                <p>產品展示影片準備中<br>
+                   請先執行 <a href="hero-video-generator.html" target="_blank">Hero Video Generator</a><br>
+                   並將影片放入 <code>assets/videos/</code></p>
+            </div>
+
+            <div id="hero-drag-hint">← 拖曳旋轉 →</div>
         </div>
     </section>
 
@@ -1427,6 +1498,28 @@
                 nav.style.boxShadow = 'none';
             }
         });
+    </script>
+
+    <!-- Hero 影片擦洗互動 -->
+    <script src="assets/js/hero-showcase.js"></script>
+    <script>
+        // 影片載入成功後顯示影片、隱藏佔位
+        (function () {
+            var video       = document.getElementById('hero-video');
+            var placeholder = document.getElementById('hero-video-placeholder');
+            if (!video || !placeholder) return;
+
+            function showVideo() {
+                video.style.display       = 'block';
+                placeholder.style.display = 'none';
+            }
+
+            // canplaythrough = 影片已可流暢播放
+            video.addEventListener('canplaythrough', showVideo, { once: true });
+
+            // 若網路快、影片已快取，直接顯示
+            if (video.readyState >= 3) showVideo();
+        })();
     </script>
 </body>
 </html>
