@@ -345,6 +345,7 @@
             height: auto;
             display: block;
             pointer-events: none;
+            transform: scale(1.15);
             animation: fadeInScale 0.8s ease-out;
         }
 
@@ -970,6 +971,9 @@
                 grid-template-columns: 1fr;
                 padding: 80px 40px;
             }
+
+            .hero-content { order: 2; }
+            #hero-showcase { order: 1; }
 
             .process-grid {
                 grid-template-columns: repeat(2, 1fr);
