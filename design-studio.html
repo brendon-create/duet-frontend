@@ -3811,6 +3811,9 @@
             }
         }
 
+        // 暴露給 inline onclick 使用
+        window.submitCustomInquiry = submitCustomInquiry;
+
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
             // 若含貴金屬訂製品，改走詢問表單流程
