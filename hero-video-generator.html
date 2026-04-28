@@ -567,6 +567,14 @@
                     <img id="bg-image-thumb" src="" alt="背景預覽">
                     <button id="bg-image-clear">✕</button>
                 </div>
+                <div style="margin-top:8px;">
+                    <div class="field-sublabel" style="margin-bottom:4px;">背景亮度</div>
+                    <div class="range-row">
+                        <input type="range" id="bg-brightness" min="0.3" max="1.2" step="0.05" value="0.75">
+                        <span class="range-value" id="bg-brightness-value">0.75</span>
+                    </div>
+                    <div class="field-sublabel">往左 = 更暗；往右 = 更亮（預設 0.75）</div>
+                </div>
             </div>
 
             <div class="field-group">
@@ -809,6 +817,36 @@
             bgImagePreview.style.display = 'none';
         });
 
+        document.getElementById('bg-brightness').addEventListener('input', (e) => {
+            document.getElementById('bg-brightness-value').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        // 以 Canvas 2D 對背景圖做亮度預處理，再轉成 Three.js 紋理
+        // Three.js 的 linearization 會讓圖片偏亮，預先調暗可以補償
+        function loadAdjustedBgTexture(url, brightness) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width  = img.naturalWidth  || img.width;
+                    c.height = img.naturalHeight || img.height;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    // multiply 混合模式：用灰色覆蓋來降低亮度
+                    if (brightness < 0.999) {
+                        const v = Math.round(brightness * 255);
+                        ctx.globalCompositeOperation = 'multiply';
+                        ctx.fillStyle = `rgb(${v},${v},${v})`;
+                        ctx.fillRect(0, 0, c.width, c.height);
+                    }
+                    const tex = new THREE.CanvasTexture(c);
+                    resolve(tex);
+                };
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
         // canvas-wrapper 背景色 = 透明模式時用指定底色讓錄製正確
         function updateCanvasWrapperBg() {
             if (transparentCheck.checked) {
@@ -934,10 +972,10 @@
             const cx = W * 0.5, cy = H * 0.38;
             const r  = Math.sqrt(W * W + H * H) * 0.58;
             const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-            grad.addColorStop(0,    '#F5EDDF'); // 中心：暖奶油
-            grad.addColorStop(0.32, '#E8D5BE'); // 中圈：暖米
-            grad.addColorStop(0.65, '#CEAD8A'); // 外圈：暖棕
-            grad.addColorStop(1,    '#A07850'); // 邊角：深棕
+            grad.addColorStop(0,    '#DDD0C0'); // 中心：暖米（比原來深）
+            grad.addColorStop(0.30, '#C4AA90'); // 中圈：暖棕
+            grad.addColorStop(0.62, '#9A7860'); // 外圈：中棕
+            grad.addColorStop(1,    '#5C3C28'); // 邊角：深棕
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, W, H);
             return new THREE.CanvasTexture(bgCanvas);
@@ -992,18 +1030,16 @@
                 // 透明模式：canvas-wrapper 的 CSS background 透過 alpha 顯示，MediaRecorder 捕捉到底色
                 scene.background = null;
             } else if (customBgUrl) {
-                // 使用者上傳的自訂背景圖片：存入 bgTexture，用兩階段渲染避免 ACES 雙重處理
-                scene.background = createStudioBackground(W, H); // 佔位，等圖片載入
-                await new Promise((resolve) => {
-                    new THREE.TextureLoader().load(customBgUrl, (tex) => {
-                        bgTexture = tex;
-                        scene.background = null; // 改由 renderFrame() 手動繪製
-                        resolve();
-                    }, undefined, () => {
-                        // 載入失敗：退回漸層（保持 scene.background 的漸層）
-                        resolve();
-                    });
-                });
+                // 使用者上傳的自訂背景圖片：Canvas 2D 預處理亮度後轉紋理
+                // 兩階段渲染（renderFrame）確保背景不被 ACES tone mapping 二次處理
+                scene.background = createStudioBackground(W, H); // 佔位
+                const brightness = parseFloat(document.getElementById('bg-brightness').value) || 0.75;
+                const adjusted = await loadAdjustedBgTexture(customBgUrl, brightness);
+                if (adjusted) {
+                    bgTexture = adjusted;
+                    scene.background = null; // 改由 renderFrame() 手動繪製
+                }
+                // 載入失敗時保持漸層（scene.background 已設好）
             } else {
                 // 工作室漸層背景（模擬珠寶攝影布景）
                 scene.background = createStudioBackground(W, H);
@@ -1021,22 +1057,22 @@
             renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: isTransparent });
             if (isTransparent) renderer.setClearColor(0x000000, 0);
             renderer.setSize(W, H, false);
-            renderer.toneMapping      = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 0.75;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputColorSpace    = THREE.SRGBColorSpace;
 
             // 燈光（HDR 載入前的保底光源；HDR 到位後會疊加）
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-            const key = new THREE.DirectionalLight(0xFFF5E8, 1.8);
+            const key = new THREE.DirectionalLight(0xFFF5E8, 2.8);
             key.position.set(20, -15, 30);
             scene.add(key);
 
-            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.5);
+            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8);
             fill.position.set(-20, 15, 10);
             scene.add(fill);
 
-            const rim = new THREE.DirectionalLight(0xffffff, 0.3);
+            const rim = new THREE.DirectionalLight(0xffffff, 0.5);
             rim.position.set(0, 30, -10);
             scene.add(rim);
 
@@ -1113,7 +1149,7 @@
                 color:     0xD4D0CC,
                 metalness: 1.0,
                 roughness: 0.04,
-                envMapIntensity: 0.8
+                envMapIntensity: 1.2
             });
             result.material = silverMat;
 
@@ -1288,7 +1324,7 @@
                 scene.background = null;
                 if (pendantGroup) pendantGroup.visible = true;
                 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-                renderer.toneMappingExposure = 0.75;
+                renderer.toneMappingExposure = 1.0;
                 renderer.autoClear = false;
                 renderer.render(scene, camera);
                 renderer.autoClear = true;
