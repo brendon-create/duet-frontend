@@ -96,7 +96,7 @@
             <select id="material">
                 <option value="silver925">925 銀</option>
                 <option value="brass">黃銅</option>
-                <option value="precious_metal" style="color:#d4af37;">✦ 其他貴金屬（18K金 / 鉑金）</option>
+                <option value="precious_metal" style="color:#d4af37;">其他貴金屬（18K金 / 鉑金）</option>
             </select>
         </div>
 
@@ -3106,11 +3106,12 @@
             // 計算折扣後金額
             const finalTotal = Math.max(0, originalTotal - promoDiscount);
 
-            // 更新顯示
-            updateTotalDisplay(originalTotal, promoDiscount, finalTotal);
-
             // 若有貴金屬訂製品，切換結帳按鈕
             const hasPreciousMetal = cartItems.some(i => i.isPreciousMetal);
+            const allPreciousMetal = hasPreciousMetal && originalTotal === 0;
+
+            // 更新顯示
+            updateTotalDisplay(originalTotal, promoDiscount, finalTotal, allPreciousMetal);
             const checkoutBtn = document.getElementById('checkout');
             if (hasPreciousMetal) {
                 checkoutBtn.textContent = '送出訂製需求';
@@ -3129,8 +3130,16 @@
         // 優惠碼功能
         // ============================================================
 
-        function updateTotalDisplay(original, discount, final) {
+        function updateTotalDisplay(original, discount, final, allPreciousMetal) {
             const totalElement = document.getElementById('cart-total');
+
+            if (allPreciousMetal) {
+                totalElement.textContent = '價格待詢';
+                totalElement.style.color = '#d4af37';
+                return;
+            }
+
+            totalElement.style.color = '';
 
             if (discount > 0) {
                 // 有優惠碼時顯示詳細資訊
