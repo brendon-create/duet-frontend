@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Video Generator — DUET</title>
+    <!-- ClipperLib：UMD 格式，必須在 importmap 之前載入，geometry-engine.js 透過 window.ClipperLib 存取 -->
+    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://esm.sh/three@0.160.0",
+            "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
+            "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
+            "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3"
+        }
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            background: #111110;
+            color: #E8E4DF;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── file:// 協議警告 ── */
+        #server-warning {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10,10,9,0.95);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+        #server-warning.visible { display: flex; }
+        .warning-box {
+            max-width: 560px;
+            background: #1A1916;
+            border: 1px solid #C9A96E;
+            border-radius: 8px;
+            padding: 32px;
+        }
+        .warning-box h2 {
+            color: #C9A96E;
+            font-size: 16px;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+        .warning-box p {
+            font-size: 13px;
+            color: #8B8680;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+        .warning-box code {
+            display: block;
+            background: #111110;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            padding: 12px 16px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 12px;
+            color: #C9A96E;
+            margin: 8px 0 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .warning-box code:hover { background: #1E1C19; }
+        .warning-box .copy-hint {
+            font-size: 11px;
+            color: #4A4844;
+            margin-top: -12px;
+            margin-bottom: 16px;
+        }
+        .warning-step {
+            font-size: 12px;
+            color: #6B6760;
+            margin-bottom: 6px;
+        }
+        .warning-step strong { color: #E8E4DF; }
+
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header h1 {
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #C9A96E;
+        }
+
+        header span {
+            font-size: 12px;
+            color: #6B6760;
+            letter-spacing: 0.5px;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Left Panel ── */
+        #settings-panel {
+            padding: 24px;
+            border-right: 1px solid rgba(255,255,255,0.06);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .field-group { display: flex; flex-direction: column; gap: 8px; }
+
+        .field-label {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #6B6760;
+        }
+
+        .field-sublabel {
+            font-size: 11px;
+            color: #4A4844;
+        }
+
+        input[type="text"],
+        input[type="color"],
+        select {
+            background: #1A1916;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #E8E4DF;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            border-radius: 4px;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        select:focus { border-color: #C9A96E; }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #C9A96E;
+            cursor: pointer;
+        }
+
+        .range-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .range-value {
+            font-size: 13px;
+            color: #C9A96E;
+            min-width: 36px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="color"] {
+            width: 44px;
+            height: 38px;
+            padding: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        #bg-color-hex {
+            flex: 1;
+        }
+
+        .bg-image-upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #1A1916;
+            border: 1px solid #3A3830;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #C9A96E;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .bg-image-upload-label:hover { background: #222118; }
+
+        #bg-image-preview {
+            display: none;
+            margin-top: 6px;
+            position: relative;
+        }
+        #bg-image-preview img {
+            width: 100%;
+            border-radius: 4px;
+            max-height: 80px;
+            object-fit: cover;
+        }
+        #bg-image-clear {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: #fff;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        /* ── 字母列表 ── */
+        .letter-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .letter-row {
+            display: grid;
+            grid-template-columns: 34px 1fr 26px;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .letter-char-input {
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0;
+            padding: 5px 2px;
+            color: #C9A96E;
+        }
+
+        .remove-letter-btn {
+            background: none;
+            border: 1px solid #3A3830;
+            border-radius: 3px;
+            color: #6B6760;
+            font-size: 14px;
+            padding: 0;
+            cursor: pointer;
+            width: 26px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .remove-letter-btn:hover { background: #2A2820; color: #E8E4DF; }
+
+        .add-letter-btn {
+            margin-top: 6px;
+            padding: 8px;
+            background: none;
+            border: 1px dashed #3A3830;
+            border-radius: 4px;
+            color: #C9A96E;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .add-letter-btn:hover { background: #1A1916; }
+
+        #generate-btn {
+            margin-top: auto;
+            padding: 14px;
+            background: #C9A96E;
+            color: #111110;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s, transform 0.1s;
+            width: 100%;
+        }
+
+        #generate-btn:hover { background: #D9BE8E; }
+        #generate-btn:active { transform: scale(0.98); }
+        #generate-btn:disabled { background: #3A3830; color: #6B6760; cursor: not-allowed; transform: none; }
+
+        /* ── Center Preview ── */
+        #preview-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 24px;
+            background: #0A0A09;
+            position: relative;
+        }
+
+        #canvas-wrapper {
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #preview-canvas {
+            display: block;
+            max-height: calc(100vh - 160px);
+            max-width: 100%;
+            width: auto;
+            height: auto;
+        }
+
+        #progress-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10,10,9,0.85);
+            padding: 12px 16px;
+            display: none;
+        }
+
+        #progress-overlay.visible { display: block; }
+
+        #progress-message {
+            font-size: 12px;
+            color: #C9A96E;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        #progress-bar {
+            height: 2px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: #C9A96E;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #status-text {
+            font-size: 12px;
+            color: #4A4844;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Right Panel ── */
+        #result-panel {
+            padding: 24px;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #result-panel h2 {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #6B6760;
+            font-weight: 400;
+        }
+
+        #result-video {
+            width: 100%;
+            border-radius: 4px;
+            background: #1A1916;
+            border: 1px solid rgba(255,255,255,0.06);
+            display: none;
+        }
+
+        #result-video.visible { display: block; }
+
+        #result-placeholder {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3A3830;
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        #download-btn {
+            padding: 12px;
+            background: transparent;
+            border: 1.5px solid #C9A96E;
+            color: #C9A96E;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        #download-btn:hover { background: #C9A96E; color: #111110; }
+        #download-btn:disabled { border-color: #3A3830; color: #3A3830; cursor: not-allowed; }
+
+        .result-hint {
+            font-size: 11px;
+            color: #4A4844;
+            line-height: 1.6;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .result-hint code {
+            font-family: 'SF Mono', monospace;
+            font-size: 10px;
+            color: #C9A96E;
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .pair-preview-tag {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+            font-size: 11px;
+            color: #8B8680;
+            background: #1A1916;
+            border-radius: 3px;
+            padding: 3px 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ── file:// 協議警告 ── -->
+    <div id="server-warning">
+        <div class="warning-box">
+            <h2>⚠ 需要透過 HTTP 伺服器開啟</h2>
+            <p>此工具使用 <code style="display:inline;background:none;border:none;padding:0;color:#C9A96E;">fetch()</code> 載入字體資料，在 <strong style="color:#E8E4DF;">file://</strong> 協議下會被瀏覽器的安全政策封鎖（CORS）。<br>請啟動一個本機 HTTP 伺服器後重新開啟。</p>
+
+            <div class="warning-step">① 在終端機切換到 frontend 資料夾：</div>
+            <code id="cmd-cd" onclick="copyCmd(this)">cd /Users/brendonchen/Desktop/Duet-code/frontend</code>
+            <div class="copy-hint">點擊複製</div>
+
+            <div class="warning-step">② 啟動本機伺服器（Python 3，通常已預裝）：</div>
+            <code id="cmd-serve" onclick="copyCmd(this)">python3 -m http.server 8080</code>
+            <div class="copy-hint">點擊複製</div>
+
+            <div class="warning-step">③ 在瀏覽器開啟：</div>
+            <code id="cmd-url" onclick="copyCmd(this)">http://localhost:8080/hero-video-generator.html</code>
+            <div class="copy-hint">點擊複製</div>
+
+            <p style="margin-top:12px;font-size:11px;color:#4A4844;">
+                若沒有 Python：可使用 VS Code 的 <strong>Live Server</strong> 外掛，或執行 <code style="display:inline;background:none;border:none;padding:0;color:#C9A96E;">npx serve .</code>（需 Node.js）。
+            </p>
+        </div>
+    </div>
+
+    <header>
+        <h1>DUET</h1>
+        <span>Hero Video Generator</span>
+    </header>
+
+    <div id="app">
+        <!-- ── 設定面板 ── -->
+        <aside id="settings-panel">
+            <div class="field-group">
+                <div class="field-label">字母 &amp; 字體</div>
+                <div class="letter-list" id="letter-list"></div>
+                <button class="add-letter-btn" id="add-letter-btn">＋ 新增字母</button>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">每對轉場秒數</div>
+                <div class="range-row">
+                    <input type="range" id="sec-per-pair" min="1" max="10" step="0.5" value="2.5">
+                    <span class="range-value" id="sec-value">2.5s</span>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">影片解析度</div>
+                <select id="resolution">
+                    <optgroup label="── 橫幅（網頁 Hero）──">
+                        <option value="1920x600" selected>1920 × 600（寬幅 Banner 16:5）</option>
+                        <option value="1280x480">1280 × 480（中型 Banner）</option>
+                        <option value="1920x1080">1920 × 1080（16:9 全幅）</option>
+                    </optgroup>
+                    <optgroup label="── 直式（社群媒體）──">
+                        <option value="800x1000">800 × 1000（通用直式）</option>
+                        <option value="1080x1350">1080 × 1350（Instagram 4:5）</option>
+                        <option value="1080x1920">1080 × 1920（Stories / Reels 9:16）</option>
+                        <option value="600x750">600 × 750（輕量預覽）</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">背景顏色</div>
+                <div class="color-row">
+                    <input type="color" id="bg-color" value="#FAF8F5">
+                    <input type="text" id="bg-color-hex" value="#FAF8F5" maxlength="7" spellcheck="false">
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px;">
+                    <input type="checkbox" id="transparent-mode" style="accent-color:#C9A96E;width:14px;height:14px;">
+                    <span class="field-sublabel">透明模式（使用上方顏色作融入底色）</span>
+                </label>
+                <div class="field-sublabel" id="transparent-hint" style="display:none;color:#C9A96E;margin-top:4px;">
+                    ✓ 吊墜將懸浮於上方色彩之上。影片底色 = 此色，在 index.html 上設同色背景即可達透明效果。
+                </div>
+                <div class="field-sublabel" style="margin-top:4px;">
+                    提示：將此色設為與 <code style="color:#C9A96E;font-size:10px;">index.html</code> 背景相同（預設 #FAF8F5），吊墜將自然懸浮。
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">自訂背景圖片</div>
+                <input type="file" id="bg-image-input" accept="image/*" style="display:none;">
+                <label for="bg-image-input" class="bg-image-upload-label">
+                    ＋ 選擇圖片
+                </label>
+                <div class="field-sublabel" style="margin-top:4px;">上傳後將取代漸層背景（透明模式下無效）</div>
+                <div id="bg-image-preview">
+                    <img id="bg-image-thumb" src="" alt="背景預覽">
+                    <button id="bg-image-clear">✕</button>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">相機俯角</div>
+                <div class="range-row">
+                    <input type="range" id="camera-tilt" min="0" max="40" step="5" value="0">
+                    <span class="range-value" id="tilt-value">0°</span>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">吊墜垂直位置</div>
+                <div class="range-row">
+                    <input type="range" id="vertical-offset" min="-30" max="60" step="2" value="10">
+                    <span class="range-value" id="voffset-value">10</span>
+                </div>
+                <div class="field-sublabel">往右 = 吊墜上移；往左 = 下移</div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">吊墜尺寸</div>
+                <div class="range-row">
+                    <input type="range" id="pendant-size" min="6" max="12" step="1" value="8">
+                    <span class="range-value" id="size-value">8mm</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <button id="generate-btn">▶ 開始生成</button>
+        </aside>
+
+        <!-- ── 預覽畫面 ── -->
+        <main id="preview-panel">
+            <div id="canvas-wrapper">
+                <canvas id="preview-canvas" width="800" height="1000"></canvas>
+                <div id="progress-overlay">
+                    <div id="progress-message">就緒</div>
+                    <div id="progress-bar"><div id="progress-fill"></div></div>
+                </div>
+            </div>
+            <div id="status-text">調整設定後點擊「開始生成」</div>
+        </main>
+
+        <!-- ── 結果面板 ── -->
+        <aside id="result-panel">
+            <h2>生成結果</h2>
+            <div id="result-placeholder">完成生成後<br>影片預覽將顯示在此</div>
+            <video id="result-video" controls loop muted playsinline></video>
+            <button id="download-btn" disabled>⬇ 下載 hero-product.webm</button>
+            <div class="result-hint">
+                下載後將檔案放入：<br>
+                <code>frontend/assets/videos/hero-product.webm</code>
+            </div>
+        </aside>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { STLLoader }   from 'three/addons/loaders/STLLoader.js';
+        import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+        import {
+            initFontMeta,
+            createV3LetterGeometry,
+            fontMetaMap
+        } from './js/geometry-engine.js';
+
+        // geometry-engine.js 把 THREE 當 window global 用，必須在這裡掛上去
+        window.THREE = THREE;
+
+        // ── 字體輪換清單 ──────────────────────────────────────────
+        const FONT_CYCLE = [
+            'Cormorant Garamond',
+            'Alex Brush',
+            'Anton',
+            'Abril Fatface',
+            'Audiowide',
+            'Allura',
+            'Bangers',
+            'Young Serif',
+            'Bungee',
+            'Cantata One',
+            'Aldrich',
+            'Aclonica'
+        ];
+
+        // ── 字母列表 UI ───────────────────────────────────────────
+        const DEFAULT_LETTERS = ['D','U','E','T','A','M','O','R'];
+        const letterList = document.getElementById('letter-list');
+
+        // 字體完整清單：從 fonts.json 動態載入，期間暫用 FONT_CYCLE 作備援
+        let ALL_FONTS = FONT_CYCLE.slice();
+
+        function buildFontOptions(selected) {
+            return ALL_FONTS.map(function(f) {
+                return '<option value="' + f + '"' + (f === selected ? ' selected' : '') + '>' + f + '</option>';
+            }).join('');
+        }
+
+        function addLetterRow(letter, font) {
+            const defaultFont = FONT_CYCLE[letterList.children.length % FONT_CYCLE.length];
+            const row = document.createElement('div');
+            row.className = 'letter-row';
+            row.innerHTML =
+                '<input type="text" class="letter-char-input" maxlength="1" value="' + (letter || '') +
+                '" spellcheck="false" placeholder="A">' +
+                '<select class="letter-font-select">' + buildFontOptions(font || defaultFont) + '</select>' +
+                '<button class="remove-letter-btn" title="移除">×</button>';
+
+            row.querySelector('.letter-char-input').addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(-1);
+            });
+            row.querySelector('.remove-letter-btn').addEventListener('click', function() {
+                if (letterList.children.length > 2) row.remove();
+            });
+            letterList.appendChild(row);
+        }
+
+        function rebuildAllFontSelects() {
+            letterList.querySelectorAll('.letter-font-select').forEach(function(sel) {
+                const current = sel.value;
+                sel.innerHTML = buildFontOptions(current);
+            });
+        }
+
+        // 從 fonts.json 載入完整字體清單，載入後同步更新所有已存在的選單
+        fetch('fonts.json')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                ALL_FONTS = data.fonts
+                    .map(function(f) { return f.name; })
+                    .sort(function(a, b) { return a.localeCompare(b); });
+                rebuildAllFontSelects();
+            })
+            .catch(function() { /* 保持 FONT_CYCLE 備援 */ })
+            .then(function() {
+                // 不論是否成功，初始化預設字母列
+                if (letterList.children.length === 0) {
+                    DEFAULT_LETTERS.forEach(function(letter, i) {
+                        addLetterRow(letter, FONT_CYCLE[i % FONT_CYCLE.length]);
+                    });
+                }
+            });
+
+        document.getElementById('add-letter-btn').addEventListener('click', function() {
+            addLetterRow('', '');
+            var inputs = letterList.querySelectorAll('.letter-char-input');
+            inputs[inputs.length - 1].focus();
+        });
+
+        // ── file:// 協議偵測 ──────────────────────────────────────
+        if (window.location.protocol === 'file:') {
+            document.getElementById('server-warning').classList.add('visible');
+        }
+
+        // ── 複製命令工具 ─────────────────────────────────────────
+        window.copyCmd = function(el) {
+            navigator.clipboard.writeText(el.textContent).then(() => {
+                const orig = el.style.background;
+                el.style.background = '#2A2820';
+                setTimeout(() => el.style.background = orig, 600);
+            });
+        };
+
+        // ── 狀態 ─────────────────────────────────────────────────
+        let scene, camera, renderer;
+        let pendantGroup = null;
+        let bgTexture = null; // 自訂背景貼圖（兩階段渲染用，避免 ACES 雙重處理）
+        let animFrameId = null;
+        let isGenerating = false;
+        let resultBlob = null;
+        let customBgUrl = null; // 使用者上傳的背景圖片 URL
+
+        // ── UI 元素 ───────────────────────────────────────────────
+        const canvas          = document.getElementById('preview-canvas');
+        const canvasWrapper   = document.getElementById('canvas-wrapper');
+        const genBtn          = document.getElementById('generate-btn');
+        const dlBtn           = document.getElementById('download-btn');
+        const resVideo        = document.getElementById('result-video');
+        const resPlaceholder  = document.getElementById('result-placeholder');
+        const statusText      = document.getElementById('status-text');
+        const progressOverlay = document.getElementById('progress-overlay');
+        const progressMsg     = document.getElementById('progress-message');
+        const progressFill    = document.getElementById('progress-fill');
+
+        // ── UI 綁定 ───────────────────────────────────────────────
+        document.getElementById('sec-per-pair').addEventListener('input', (e) => {
+            document.getElementById('sec-value').textContent = e.target.value + 's';
+        });
+        document.getElementById('camera-tilt').addEventListener('input', (e) => {
+            document.getElementById('tilt-value').textContent = e.target.value + '°';
+        });
+        document.getElementById('pendant-size').addEventListener('input', (e) => {
+            document.getElementById('size-value').textContent = e.target.value + 'mm';
+        });
+        document.getElementById('vertical-offset').addEventListener('input', (e) => {
+            document.getElementById('voffset-value').textContent = e.target.value;
+        });
+
+        // 顏色選取器 ↔ 文字框同步
+        const bgColorPicker    = document.getElementById('bg-color');
+        const bgColorHex       = document.getElementById('bg-color-hex');
+        const transparentCheck = document.getElementById('transparent-mode');
+        const transparentHint  = document.getElementById('transparent-hint');
+
+        bgColorPicker.addEventListener('input', (e) => {
+            bgColorHex.value = e.target.value;
+            updateCanvasWrapperBg();
+        });
+        bgColorHex.addEventListener('input', (e) => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                bgColorPicker.value = e.target.value;
+                updateCanvasWrapperBg();
+            }
+        });
+        transparentCheck.addEventListener('change', () => {
+            transparentHint.style.display = transparentCheck.checked ? 'block' : 'none';
+            updateCanvasWrapperBg();
+        });
+
+        // 背景圖片上傳
+        const bgImageInput   = document.getElementById('bg-image-input');
+        const bgImagePreview = document.getElementById('bg-image-preview');
+        const bgImageThumb   = document.getElementById('bg-image-thumb');
+        const bgImageClear   = document.getElementById('bg-image-clear');
+
+        bgImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (customBgUrl) URL.revokeObjectURL(customBgUrl);
+            customBgUrl = URL.createObjectURL(file);
+            bgImageThumb.src = customBgUrl;
+            bgImagePreview.style.display = 'block';
+        });
+        bgImageClear.addEventListener('click', () => {
+            if (customBgUrl) URL.revokeObjectURL(customBgUrl);
+            customBgUrl = null;
+            bgImageInput.value = '';
+            bgImageThumb.src = '';
+            bgImagePreview.style.display = 'none';
+        });
+
+        // canvas-wrapper 背景色 = 透明模式時用指定底色讓錄製正確
+        function updateCanvasWrapperBg() {
+            if (transparentCheck.checked) {
+                canvasWrapper.style.background = bgColorPicker.value;
+            } else {
+                canvasWrapper.style.background = '';
+            }
+        }
+
+        genBtn.addEventListener('click', () => {
+            if (!isGenerating) runGenerate();
+        });
+
+        dlBtn.addEventListener('click', () => {
+            if (!resultBlob) return;
+            const url = URL.createObjectURL(resultBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hero-product.webm';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        });
+
+        // ── 主生成流程 ────────────────────────────────────────────
+        async function runGenerate() {
+            isGenerating = true;
+            genBtn.disabled = true;
+            dlBtn.disabled = true;
+            resultBlob = null;
+
+            try {
+                // 讀取字母 & 字體列表
+                const entries = [];
+                letterList.querySelectorAll('.letter-row').forEach(function(row) {
+                    const letter = row.querySelector('.letter-char-input').value.trim().toUpperCase();
+                    const font   = row.querySelector('.letter-font-select').value;
+                    if (/^[A-Z]$/.test(letter)) entries.push({ letter, font });
+                });
+                if (entries.length < 2) { alert('請輸入至少 2 個字母'); return; }
+
+                const secPerPair   = parseFloat(document.getElementById('sec-per-pair').value);
+                const bgColor      = bgColorPicker.value;
+                const isTransparent = transparentCheck.checked;
+                const resolution   = document.getElementById('resolution').value;
+                const [W, H]       = resolution.split('x').map(Number);
+                const tiltDeg      = parseInt(document.getElementById('camera-tilt').value);
+                const pendantMM    = parseInt(document.getElementById('pendant-size').value);
+                const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
+
+                // 調整 canvas 尺寸
+                canvas.width  = W;
+                canvas.height = H;
+
+                // 透明模式：canvas-wrapper 背景 = 指定融入色（讓 alpha 渲染正確捕捉到底色）
+                updateCanvasWrapperBg();
+
+                // 設定場景（async，自訂背景圖片需等待載入）
+                await setupScene(bgColor, W, H, tiltDeg, isTransparent);
+                showProgress(true, '正在初始化字體資料...', 0);
+
+                // 載入字體 meta
+                await initFontMeta();
+
+                // 建立字母對（字體由各列獨立指定）
+                const pairs = [];
+                for (let i = 0; i < entries.length - 1; i++) {
+                    pairs.push({
+                        letterA: entries[i].letter,
+                        letterB: entries[i + 1].letter,
+                        fontA:   entries[i].font,
+                        fontB:   entries[i + 1].font
+                    });
+                }
+
+                // 預計算所有幾何體
+                const groups = [];
+                for (let i = 0; i < pairs.length; i++) {
+                    const p = pairs[i];
+                    showProgress(true,
+                        `正在計算 ${p.letterA} × ${p.fontA.split(' ')[0]}  +  ${p.letterB} × ${p.fontB.split(' ')[0]}...`,
+                        i / pairs.length
+                    );
+                    statusText.textContent = `計算幾何體 ${i + 1} / ${pairs.length}`;
+
+                    const group = await buildPendant(p.fontA, p.letterA, p.fontB, p.letterB, pendantMM, i);
+                    groups.push(group);
+                }
+
+                showProgress(true, '開始錄製影片...', 1);
+                statusText.textContent = '錄製中，請稍候...';
+
+                // 錄製動畫
+                const blob = await recordAnimation(groups, secPerPair, vertOffset);
+                resultBlob = blob;
+
+                // 顯示結果
+                const url = URL.createObjectURL(blob);
+                resVideo.src = url;
+                resVideo.load();
+                resVideo.classList.add('visible');
+                resPlaceholder.style.display = 'none';
+                dlBtn.disabled = false;
+                statusText.textContent = `完成！影片時長 ${(secPerPair * pairs.length).toFixed(1)}s，${W}×${H}`;
+
+            } catch (err) {
+                console.error('生成失敗:', err);
+                statusText.textContent = '生成失敗：' + err.message;
+                alert('生成失敗：\n' + err.message);
+            } finally {
+                showProgress(false, '', 0);
+                isGenerating = false;
+                genBtn.disabled = false;
+            }
+        }
+
+        // ── 工作室漸層背景（模擬布景深度）──────────────────────────
+        function createStudioBackground(W, H) {
+            const bgCanvas = document.createElement('canvas');
+            bgCanvas.width  = W;
+            bgCanvas.height = H;
+            const ctx = bgCanvas.getContext('2d');
+            // 光源稍偏上，創造由上往下的柔光感
+            const cx = W * 0.5, cy = H * 0.38;
+            const r  = Math.sqrt(W * W + H * H) * 0.58;
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+            grad.addColorStop(0,    '#F5EDDF'); // 中心：暖奶油
+            grad.addColorStop(0.32, '#E8D5BE'); // 中圈：暖米
+            grad.addColorStop(0.65, '#CEAD8A'); // 外圈：暖棕
+            grad.addColorStop(1,    '#A07850'); // 邊角：深棕
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+            return new THREE.CanvasTexture(bgCanvas);
+        }
+
+        // ── HDR 環境圖（非同步動態 import，連不上也不中斷生成）────
+        function loadHDR() {
+            const urls = [
+                'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
+                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
+            ];
+            import('three/addons/loaders/RGBELoader.js')
+                .then(({ RGBELoader }) => {
+                    const pmrem  = new THREE.PMREMGenerator(renderer);
+                    const loader = new RGBELoader();
+                    let idx = 0;
+                    function tryNext() {
+                        if (idx >= urls.length) { pmrem.dispose(); return; }
+                        const url = urls[idx++];
+                        loader.load(url,
+                            (tex) => {
+                                scene.environment = pmrem.fromEquirectangular(tex).texture;
+                                tex.dispose();
+                                pmrem.dispose();
+                                console.log('✅ HDR 載入成功');
+                            },
+                            undefined,
+                            () => { console.warn('⚠️ HDR 失敗，嘗試備援...'); tryNext(); }
+                        );
+                    }
+                    tryNext();
+                })
+                .catch(() => console.warn('⚠️ RGBELoader 無法載入，使用純燈光模式'));
+        }
+
+        // ── 場景設定 ──────────────────────────────────────────────
+        async function setupScene(bgColorHex, W, H, tiltDeg, isTransparent = false) {
+            if (renderer) { renderer.dispose(); }
+            if (scene) {
+                scene.traverse(obj => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) {
+                        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                        else obj.material.dispose();
+                    }
+                });
+            }
+
+            bgTexture = null; // 重設
+            scene = new THREE.Scene();
+            if (isTransparent) {
+                // 透明模式：canvas-wrapper 的 CSS background 透過 alpha 顯示，MediaRecorder 捕捉到底色
+                scene.background = null;
+            } else if (customBgUrl) {
+                // 使用者上傳的自訂背景圖片：存入 bgTexture，用兩階段渲染避免 ACES 雙重處理
+                scene.background = createStudioBackground(W, H); // 佔位，等圖片載入
+                await new Promise((resolve) => {
+                    new THREE.TextureLoader().load(customBgUrl, (tex) => {
+                        bgTexture = tex;
+                        scene.background = null; // 改由 renderFrame() 手動繪製
+                        resolve();
+                    }, undefined, () => {
+                        // 載入失敗：退回漸層（保持 scene.background 的漸層）
+                        resolve();
+                    });
+                });
+            } else {
+                // 工作室漸層背景（模擬珠寶攝影布景）
+                scene.background = createStudioBackground(W, H);
+            }
+
+            camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 2000);
+            camera.up.set(0, 0, 1); // Z-up
+
+            const dist     = 100;
+            const tiltRad  = tiltDeg * Math.PI / 180;
+            const lookAtZ  = 10; // 吊墜重心高度（含 Ring/Bail）
+            camera.position.set(0, -dist, lookAtZ + dist * Math.tan(tiltRad));
+            camera.lookAt(0, 0, lookAtZ);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: isTransparent });
+            if (isTransparent) renderer.setClearColor(0x000000, 0);
+            renderer.setSize(W, H, false);
+            renderer.toneMapping      = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.75;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            // 燈光（HDR 載入前的保底光源；HDR 到位後會疊加）
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            const key = new THREE.DirectionalLight(0xFFF5E8, 1.8);
+            key.position.set(20, -15, 30);
+            scene.add(key);
+
+            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.5);
+            fill.position.set(-20, 15, 10);
+            scene.add(fill);
+
+            const rim = new THREE.DirectionalLight(0xffffff, 0.3);
+            rim.position.set(0, 30, -10);
+            scene.add(rim);
+
+            // 非同步載入 HDR（幾何計算期間同步進行，渲染時已就緒）
+            loadHDR();
+        }
+
+        // ── 建立一組吊墜（主體 + Ring + Bail）────────────────────
+        // pairIdx: 第幾對（0, 1, 2...），用於讓 bail 旋轉連續不跳動
+        async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0) {
+            // 生成幾何體
+            let geo1 = await createV3LetterGeometry(fontA, letterA, targetHeight, 18);
+            let geo2 = await createV3LetterGeometry(fontB, letterB, targetHeight, 18);
+
+            // 對齊原點
+            geo1.center();
+            geo2.center();
+
+            // 縮放到 targetHeight（與 design-studio 完全相同的邏輯）
+            geo1.computeBoundingBox();
+            const h1 = geo1.boundingBox.max.y - geo1.boundingBox.min.y;
+            geo1.applyMatrix4(new THREE.Matrix4().makeScale(targetHeight / h1, targetHeight / h1, targetHeight / h1));
+
+            geo2.computeBoundingBox();
+            const h2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+            geo2.applyMatrix4(new THREE.Matrix4().makeScale(targetHeight / h2, targetHeight / h2, targetHeight / h2));
+
+            // 旋轉對位（與 design-studio 相同）
+            geo1.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2)); // Letter1: XZ 平面
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2)); // Letter2: 先同
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.PI / 2)); // Letter2: YZ 平面
+
+            geo1.center();
+            geo2.center();
+
+            // CSG 前轉為 NonIndexed
+            geo1 = geo1.toNonIndexed();
+            geo2 = geo2.toNonIndexed();
+
+            const evaluator = new Evaluator();
+            const baseMat   = new THREE.MeshStandardMaterial();
+            const brush1    = new Brush(geo1, baseMat); brush1.updateMatrixWorld();
+            const brush2    = new Brush(geo2, baseMat); brush2.updateMatrixWorld();
+
+            let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+
+            // 修復法向量 + 微位移消除 z-fighting
+            result.geometry = result.geometry.toNonIndexed();
+            result.geometry.deleteAttribute('normal');
+            result.geometry.computeVertexNormals();
+
+            const pos  = result.geometry.attributes.position;
+            const norm = result.geometry.attributes.normal;
+            const eps  = 0.001;
+            for (let i = 0; i < pos.count; i++) {
+                pos.setXYZ(i,
+                    pos.getX(i) + norm.getX(i) * eps,
+                    pos.getY(i) + norm.getY(i) * eps,
+                    pos.getZ(i) + norm.getZ(i) * eps
+                );
+            }
+            pos.needsUpdate = true;
+
+            // 移到原點，取得模型頂端 Z
+            result.geometry.computeBoundingBox();
+            const bbox   = result.geometry.boundingBox;
+            const center = bbox.getCenter(new THREE.Vector3());
+            result.geometry.translate(-center.x, -center.y, -center.z);
+            result.geometry.computeBoundingBox();
+            const modelTopZ = result.geometry.boundingBox.max.z;
+
+            // 材質：925 銀，光澤
+            const silverMat = new THREE.MeshStandardMaterial({
+                color:     0xD4D0CC,
+                metalness: 1.0,
+                roughness: 0.04,
+                envMapIntensity: 0.8
+            });
+            result.material = silverMat;
+
+            // Ring（圓環）
+            const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64);
+            ringGeo.rotateX(Math.PI / 2);
+            const ringMesh = new THREE.Mesh(ringGeo, silverMat.clone());
+            const ringZ    = modelTopZ + 1.3; // 1.3 = innerRadius + tubeRadius
+            ringMesh.position.set(0, 0, ringZ);
+
+            // Pendant group
+            // letterWrapper 有一個反向的初始旋轉，讓字母永遠正面對鏡頭
+            // 即使 group 的起始角度 = pairIdx * π/2，字母的世界角度仍從 0° 開始
+            // bail/ring 直接掛在 group 上，會從 pairIdx * π/2 繼續旋轉，無縫接續前一對
+            const letterWrapper = new THREE.Group();
+            letterWrapper.rotation.z = pairIdx * Math.PI / 2;
+            letterWrapper.add(result);
+
+            const group = new THREE.Group();
+            group.add(letterWrapper);
+            group.add(ringMesh);
+
+            // 等待 Bail STL
+            await loadBail(group, ringMesh, modelTopZ, silverMat);
+
+            return group;
+        }
+
+        // ── 載入 Bail STL（墜扣）────────────────────────────────
+        function loadBail(group, ringMesh, modelTopZ, material) {
+            return new Promise((resolve) => {
+                const loader = new STLLoader();
+                loader.load(
+                    'assets/models/bail.stl',
+                    (bailGeo) => {
+                        bailGeo.computeBoundingBox();
+                        const bb = bailGeo.boundingBox;
+                        bailGeo.translate(
+                            -(bb.min.x + bb.max.x) / 2,
+                            -(bb.min.y + bb.max.y) / 2,
+                            -(bb.min.z + bb.max.z) / 2
+                        );
+                        bailGeo.computeVertexNormals();
+
+                        const sX = bb.max.x - bb.min.x;
+                        const sY = bb.max.y - bb.min.y;
+                        const sZ = bb.max.z - bb.min.z;
+                        const scale = 4 / Math.max(sX, sY); // 目標寬 4mm
+                        bailGeo.scale(scale, scale, scale);
+
+                        bailGeo.computeBoundingBox();
+                        const sbb     = bailGeo.boundingBox;
+                        const bailH   = sbb.max.z - sbb.min.z;
+                        const bailMesh = new THREE.Mesh(bailGeo, material.clone());
+                        bailMesh.position.set(
+                            ringMesh.position.x,
+                            ringMesh.position.y,
+                            modelTopZ + 1.2 + bailH / 2
+                        );
+                        group.add(bailMesh);
+                        resolve();
+                    },
+                    undefined,
+                    () => resolve() // Bail 載入失敗不中斷流程
+                );
+            });
+        }
+
+        // ── 錄製動畫 ─────────────────────────────────────────────
+        function recordAnimation(groups, secPerPair, vertOffset = 10) {
+            return new Promise((resolve, reject) => {
+                const FPS       = 30;
+                const FADE_SEC  = 0.2; // 0.2 秒過場淡入淡出
+                const fadeFr    = Math.round(FPS * FADE_SEC);
+                const pairFr    = Math.max(Math.round(FPS * secPerPair), fadeFr * 2 + 5);
+                const totalFr   = groups.length * pairFr;
+
+                // 選擇最佳 mimeType
+                const mimeTypes = [
+                    'video/webm;codecs=vp9',
+                    'video/webm;codecs=vp8',
+                    'video/webm',
+                    'video/mp4'
+                ];
+                const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+                const stream   = canvas.captureStream(FPS);
+                const recorder = new MediaRecorder(stream, {
+                    mimeType,
+                    videoBitsPerSecond: 10_000_000
+                });
+                const chunks   = [];
+
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                recorder.onstop = () => {
+                    resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
+                };
+                recorder.onerror = (e) => reject(e.error);
+                recorder.start(100); // 每 100ms emit 一個 chunk
+
+                let frame = 0;
+
+                // 初始化：放入第一個 group
+                if (pendantGroup) scene.remove(pendantGroup);
+                pendantGroup = groups[0];
+                scene.add(pendantGroup);
+                setGroupOpacity(pendantGroup, 0);
+
+                function tick() {
+                    if (frame >= totalFr) {
+                        renderFrame();
+                        recorder.stop();
+                        return;
+                    }
+
+                    const pairIdx  = Math.floor(frame / pairFr);
+                    const pairFrm  = frame % pairFr;
+                    const t        = pairFrm / pairFr; // 0 → 1
+
+                    // 切換 group
+                    if (pairFrm === 0) {
+                        if (pendantGroup) scene.remove(pendantGroup);
+                        pendantGroup = groups[pairIdx];
+                        scene.add(pendantGroup);
+                    }
+
+                    // 旋轉：每對從 pairIdx * 90° 繼續轉到 (pairIdx+1) * 90°
+                    // bail/ring 無縫延續旋轉；letter 內有反向 offset，永遠正面對鏡頭
+                    pendantGroup.rotation.z  = -(pairIdx + t) * Math.PI / 2;
+                    pendantGroup.position.z  = vertOffset;
+
+                    // 透明度：淡入（開頭）→ 持續 → 淡出（結尾，最後一對除外）
+                    const isLastPair = pairIdx >= groups.length - 1;
+                    let opacity = 1.0;
+                    if (pairFrm < fadeFr) {
+                        opacity = pairFrm / fadeFr; // 淡入
+                    } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                        opacity = (pairFr - pairFrm) / fadeFr; // 淡出
+                    }
+                    setGroupOpacity(pendantGroup, opacity);
+
+                    renderFrame();
+
+                    frame++;
+                    // 進度更新
+                    if (frame % 10 === 0) {
+                        showProgress(true,
+                            `錄製中... ${Math.round((frame / totalFr) * 100)}%`,
+                            frame / totalFr
+                        );
+                    }
+
+                    animFrameId = requestAnimationFrame(tick);
+                }
+
+                animFrameId = requestAnimationFrame(tick);
+            });
+        }
+
+        // ── 兩階段渲染（避免背景被 ACES tone mapping 雙重處理）────
+        // bgTexture 存在時：Pass1 僅渲染背景（NoToneMapping），Pass2 僅渲染吊墜（ACES）
+        function renderFrame() {
+            if (bgTexture) {
+                // Pass 1：背景原色渲染
+                if (pendantGroup) pendantGroup.visible = false;
+                scene.background = bgTexture;
+                renderer.toneMapping         = THREE.NoToneMapping;
+                renderer.toneMappingExposure = 1.0;
+                renderer.render(scene, camera);
+
+                // Pass 2：吊墜疊加（保持原有 ACES 設定）
+                scene.background = null;
+                if (pendantGroup) pendantGroup.visible = true;
+                renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 0.75;
+                renderer.autoClear = false;
+                renderer.render(scene, camera);
+                renderer.autoClear = true;
+            } else {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ── 工具函式 ─────────────────────────────────────────────
+        function setGroupOpacity(group, opacity) {
+            group.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.transparent = opacity < 0.999;
+                    child.material.opacity = opacity;
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+
+        function showProgress(visible, message, fraction) {
+            progressOverlay.classList.toggle('visible', visible);
+            if (visible) {
+                progressMsg.textContent  = message;
+                progressFill.style.width = `${Math.round(fraction * 100)}%`;
+            }
+        }
+    </script>
+</body>
+</html>
