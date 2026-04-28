@@ -96,6 +96,7 @@
             <select id="material">
                 <option value="silver925">925 銀</option>
                 <option value="brass">黃銅</option>
+                <option value="precious_metal" style="color:#d4af37;">✦ 其他貴金屬（18K金 / 鉑金）</option>
             </select>
         </div>
 
@@ -476,6 +477,68 @@
             onmouseout="this.style.background='rgba(212, 175, 55, 0.15)'; this.style.borderColor='rgba(212, 175, 55, 0.3)'">
             確定
         </button>
+    </div>
+
+    <!-- 貴金屬說明 Modal -->
+    <div id="precious-metal-notice-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);z-index:10000;justify-content:center;align-items:center;">
+        <div style="background:rgba(20,18,14,0.95);border:1px solid rgba(212,175,55,0.3);border-radius:24px;padding:40px 44px;max-width:460px;width:90%;color:#fff;position:relative;">
+            <div style="font-size:28px;margin-bottom:6px;color:#d4af37;">✦ 貴金屬訂製</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.45);letter-spacing:1px;margin-bottom:24px;text-transform:uppercase;">Custom Precious Metal Order</div>
+            <p style="font-size:15px;line-height:1.8;color:rgba(255,255,255,0.8);margin-bottom:20px;">
+                18K 金、玫瑰金、白K金及鉑金版本為客製訂製，價格依當日金價與作品重量計算，由我們報價。
+            </p>
+            <p style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.55);margin-bottom:28px;">
+                請繼續完成您的設計，加入購物車後點選「送出訂製需求」，我們將在 2 個工作天內主動與您聯繫。
+            </p>
+            <button onclick="document.getElementById('precious-metal-notice-modal').style.display='none';" style="width:100%;padding:14px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;">
+                了解，繼續設計
+            </button>
+        </div>
+    </div>
+
+    <!-- 訂製詢問表單 Modal -->
+    <div id="custom-inquiry-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);backdrop-filter:blur(15px);z-index:10001;justify-content:center;align-items:center;">
+        <div style="background:rgba(18,16,12,0.97);border:1px solid rgba(212,175,55,0.25);border-radius:28px;padding:40px 44px;max-width:520px;width:92%;max-height:90vh;overflow-y:auto;color:#fff;position:relative;">
+            <div style="font-size:26px;margin-bottom:4px;color:#d4af37;">訂製需求詢問</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1.5px;margin-bottom:28px;text-transform:uppercase;">Custom Order Inquiry</div>
+
+            <div id="inquiry-design-summary" style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.15);border-radius:12px;padding:14px 16px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,0.55);line-height:1.7;"></div>
+
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">姓名 *</label>
+                    <input id="inquiry-name" type="text" placeholder="您的姓名" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">Email 或 LINE ID *</label>
+                    <input id="inquiry-contact" type="text" placeholder="your@email.com 或 LINE ID" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">材質偏好</label>
+                    <select id="inquiry-material" style="width:100%;padding:12px 14px;background:rgba(20,18,14,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                        <option value="18k_yellow">18K 黃金</option>
+                        <option value="18k_rose">18K 玫瑰金</option>
+                        <option value="18k_white">18K 白K金</option>
+                        <option value="platinum">鉑金</option>
+                        <option value="undecided">尚未決定，希望諮詢</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">希望完成時間</label>
+                    <input id="inquiry-timeline" type="text" placeholder="例如：2 個月內、聖誕節前⋯" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">備註</label>
+                    <textarea id="inquiry-notes" placeholder="其他想告訴我們的⋯" rows="3" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;resize:vertical;font-family:inherit;"></textarea>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:28px;">
+                <button onclick="document.getElementById('custom-inquiry-modal').style.display='none';" style="flex:1;padding:14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">取消</button>
+                <button id="submit-inquiry-btn" onclick="submitCustomInquiry();" style="flex:2;padding:14px;background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.1));border:1px solid rgba(212,175,55,0.5);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;font-weight:500;">送出訂製需求</button>
+            </div>
+            <div id="inquiry-status" style="margin-top:14px;font-size:13px;text-align:center;min-height:18px;"></div>
+        </div>
     </div>
 
     <!-- Cart Modal -->
@@ -2195,7 +2258,13 @@
 
         // 更新價格顯示
         function updatePriceDisplay() {
-            const plating = document.getElementById('plating').value;
+            const material = document.getElementById('material').value;
+            const plating  = document.getElementById('plating').value;
+
+            if (material === 'precious_metal') {
+                document.getElementById('price-display').textContent = '價格待詢';
+                return;
+            }
 
             // 基礎價格：925銀、黃銅都是 3850
             let price = 3850;
@@ -2841,17 +2910,16 @@
                 volume: document.getElementById('volume-display').textContent,
                 weight: document.getElementById('weight-display').textContent,
                 quantity: 1,
-                // 動態計算價格
+                // 動態計算價格（貴金屬訂製設為 0，由 isPreciousMetal 標記）
                 price: (() => {
+                    const mat = document.getElementById('material').value;
+                    if (mat === 'precious_metal') return 0;
                     const plating = document.getElementById('plating').value;
-                    // 基礎價格：925銀、黃銅都是 3850
                     let basePrice = 3850;
-                    // 有電鍍（任何電鍍）+400
-                    if (plating && plating !== 'none') {
-                        basePrice += 400;
-                    }
+                    if (plating && plating !== 'none') basePrice += 400;
                     return basePrice;
                 })(),
+                isPreciousMetal: document.getElementById('material').value === 'precious_metal',
                 // 儲存圓環相對向量
                 ringRelativeX: ringRelativeX,
                 ringRelativeY: ringRelativeY,
@@ -2943,14 +3011,15 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'cart-item-info';
-                const platingText = item.plating === 'none' ? '無電鍍' : item.plating;
-                const finishText = item.finish === 'glossy' ? '亮面' : '霧面';
+                const platingText  = item.plating === 'none' ? '無電鍍' : item.plating;
+                const finishText   = item.finish === 'glossy' ? '亮面' : '霧面';
+                const materialText = item.isPreciousMetal ? '貴金屬訂製（待報價）' : item.material;
                 infoDiv.innerHTML = `
                     <h3>DUET "${item.letter1}${item.letter2}"</h3>
                     <div class="cart-item-details">
                         "${item.letter1}" in font "${item.font1}"<br>
                         "${item.letter2}" in font "${item.font2}"<br>
-                        材質: ${item.material} | 電鍍: ${platingText} | 質地: ${finishText}<br>
+                        材質: ${materialText} | 電鍍: ${platingText} | 質地: ${finishText}<br>
                         尺寸: ${item.size}mm | 重量: ${item.weight}
                     </div>
                 `;
@@ -2958,7 +3027,13 @@
 
                 const priceDiv = document.createElement('div');
                 priceDiv.className = 'cart-item-price';
-                priceDiv.textContent = `NT$ ${(item.price * item.quantity).toLocaleString()}`;
+                if (item.isPreciousMetal) {
+                    priceDiv.textContent = '價格待詢';
+                    priceDiv.style.color = '#d4af37';
+                    priceDiv.style.fontSize = '13px';
+                } else {
+                    priceDiv.textContent = `NT$ ${(item.price * item.quantity).toLocaleString()}`;
+                }
                 div.appendChild(priceDiv);
 
                 const quantityDiv = document.createElement('div');
@@ -3016,7 +3091,7 @@
                 div.appendChild(deleteBtn);
 
                 container.appendChild(div);
-                total += item.price * item.quantity;
+                if (!item.isPreciousMetal) total += item.price * item.quantity;
             });
 
             // 儲存原始總金額
@@ -3027,6 +3102,21 @@
 
             // 更新顯示
             updateTotalDisplay(originalTotal, promoDiscount, finalTotal);
+
+            // 若有貴金屬訂製品，切換結帳按鈕
+            const hasPreciousMetal = cartItems.some(i => i.isPreciousMetal);
+            const checkoutBtn = document.getElementById('checkout');
+            if (hasPreciousMetal) {
+                checkoutBtn.textContent = '送出訂製需求';
+                checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
+                checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
+                checkoutBtn.style.color = '#d4af37';
+            } else {
+                checkoutBtn.textContent = 'Checkout';
+                checkoutBtn.style.background = '';
+                checkoutBtn.style.borderColor = '';
+                checkoutBtn.style.color = '';
+            }
         }
 
         // ============================================================
@@ -3636,8 +3726,84 @@
         // 將 lastOrderId 設為全域變數（在 processPayment 中設定）
         window.lastOrderId = null;
 
+        // ── 貴金屬訂製詢問 ──────────────────────────────────────────
+        function openCustomInquiryModal() {
+            // 整理設計摘要（自動帶入購物車中貴金屬品項的設計資訊）
+            const preciousItems = cartItems.filter(i => i.isPreciousMetal);
+            const summaryLines = preciousItems.map(item =>
+                `DUET "${item.letter1}${item.letter2}" — "${item.letter1}" × ${item.font1}，"${item.letter2}" × ${item.font2}，${item.size}mm`
+            );
+            document.getElementById('inquiry-design-summary').innerHTML =
+                '<strong style="color:rgba(212,175,55,0.8);font-size:11px;letter-spacing:1px;text-transform:uppercase;">作品資訊（自動帶入）</strong><br>' +
+                summaryLines.join('<br>');
+            document.getElementById('inquiry-status').textContent = '';
+            document.getElementById('custom-inquiry-modal').style.display = 'flex';
+        }
+
+        async function submitCustomInquiry() {
+            const name    = document.getElementById('inquiry-name').value.trim();
+            const contact = document.getElementById('inquiry-contact').value.trim();
+            if (!name || !contact) {
+                document.getElementById('inquiry-status').innerHTML = '<span style="color:#ff6b6b;">請填寫姓名及聯絡方式</span>';
+                return;
+            }
+
+            const btn = document.getElementById('submit-inquiry-btn');
+            btn.disabled = true;
+            btn.textContent = '傳送中⋯';
+            document.getElementById('inquiry-status').textContent = '';
+
+            const preciousItems = cartItems.filter(i => i.isPreciousMetal);
+            const payload = {
+                name,
+                contact,
+                material_preference: document.getElementById('inquiry-material').value,
+                timeline: document.getElementById('inquiry-timeline').value.trim(),
+                notes: document.getElementById('inquiry-notes').value.trim(),
+                items: preciousItems.map(item => ({
+                    letters: `${item.letter1}${item.letter2}`,
+                    font1: item.font1,
+                    font2: item.font2,
+                    size: item.size,
+                    weight: item.weight,
+                    finish: item.finish
+                })),
+                thumbnails: preciousItems.map(i => i.thumbnail || '').filter(Boolean)
+            };
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/custom-inquiry`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('server error');
+                document.getElementById('inquiry-status').innerHTML =
+                    '<span style="color:#7ec87e;">✓ 已送出！我們將在 2 個工作天內與您聯繫。</span>';
+                btn.textContent = '已送出';
+                // 移除貴金屬品項（留下一般品項）
+                cartItems = cartItems.filter(i => !i.isPreciousMetal);
+                setTimeout(() => {
+                    document.getElementById('custom-inquiry-modal').style.display = 'none';
+                    renderCart();
+                    if (cartItems.length === 0) closeCart();
+                }, 2200);
+            } catch (e) {
+                document.getElementById('inquiry-status').innerHTML =
+                    '<span style="color:#ff6b6b;">傳送失敗，請稍後再試或直接 Email 至 duet@brendonchen.com</span>';
+                btn.disabled = false;
+                btn.textContent = '送出訂製需求';
+            }
+        }
+
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
+            // 若含貴金屬訂製品，改走詢問表單流程
+            if (cartItems.some(i => i.isPreciousMetal)) {
+                openCustomInquiryModal();
+                return;
+            }
+
             // 分離部件檢查尚未完成，暫時封鎖結帳
             if (fragmentCheckPending) {
                 const pendingMsg = document.getElementById('cart-fragment-pending-msg');
@@ -4416,6 +4582,14 @@
             });
             document.getElementById('continue-shopping').addEventListener('click', closeCart);
             document.getElementById('checkout').addEventListener('click', checkout);
+
+            // 材質切換：選到貴金屬時彈說明
+            document.getElementById('material').addEventListener('change', function () {
+                if (this.value === 'precious_metal') {
+                    document.getElementById('precious-metal-notice-modal').style.display = 'flex';
+                }
+                updatePriceDisplay();
+            });
 
             // 設計理念卡片切換邏輯
             const cardStyles = [
