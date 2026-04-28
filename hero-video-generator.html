@@ -255,7 +255,6 @@
 
         .letter-char-input {
             text-align: center;
-            text-transform: uppercase;
             font-size: 16px;
             font-weight: 700;
             letter-spacing: 0;
@@ -567,13 +566,23 @@
                     <img id="bg-image-thumb" src="" alt="背景預覽">
                     <button id="bg-image-clear">✕</button>
                 </div>
-                <div style="margin-top:8px;">
-                    <div class="field-sublabel" style="margin-bottom:4px;">背景亮度</div>
-                    <div class="range-row">
-                        <input type="range" id="bg-brightness" min="0.3" max="1.2" step="0.05" value="0.75">
-                        <span class="range-value" id="bg-brightness-value">0.75</span>
+                <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">曝光（Exposure）</div>
+                        <div class="range-row">
+                            <input type="range" id="bg-brightness" min="0.3" max="1.5" step="0.05" value="0.75">
+                            <span class="range-value" id="bg-brightness-value">0.75</span>
+                        </div>
+                        <div class="field-sublabel">gamma 冪次曲線，不影響對比結構</div>
                     </div>
-                    <div class="field-sublabel">往左 = 更暗；往右 = 更亮（預設 0.75）</div>
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">對比（Contrast）</div>
+                        <div class="range-row">
+                            <input type="range" id="bg-contrast" min="0.5" max="2.5" step="0.05" value="1.0">
+                            <span class="range-value" id="bg-contrast-value">1.00</span>
+                        </div>
+                        <div class="field-sublabel">往右 = 亮暗差距更大</div>
+                    </div>
                 </div>
             </div>
 
@@ -680,12 +689,12 @@
             row.className = 'letter-row';
             row.innerHTML =
                 '<input type="text" class="letter-char-input" maxlength="1" value="' + (letter || '') +
-                '" spellcheck="false" placeholder="A">' +
+                '" spellcheck="false" placeholder="A/a/0">' +
                 '<select class="letter-font-select">' + buildFontOptions(font || defaultFont) + '</select>' +
                 '<button class="remove-letter-btn" title="移除">×</button>';
 
             row.querySelector('.letter-char-input').addEventListener('input', function(e) {
-                e.target.value = e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(-1);
+                e.target.value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1);
             });
             row.querySelector('.remove-letter-btn').addEventListener('click', function() {
                 if (letterList.children.length > 2) row.remove();
@@ -820,10 +829,13 @@
         document.getElementById('bg-brightness').addEventListener('input', (e) => {
             document.getElementById('bg-brightness-value').textContent = parseFloat(e.target.value).toFixed(2);
         });
+        document.getElementById('bg-contrast').addEventListener('input', (e) => {
+            document.getElementById('bg-contrast-value').textContent = parseFloat(e.target.value).toFixed(2);
+        });
 
-        // 以 Canvas 2D 對背景圖做亮度預處理，再轉成 Three.js 紋理
-        // Three.js 的 linearization 會讓圖片偏亮，預先調暗可以補償
-        function loadAdjustedBgTexture(url, brightness) {
+        // 以 Canvas 2D 對背景圖做曝光（gamma 冪次曲線）+ 對比調整
+        // gamma 曲線：壓暗但保留亮暗比例，不像 multiply 那樣壓縮對比
+        function loadAdjustedBgTexture(url, exposure, contrast) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
@@ -832,13 +844,30 @@
                     c.height = img.naturalHeight || img.height;
                     const ctx = c.getContext('2d');
                     ctx.drawImage(img, 0, 0);
-                    // multiply 混合模式：用灰色覆蓋來降低亮度
-                    if (brightness < 0.999) {
-                        const v = Math.round(brightness * 255);
-                        ctx.globalCompositeOperation = 'multiply';
-                        ctx.fillStyle = `rgb(${v},${v},${v})`;
-                        ctx.fillRect(0, 0, c.width, c.height);
+
+                    const needsAdjust = Math.abs(exposure - 1.0) > 0.01 || Math.abs(contrast - 1.0) > 0.01;
+                    if (needsAdjust) {
+                        // 建 LUT（查找表）加速逐像素處理
+                        // 步驟 1：gamma（exposure < 1 = 暗 → γ > 1）
+                        const gamma = 1.0 / exposure;
+                        // 步驟 2：contrast 以 128 為中心縮放
+                        const lut = new Uint8Array(256);
+                        for (let i = 0; i < 256; i++) {
+                            let v = Math.pow(i / 255, gamma) * 255; // gamma
+                            v = (v - 128) * contrast + 128;          // contrast
+                            lut[i] = Math.max(0, Math.min(255, Math.round(v)));
+                        }
+                        const imgData = ctx.getImageData(0, 0, c.width, c.height);
+                        const d = imgData.data;
+                        for (let i = 0; i < d.length; i += 4) {
+                            d[i]     = lut[d[i]];
+                            d[i + 1] = lut[d[i + 1]];
+                            d[i + 2] = lut[d[i + 2]];
+                            // alpha 不動
+                        }
+                        ctx.putImageData(imgData, 0, 0);
                     }
+
                     const tex = new THREE.CanvasTexture(c);
                     resolve(tex);
                 };
@@ -881,9 +910,9 @@
                 // 讀取字母 & 字體列表
                 const entries = [];
                 letterList.querySelectorAll('.letter-row').forEach(function(row) {
-                    const letter = row.querySelector('.letter-char-input').value.trim().toUpperCase();
+                    const letter = row.querySelector('.letter-char-input').value.trim();
                     const font   = row.querySelector('.letter-font-select').value;
-                    if (/^[A-Z]$/.test(letter)) entries.push({ letter, font });
+                    if (/^[a-zA-Z0-9]$/.test(letter)) entries.push({ letter, font });
                 });
                 if (entries.length < 2) { alert('請輸入至少 2 個字母'); return; }
 
@@ -1033,8 +1062,9 @@
                 // 使用者上傳的自訂背景圖片：Canvas 2D 預處理亮度後轉紋理
                 // 兩階段渲染（renderFrame）確保背景不被 ACES tone mapping 二次處理
                 scene.background = createStudioBackground(W, H); // 佔位
-                const brightness = parseFloat(document.getElementById('bg-brightness').value) || 0.75;
-                const adjusted = await loadAdjustedBgTexture(customBgUrl, brightness);
+                const exposure  = parseFloat(document.getElementById('bg-brightness').value) || 0.75;
+                const contrast  = parseFloat(document.getElementById('bg-contrast').value)   || 1.0;
+                const adjusted  = await loadAdjustedBgTexture(customBgUrl, exposure, contrast);
                 if (adjusted) {
                     bgTexture = adjusted;
                     scene.background = null; // 改由 renderFrame() 手動繪製
