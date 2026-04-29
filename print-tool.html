@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設計概念卡片列印工具 | DUET</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── 螢幕介面 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Noto Serif TC', serif;
+    background: #1a1814;
+    color: #e8e0d0;
+    min-height: 100vh;
+}
+
+.app-header {
+    padding: 20px 32px;
+    border-bottom: 1px solid rgba(212,175,55,0.2);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+}
+
+.app-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: #d4af37;
+    letter-spacing: 2px;
+}
+
+.app-header span {
+    font-size: 12px;
+    color: rgba(232,224,208,0.45);
+    letter-spacing: 1px;
+}
+
+.app-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    height: calc(100vh - 65px);
+}
+
+/* 左側輸入面板 */
+.input-panel {
+    padding: 28px 24px;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.input-panel label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: rgba(232,224,208,0.45);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.input-panel textarea {
+    width: 100%;
+    height: 260px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 14px;
+    color: #e8e0d0;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 13px;
+    line-height: 1.8;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.input-panel textarea:focus {
+    border-color: rgba(212,175,55,0.35);
+}
+
+.char-count {
+    font-size: 11px;
+    color: rgba(232,224,208,0.3);
+    text-align: right;
+    margin-top: -12px;
+}
+
+.layout-hint {
+    font-size: 11px;
+    color: rgba(212,175,55,0.7);
+    padding: 10px 12px;
+    background: rgba(212,175,55,0.06);
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 8px;
+    line-height: 1.6;
+}
+
+.section-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: rgba(232,224,208,0.7);
+}
+
+.toggle-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #d4af37;
+}
+
+.print-btn {
+    background: linear-gradient(135deg, #d4af37, #aa8a2e);
+    border: none;
+    color: #1a1814;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+}
+
+.print-btn:hover { opacity: 0.88; }
+
+.print-note {
+    font-size: 11px;
+    color: rgba(232,224,208,0.35);
+    line-height: 1.7;
+    padding-top: 4px;
+}
+
+/* 右側預覽區 */
+.preview-panel {
+    overflow: auto;
+    background: #111009;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px;
+    gap: 32px;
+}
+
+.preview-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(212,175,55,0.5);
+    text-transform: uppercase;
+    margin-bottom: -20px;
+    align-self: flex-start;
+}
+
+/* A4 橫式卡片預覽（縮小至 70%） */
+.a4-preview-wrap {
+    transform-origin: top center;
+}
+
+/* ── 卡片共用樣式 ── */
+.card-page {
+    width: 297mm;
+    height: 210mm;
+    position: relative;
+    background: #eeebe4;
+    overflow: hidden;
+}
+
+/* 封面頁（Page 1）*/
+.cover-left {
+    position: absolute;
+    left: 0; top: 0;
+    width: 148.5mm; height: 210mm;
+    /* 背面：空白，duet.brendonchen.com 在底部 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 10mm 12mm;
+}
+
+.cover-back-url {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 4.5mm;
+    color: #3a3530;
+    letter-spacing: 0.3mm;
+}
+
+.cover-back-url::before {
+    content: '';
+    display: block;
+    width: 12mm;
+    height: 0.25mm;
+    background: #3a3530;
+    margin-bottom: 2mm;
+}
+
+.cover-right {
+    position: absolute;
+    right: 0; top: 0;
+    width: 148.5mm; height: 210mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+
+.cover-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28mm;
+    font-weight: 300;
+    color: #2e2a24;
+    letter-spacing: 3mm;
+    line-height: 1;
+    margin-bottom: 6mm;
+}
+
+.cover-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 5.5mm;
+    color: #5a5248;
+    letter-spacing: 1mm;
+    display: flex;
+    align-items: center;
+    gap: 4mm;
+}
+
+.cover-subtitle::before,
+.cover-subtitle::after {
+    content: '';
+    display: block;
+    width: 14mm;
+    height: 0.25mm;
+    background: #8a8278;
+}
+
+.cover-byline {
+    position: absolute;
+    bottom: 10mm;
+    right: 12mm;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 3.5mm;
+    color: #8a8278;
+    letter-spacing: 0.4mm;
+}
+
+/* 中央折疊虛線 */
+.fold-line {
+    position: absolute;
+    left: 148.5mm;
+    top: 0; bottom: 0;
+    width: 0;
+    border-left: 0.5pt dashed rgba(100,92,82,0.35);
+    pointer-events: none;
+}
+
+/* 內頁（Page 2）*/
+.inner-page {
+    width: 297mm;
+    height: 210mm;
+    position: relative;
+    background: #eeebe4;
+}
+
+/* 內頁框 */
+.inner-frame-outer {
+    position: absolute;
+    inset: 10.5mm 9mm;
+    border: 0.3pt solid rgba(162,154,142,0.65);
+}
+
+.inner-frame-inner {
+    position: absolute;
+    inset: 2.5mm;
+    border: 0.3pt solid rgba(162,154,142,0.42);
+}
+
+/* 四角裝飾 */
+.corner { position: absolute; width: 6mm; height: 6mm; }
+.corner.tl { top:  2.5mm; left:  2.5mm; border-top:  0.3pt solid rgba(150,142,130,0.7); border-left:  0.3pt solid rgba(150,142,130,0.7); }
+.corner.tr { top:  2.5mm; right: 2.5mm; border-top:  0.3pt solid rgba(150,142,130,0.7); border-right: 0.3pt solid rgba(150,142,130,0.7); }
+.corner.bl { bottom:2.5mm;left:  2.5mm; border-bottom:0.3pt solid rgba(150,142,130,0.7); border-left:  0.3pt solid rgba(150,142,130,0.7); }
+.corner.br { bottom:2.5mm;right: 2.5mm; border-bottom:0.3pt solid rgba(150,142,130,0.7); border-right: 0.3pt solid rgba(150,142,130,0.7); }
+
+/* 內頁文字區 */
+.inner-text-right {
+    position: absolute;
+    left: 51%;
+    top: 14.5mm; right: 13mm; bottom: 14.5mm;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 3.8mm;
+    line-height: 1.95;
+    letter-spacing: 0.08mm;
+    text-align: justify;
+    color: #2e2a24;
+    overflow: hidden;
+}
+
+.inner-text-left {
+    position: absolute;
+    left: 13mm;
+    top: 14.5mm; right: 51%; bottom: 14.5mm;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 3.8mm;
+    line-height: 1.95;
+    letter-spacing: 0.08mm;
+    text-align: justify;
+    color: #2e2a24;
+    overflow: hidden;
+    display: none;
+}
+
+/* 裁切角標 */
+.cut-mark {
+    position: absolute;
+    width: 4mm;
+    height: 4mm;
+    pointer-events: none;
+}
+.cut-mark.tl { top: -1mm; left: -1mm; border-top: 0.3pt solid #888; border-left: 0.3pt solid #888; }
+.cut-mark.tr { top: -1mm; right: -1mm; border-top: 0.3pt solid #888; border-right: 0.3pt solid #888; }
+.cut-mark.bl { bottom: -1mm; left: -1mm; border-bottom: 0.3pt solid #888; border-left: 0.3pt solid #888; }
+.cut-mark.br { bottom: -1mm; right: -1mm; border-bottom: 0.3pt solid #888; border-right: 0.3pt solid #888; }
+
+/* ── 列印樣式 ── */
+@media print {
+    @page { size: A4 landscape; margin: 0; }
+
+    body { background: #eeebe4; }
+
+    .app-header,
+    .input-panel,
+    .preview-label,
+    .a4-preview-wrap { display: block !important; }
+
+    /* 隱藏介面，只顯示要列印的頁面 */
+    .app-header, .input-panel, .preview-label { display: none !important; }
+
+    .app-layout { display: block; height: auto; }
+    .preview-panel { display: block; padding: 0; background: none; }
+    .a4-preview-wrap { transform: none !important; }
+
+    .print-page { page-break-after: always; }
+    .print-page:last-child { page-break-after: avoid; }
+
+    /* 隱藏摺疊預覽虛線（列印時不需要） */
+    .fold-line { display: none; }
+
+    /* 裁切角標僅在螢幕上顯示，列印時隱藏 */
+    .cut-mark { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+    <h1>DUET</h1>
+    <span>設計概念卡片列印工具 / Design Story Print Tool</span>
+</div>
+
+<div class="app-layout">
+
+    <!-- 左側：輸入面板 -->
+    <div class="input-panel">
+        <div>
+            <label>設計故事（貼入文字）</label>
+            <textarea id="story-input" placeholder="在此貼入設計故事文字...&#10;&#10;短故事（＜200字）會排在卡片右半；&#10;長故事會自動分配至左右兩欄。"></textarea>
+            <div class="char-count"><span id="char-count">0</span> 字</div>
+        </div>
+
+        <div class="layout-hint" id="layout-hint">
+            📄 目前：<strong>右欄排版</strong>（＜200字）
+        </div>
+
+        <div class="section-toggle">
+            <label>列印選項</label>
+            <div class="toggle-row">
+                <span>列印封面頁</span>
+                <input type="checkbox" id="show-cover" checked>
+            </div>
+            <div class="toggle-row">
+                <span>列印內頁</span>
+                <input type="checkbox" id="show-inner" checked>
+            </div>
+        </div>
+
+        <button class="print-btn" onclick="window.print()">列印 / 匯出 PDF</button>
+
+        <div class="print-note">
+            列印設定：<br>
+            • 紙張：A4 橫式<br>
+            • 邊距：無（或最小）<br>
+            • 雙面列印：長邊翻頁<br>
+            • 選「另存為 PDF」可匯出
+        </div>
+    </div>
+
+    <!-- 右側：預覽面板 -->
+    <div class="preview-panel" id="preview-panel">
+
+        <!-- 封面頁 -->
+        <div class="preview-label">正面（封面）</div>
+        <div class="a4-preview-wrap" id="cover-wrap">
+            <div class="card-page print-page" id="cover-page">
+                <!-- 左半：背面（空白） -->
+                <div class="cover-left">
+                    <div class="cover-back-url">duet.brendonchen.com</div>
+                </div>
+
+                <!-- 右半：封面 -->
+                <div class="cover-right">
+                    <div class="cover-title">DUET</div>
+                    <div class="cover-subtitle">a design story</div>
+                </div>
+
+                <div class="cover-byline">by BCAG</div>
+                <div class="fold-line"></div>
+
+                <!-- 裁切角標 -->
+                <div class="cut-mark tl"></div>
+                <div class="cut-mark tr"></div>
+                <div class="cut-mark bl"></div>
+                <div class="cut-mark br"></div>
+            </div>
+        </div>
+
+        <!-- 內頁 -->
+        <div class="preview-label">背面（內頁，雙面列印後對折）</div>
+        <div class="a4-preview-wrap" id="inner-wrap">
+            <div class="inner-page print-page" id="inner-page">
+                <!-- 框線 -->
+                <div class="inner-frame-outer">
+                    <div class="inner-frame-inner">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                    </div>
+                </div>
+
+                <!-- 折疊虛線 -->
+                <div class="fold-line"></div>
+
+                <!-- 文字區 -->
+                <div class="inner-text-left" id="inner-left"></div>
+                <div class="inner-text-right" id="inner-right"></div>
+
+                <!-- 裁切角標 -->
+                <div class="cut-mark tl"></div>
+                <div class="cut-mark tr"></div>
+                <div class="cut-mark bl"></div>
+                <div class="cut-mark br"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const storyInput  = document.getElementById('story-input');
+const charCount   = document.getElementById('char-count');
+const layoutHint  = document.getElementById('layout-hint');
+const innerLeft   = document.getElementById('inner-left');
+const innerRight  = document.getElementById('inner-right');
+const showCover   = document.getElementById('show-cover');
+const showInner   = document.getElementById('show-inner');
+const coverWrap   = document.getElementById('cover-wrap');
+const innerWrap   = document.getElementById('inner-wrap');
+
+const SHORT = 200;
+
+function updatePreview() {
+    const text = storyInput.value.trim();
+    charCount.textContent = text.length;
+
+    if (text.length < SHORT) {
+        // 短故事：右欄
+        innerLeft.style.display = 'none';
+        innerRight.style.left = '51%';
+        innerRight.innerHTML = text.replace(/\n/g, '<br>');
+        layoutHint.innerHTML = '📄 目前：<strong>右欄排版</strong>（＜200字）';
+    } else {
+        // 長故事：左右欄
+        innerLeft.style.display = '';
+        innerRight.style.left = '51%';
+        const paras = text.split(/\n+/);
+        const mid = Math.ceil(paras.length / 2);
+        innerLeft.innerHTML  = paras.slice(0, mid).join('<br><br>');
+        innerRight.innerHTML = paras.slice(mid).join('<br><br>');
+        layoutHint.innerHTML = '📄 目前：<strong>雙欄排版</strong>（≥200字）';
+    }
+}
+
+function scalePreview() {
+    const panel = document.getElementById('preview-panel');
+    const availW = panel.clientWidth - 48;
+    // A4 landscape = 297mm ≈ 1122px at 96dpi
+    const cardPx = 297 * 3.7795; // ≈ 1122
+    const scale = Math.min(1, availW / cardPx);
+    document.querySelectorAll('.a4-preview-wrap').forEach(el => {
+        el.style.transform = `scale(${scale})`;
+        el.style.transformOrigin = 'top center';
+        el.style.marginBottom = `${(210 * 3.7795 * (scale - 1))}px`;
+    });
+}
+
+// 列印選項
+showCover.addEventListener('change', () => {
+    document.getElementById('cover-page').style.display = showCover.checked ? '' : 'none';
+    coverWrap.style.display = showCover.checked ? '' : 'none';
+    document.querySelector('.preview-label').style.display = showCover.checked ? '' : 'none';
+});
+
+showInner.addEventListener('change', () => {
+    document.getElementById('inner-page').style.display = showInner.checked ? '' : 'none';
+    innerWrap.style.display = showInner.checked ? '' : 'none';
+});
+
+storyInput.addEventListener('input', updatePreview);
+window.addEventListener('resize', scalePreview);
+
+// 初始化
+updatePreview();
+scalePreview();
+</script>
+</body>
+</html>
