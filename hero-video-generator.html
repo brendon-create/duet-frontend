@@ -957,6 +957,10 @@
 
                 // 設定場景（async，自訂背景圖片需等待載入）
                 await setupScene(bgColor, W, H, tiltDeg, isTransparent);
+
+                // 相機對準吊墜水平位置（避免偏角導致正面看起來偏移）
+                camera.lookAt(horizOffset, 0, 10);
+
                 showProgress(true, '正在初始化字體資料...', 0);
 
                 // 載入字體 meta
