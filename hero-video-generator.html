@@ -957,10 +957,6 @@
 
                 // 設定場景（async，自訂背景圖片需等待載入）
                 await setupScene(bgColor, W, H, tiltDeg, isTransparent);
-
-                // 相機對準吊墜水平位置（避免偏角導致正面看起來偏移）
-                camera.lookAt(horizOffset, 0, 10);
-
                 showProgress(true, '正在初始化字體資料...', 0);
 
                 // 載入字體 meta
@@ -1335,7 +1331,9 @@
 
                     // 旋轉：每對從 pairIdx * 90° 繼續轉到 (pairIdx+1) * 90°
                     // bail/ring 無縫延續旋轉；letter 內有反向 offset，永遠正面對鏡頭
-                    pendantGroup.rotation.z  = -(pairIdx + t) * Math.PI / 2;
+                    // horizCorrAngle：修正吊墜偏離相機中心線時的視角偏差，讓正面真正對準鏡頭
+                    const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
+                    pendantGroup.rotation.z  = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
                     pendantGroup.position.z  = vertOffset;
                     pendantGroup.position.x  = horizOffset;
 
