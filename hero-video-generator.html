@@ -515,8 +515,8 @@
             <div class="field-group">
                 <div class="field-label">每對轉場秒數</div>
                 <div class="range-row">
-                    <input type="range" id="sec-per-pair" min="1" max="10" step="0.5" value="2.5">
-                    <span class="range-value" id="sec-value">2.5s</span>
+                    <input type="range" id="sec-per-pair" min="1" max="10" step="0.5" value="5">
+                    <span class="range-value" id="sec-value">5s</span>
                 </div>
             </div>
 
@@ -524,9 +524,9 @@
                 <div class="field-label">影片解析度</div>
                 <select id="resolution">
                     <optgroup label="── 橫幅（網頁 Hero）──">
-                        <option value="1920x600" selected>1920 × 600（寬幅 Banner 16:5）</option>
+                        <option value="1920x600">1920 × 600（寬幅 Banner 16:5）</option>
                         <option value="1280x480">1280 × 480（中型 Banner）</option>
-                        <option value="1920x1080">1920 × 1080（16:9 全幅）</option>
+                        <option value="1920x1080" selected>1920 × 1080（16:9 全幅）</option>
                     </optgroup>
                     <optgroup label="── 直式（社群媒體）──">
                         <option value="800x1000">800 × 1000（通用直式）</option>
@@ -570,16 +570,16 @@
                     <div>
                         <div class="field-sublabel" style="margin-bottom:3px;">曝光（Exposure）</div>
                         <div class="range-row">
-                            <input type="range" id="bg-brightness" min="0.3" max="1.5" step="0.05" value="0.75">
-                            <span class="range-value" id="bg-brightness-value">0.75</span>
+                            <input type="range" id="bg-brightness" min="0.3" max="1.5" step="0.05" value="0.5">
+                            <span class="range-value" id="bg-brightness-value">0.50</span>
                         </div>
                         <div class="field-sublabel">gamma 冪次曲線，不影響對比結構</div>
                     </div>
                     <div>
                         <div class="field-sublabel" style="margin-bottom:3px;">對比（Contrast）</div>
                         <div class="range-row">
-                            <input type="range" id="bg-contrast" min="0.5" max="2.5" step="0.05" value="1.0">
-                            <span class="range-value" id="bg-contrast-value">1.00</span>
+                            <input type="range" id="bg-contrast" min="0.5" max="2.5" step="0.05" value="1.1">
+                            <span class="range-value" id="bg-contrast-value">1.10</span>
                         </div>
                         <div class="field-sublabel">往右 = 亮暗差距更大</div>
                     </div>
@@ -606,8 +606,8 @@
             <div class="field-group">
                 <div class="field-label">吊墜水平位置</div>
                 <div class="range-row">
-                    <input type="range" id="horizontal-offset" min="-60" max="60" step="2" value="0">
-                    <span class="range-value" id="hoffset-value">0</span>
+                    <input type="range" id="horizontal-offset" min="-60" max="60" step="2" value="34">
+                    <span class="range-value" id="hoffset-value">34</span>
                 </div>
                 <div class="field-sublabel">往右 = 吊墜右移；往左 = 左移（適合避開大頭貼）</div>
             </div>
@@ -615,8 +615,8 @@
             <div class="field-group">
                 <div class="field-label">吊墜尺寸</div>
                 <div class="range-row">
-                    <input type="range" id="pendant-size" min="6" max="12" step="1" value="8">
-                    <span class="range-value" id="size-value">8mm</span>
+                    <input type="range" id="pendant-size" min="6" max="12" step="1" value="12">
+                    <span class="range-value" id="size-value">12mm</span>
                 </div>
             </div>
 
@@ -680,7 +680,17 @@
         ];
 
         // ── 字母列表 UI ───────────────────────────────────────────
-        const DEFAULT_LETTERS = ['D','U','E','T','A','M','O','R'];
+        const DEFAULT_ENTRIES = [
+            { letter: 'D', font: 'Cormorant Garamond' },
+            { letter: 'U', font: 'Alex Brush' },
+            { letter: 'E', font: 'Caprasimo' },
+            { letter: 't', font: 'Sofia' },
+            { letter: 'A', font: 'Audiowide' },
+            { letter: 'M', font: 'Pirata One' },
+            { letter: 'O', font: 'Abril Fatface' },
+            { letter: 'R', font: 'Sacramento' },
+            { letter: 'D', font: 'Cormorant Garamond' },
+        ];
         const letterList = document.getElementById('letter-list');
 
         // 字體完整清單：從 fonts.json 動態載入，期間暫用 FONT_CYCLE 作備援
@@ -731,8 +741,8 @@
             .then(function() {
                 // 不論是否成功，初始化預設字母列
                 if (letterList.children.length === 0) {
-                    DEFAULT_LETTERS.forEach(function(letter, i) {
-                        addLetterRow(letter, FONT_CYCLE[i % FONT_CYCLE.length]);
+                    DEFAULT_ENTRIES.forEach(function(entry) {
+                        addLetterRow(entry.letter, entry.font);
                     });
                 }
             });
@@ -981,7 +991,7 @@
                 statusText.textContent = '錄製中，請稍候...';
 
                 // 錄製動畫
-                const blob = await recordAnimation(groups, secPerPair, vertOffset);
+                const blob = await recordAnimation(groups, secPerPair, vertOffset, horizOffset);
                 resultBlob = blob;
 
                 // 顯示結果
@@ -1262,7 +1272,7 @@
         }
 
         // ── 錄製動畫 ─────────────────────────────────────────────
-        function recordAnimation(groups, secPerPair, vertOffset = 10) {
+        function recordAnimation(groups, secPerPair, vertOffset = 10, horizOffset = 0) {
             return new Promise((resolve, reject) => {
                 const FPS       = 30;
                 const FADE_SEC  = 0.2; // 0.2 秒過場淡入淡出
