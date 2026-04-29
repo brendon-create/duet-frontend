@@ -330,153 +330,97 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(12px);
         z-index: 1000;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
+        gap: 16px;
+        overflow: auto;
+        padding: 24px 20px;
+        box-sizing: border-box;
     ">
-        <div style="
-            width: 560px;
-            height: 400px;
+        <!-- A5 折疊卡內頁（展開為 A4 橫式比例） -->
+        <div id="story-card" style="
             position: relative;
-            padding: 60px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        " id="story-card" data-style="classic">
-            <!-- 設計理念內容 -->
-            <div id="story-content" contenteditable="true" style="
+            width: min(860px, 92vw);
+            aspect-ratio: 210 / 148;
+            background: #eeebe4;
+            box-shadow: 0 28px 80px rgba(0,0,0,0.6);
+            border-radius: 2px;
+            flex-shrink: 0;
+        ">
+            <!-- 外框線 -->
+            <div style="position:absolute;inset:6.8% 4.8%;border:1px solid rgba(162,154,142,0.65);pointer-events:none;">
+                <!-- 內框線 -->
+                <div style="position:absolute;inset:7px;border:1px solid rgba(162,154,142,0.42);pointer-events:none;">
+                    <!-- 四角 L 形裝飾 -->
+                    <div style="position:absolute;top:7px;left:7px;width:20px;height:20px;border-top:1px solid rgba(150,142,130,0.72);border-left:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
+                    <div style="position:absolute;top:7px;right:7px;width:20px;height:20px;border-top:1px solid rgba(150,142,130,0.72);border-right:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
+                    <div style="position:absolute;bottom:7px;left:7px;width:20px;height:20px;border-bottom:1px solid rgba(150,142,130,0.72);border-left:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
+                    <div style="position:absolute;bottom:7px;right:7px;width:20px;height:20px;border-bottom:1px solid rgba(150,142,130,0.72);border-right:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
+                </div>
+            </div>
+
+            <!-- 中央分頁線（長文字時作為視覺分隔） -->
+            <div id="story-divider" style="
+                position:absolute;left:50%;top:10%;bottom:10%;
+                width:1px;background:rgba(162,154,142,0.3);
+                display:none;pointer-events:none;
+            "></div>
+
+            <!-- 左欄（長故事才顯示） -->
+            <div id="story-left" contenteditable="true" style="
+                position: absolute;
+                left: 8%; top: 10.5%; right: 51%; bottom: 10.5%;
                 font-family: 'Noto Serif TC', serif;
-                font-size: 15px;
-                line-height: 1.8;
-                letter-spacing: 0.3px;
-                flex: 1;
-                text-align: justify;
-                padding: 0;
-                overflow-y: auto;
-                max-height: 100%;
-                outline: none;
-                scrollbar-width: none;
-                -ms-overflow-style: none;
-            " placeholder="您的設計理念將顯示在這裡...">
-                這是一個關於兩個字母的故事...
-            </div>
-
-            <!-- 簽名欄位 -->
-            <div style="
-                display: flex;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 15px;
-                margin-top: 30px;
-            ">
-                <span style="font-size: 14px; opacity: 0.6;">設計師</span>
-                <div style="
-                    width: 120px;
-                    height: 1px;
-                    background: currentColor;
-                    opacity: 0.3;
-                "></div>
-            </div>
-        </div>
-
-        <!-- 卡片切換控制（移到上方） -->
-        <div style="
-            position: absolute;
-            bottom: 125px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 12px 24px;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(20px);
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        ">
-            <button id="prev-card-style" style="
-                background: none;
-                border: none;
-                color: rgba(255, 255, 255, 0.6);
-                font-size: 24px;
-                cursor: pointer;
-                padding: 0;
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.3s;
-            " onmouseover="this.style.color='rgba(255,255,255,1)'"
-                onmouseout="this.style.color='rgba(255,255,255,0.6)'">
-                ←
-            </button>
-            <span id="card-style-name" style="
                 font-size: 13px;
-                color: rgba(255, 255, 255, 0.8);
-                min-width: 80px;
-                text-align: center;
-            ">經典風格</span>
-            <button id="next-card-style" style="
-                background: none;
-                border: none;
-                color: rgba(255, 255, 255, 0.6);
-                font-size: 24px;
+                line-height: 1.95;
+                letter-spacing: 0.4px;
+                text-align: justify;
+                color: #2e2a24;
+                overflow: hidden;
+                outline: none;
+                display: none;
+            "></div>
+
+            <!-- 右欄（始終顯示） -->
+            <div id="story-right" contenteditable="true" style="
+                position: absolute;
+                left: 51%; top: 10.5%; right: 8%; bottom: 10.5%;
+                font-family: 'Noto Serif TC', serif;
+                font-size: 13px;
+                line-height: 1.95;
+                letter-spacing: 0.4px;
+                text-align: justify;
+                color: #2e2a24;
+                overflow: hidden;
+                outline: none;
+            "></div>
+        </div>
+
+        <!-- 提示 + 確定按鈕 -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.45);background:rgba(0,0,0,0.3);backdrop-filter:blur(5px);padding:4px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+                💡 點擊卡片內文字可編輯
+            </div>
+            <button id="confirm-story-card" style="
+                background: rgba(212,175,55,0.15);
+                border: 1px solid rgba(212,175,55,0.3);
+                color: rgba(212,175,55,0.9);
+                padding: 8px 36px;
+                border-radius: 18px;
+                font-size: 13px;
+                font-weight: 500;
                 cursor: pointer;
-                padding: 0;
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
                 transition: all 0.3s;
-            " onmouseover="this.style.color='rgba(255,255,255,1)'"
-                onmouseout="this.style.color='rgba(255,255,255,0.6)'">
-                →
+                backdrop-filter: blur(10px);
+            " onmouseover="this.style.background='rgba(212,175,55,0.25)';this.style.borderColor='rgba(212,175,55,0.5)'"
+               onmouseout="this.style.background='rgba(212,175,55,0.15)';this.style.borderColor='rgba(212,175,55,0.3)'">
+                確定
             </button>
         </div>
-
-        <!-- 編輯提示（在卡片外，靠近卡片） -->
-        <div style="
-            position: absolute;
-            bottom: 195px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.5);
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(5px);
-            padding: 4px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        ">
-            💡 點擊卡片內文字可編輯
-        </div>
-
-        <!-- 確定按鈕（移到最下方，改小） -->
-        <button id="confirm-story-card" style="
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(212, 175, 55, 0.15);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: rgba(212, 175, 55, 0.9);
-            padding: 8px 32px;
-            border-radius: 18px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            backdrop-filter: blur(10px);
-        " onmouseover="this.style.background='rgba(212, 175, 55, 0.25)'; this.style.borderColor='rgba(212, 175, 55, 0.5)'"
-            onmouseout="this.style.background='rgba(212, 175, 55, 0.15)'; this.style.borderColor='rgba(212, 175, 55, 0.3)'">
-            確定
-        </button>
     </div>
 
     <!-- 貴金屬說明 Modal -->
@@ -3532,19 +3476,34 @@
         }
 
         function showDesignStoryCard(designStory) {
-            const modal = document.getElementById('design-story-modal');
-            const content = document.getElementById('story-content');
+            const modal    = document.getElementById('design-story-modal');
+            const leftEl   = document.getElementById('story-left');
+            const rightEl  = document.getElementById('story-right');
+            const divider  = document.getElementById('story-divider');
+            const text     = (designStory || '').trim();
 
-            // 將設計理念文字轉換為 HTML（保留換行）
-            const formattedStory = designStory.replace(/\n/g, '<br>');
-            content.innerHTML = formattedStory;
+            window.finalDesignStory = text;
 
-            // 初始化時也儲存設計理念
-            window.finalDesignStory = designStory;
+            const SHORT_THRESHOLD = 200;
 
-            // 顯示 Modal
+            if (text.length < SHORT_THRESHOLD) {
+                // 短故事：僅右欄
+                leftEl.style.display  = 'none';
+                divider.style.display = 'none';
+                rightEl.style.left    = '51%';
+                rightEl.innerHTML     = text.replace(/\n/g, '<br>');
+            } else {
+                // 長故事：左右欄各放一半段落
+                leftEl.style.display  = '';
+                divider.style.display = '';
+                rightEl.style.left    = '51%';
+                const paras = text.split(/\n+/);
+                const mid   = Math.ceil(paras.length / 2);
+                leftEl.innerHTML  = paras.slice(0, mid).join('<br><br>');
+                rightEl.innerHTML = paras.slice(mid).join('<br><br>');
+            }
+
             modal.style.display = 'flex';
-
             console.log('✅ 設計理念卡片已顯示');
         }
 
@@ -4607,41 +4566,12 @@
                 updatePriceDisplay();
             });
 
-            // 設計理念卡片切換邏輯
-            const cardStyles = [
-                { name: '經典風格', bg: '#f5f5dc', border: '3px solid #d4af37', color: '#2d2d2d' },
-                { name: '現代風格', bg: '#2d2d2d', border: '2px solid #c0c0c0', color: '#ffffff' },
-                { name: '浪漫風格', bg: '#fff5f5', border: '3px solid #dda0a0', color: '#2d2d2d' }
-            ];
-            let currentCardStyle = 0;
-
-            function updateCardStyle() {
-                const card = document.getElementById('story-card');
-                const styleName = document.getElementById('card-style-name');
-                const style = cardStyles[currentCardStyle];
-
-                card.style.background = style.bg;
-                card.style.border = style.border;
-                card.style.color = style.color;
-                styleName.textContent = style.name;
-
-                // 更新內容區域顏色
-                document.getElementById('story-content').style.color = style.color;
-            }
-
-            document.getElementById('prev-card-style').addEventListener('click', () => {
-                currentCardStyle = (currentCardStyle - 1 + cardStyles.length) % cardStyles.length;
-                updateCardStyle();
-            });
-
-            document.getElementById('next-card-style').addEventListener('click', () => {
-                currentCardStyle = (currentCardStyle + 1) % cardStyles.length;
-                updateCardStyle();
-            });
-
             document.getElementById('confirm-story-card').addEventListener('click', () => {
-                // 獲取編輯後的設計理念
-                const editedStory = document.getElementById('story-content').textContent;
+                // 獲取編輯後的設計理念（合併左右欄）
+                const leftText  = document.getElementById('story-left').style.display !== 'none'
+                    ? document.getElementById('story-left').innerText.trim() : '';
+                const rightText = document.getElementById('story-right').innerText.trim();
+                const editedStory = leftText ? leftText + '\n\n' + rightText : rightText;
 
                 // 儲存到全局變數（供後續訂單使用）
                 window.finalDesignStory = editedStory;
@@ -4679,8 +4609,6 @@
                 showPaymentCompleteModal();
             });
 
-            // 初始化卡片樣式
-            updateCardStyle();
         }
 
         // 啟動
@@ -4699,26 +4627,7 @@
 
         // 測試設計理念卡片顯示
         window.testDesignStoryCard = function () {
-            const modal = document.getElementById('design-story-modal');
-            const content = document.getElementById('story-content');
-
-            // 測試內容
-            content.innerHTML = `
-                這是一個關於「L」與「J」的故事。<br><br>
-                
-                字母「L」選用了優雅的 Playfair Display 字體，<br>
-                象徵著溫柔中帶著力量的堅定。<br><br>
-                
-                字母「J」則採用 Dancing Script 手寫體，<br>
-                展現出自由奔放的浪漫情懷。<br><br>
-                
-                兩個字母交織在一起，<br>
-                如同兩顆心靈相互依偎，<br>
-                共同譜寫屬於你們的獨特篇章。
-            `;
-
-            modal.style.display = 'flex';
-            console.log('✅ 設計理念卡片已顯示');
+            showDesignStoryCard(`這是一個關於「L」與「J」的故事。\n\n字母「L」選用了優雅的 Playfair Display 字體，象徵著溫柔中帶著力量的堅定。\n\n字母「J」則採用 Dancing Script 手寫體，展現出自由奔放的浪漫情懷。\n\n兩個字母交織在一起，如同兩顆心靈相互依偎，共同譜寫屬於你們的獨特篇章。`);
         };
 
         console.log('✅ 全局函數已暴露:', {
