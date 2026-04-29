@@ -329,6 +329,35 @@
             touch-action: none; /* 防止 Safari 在自訂域名上攔截 wheel/gesture 事件 */
         }
 
+        /* Font Constraint Overlay */
+        #constraint-overlay {
+            display: none;
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            text-align: center;
+            pointer-events: none;
+            white-space: nowrap;
+            max-width: 80%;
+            backdrop-filter: blur(8px);
+        }
+        #constraint-overlay.block {
+            background: rgba(35, 15, 15, 0.82);
+            border: 1px solid rgba(220, 70, 70, 0.35);
+            color: rgba(255, 130, 130, 0.9);
+        }
+        #constraint-overlay.warn {
+            background: rgba(35, 28, 10, 0.82);
+            border: 1px solid rgba(195, 140, 50, 0.35);
+            color: rgba(215, 168, 80, 0.9);
+        }
+
         /* Font Selector Modal */
         #font-selector-modal {
             display: none;
