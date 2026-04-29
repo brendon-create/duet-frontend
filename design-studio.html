@@ -341,59 +341,31 @@
         padding: 24px 20px;
         box-sizing: border-box;
     ">
-        <!-- A5 折疊卡內頁（展開為 A4 橫式比例，高度隨文字自動延伸） -->
+        <!-- 設計理念卡片（單欄，內容決定高度，超出可滾動） -->
         <div id="story-card" style="
-            position: relative;
-            width: min(860px, 92vw);
-            min-height: calc(min(860px, 92vw) * 148 / 210);
+            width: min(520px, 92vw);
+            max-height: 80vh;
+            overflow-y: auto;
             background: #eeebe4;
             box-shadow: 0 28px 80px rgba(0,0,0,0.6);
             border-radius: 2px;
         ">
-            <!-- 裝飾框（absolute，不影響卡片高度） -->
-            <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden;">
-                <div style="position:absolute;inset:6.8% 4.8%;border:1px solid rgba(162,154,142,0.65);">
-                    <div style="position:absolute;inset:7px;border:1px solid rgba(162,154,142,0.42);">
-                        <div class="story-corner tl"></div>
-                        <div class="story-corner tr"></div>
-                        <div class="story-corner bl"></div>
-                        <div class="story-corner br"></div>
-                    </div>
+            <div style="margin: 7% 6%; border: 1px solid rgba(162,154,142,0.65);">
+                <div style="margin: 7px; border: 1px solid rgba(162,154,142,0.42); padding: 32px 28px; position: relative;">
+                    <div class="story-corner tl"></div>
+                    <div class="story-corner tr"></div>
+                    <div class="story-corner bl"></div>
+                    <div class="story-corner br"></div>
+                    <div id="story-text" contenteditable="true" style="
+                        font-family: 'Noto Serif TC', serif;
+                        font-size: 14px;
+                        line-height: 2;
+                        letter-spacing: 0.4px;
+                        text-align: justify;
+                        color: #2e2a24;
+                        outline: none;
+                    "></div>
                 </div>
-            </div>
-
-            <!-- 文字內容區（flex，決定卡片實際高度） -->
-            <div id="story-columns" style="
-                display: flex;
-                min-height: calc(min(860px, 92vw) * 148 / 210);
-                padding: 13% 10%;
-                box-sizing: border-box;
-            ">
-                <!-- 左欄（長故事才有文字，短故事為空佔位讓右欄靠右） -->
-                <div id="story-left" contenteditable="true" style="
-                    flex: 1;
-                    padding-right: 3%;
-                    font-family: 'Noto Serif TC', serif;
-                    font-size: 13px;
-                    line-height: 1.95;
-                    letter-spacing: 0.4px;
-                    text-align: justify;
-                    color: #2e2a24;
-                    outline: none;
-                "></div>
-
-                <!-- 右欄（始終顯示） -->
-                <div id="story-right" contenteditable="true" style="
-                    flex: 1;
-                    padding-left: 3%;
-                    font-family: 'Noto Serif TC', serif;
-                    font-size: 13px;
-                    line-height: 1.95;
-                    letter-spacing: 0.4px;
-                    text-align: justify;
-                    color: #2e2a24;
-                    outline: none;
-                "></div>
             </div>
         </div>
 
@@ -3473,29 +3445,12 @@
         }
 
         function showDesignStoryCard(designStory) {
-            const modal   = document.getElementById('design-story-modal');
-            const leftEl  = document.getElementById('story-left');
-            const rightEl = document.getElementById('story-right');
-            const text    = (designStory || '').trim();
+            const modal  = document.getElementById('design-story-modal');
+            const textEl = document.getElementById('story-text');
+            const text   = (designStory || '').trim();
 
             window.finalDesignStory = text;
-
-            if (text.length < 400) {
-                // 短故事：左欄空佔位，右欄顯示全部
-                leftEl.innerHTML  = '';
-                rightEl.innerHTML = text.replace(/\n/g, '<br>');
-            } else {
-                // 長故事：依字元數 45% 切點分段落
-                const paras = text.split(/\n+/);
-                const total = text.replace(/\n/g, '').length;
-                let cumulative = 0, mid = 1;
-                for (let i = 0; i < paras.length - 1; i++) {
-                    cumulative += paras[i].length;
-                    if (cumulative >= total * 0.45) { mid = i + 1; break; }
-                }
-                leftEl.innerHTML  = paras.slice(0, mid).join('<br><br>');
-                rightEl.innerHTML = paras.slice(mid).join('<br><br>');
-            }
+            textEl.innerHTML = text.replace(/\n/g, '<br>');
 
             modal.style.display = 'flex';
             console.log('✅ 設計理念卡片已顯示');
@@ -4555,11 +4510,8 @@
             });
 
             document.getElementById('confirm-story-card').addEventListener('click', () => {
-                // 獲取編輯後的設計理念（合併左右欄）
-                const leftText  = document.getElementById('story-left').style.display !== 'none'
-                    ? document.getElementById('story-left').innerText.trim() : '';
-                const rightText = document.getElementById('story-right').innerText.trim();
-                const editedStory = leftText ? leftText + '\n\n' + rightText : rightText;
+                // 獲取編輯後的設計理念
+                const editedStory = document.getElementById('story-text').innerText.trim();
 
                 // 儲存到全局變數（供後續訂單使用）
                 window.finalDesignStory = editedStory;
