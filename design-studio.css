@@ -1179,8 +1179,3 @@
 .story-corner.bl { bottom:7px; left:7px;  border-bottom:1px solid rgba(150,142,130,0.72); border-left:1px solid rgba(150,142,130,0.72); }
 .story-corner.br { bottom:7px; right:7px; border-bottom:1px solid rgba(150,142,130,0.72); border-right:1px solid rgba(150,142,130,0.72); }
 
-@media (max-width: 640px) {
-    #story-columns { flex-direction: column !important; padding: 12% 8% !important; }
-    #story-left    { display: none !important; }
-    #story-right   { padding-left: 0 !important; }
-}
