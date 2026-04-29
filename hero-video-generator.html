@@ -604,6 +604,15 @@
             </div>
 
             <div class="field-group">
+                <div class="field-label">吊墜水平位置</div>
+                <div class="range-row">
+                    <input type="range" id="horizontal-offset" min="-60" max="60" step="2" value="0">
+                    <span class="range-value" id="hoffset-value">0</span>
+                </div>
+                <div class="field-sublabel">往右 = 吊墜右移；往左 = 左移（適合避開大頭貼）</div>
+            </div>
+
+            <div class="field-group">
                 <div class="field-label">吊墜尺寸</div>
                 <div class="range-row">
                     <input type="range" id="pendant-size" min="6" max="12" step="1" value="8">
@@ -782,6 +791,9 @@
         document.getElementById('vertical-offset').addEventListener('input', (e) => {
             document.getElementById('voffset-value').textContent = e.target.value;
         });
+        document.getElementById('horizontal-offset').addEventListener('input', (e) => {
+            document.getElementById('hoffset-value').textContent = e.target.value;
+        });
 
         // 顏色選取器 ↔ 文字框同步
         const bgColorPicker    = document.getElementById('bg-color');
@@ -924,6 +936,7 @@
                 const tiltDeg      = parseInt(document.getElementById('camera-tilt').value);
                 const pendantMM    = parseInt(document.getElementById('pendant-size').value);
                 const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
+                const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
 
                 // 調整 canvas 尺寸
                 canvas.width  = W;
@@ -1310,6 +1323,7 @@
                     // bail/ring 無縫延續旋轉；letter 內有反向 offset，永遠正面對鏡頭
                     pendantGroup.rotation.z  = -(pairIdx + t) * Math.PI / 2;
                     pendantGroup.position.z  = vertOffset;
+                    pendantGroup.position.x  = horizOffset;
 
                     // 透明度：淡入（開頭）→ 持續 → 淡出（結尾，最後一對除外）
                     const isLastPair = pairIdx >= groups.length - 1;
