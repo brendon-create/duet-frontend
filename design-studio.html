@@ -705,7 +705,7 @@
         import { MATERIALS, PLATING_COLORS } from './js/materials.js';
 
         // 3D 場景系統
-        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres } from './js/3d-scene.js';
+        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres, sceneReadyPromise } from './js/3d-scene.js';
 
         // V3 幾何引擎
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
@@ -4808,6 +4808,17 @@
         initFontSelector();
         setupEventListeners();
         animate();
+
+        // 等 3D 場景 + 背景圖都就緒後才淡出 loader
+        const _bgReady = new Promise(resolve => {
+            const img = new Image();
+            img.onload = resolve;
+            img.onerror = resolve;
+            img.src = 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png';
+        });
+        Promise.all([sceneReadyPromise, _bgReady]).then(() => {
+            document.getElementById('loader').classList.add('fade-out');
+        });
 
         // 載入字體使用規範
         loadFontConstraints();
