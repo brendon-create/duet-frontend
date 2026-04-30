@@ -1435,6 +1435,15 @@
             return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
         }
 
+        const ALL_SIZES = [8, 10, 12, 15, 18];
+
+        function getMinAvailableSize(fontName) {
+            for (const sz of ALL_SIZES) {
+                if (getFontConstraint(fontName, sz) !== 'unavailable') return sz;
+            }
+            return null;
+        }
+
         function getCurrentFont(target) {
             const sel = document.getElementById(`${target}-select`);
             if (sel && sel.value && sel.value !== '__reselect__') return sel.value;
@@ -1459,7 +1468,8 @@
                     opt.disabled    = true;
                     opt.style.color = '#555';
                     opt.text        = '✗ ' + opt.value;
-                    opt.title       = '此尺寸不可用';
+                    const minSz = getMinAvailableSize(opt.value);
+                    opt.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
                 } else if (label === 'wide') {
                     opt.style.color = '#8a6836';
                     opt.text        = opt.value + ' (粗)';
@@ -1528,7 +1538,7 @@
                 return 'block';
             }
             if (l1 === 'wide' && l2 === 'wide') {
-                showConstraintOverlay('warn', '兩個字體都是極粗字體，配戴舒適度可能不佳');
+                showConstraintOverlay('warn', '兩個字體都是極粗字體，重量與造型可能會影響配戴舒適度，請審慎考慮。');
                 return 'warn';
             }
             hideConstraintOverlay();
@@ -2615,7 +2625,8 @@
                         option.text        = '✗ ' + font;
                         option.disabled    = true;
                         option.style.color = '#555';
-                        option.title       = '此尺寸不可用';
+                        const minSz = getMinAvailableSize(font);
+                        option.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
                     } else if (cLabel === 'wide') {
                         option.text        = font + ' (粗)';
                         option.style.color = '#8a6836';
