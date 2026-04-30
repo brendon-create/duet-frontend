@@ -333,7 +333,7 @@
         #constraint-overlay {
             display: none;
             position: absolute;
-            bottom: 24px;
+            top: 62%;
             left: 50%;
             transform: translateX(-50%);
             z-index: 50;
