@@ -49,6 +49,7 @@
     </div>
 
     <div id="viewport"></div>
+    <div id="constraint-overlay"></div>
 
     <div id="control-panel" class="glass">
         <div class="panel-header">
@@ -314,7 +315,26 @@
                 <div id="font-list-container"></div>
             </aside>
 
-            <section class="font-display-area" id="font-display-area"></section>
+            <section class="font-display-area" id="font-display-area">
+                <!-- 字體載入中指示器 -->
+                <div id="font-loading-indicator" style="
+                    display: none;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    padding: 6px 12px;
+                    background: rgba(26, 26, 46, 0.9);
+                    backdrop-filter: blur(4px);
+                    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 11px;
+                    color: rgba(212, 175, 55, 0.8);
+                ">
+                    <div style="width: 10px; height: 10px; border: 1.5px solid rgba(212, 175, 55, 0.3); border-top-color: #d4af37; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;"></div>
+                    <span>字體載入中，部分字體樣式稍後顯示</span>
+                </div>
+            </section>
         </div>
 
         <div class="confirm-container">
@@ -341,63 +361,32 @@
         padding: 24px 20px;
         box-sizing: border-box;
     ">
-        <!-- A5 折疊卡內頁（展開為 A4 橫式比例） -->
+        <!-- 設計理念卡片（單欄，內容決定高度，超出可滾動） -->
         <div id="story-card" style="
-            position: relative;
-            width: min(860px, 92vw);
-            aspect-ratio: 210 / 148;
+            width: min(520px, 92vw);
+            max-height: 80vh;
+            overflow-y: auto;
             background: #eeebe4;
             box-shadow: 0 28px 80px rgba(0,0,0,0.6);
             border-radius: 2px;
-            flex-shrink: 0;
         ">
-            <!-- 外框線 -->
-            <div style="position:absolute;inset:6.8% 4.8%;border:1px solid rgba(162,154,142,0.65);pointer-events:none;">
-                <!-- 內框線 -->
-                <div style="position:absolute;inset:7px;border:1px solid rgba(162,154,142,0.42);pointer-events:none;">
-                    <!-- 四角 L 形裝飾 -->
-                    <div style="position:absolute;top:7px;left:7px;width:20px;height:20px;border-top:1px solid rgba(150,142,130,0.72);border-left:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
-                    <div style="position:absolute;top:7px;right:7px;width:20px;height:20px;border-top:1px solid rgba(150,142,130,0.72);border-right:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
-                    <div style="position:absolute;bottom:7px;left:7px;width:20px;height:20px;border-bottom:1px solid rgba(150,142,130,0.72);border-left:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
-                    <div style="position:absolute;bottom:7px;right:7px;width:20px;height:20px;border-bottom:1px solid rgba(150,142,130,0.72);border-right:1px solid rgba(150,142,130,0.72);pointer-events:none;"></div>
+            <div style="margin: 7% 6%; border: 1px solid rgba(162,154,142,0.65);">
+                <div style="margin: 7px; border: 1px solid rgba(162,154,142,0.42); padding: 32px 28px; position: relative;">
+                    <div class="story-corner tl"></div>
+                    <div class="story-corner tr"></div>
+                    <div class="story-corner bl"></div>
+                    <div class="story-corner br"></div>
+                    <div id="story-text" contenteditable="true" style="
+                        font-family: 'Noto Serif TC', serif;
+                        font-size: 14px;
+                        line-height: 2;
+                        letter-spacing: 0.4px;
+                        text-align: justify;
+                        color: #2e2a24;
+                        outline: none;
+                    "></div>
                 </div>
             </div>
-
-            <!-- 中央分頁線（長文字時作為視覺分隔） -->
-            <div id="story-divider" style="
-                position:absolute;left:50%;top:10%;bottom:10%;
-                width:1px;background:rgba(162,154,142,0.3);
-                display:none;pointer-events:none;
-            "></div>
-
-            <!-- 左欄（長故事才顯示） -->
-            <div id="story-left" contenteditable="true" style="
-                position: absolute;
-                left: 8%; top: 10.5%; right: 51%; bottom: 10.5%;
-                font-family: 'Noto Serif TC', serif;
-                font-size: 13px;
-                line-height: 1.95;
-                letter-spacing: 0.4px;
-                text-align: justify;
-                color: #2e2a24;
-                overflow: hidden;
-                outline: none;
-                display: none;
-            "></div>
-
-            <!-- 右欄（始終顯示） -->
-            <div id="story-right" contenteditable="true" style="
-                position: absolute;
-                left: 51%; top: 10.5%; right: 8%; bottom: 10.5%;
-                font-family: 'Noto Serif TC', serif;
-                font-size: 13px;
-                line-height: 1.95;
-                letter-spacing: 0.4px;
-                text-align: justify;
-                color: #2e2a24;
-                overflow: hidden;
-                outline: none;
-            "></div>
         </div>
 
         <!-- 提示 + 確定按鈕 -->
@@ -716,7 +705,7 @@
         import { MATERIALS, PLATING_COLORS } from './js/materials.js';
 
         // 3D 場景系統
-        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres } from './js/3d-scene.js';
+        import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres, sceneReadyPromise } from './js/3d-scene.js';
 
         // V3 幾何引擎
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
@@ -1442,6 +1431,153 @@
             return new THREE.MeshStandardMaterial(materialConfig);
         }
 
+        // ============================================================
+        // 字體使用規範系統
+        // ============================================================
+        let fontConstraints = {};  // "fontName:sizeMm" → label
+
+        async function loadFontConstraints() {
+            try {
+                const res  = await fetch(`${window.BACKEND_URL}/api/font-constraints`);
+                const data = await res.json();
+                fontConstraints = {};
+                for (const c of (data.constraints || [])) {
+                    fontConstraints[`${c.font_name}:${c.size_mm}`] = c.label;
+                }
+                console.log(`[constraints] 載入 ${data.constraints?.length || 0} 筆規範`);
+            } catch (e) {
+                console.warn('[constraints] 載入失敗，預設全部可用:', e);
+            }
+        }
+
+        function getFontConstraint(fontName, sizeMm) {
+            return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
+        }
+
+        const ALL_SIZES = [8, 10, 12, 15, 18];
+
+        function getMinAvailableSize(fontName) {
+            for (const sz of ALL_SIZES) {
+                if (getFontConstraint(fontName, sz) !== 'unavailable') return sz;
+            }
+            return null;
+        }
+
+        function getCurrentFont(target) {
+            const sel = document.getElementById(`${target}-select`);
+            if (sel && sel.value && sel.value !== '__reselect__') return sel.value;
+            const btn = document.getElementById(`${target}-btn`);
+            return btn ? btn.getAttribute('data-selected') : null;
+        }
+
+        // Apply constraint styling to font <select> options for a given size
+        function applyConstraintsToFontSelect(selectEl, sizeMm) {
+            if (!selectEl) return;
+            Array.from(selectEl.options).forEach(opt => {
+                if (opt.value === '__reselect__') return;
+                const label = getFontConstraint(opt.value, sizeMm);
+                // Clean previous
+                opt.style.color = '';
+                opt.disabled    = false;
+                opt.title       = '';
+                // Strip old markers
+                opt.text = opt.value;
+
+                if (label === 'unavailable') {
+                    opt.disabled    = true;
+                    opt.style.color = '#555';
+                    opt.text        = '✗ ' + opt.value;
+                    const minSz = getMinAvailableSize(opt.value);
+                    opt.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                } else if (label === 'wide') {
+                    opt.style.color = '#8a6836';
+                    opt.text        = opt.value + ' (粗)';
+                    opt.title       = '極粗字體';
+                } else if (label === 'thin') {
+                    opt.style.color = '#486880';
+                    opt.text        = opt.value + ' (細)';
+                    opt.title       = '極細字體';
+                }
+            });
+        }
+
+        // Update size <select> options based on both currently chosen fonts
+        function updateSizeConstraints() {
+            const f1     = getCurrentFont('font1');
+            const f2     = getCurrentFont('font2');
+            const sizeEl = document.getElementById('size');
+            if (!sizeEl) return;
+
+            Array.from(sizeEl.options).forEach(opt => {
+                const sz = parseInt(opt.value);
+                const l1 = f1 ? getFontConstraint(f1, sz) : 'ok';
+                const l2 = f2 ? getFontConstraint(f2, sz) : 'ok';
+
+                // Reset
+                opt.disabled    = false;
+                opt.style.color = '';
+                opt.title       = '';
+                opt.text        = sz + ' mm';
+
+                if (l1 === 'unavailable' || l2 === 'unavailable') {
+                    opt.disabled    = true;
+                    opt.style.color = '#555';
+                    opt.title       = '已選字體不支援此尺寸';
+                    opt.text        = '✗ ' + opt.text;
+                } else if (l1 === 'thin' && l2 === 'thin') {
+                    opt.style.color = '#486880';
+                    opt.title       = '兩個極細字體在此尺寸無法製作';
+                    opt.text        = opt.text + ' (細×細)';
+                } else if (l1 === 'wide' && l2 === 'wide') {
+                    opt.style.color = '#8a6836';
+                    opt.title       = '兩個極粗字體在此尺寸配戴舒適度可能不佳';
+                    opt.text        = opt.text + ' (粗×粗)';
+                } else if (l1 === 'thin' || l2 === 'thin') {
+                    opt.style.color = '#486880';
+                    opt.title       = '含極細字體';
+                } else if (l1 === 'wide' || l2 === 'wide') {
+                    opt.style.color = '#8a6836';
+                    opt.title       = '含極粗字體';
+                }
+            });
+        }
+
+        // Check combo and show/hide viewport overlay. Returns 'ok'|'warn'|'block'
+        function checkConstraintCombo(f1, f2, sizeMm) {
+            if (!f1 || !f2) { hideConstraintOverlay(); return 'ok'; }
+            const l1 = getFontConstraint(f1, sizeMm);
+            const l2 = getFontConstraint(f2, sizeMm);
+
+            if (l1 === 'unavailable' || l2 === 'unavailable') {
+                showConstraintOverlay('block', '已選字體不支援此尺寸');
+                return 'block';
+            }
+            if (l1 === 'thin' && l2 === 'thin') {
+                showConstraintOverlay('block', '兩個字體都是極細字體，無法製作');
+                return 'block';
+            }
+            if (l1 === 'wide' && l2 === 'wide') {
+                showConstraintOverlay('warn', '兩個字體都是極粗字體，重量與造型可能會影響配戴舒適度，請審慎考慮。');
+                return 'warn';
+            }
+            hideConstraintOverlay();
+            return 'ok';
+        }
+
+        function showConstraintOverlay(type, message) {
+            const el = document.getElementById('constraint-overlay');
+            if (!el) return;
+            el.textContent = message;
+            el.className   = type;
+            el.style.display = 'block';
+        }
+
+        function hideConstraintOverlay() {
+            const el = document.getElementById('constraint-overlay');
+            if (el) el.style.display = 'none';
+        }
+
+        // ============================================================
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
             console.log('[V3 generateModel] 開始生成模型');
@@ -1505,6 +1641,18 @@
             }
             
             console.log(`[generateModel] targetHeight=${targetHeight}mm (size select value: "${sizeValue}")`);
+
+            // ── 字體規範檢查 ──
+            const constraintResult = checkConstraintCombo(f1Name, f2Name, targetHeight);
+            if (constraintResult === 'block') {
+                ['model-rebuilding-indicator-top', 'model-rebuilding-indicator-cleanup'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                return;
+            }
+            // 'warn' → overlay 已顯示，繼續生成
+
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
@@ -2379,6 +2527,19 @@
             charInput.dispatchEvent(new Event('input'));
 
             document.getElementById('font-selector-modal').classList.add('active');
+
+            // 字體載入中指示器
+            const fontLoadingEl = document.getElementById('font-loading-indicator');
+            if (fontLoadingEl) {
+                if (document.fonts.status === 'loaded') {
+                    fontLoadingEl.style.display = 'none';
+                } else {
+                    fontLoadingEl.style.display = 'flex';
+                    document.fonts.ready.then(() => {
+                        fontLoadingEl.style.display = 'none';
+                    });
+                }
+            }
         }
 
         function closeFontSelector() {
@@ -2485,11 +2646,30 @@
 
                 // 清空並填入字體選項
                 select.innerHTML = '';
+                const currentSize = parseInt(document.getElementById('size')?.value || '10');
                 selectedFonts.forEach(font => {
                     const option = document.createElement('option');
                     option.value = font;
-                    option.textContent = font;
                     option.style.fontFamily = `"${font}", sans-serif`;
+                    // 套用規範標示
+                    const cLabel = getFontConstraint(font, currentSize);
+                    if (cLabel === 'unavailable') {
+                        option.text        = '✗ ' + font;
+                        option.disabled    = true;
+                        option.style.color = '#555';
+                        const minSz = getMinAvailableSize(font);
+                        option.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                    } else if (cLabel === 'wide') {
+                        option.text        = font + ' (粗)';
+                        option.style.color = '#8a6836';
+                        option.title       = '極粗字體';
+                    } else if (cLabel === 'thin') {
+                        option.text        = font + ' (細)';
+                        option.style.color = '#486880';
+                        option.title       = '極細字體';
+                    } else {
+                        option.text = font;
+                    }
                     select.appendChild(option);
                 });
 
@@ -2550,11 +2730,14 @@
                         hiddenInput.value = selectedFont;
                     }
                     
-                    // 生成模型
+                    // 更新尺寸選單規範，再生成模型
+                    updateSizeConstraints();
                     generateModel();
                 };
             });
 
+            // 字體選定後同步更新尺寸選單規範
+            updateSizeConstraints();
             closeFontSelector();
 
             // 🚀 預載入所有選中的字體到 cache（背景載入）
@@ -3476,32 +3659,12 @@
         }
 
         function showDesignStoryCard(designStory) {
-            const modal    = document.getElementById('design-story-modal');
-            const leftEl   = document.getElementById('story-left');
-            const rightEl  = document.getElementById('story-right');
-            const divider  = document.getElementById('story-divider');
-            const text     = (designStory || '').trim();
+            const modal  = document.getElementById('design-story-modal');
+            const textEl = document.getElementById('story-text');
+            const text   = (designStory || '').trim();
 
             window.finalDesignStory = text;
-
-            const SHORT_THRESHOLD = 200;
-
-            if (text.length < SHORT_THRESHOLD) {
-                // 短故事：僅右欄
-                leftEl.style.display  = 'none';
-                divider.style.display = 'none';
-                rightEl.style.left    = '51%';
-                rightEl.innerHTML     = text.replace(/\n/g, '<br>');
-            } else {
-                // 長故事：左右欄各放一半段落
-                leftEl.style.display  = '';
-                divider.style.display = '';
-                rightEl.style.left    = '51%';
-                const paras = text.split(/\n+/);
-                const mid   = Math.ceil(paras.length / 2);
-                leftEl.innerHTML  = paras.slice(0, mid).join('<br><br>');
-                rightEl.innerHTML = paras.slice(mid).join('<br><br>');
-            }
+            textEl.innerHTML = text.replace(/\n/g, '<br>');
 
             modal.style.display = 'flex';
             console.log('✅ 設計理念卡片已顯示');
@@ -3586,15 +3749,15 @@
                                  font-family: inherit; margin-bottom: 20px;"></textarea>
                 
                 <div style="display: flex; gap: 12px;">
-                    <button id="submit-reason-btn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d4af37, #aa8a2e);
-                                   color: #000; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
-                                   cursor: pointer;">
-                        送出
-                    </button>
                     <button id="skip-reason-btn" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08);
                                    border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 12px;
                                    font-size: 14px; font-weight: 600; cursor: pointer;">
                         跳過
+                    </button>
+                    <button id="submit-reason-btn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d4af37, #aa8a2e);
+                                   color: #000; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+                                   cursor: pointer;">
+                        送出
                     </button>
                 </div>
             </div>
@@ -3674,12 +3837,6 @@
                         .replace(/^["'\s]+|["'\s]+$/g, '')
                         .trim();
 
-                    // 前端安全網：確保不超過 250 字
-                    if (story.length > 250) {
-                        console.warn('⚠️ 設計理念超過 250 字，自動截斷');
-                        story = story.substring(0, 247) + '...';
-                    }
-
                     return story;
                 } else {
                     console.error('❌ 設計理念生成失敗:', result.error);
@@ -3753,13 +3910,13 @@
                 document.getElementById('inquiry-status').innerHTML =
                     '<span style="color:#7ec87e;">✓ 已送出！我們將在 2 個工作天內與您聯繫。</span>';
                 btn.textContent = '已送出';
-                // 移除貴金屬品項（留下一般品項）
+                // 移除貴金屬品項
                 cartItems = cartItems.filter(i => !i.isPreciousMetal);
+                // 1 秒後關閉 modal，顯示跳轉提示
                 setTimeout(() => {
                     document.getElementById('custom-inquiry-modal').style.display = 'none';
-                    renderCart();
-                    if (cartItems.length === 0) closeCart();
-                }, 2200);
+                    showInquiryCompleteModal();
+                }, 1200);
             } catch (e) {
                 document.getElementById('inquiry-status').innerHTML =
                     '<span style="color:#ff6b6b;">傳送失敗，請稍後再試或直接 Email 至 duet@brendonchen.com</span>';
@@ -4285,6 +4442,37 @@
             }, 3000);
         }
 
+        // 貴金屬訂製詢問完成彈窗（與 showPaymentCompleteModal 相同機制）
+        function showInquiryCompleteModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.6); backdrop-filter: blur(20px);
+                z-index: 10000; display: flex; align-items: center; justify-content: center;
+            `;
+            modal.innerHTML = `
+                <div style="
+                    background: rgba(255,255,255,0.08);
+                    backdrop-filter: blur(40px) saturate(180%);
+                    -webkit-backdrop-filter: blur(40px) saturate(180%);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 24px; padding: 40px; width: 420px;
+                    text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                ">
+                    <div style="font-size: 64px; margin-bottom: 24px;">✓</div>
+                    <h2 style="color:rgba(255,255,255,0.95);margin:0 0 20px 0;font-size:22px;font-weight:500;letter-spacing:0.5px;">
+                        訂製需求已送出</h2>
+                    <p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;margin:0 0 28px 0;">
+                        我們將在 2 個工作天內與您聯繫確認細節<br>
+                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
+                    </p>
+                    <div style="color:rgba(212,175,55,0.8);font-size:13px;font-weight:500;">3 秒後自動跳轉...</div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            setTimeout(() => { window.location.href = 'https://www.brendonchen.com'; }, 3000);
+        }
+
         // 特殊金額說明彈窗（優惠後 ≤ 0 元）
         // 特殊金額說明彈窗（Liquid Glass 風格）
         function showSpecialAmountModal(originalTotal, discount) {
@@ -4515,6 +4703,13 @@
                         charInput.dispatchEvent(new Event('input'));
                     }
 
+                    // 尺寸改變 → 重新套用字體選單規範
+                    if (id === 'size') {
+                        const newSize = parseInt(document.getElementById('size').value);
+                        applyConstraintsToFontSelect(document.getElementById('font1-select'), newSize);
+                        applyConstraintsToFontSelect(document.getElementById('font2-select'), newSize);
+                    }
+
                     generateModel();
                 });
             });
@@ -4567,11 +4762,8 @@
             });
 
             document.getElementById('confirm-story-card').addEventListener('click', () => {
-                // 獲取編輯後的設計理念（合併左右欄）
-                const leftText  = document.getElementById('story-left').style.display !== 'none'
-                    ? document.getElementById('story-left').innerText.trim() : '';
-                const rightText = document.getElementById('story-right').innerText.trim();
-                const editedStory = leftText ? leftText + '\n\n' + rightText : rightText;
+                // 獲取編輯後的設計理念
+                const editedStory = document.getElementById('story-text').innerText.trim();
 
                 // 儲存到全局變數（供後續訂單使用）
                 window.finalDesignStory = editedStory;
@@ -4616,6 +4808,20 @@
         initFontSelector();
         setupEventListeners();
         animate();
+
+        // 等 3D 場景 + 背景圖都就緒後才淡出 loader
+        const _bgReady = new Promise(resolve => {
+            const img = new Image();
+            img.onload = resolve;
+            img.onerror = resolve;
+            img.src = 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png';
+        });
+        Promise.all([sceneReadyPromise, _bgReady]).then(() => {
+            document.getElementById('loader').classList.add('fade-out');
+        });
+
+        // 載入字體使用規範
+        loadFontConstraints();
 
         // 初始化價格顯示
         updatePriceDisplay();
