@@ -315,7 +315,26 @@
                 <div id="font-list-container"></div>
             </aside>
 
-            <section class="font-display-area" id="font-display-area"></section>
+            <section class="font-display-area" id="font-display-area">
+                <!-- 字體載入中指示器 -->
+                <div id="font-loading-indicator" style="
+                    display: none;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    padding: 6px 12px;
+                    background: rgba(26, 26, 46, 0.9);
+                    backdrop-filter: blur(4px);
+                    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 11px;
+                    color: rgba(212, 175, 55, 0.8);
+                ">
+                    <div style="width: 10px; height: 10px; border: 1.5px solid rgba(212, 175, 55, 0.3); border-top-color: #d4af37; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;"></div>
+                    <span>字體載入中，部分字體樣式稍後顯示</span>
+                </div>
+            </section>
         </div>
 
         <div class="confirm-container">
@@ -2508,6 +2527,19 @@
             charInput.dispatchEvent(new Event('input'));
 
             document.getElementById('font-selector-modal').classList.add('active');
+
+            // 字體載入中指示器
+            const fontLoadingEl = document.getElementById('font-loading-indicator');
+            if (fontLoadingEl) {
+                if (document.fonts.status === 'loaded') {
+                    fontLoadingEl.style.display = 'none';
+                } else {
+                    fontLoadingEl.style.display = 'flex';
+                    document.fonts.ready.then(() => {
+                        fontLoadingEl.style.display = 'none';
+                    });
+                }
+            }
         }
 
         function closeFontSelector() {
@@ -3717,15 +3749,15 @@
                                  font-family: inherit; margin-bottom: 20px;"></textarea>
                 
                 <div style="display: flex; gap: 12px;">
-                    <button id="submit-reason-btn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d4af37, #aa8a2e);
-                                   color: #000; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
-                                   cursor: pointer;">
-                        送出
-                    </button>
                     <button id="skip-reason-btn" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08);
                                    border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 12px;
                                    font-size: 14px; font-weight: 600; cursor: pointer;">
                         跳過
+                    </button>
+                    <button id="submit-reason-btn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d4af37, #aa8a2e);
+                                   color: #000; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+                                   cursor: pointer;">
+                        送出
                     </button>
                 </div>
             </div>
