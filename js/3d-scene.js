@@ -71,10 +71,10 @@ export function initScene() {
     directionalLight.position.set(5, 5, 10);
     scene.add(directionalLight);
 
-    // HDR 載入備援機制
+    // HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
     const hdrUrls = [
-        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
-        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
+        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
+        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
     ];
 
     let currentHdrIndex = 0;
@@ -91,7 +91,7 @@ export function initScene() {
         }
 
         const hdrUrl = hdrUrls[currentHdrIndex];
-        const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
+        const sourceName = hdrUrls[currentHdrIndex]?.includes('raw.githubusercontent') ? 'GitHub Raw' : 'jsdelivr CDN';
         console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
 
         hdrLoadTimeout = setTimeout(() => {
