@@ -73,8 +73,8 @@ export function initScene() {
 
     // HDR 載入備援機制
     const hdrUrls = [
-        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
-        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
+        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
+        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
     ];
 
     let currentHdrIndex = 0;
@@ -91,7 +91,7 @@ export function initScene() {
         }
 
         const hdrUrl = hdrUrls[currentHdrIndex];
-        const sourceName = currentHdrIndex === 0 ? 'GitHub Raw' : 'jsdelivr CDN';
+        const sourceName = currentHdrIndex === 0 ? 'jsdelivr CDN' : 'GitHub Raw';
         console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
 
         hdrLoadTimeout = setTimeout(() => {
