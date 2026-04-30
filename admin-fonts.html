@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <script src="assets/js/config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字體規範 - DUET 後台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #d4af37;
+            --bg-dark: #0a0a0a;
+            --bg-card: #1a1a1a;
+            --bg-cell: #222;
+            --text-light: #e0e0e0;
+            --text-muted: #888;
+            --border: rgba(212,175,55,0.2);
+
+            --ok-bg:   rgba(52,199,89,0.12);
+            --ok-fg:   #4ade80;
+            --no-bg:   rgba(255,59,48,0.14);
+            --no-fg:   #f87171;
+            --wide-bg: rgba(251,146,60,0.15);
+            --wide-fg: #fb923c;
+            --thin-bg: rgba(96,165,250,0.13);
+            --thin-fg: #60a5fa;
+        }
+
+        body { font-family: 'Outfit', sans-serif; background: var(--bg-dark); color: var(--text-light); min-height: 100vh; }
+
+        /* ── Login ── */
+        #loginScreen {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+        }
+        .login-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 48px; width: 100%; max-width: 400px; text-align: center;
+        }
+        .login-logo { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--primary); margin-bottom: 8px; }
+        .login-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+        .login-form input {
+            width: 100%; background: #2a2a2a; border: 1px solid var(--border);
+            color: var(--text-light); padding: 14px 16px; border-radius: 8px;
+            font-size: 14px; margin-bottom: 16px; transition: border-color 0.3s;
+        }
+        .login-form input:focus { outline: none; border-color: var(--primary); }
+        .btn-login {
+            width: 100%; background: var(--primary); color: #000;
+            border: none; padding: 14px; border-radius: 8px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .login-error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
+
+        /* ── Nav ── */
+        .nav {
+            background: var(--bg-card); border-bottom: 1px solid var(--border);
+            padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-logo { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--primary); }
+        .nav-right { display: flex; align-items: center; gap: 16px; color: var(--text-muted); font-size: 14px; }
+        .btn-logout {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-muted); padding: 6px 14px; border-radius: 6px;
+            cursor: pointer; font-size: 13px;
+        }
+        .btn-logout:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* ── Tabs ── */
+        .tab-link {
+            display: inline-block; padding: 14px 18px; font-size: 14px;
+            color: var(--text-muted); text-decoration: none;
+            border-bottom: 2px solid transparent; white-space: nowrap;
+            transition: color 0.2s;
+        }
+        .tab-link:hover { color: var(--text-light); }
+        .tab-link.active-tab { color: var(--primary); border-bottom-color: var(--primary); cursor: default; }
+
+        /* ── Main ── */
+        .main-content { padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+        }
+        .page-title { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--primary); }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .change-count { font-size: 13px; color: var(--text-muted); }
+        .change-count.has-changes { color: var(--wide-fg); }
+
+        .btn-save {
+            background: var(--primary); color: #000; border: none;
+            padding: 9px 22px; border-radius: 8px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn-save:disabled { opacity: 0.4; cursor: default; }
+        .btn-reset {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-muted); padding: 9px 18px; border-radius: 8px;
+            font-size: 14px; cursor: pointer;
+        }
+        .btn-reset:hover { border-color: var(--text-muted); color: var(--text-light); }
+
+        /* ── Legend ── */
+        .legend {
+            display: flex; gap: 20px; flex-wrap: wrap;
+            margin-bottom: 18px; font-size: 13px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 22px; border-radius: 5px;
+            font-size: 12px; font-weight: 600;
+        }
+        .legend-dot.ok   { background: var(--ok-bg);   color: var(--ok-fg); }
+        .legend-dot.no   { background: var(--no-bg);   color: var(--no-fg); }
+        .legend-dot.wide { background: var(--wide-bg); color: var(--wide-fg); }
+        .legend-dot.thin { background: var(--thin-bg); color: var(--thin-fg); }
+
+        /* ── Table ── */
+        .table-wrap { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; }
+        thead th {
+            background: #111; color: var(--text-muted); font-size: 12px;
+            font-weight: 500; padding: 10px 14px; text-align: center;
+            border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1;
+        }
+        thead th:first-child { text-align: left; min-width: 220px; }
+
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        tbody tr td {
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            padding: 6px 10px; vertical-align: middle;
+        }
+
+        /* font name cell */
+        .font-name {
+            font-size: 16px; color: var(--text-light);
+            white-space: nowrap; letter-spacing: 0.3px;
+            padding-left: 4px;
+        }
+
+        /* constraint cell button */
+        .cell-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 28px; border-radius: 6px; border: none;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: transform 0.1s, filter 0.15s;
+            position: relative;
+        }
+        .cell-btn:active { transform: scale(0.9); }
+        .cell-btn.ok   { background: var(--ok-bg);   color: var(--ok-fg); }
+        .cell-btn.no   { background: var(--no-bg);   color: var(--no-fg); }
+        .cell-btn.wide { background: var(--wide-bg); color: var(--wide-fg); }
+        .cell-btn.thin { background: var(--thin-bg); color: var(--thin-fg); }
+        .cell-btn.changed { outline: 1px solid rgba(212,175,55,0.5); }
+
+        /* tooltip */
+        .cell-btn[data-tip]:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%; transform: translateX(-50%);
+            background: #2a2a2a; color: var(--text-light);
+            border: 1px solid var(--border);
+            font-size: 11px; font-weight: 400;
+            white-space: nowrap; padding: 5px 10px; border-radius: 6px;
+            pointer-events: none; z-index: 99;
+        }
+
+        /* status bar */
+        .status-bar {
+            margin-top: 16px; font-size: 13px; color: var(--text-muted);
+            min-height: 20px;
+        }
+        .status-bar.ok   { color: var(--ok-fg); }
+        .status-bar.err  { color: var(--no-fg); }
+
+        /* loading skeleton */
+        .skeleton { background: #222; border-radius: 4px; animation: pulse 1.4s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+    <style id="fontFaceStyles">/* dynamic @font-face rules injected here */</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+    <div class="login-card">
+        <div class="login-logo">DUET</div>
+        <div class="login-subtitle">字體規範管理</div>
+        <form class="login-form" onsubmit="handleLogin(event)">
+            <input type="text" id="username" placeholder="員工帳號" autocomplete="username" required>
+            <input type="password" id="password" placeholder="密碼" autocomplete="current-password" required>
+            <button type="submit" class="btn-login">登入</button>
+            <div class="login-error" id="loginError"></div>
+        </form>
+    </div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" style="display:none">
+    <nav class="nav">
+        <div class="nav-logo">DUET 後台</div>
+        <div class="nav-right">
+            <span id="currentUser"></span>
+            <button class="btn-logout" onclick="handleLogout()">登出</button>
+        </div>
+    </nav>
+    <div style="padding:0 24px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;gap:4px;max-width:1400px;margin:0 auto;">
+            <a href="admin.html" class="tab-link">訂單管理</a>
+            <a href="admin.html" class="tab-link">員工管理</a>
+            <a href="admin.html" class="tab-link">優惠券管理</a>
+            <a href="admin.html" class="tab-link">客戶回饋</a>
+            <a href="admin.html" class="tab-link">系統監控</a>
+            <span class="tab-link active-tab">字體規範</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">字體使用規範</div>
+            <div class="header-actions">
+                <span class="change-count" id="changeCount">未有變更</span>
+                <button class="btn-reset" onclick="resetChanges()">重置</button>
+                <button class="btn-save" id="saveBtn" onclick="saveChanges()" disabled>儲存變更</button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="legend-dot ok">✓</span> 可用（預設）</div>
+            <div class="legend-item"><span class="legend-dot no">✗</span> 此尺寸不可用</div>
+            <div class="legend-item"><span class="legend-dot wide">w</span> 極粗字體</div>
+            <div class="legend-item"><span class="legend-dot thin">t</span> 極細字體</div>
+            <div style="color: var(--text-muted); font-size: 12px; align-self: center;">點擊格子切換狀態</div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>字體</th>
+                        <th>8 mm</th>
+                        <th>10 mm</th>
+                        <th>12 mm</th>
+                        <th>15 mm</th>
+                        <th>18 mm</th>
+                    </tr>
+                </thead>
+                <tbody id="fontTableBody">
+                    <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+    </div>
+</div>
+
+<script>
+const ADMIN_API_KEY = 'beacreator27v5Tx8WHd2';
+const SIZES = [8, 10, 12, 15, 18];
+const CYCLE = ['ok', 'unavailable', 'wide', 'thin'];
+const LABEL_META = {
+    ok:          { cls: 'ok',   sym: '✓', tip: null },
+    unavailable: { cls: 'no',   sym: '✗', tip: '此尺寸不可用' },
+    wide:        { cls: 'wide', sym: 'w', tip: '極粗字體' },
+    thin:        { cls: 'thin', sym: 't', tip: '極細字體' },
+};
+
+let currentUser  = null;
+let fontsData    = [];          // from fonts.json
+let constraints  = {};          // key: `${font}:${size}` → label string
+let pendingChanges = {};        // key: `${font}:${size}` → new label
+
+// ── Auth ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('adminUser');
+    if (saved) { currentUser = JSON.parse(saved); showMainApp(); }
+});
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errEl    = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    try {
+        const res  = await fetch(`${window.BACKEND_URL}/api/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentUser = data.user;
+            localStorage.setItem('adminUser', JSON.stringify(currentUser));
+            showMainApp();
+        } else {
+            errEl.textContent = data.error || '登入失敗';
+            errEl.style.display = 'block';
+        }
+    } catch {
+        errEl.textContent = '網路錯誤，請稍後重試';
+        errEl.style.display = 'block';
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('adminUser');
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+function showMainApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
+    initPage();
+}
+
+// ── Init ──────────────────────────────────────────
+async function initPage() {
+    try {
+        const [fontRes, constraintRes] = await Promise.all([
+            fetch('./fonts.json'),
+            fetch(`${window.BACKEND_URL}/api/admin/font-constraints`, {
+                headers: { 'X-Admin-Key': ADMIN_API_KEY, 'X-Admin-User': currentUser.username }
+            })
+        ]);
+
+        fontsData = (await fontRes.json()).fonts || [];
+
+        const cData = await constraintRes.json();
+        if (!cData.success) throw new Error(cData.error);
+
+        // Build constraints lookup
+        constraints = {};
+        for (const c of (cData.constraints || [])) {
+            constraints[`${c.font_name}:${c.size_mm}`] = c.label;
+        }
+
+        injectFontFaces();
+        renderTable();
+
+    } catch (err) {
+        document.getElementById('fontTableBody').innerHTML =
+            `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--no-fg)">載入失敗：${err.message}</td></tr>`;
+    }
+}
+
+// ── Font face injection ────────────────────────────
+function injectFontFaces() {
+    const rules = fontsData.map(font => {
+        const name    = typeof font === 'string' ? font : font.name;
+        const ttfName = name.replace(/ /g, '_') + '-Regular.ttf';
+        const url     = `${window.BACKEND_URL}/assets/fonts/ttf/${encodeURIComponent(ttfName)}`;
+        return `@font-face { font-family: '${name}'; src: url('${url}') format('truetype'); font-display: swap; }`;
+    }).join('\n');
+    document.getElementById('fontFaceStyles').textContent = rules;
+}
+
+// ── Table rendering ───────────────────────────────
+function renderTable() {
+    const tbody = document.getElementById('fontTableBody');
+    const rows  = fontsData.map(font => {
+        const name = typeof font === 'string' ? font : font.name;
+        const cells = SIZES.map(sz => {
+            const key   = `${name}:${sz}`;
+            const label = constraints[key] || 'ok';
+            const meta  = LABEL_META[label];
+            const tip   = meta.tip ? `data-tip="${meta.tip}"` : '';
+            return `<td style="text-align:center">
+                <button class="cell-btn ${meta.cls}"
+                    data-font="${escHtml(name)}" data-size="${sz}"
+                    data-label="${label}" data-original="${label}"
+                    onclick="cycleCell(this)" ${tip}>${meta.sym}</button>
+            </td>`;
+        }).join('');
+
+        return `<tr>
+            <td><span class="font-name" style="font-family:'${escHtml(name)}';">${escHtml(name)}</span></td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = rows;
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Cell cycle ────────────────────────────────────
+function cycleCell(btn) {
+    const current  = btn.dataset.label;
+    const nextIdx  = (CYCLE.indexOf(current) + 1) % CYCLE.length;
+    const next     = CYCLE[nextIdx];
+    const meta     = LABEL_META[next];
+    const fontName = btn.dataset.font;
+    const sizeMm   = parseInt(btn.dataset.size);
+    const key      = `${fontName}:${sizeMm}`;
+
+    btn.dataset.label = next;
+    btn.className     = `cell-btn ${meta.cls}`;
+    btn.textContent   = meta.sym;
+    btn.removeAttribute('data-tip');
+    if (meta.tip) btn.setAttribute('data-tip', meta.tip);
+
+    const original = btn.dataset.original;
+    if (next === original) {
+        delete pendingChanges[key];
+        btn.classList.remove('changed');
+    } else {
+        pendingChanges[key] = { font_name: fontName, size_mm: sizeMm, label: next };
+        btn.classList.add('changed');
+    }
+
+    updateChangeUI();
+}
+
+// ── Change tracking ───────────────────────────────
+function updateChangeUI() {
+    const n       = Object.keys(pendingChanges).length;
+    const el      = document.getElementById('changeCount');
+    const saveBtn = document.getElementById('saveBtn');
+
+    if (n === 0) {
+        el.textContent = '未有變更';
+        el.className   = 'change-count';
+        saveBtn.disabled = true;
+    } else {
+        el.textContent = `${n} 項未儲存變更`;
+        el.className   = 'change-count has-changes';
+        saveBtn.disabled = false;
+    }
+}
+
+function resetChanges() {
+    // Restore all changed cells to original
+    document.querySelectorAll('.cell-btn.changed').forEach(btn => {
+        const original = btn.dataset.original;
+        const meta     = LABEL_META[original];
+        btn.dataset.label = original;
+        btn.className     = `cell-btn ${meta.cls}`;
+        btn.textContent   = meta.sym;
+        btn.removeAttribute('data-tip');
+        if (meta.tip) btn.setAttribute('data-tip', meta.tip);
+        btn.classList.remove('changed');
+    });
+    pendingChanges = {};
+    updateChangeUI();
+    setStatus('');
+}
+
+// ── Save ──────────────────────────────────────────
+async function saveChanges() {
+    const changes = Object.values(pendingChanges);
+    if (changes.length === 0) return;
+
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '儲存中...';
+    setStatus('');
+
+    try {
+        const res  = await fetch(`${window.BACKEND_URL}/api/admin/font-constraints`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Key':  ADMIN_API_KEY,
+                'X-Admin-User': currentUser.username
+            },
+            body: JSON.stringify({ changes })
+        });
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error);
+
+        // Commit: update original markers
+        document.querySelectorAll('.cell-btn.changed').forEach(btn => {
+            btn.dataset.original = btn.dataset.label;
+            btn.classList.remove('changed');
+        });
+
+        // Update local constraints cache
+        for (const c of changes) {
+            const key = `${c.font_name}:${c.size_mm}`;
+            if (c.label === 'ok') delete constraints[key];
+            else constraints[key] = c.label;
+        }
+
+        pendingChanges = {};
+        updateChangeUI();
+        setStatus(`✓ 已儲存 ${data.updated} 筆設定`, 'ok');
+
+    } catch (err) {
+        setStatus(`儲存失敗：${err.message}`, 'err');
+    } finally {
+        saveBtn.textContent = '儲存變更';
+        saveBtn.disabled    = Object.keys(pendingChanges).length === 0;
+    }
+}
+
+function setStatus(msg, cls = '') {
+    const el = document.getElementById('statusBar');
+    el.textContent = msg;
+    el.className   = `status-bar ${cls}`;
+}
+</script>
+</body>
+</html>

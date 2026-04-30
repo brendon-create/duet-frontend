@@ -524,6 +524,7 @@
         
         let countdownInterval = null;
         let currentEmail = '';
+        let currentOrdersList = null;
         
         // 分頁切換
         function switchTab(tab) {
@@ -681,6 +682,8 @@
                 
                 if (data.success) {
                     if (data.orders && data.orders.length > 0) {
+                        // 隱藏驗證碼區塊
+                        document.getElementById('emailStep2').classList.remove('active');
                         // 顯示多筆訂單
                         showMultipleOrders(data.orders);
                     } else {
@@ -800,6 +803,7 @@
         
         // 顯示多筆訂單
         function showMultipleOrders(orders) {
+            currentOrdersList = orders;
             if (orders.length === 1) {
                 showOrder(orders[0]);
                 return;
@@ -837,6 +841,13 @@
                 hideLoading();
                 if (data.success) {
                     showOrder(data.order);
+                    if (currentOrdersList && currentOrdersList.length > 1) {
+                        const backBtn = document.createElement('button');
+                        backBtn.textContent = '← 返回訂單列表';
+                        backBtn.style.cssText = 'margin-bottom:16px;background:none;border:none;color:#8b7355;cursor:pointer;font-size:14px;padding:0;';
+                        backBtn.onclick = () => showMultipleOrders(currentOrdersList);
+                        document.getElementById('orderResult').prepend(backBtn);
+                    }
                 }
             } catch (error) {
                 hideLoading();

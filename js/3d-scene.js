@@ -17,6 +17,10 @@ export let slot1Camera = null, slot2Camera = null;
 
 let scene, camera, renderer, controls, envMap;
 
+let _sceneShown = false;
+let _sceneReadyResolve;
+export const sceneReadyPromise = new Promise(r => { _sceneReadyResolve = r; });
+
 export function getScene() { return scene; }
 export function getCamera() { return camera; }
 export function getRenderer() { return renderer; }
@@ -71,7 +75,7 @@ export function initScene() {
     directionalLight.position.set(5, 5, 10);
     scene.add(directionalLight);
 
-    // HDR 載入備援機制
+    // HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
     const hdrUrls = [
         'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
         'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
@@ -91,14 +95,14 @@ export function initScene() {
         }
 
         const hdrUrl = hdrUrls[currentHdrIndex];
-        const sourceName = currentHdrIndex === 0 ? 'GitHub Raw' : 'jsdelivr CDN';
+        const sourceName = hdrUrls[currentHdrIndex]?.includes('raw.githubusercontent') ? 'GitHub Raw' : 'jsdelivr CDN';
         console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
 
         hdrLoadTimeout = setTimeout(() => {
             console.warn(`⏱️ HDR 載入超時 (${sourceName})，切換備援...`);
             currentHdrIndex++;
             loadHDRWithFallback();
-        }, 5000);
+        }, 25000);
 
         rgbeLoader.load(
             hdrUrl,
@@ -180,6 +184,9 @@ export function removeAllPlaceholderSpheres() {
 }
 
 export function showInitialSphere() {
+    if (_sceneShown) return;
+    _sceneShown = true;
+
     // 清理任何已存在的球體（防禦性清理）
     removeAllPlaceholderSpheres();
 
@@ -190,5 +197,5 @@ export function showInitialSphere() {
     scene.add(mesh);
     window.mainMesh = mesh;
     console.log('✅ showInitialSphere: 顯示初始球體');
-    document.getElementById('loader').classList.add('fade-out');
+    _sceneReadyResolve();
 }
