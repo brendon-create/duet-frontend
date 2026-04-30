@@ -69,6 +69,16 @@
         }
         .btn-logout:hover { border-color: var(--primary); color: var(--primary); }
 
+        /* ── Tabs ── */
+        .tab-link {
+            display: inline-block; padding: 14px 18px; font-size: 14px;
+            color: var(--text-muted); text-decoration: none;
+            border-bottom: 2px solid transparent; white-space: nowrap;
+            transition: color 0.2s;
+        }
+        .tab-link:hover { color: var(--text-light); }
+        .tab-link.active-tab { color: var(--primary); border-bottom-color: var(--primary); cursor: default; }
+
         /* ── Main ── */
         .main-content { padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
 
@@ -200,6 +210,16 @@
             <button class="btn-logout" onclick="handleLogout()">登出</button>
         </div>
     </nav>
+    <div style="padding:0 24px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;gap:4px;max-width:1400px;margin:0 auto;">
+            <a href="admin.html" class="tab-link">訂單管理</a>
+            <a href="admin.html" class="tab-link">員工管理</a>
+            <a href="admin.html" class="tab-link">優惠券管理</a>
+            <a href="admin.html" class="tab-link">客戶回饋</a>
+            <a href="admin.html" class="tab-link">系統監控</a>
+            <span class="tab-link active-tab">字體規範</span>
+        </div>
+    </div>
 
     <div class="main-content">
         <div class="page-header">
