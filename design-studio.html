@@ -101,14 +101,19 @@
             </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" id="plating-group">
             <label>表面電鍍 (Plating)</label>
-            <select id="plating">
-                <option value="none">無</option>
-                <option value="gold18k">18K 金</option>
-                <option value="whitegold18k">18K 白K金</option>
-                <option value="rosegold18k">18K 玫瑰金</option>
-            </select>
+            <div id="plating-wrapper" style="position:relative;">
+                <select id="plating">
+                    <option value="none">無</option>
+                    <option value="gold18k">18K 金</option>
+                    <option value="whitegold18k">18K 白K金</option>
+                    <option value="rosegold18k">18K 玫瑰金</option>
+                </select>
+                <div id="plating-tooltip" style="display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:100; background:#2a2520; color:#d4af37; border:1px solid rgba(212,175,55,0.4); border-radius:8px; padding:10px 12px; font-size:12px; line-height:1.6; width:260px; pointer-events:none;">
+                    黃銅與 925 銀價格相同。為了凸顯黃銅的特殊質感，黃銅不提供電鍍選項，若要選擇電鍍，請改選 925 銀材質。
+                </div>
+            </div>
         </div>
 
         <div class="control-group">
@@ -533,16 +538,16 @@
                     line-height: 2;
                 ">
                     <li style="margin-bottom: 18px; font-size: 16px;">
-                        <span style="color: #d4af37; margin-right: 12px;">✨</span>
-                        系統將為您生成專屬設計理念
-                    </li>
-                    <li style="margin-bottom: 18px; font-size: 16px;">
                         <span style="color: #d4af37; margin-right: 12px;">📝</span>
                         我們會詢問您幾個關於字體的問題
                     </li>
+                    <li style="margin-bottom: 18px; font-size: 16px;">
+                        <span style="color: #d4af37; margin-right: 12px;">✨</span>
+                        系統將為您生成專屬設計理念
+                    </li>
                     <li style="font-size: 16px;">
                         <span style="color: #d4af37; margin-right: 12px;">🎨</span>
-                        最後呈現精美的設計理念卡片
+                        最後呈現設計理念讓您修改與確認
                     </li>
                 </ul>
             </div>
@@ -4758,8 +4763,29 @@
                 if (this.value === 'precious_metal') {
                     document.getElementById('precious-metal-notice-modal').style.display = 'flex';
                 }
+                updatePlatingForMaterial(this.value);
                 updatePriceDisplay();
             });
+
+            function updatePlatingForMaterial(material) {
+                const platingSelect = document.getElementById('plating');
+                const platingWrapper = document.getElementById('plating-wrapper');
+                if (material === 'brass') {
+                    platingSelect.value = 'none';
+                    platingSelect.disabled = true;
+                    platingSelect.style.opacity = '0.4';
+                    platingSelect.style.cursor = 'not-allowed';
+                    platingWrapper.onmouseenter = () => { document.getElementById('plating-tooltip').style.display = 'block'; };
+                    platingWrapper.onmouseleave = () => { document.getElementById('plating-tooltip').style.display = 'none'; };
+                } else {
+                    platingSelect.disabled = false;
+                    platingSelect.style.opacity = '';
+                    platingSelect.style.cursor = '';
+                    platingWrapper.onmouseenter = null;
+                    platingWrapper.onmouseleave = null;
+                    document.getElementById('plating-tooltip').style.display = 'none';
+                }
+            }
 
             document.getElementById('confirm-story-card').addEventListener('click', () => {
                 // 獲取編輯後的設計理念
