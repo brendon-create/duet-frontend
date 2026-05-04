@@ -534,6 +534,19 @@
                         <option value="1080x1920">1080 × 1920（Stories / Reels 9:16）</option>
                         <option value="600x750">600 × 750（輕量預覽）</option>
                     </optgroup>
+                    <optgroup label="── 方形（Gallery 縮圖）──">
+                        <option value="500x500">500 × 500（Gallery 方形）</option>
+                        <option value="400x400">400 × 400（輕量 Gallery）</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">影片位元率</div>
+                <select id="bitrate">
+                    <option value="10000000" selected>10 Mbps（高畫質 Hero / Banner）</option>
+                    <option value="3000000">3 Mbps（一般品質）</option>
+                    <option value="1000000">1 Mbps（輕量 Gallery 小影片）</option>
                 </select>
             </div>
 
@@ -1290,9 +1303,11 @@
                 const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
 
                 const stream   = canvas.captureStream(FPS);
+                const bitrateEl = document.getElementById('bitrate');
+                const videoBitsPerSecond = bitrateEl ? parseInt(bitrateEl.value, 10) : 10_000_000;
                 const recorder = new MediaRecorder(stream, {
                     mimeType,
-                    videoBitsPerSecond: 10_000_000
+                    videoBitsPerSecond
                 });
                 const chunks   = [];
 

@@ -4,6 +4,7 @@
 <head>
     <!-- 環境設定（必須在最前面載入） -->
     <script src="assets/js/config.js"></script>
+    <script src="assets/js/translations.js"></script>
     <meta charset="UTF-8">
     
     <!-- 🔒 Content Security Policy - 放行所有資源 -->
@@ -55,6 +56,7 @@
         <div class="panel-header">
             <h1>DUET</h1>
             <div class="subtitle">BY BCAG</div>
+            <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:4px 10px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;margin-top:6px;">EN</button>
         </div>
 
         <div class="section">
@@ -93,22 +95,22 @@
         <div class="divider"></div>
 
         <div class="control-group">
-            <label>材質 (Material)</label>
+            <label data-i18n="studio.material">材質 (Material)</label>
             <select id="material">
-                <option value="silver925">925 銀</option>
-                <option value="brass">黃銅</option>
-                <option value="precious_metal" style="color:#d4af37;">其他貴金屬（18K金 / 鉑金）</option>
+                <option value="silver925" data-i18n="studio.mat.silver925">925 銀</option>
+                <option value="brass" data-i18n="studio.mat.brass">黃銅</option>
+                <option value="precious_metal" style="color:#d4af37;" data-i18n="studio.mat.precious">其他貴金屬（18K金 / 鉑金）</option>
             </select>
         </div>
 
         <div class="control-group" id="plating-group">
-            <label>表面電鍍 (Plating)</label>
+            <label data-i18n="studio.plating">表面電鍍 (Plating)</label>
             <div id="plating-wrapper" style="position:relative;">
                 <select id="plating">
-                    <option value="none">無</option>
-                    <option value="gold18k">18K 金</option>
-                    <option value="whitegold18k">18K 白K金</option>
-                    <option value="rosegold18k">18K 玫瑰金</option>
+                    <option value="none" data-i18n="studio.plating.none">無</option>
+                    <option value="gold18k" data-i18n="studio.plating.gold18k">18K 金</option>
+                    <option value="whitegold18k" data-i18n="studio.plating.white18k">18K 白K金</option>
+                    <option value="rosegold18k" data-i18n="studio.plating.rose18k">18K 玫瑰金</option>
                 </select>
                 <div id="plating-tooltip" style="display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:100; background:#2a2520; color:#d4af37; border:1px solid rgba(212,175,55,0.4); border-radius:8px; padding:10px 12px; font-size:12px; line-height:1.6; width:260px; pointer-events:none;">
                     黃銅與 925 銀價格相同。為了凸顯黃銅的特殊質感，黃銅不提供電鍍選項，若要選擇電鍍，請改選 925 銀材質。
@@ -117,15 +119,15 @@
         </div>
 
         <div class="control-group">
-            <label>表面質地 (Finish)</label>
+            <label data-i18n="studio.finish">表面質地 (Finish)</label>
             <select id="finish">
-                <option value="glossy">亮面</option>
-                <option value="matte">霧面</option>
+                <option value="glossy" data-i18n="studio.finish.glossy">亮面</option>
+                <option value="matte" data-i18n="studio.finish.matte">霧面</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label>作品尺寸高度（Height）</label>
+            <label data-i18n="studio.size">作品尺寸高度（Height）</label>
             <select id="size">
                 <option value="8">8 mm</option>
                 <option value="10" selected>10 mm</option>
@@ -137,25 +139,25 @@
 
         <div class="divider"></div>
 
-        <div class="section-title">Bail Position</div>
+        <div class="section-title" data-i18n="studio.bail.title">墜頭位置</div>
 
         <div class="control-group">
-            <label>X (Left/Right) <span class="slider-value" id="ringX-val">0.0</span></label>
+            <label title="以第一個字母正面方向為準，往右為正值"><span data-i18n="studio.bail.x">X 軸（左右）</span><span class="slider-value" id="ringX-val">0.0</span></label>
             <input type="range" id="ringX" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Y (Front/Back) <span class="slider-value" id="ringY-val">0.0</span></label>
+            <label title="以第一個字母正面方向為準，往前為正值"><span data-i18n="studio.bail.y">Y 軸（前後）</span><span class="slider-value" id="ringY-val">0.0</span></label>
             <input type="range" id="ringY" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Z (Up/Down) <span class="slider-value" id="ringZ-val">0.0</span></label>
+            <label><span data-i18n="studio.bail.z">Z 軸（上下）</span><span class="slider-value" id="ringZ-val">0.0</span></label>
             <input type="range" id="ringZ" min="-10" max="10" step="0.1" value="0">
         </div>
 
         <div class="control-group">
-            <label>Rotation <span class="slider-value" id="ringRotation-val">0°</span></label>
+            <label><span data-i18n="studio.bail.rotation">旋轉角度</span> <span class="slider-value" id="ringRotation-val">0°</span></label>
             <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
         </div>
 
@@ -592,6 +594,102 @@
         </div>
     </div>
 
+    <!-- 設計確認 Modal（付款前最後確認） -->
+    <div id="design-confirm-modal" style="
+        display:none;
+        position:fixed;
+        top:0;left:0;
+        width:100%;height:100%;
+        background:rgba(0,0,0,0.75);
+        backdrop-filter:blur(20px);
+        z-index:10001;
+        justify-content:center;
+        align-items:flex-start;
+        padding:24px 16px;
+        overflow-y:auto;
+    ">
+        <div style="
+            background:rgba(12,10,6,0.97);
+            border:1px solid rgba(212,175,55,0.22);
+            border-radius:28px;
+            padding:38px 34px;
+            max-width:660px;
+            width:100%;
+            margin:auto;
+            box-shadow:0 30px 100px rgba(0,0,0,0.85),0 0 0 1px rgba(212,175,55,0.08);
+        ">
+            <!-- 標題 -->
+            <div style="text-align:center;margin-bottom:28px;">
+                <div style="font-size:42px;margin-bottom:10px;">📋</div>
+                <h2 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px;letter-spacing:0.5px;">確認您的設計</h2>
+                <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0;">請仔細確認以下資訊，付款後無法修改設計</p>
+            </div>
+
+            <!-- 動態商品區塊 -->
+            <div id="design-confirm-items"></div>
+
+            <!-- 訂單金額 ＋ 交期 -->
+            <div style="display:flex;gap:12px;margin-bottom:22px;">
+                <div style="flex:1;background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.18);border-radius:14px;padding:16px;text-align:center;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">訂單金額</div>
+                    <div id="design-confirm-total" style="font-size:20px;font-weight:600;color:#d4af37;"></div>
+                </div>
+                <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;text-align:center;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">預計交期</div>
+                    <div style="font-size:16px;font-weight:500;color:rgba(255,255,255,0.75);">約 4–6 週</div>
+                </div>
+            </div>
+
+            <!-- 聲明區 -->
+            <div style="background:rgba(220,80,30,0.07);border:1px solid rgba(220,100,50,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
+                <ul style="margin:0;padding-left:16px;color:rgba(255,255,255,0.65);font-size:13px;line-height:2.1;">
+                    <li>此為客製化商品，確認後無法修改設計</li>
+                    <li>實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
+                    <li>客製化商品不適用七天鑑賞期</li>
+                </ul>
+            </div>
+
+            <!-- 勾選框 -->
+            <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:24px;padding:14px 16px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.07);">
+                <input type="checkbox" id="design-confirm-checkbox" style="margin-top:2px;width:17px;height:17px;accent-color:#d4af37;cursor:pointer;flex-shrink:0;"
+                    onchange="
+                        const btn=document.getElementById('design-confirm-btn');
+                        btn.disabled=!this.checked;
+                        btn.style.opacity=this.checked?'1':'0.4';
+                        btn.style.cursor=this.checked?'pointer':'not-allowed';
+                    ">
+                <span style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.65;">
+                    我已確認以上設計，並了解客製化商品不適用七天鑑賞期
+                </span>
+            </label>
+
+            <!-- 按鈕組 -->
+            <div style="display:flex;gap:10px;">
+                <button id="design-confirm-cancel-btn" style="
+                    flex:0 0 auto;padding:15px 22px;
+                    background:transparent;border:1px solid rgba(255,255,255,0.14);
+                    border-radius:14px;color:rgba(255,255,255,0.55);
+                    font-size:14px;cursor:pointer;transition:all 0.2s;
+                " onmouseover="this.style.borderColor='rgba(255,255,255,0.28)';this.style.color='rgba(255,255,255,0.8)'"
+                   onmouseout="this.style.borderColor='rgba(255,255,255,0.14)';this.style.color='rgba(255,255,255,0.55)'">
+                    返回修改
+                </button>
+                <button id="design-confirm-btn" disabled style="
+                    flex:1;padding:15px;
+                    background:linear-gradient(135deg,#d4af37,#f4d03f);
+                    border:none;border-radius:14px;color:#000;
+                    font-size:15px;font-weight:600;cursor:not-allowed;
+                    transition:all 0.3s;opacity:0.4;
+                    box-shadow:0 8px 25px rgba(212,175,55,0.35);
+                " onmouseover="if(!this.disabled){this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 35px rgba(212,175,55,0.5)'}"
+                   onmouseout="if(!this.disabled){this.style.transform='translateY(0)';this.style.boxShadow='0 8px 25px rgba(212,175,55,0.35)'}">
+                    確認，前往付款
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="cart-modal">
         <div class="cart-container">
             <div class="cart-header">
@@ -796,6 +894,7 @@
         // 顯示 AI 介紹 Modal
         function showAIIntroModal() {
             console.log('🔔 準備顯示 AI 介紹 Modal');
+            const _aiLang = localStorage.getItem('duet_language') || 'zh';
             // 確保沒有現有的 modal
             const existingModal = document.getElementById('ai-intro-modal');
             if (existingModal) {
@@ -823,44 +922,45 @@
                                     font-family: 'Cormorant Garamond', serif;">
                             DUET
                         </div>
-                        <h2 style="color: #d4af37; text-align: center; font-size: 24px; 
+                        <h2 style="color: #d4af37; text-align: center; font-size: 24px;
                                    font-weight: 400; letter-spacing: 2px; margin-bottom: 25px;
                                    font-family: 'Cormorant Garamond', serif;">
-                            開啟您的專屬設計旅程
+                            ${_aiLang === 'en' ? 'Begin Your Design Journey' : '開啟您的專屬設計旅程'}
                         </h2>
-                        <p style="text-align: center; line-height: 1.9; color: #ccc; 
+                        <p style="text-align: center; line-height: 1.9; color: #ccc;
                                   margin-bottom: 30px; font-size: 15px;">
-                            BCAG 訂製珠寶的設計總監，為 DUET 系列的 AI 核心<br>
-                            植入了超過 20 年訂製珠寶的諮詢經驗。
+                            ${_aiLang === 'en'
+                                ? 'BCAG\'s creative director has infused DUET\'s AI core<br>with over 20 years of bespoke jewelry consultation experience.'
+                                : 'BCAG 訂製珠寶的設計總監，為 DUET 系列的 AI 核心<br>植入了超過 20 年訂製珠寶的諮詢經驗。'}
                         </p>
                         <ul style="list-style: none; margin-bottom: 35px;">
-                            <li style="display: flex; align-items: flex-start; padding: 12px 0; 
+                            <li style="display: flex; align-items: flex-start; padding: 12px 0;
                                        font-size: 14px; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">💎</span>
-                                <span>透過簡單的幾個問答，引導您發掘設計的獨特意義</span>
+                                <span>${_aiLang === 'en' ? 'A few simple questions to help uncover the deeper meaning behind your design' : '透過簡單的幾個問答，引導您發掘設計的獨特意義'}</span>
                             </li>
                             <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: 14px; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">✨</span>
-                                <span>在上百款可選字體中，為您推薦可能適合您的字體</span>
+                                <span>${_aiLang === 'en' ? 'Personalized typeface recommendations from over a hundred curated options' : '在上百款可選字體中，為您推薦可能適合您的字體'}</span>
                             </li>
                             <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: 14px; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">🎁</span>
-                                <span>結帳後還有專屬小驚喜</span>
+                                <span>${_aiLang === 'en' ? 'A special surprise waiting for you after checkout' : '結帳後還有專屬小驚喜'}</span>
                             </li>
                         </ul>
-                        <button onclick="startAIConsultation()" 
+                        <button onclick="startAIConsultation()"
                                 style="width: 100%; background: linear-gradient(135deg, #8E795E, #a89276);
                                        color: #fff; border: none; padding: 15px 35px; border-radius: 50px;
                                        font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 10px;
                                        transition: 0.3s; letter-spacing: 1px;
                                        font-family: 'Cormorant Garamond', serif;">
-                            開始我的設計旅程
+                            ${_aiLang === 'en' ? 'Start My Design Journey' : '開始我的設計旅程'}
                         </button>
                         <button onclick="skipAIConsultation()"
                                 style="width: 100%; background: transparent; color: #888; border: none;
                                        padding: 10px; font-size: 13px; cursor: pointer;
                                        font-family: 'Cormorant Garamond', serif;">
-                            不需要，我想自己選擇字母與字體，直接開始
+                            ${_aiLang === 'en' ? "No thanks, I'll choose letters and fonts myself" : '不需要，我想自己選擇字母與字體，直接開始'}
                         </button>
                     </div>
                 </div>
@@ -1176,6 +1276,10 @@
                             : aiData.recommendedFonts.letter2;
 
                         [...new Set([...l1Fonts, ...l2Fonts])].forEach(font => checkedFonts.add(font));
+                        // 同步 checkbox DOM 狀態：避免「第一次點擊方向相反」的問題
+                        document.querySelectorAll('.font-list-item input[type="checkbox"]').forEach(cb => {
+                            cb.checked = checkedFonts.has(cb.dataset.font);
+                        });
                         window.aiRecommendation = { letter1: l1Fonts, letter2: l2Fonts };
 
                         // 設定 char-input（confirmFontSelection 需要讀取字母）
@@ -3952,21 +4056,124 @@
                 return;
             }
 
-            // 檢查是否有經過 AI 諮詢
-            const aiDataStr = localStorage.getItem('duet_ai_consultation');
-            const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
-
-            if (hasAIConsultation) {
-                // 顯示提醒彈窗
-                showCheckoutReminder();
-            } else {
-                // 沒有 AI 諮詢，直接結帳
-                if (TESTING_MODE) {
-                    testModeCheckout();
+            // 設計確認 → 再進入付款流程
+            showDesignConfirmation().then(() => {
+                const aiDataStr = localStorage.getItem('duet_ai_consultation');
+                const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
+                if (hasAIConsultation) {
+                    showCheckoutReminder();
                 } else {
-                    processPayment();
+                    if (TESTING_MODE) {
+                        testModeCheckout();
+                    } else {
+                        processPayment();
+                    }
                 }
-            }
+            }).catch(() => {
+                // 用戶選擇返回修改，不做任何動作
+            });
+        }
+
+        // ── 設計確認 Modal ──────────────────────────────────
+        const _DESIGN_STATEMENT_TEXT = '此為客製化商品，確認後無法修改設計；實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）；客製化商品不適用七天鑑賞期。';
+        const _DESIGN_STATEMENT_VERSION = 'v1';
+        const _MATERIAL_LABELS = { silver925:'925 銀', brass:'黃銅', precious_metal:'貴金屬' };
+        const _PLATING_LABELS  = { none:'無', gold18k:'18K 金', whitegold18k:'18K 白金', rosegold18k:'18K 玫瑰金' };
+
+        function showDesignConfirmation() {
+            return new Promise((resolve, reject) => {
+                const modal      = document.getElementById('design-confirm-modal');
+                const container  = document.getElementById('design-confirm-items');
+                const checkbox   = document.getElementById('design-confirm-checkbox');
+                const confirmBtn = document.getElementById('design-confirm-btn');
+                const cancelBtn  = document.getElementById('design-confirm-cancel-btn');
+                const totalEl    = document.getElementById('design-confirm-total');
+
+                // 重置勾選狀態
+                checkbox.checked = false;
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.4';
+                confirmBtn.style.cursor = 'not-allowed';
+
+                // 生成商品區塊
+                container.innerHTML = '';
+                cartItems.forEach((item, idx) => {
+                    let frontImg = '', sideImg = '', topImg = '', heroImg = '';
+                    (item.threeViews || []).forEach(v => {
+                        if (!v.dataURL) return;
+                        const tag = `<img src="${v.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
+                        const n = v.name || '';
+                        if (n === 'hero_view')         heroImg  = tag;
+                        else if (n.includes('letter1')) frontImg = tag;
+                        else if (n.includes('letter2')) sideImg  = tag;
+                        else if (n.includes('top'))     topImg   = tag;
+                    });
+                    if (!heroImg && item.heroView && item.heroView.dataURL) {
+                        heroImg = `<img src="${item.heroView.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
+                    }
+
+                    const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
+                    const platingStr = (item.plating && item.plating !== 'none')
+                        ? ` + ${_PLATING_LABELS[item.plating] || item.plating}電鍍` : '';
+
+                    const viewCell = (img, lbl) => `
+                        <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
+                            ${img || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">${lbl}</div>`}
+                        </div>`;
+
+                    const title = cartItems.length > 1 ? `作品 ${idx + 1}` : '作品';
+                    container.innerHTML += `
+                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:20px;margin-bottom:18px;">
+                        <div style="font-size:12px;font-weight:600;color:#d4af37;letter-spacing:1px;margin-bottom:14px;">${title}</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
+                            <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:2.3;">
+                                <span style="color:rgba(255,255,255,0.3);">字母　</span>${item.letter1} + ${item.letter2}<br>
+                                <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
+                                <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
+                                <span style="color:rgba(255,255,255,0.3);">材質　</span>${materialLabel}${platingStr}
+                            </div>
+                            <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
+                                ${heroImg || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">Hero</div>`}
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                            ${viewCell(frontImg,'正視')}
+                            ${viewCell(sideImg,'側視')}
+                            ${viewCell(topImg,'俯視')}
+                        </div>
+                    </div>`;
+                });
+
+                // 金額
+                const finalTotal = Math.max(0, originalTotal - promoDiscount);
+                totalEl.textContent = `NT$ ${finalTotal.toLocaleString()}`;
+
+                modal.style.display = 'flex';
+
+                // 確認/取消事件
+                const onConfirm = () => {
+                    window._designConfirmation = {
+                        agreed: true,
+                        statement_text: _DESIGN_STATEMENT_TEXT,
+                        statement_version: _DESIGN_STATEMENT_VERSION,
+                        confirmed_at: new Date().toISOString()
+                    };
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve();
+                };
+                const onCancel = () => {
+                    modal.style.display = 'none';
+                    cleanup();
+                    reject();
+                };
+                function cleanup() {
+                    confirmBtn.removeEventListener('click', onConfirm);
+                    cancelBtn.removeEventListener('click', onCancel);
+                }
+                confirmBtn.addEventListener('click', onConfirm);
+                cancelBtn.addEventListener('click', onCancel);
+            });
         }
 
         // 顯示結帳提醒彈窗
@@ -4029,6 +4236,7 @@
                         total: totalAmount,             // 確保是數字
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
+                        designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
                         returnUrl: window.location.origin + '/payment-success.html',
                         renderCount: renderCount        // 本次 session 的 render 次數（後台統計用）
                     })
@@ -5150,6 +5358,11 @@
             </div>
         </div>
     </div>
+
+    <!-- 語言初始化 -->
+    <script>
+    if (typeof window.initLanguage === 'function') window.initLanguage();
+    </script>
 
     <!-- 自訂提示（低調風格） -->
     <div id="custom-toast" class="custom-toast">
