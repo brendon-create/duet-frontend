@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Caveat:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="assets/js/config.js"></script>
 <style>
 /* ── 全域 reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -274,6 +275,160 @@ body {
 
     /* 螢幕預覽縮放包裝：取消 transform */
     #scale-wrap { transform: none !important; }
+
+    /* 批次列印頁 */
+    .batch-page {
+        width: 210mm;
+        height: 297mm;
+        position: relative;
+        background: white;
+        page-break-after: always;
+    }
+    .batch-page:last-child { page-break-after: auto; }
+    #batch-container { display: block !important; }
+    #print-container { display: none !important; }
+}
+
+/* ── 批次模式 UI ── */
+.batch-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+.batch-section.visible { display: flex; }
+.batch-section textarea {
+    width: 100%;
+    height: 120px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px;
+    color: #e8e0d0;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 12px;
+    line-height: 1.8;
+    resize: vertical;
+    outline: none;
+}
+.batch-toggle {
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.25);
+    color: #d4af37;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: background 0.2s;
+}
+.batch-toggle:hover { background: rgba(212,175,55,0.2); }
+.batch-toggle.active {
+    background: rgba(212,175,55,0.2);
+    border-color: rgba(212,175,55,0.5);
+}
+
+/* ── 批次列印版面 ── */
+.batch-page {
+    width: 210mm;
+    height: 297mm;
+    position: relative;
+    background: white;
+}
+.batch-slot {
+    position: absolute;
+    width: 90mm;
+    height: 135mm;
+    top: 81mm;
+}
+.batch-slot.slot-left  { left: 10mm; }
+.batch-slot.slot-right { left: 110mm; }
+
+/* 封面卡片 */
+.cover-card {
+    width: 100%;
+    height: 100%;
+    border: 0.5pt solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5mm;
+    padding: 8mm;
+    font-family: 'Cormorant Garamond', serif;
+    color: #2e2a24;
+    text-align: center;
+}
+.cover-card .cover-brand {
+    font-size: 7mm;
+    letter-spacing: 4mm;
+    font-weight: 400;
+    color: #c9a96e;
+}
+.cover-card .cover-letters {
+    font-size: 11mm;
+    letter-spacing: 3mm;
+    font-style: italic;
+}
+.cover-card .cover-meta {
+    font-size: 3.2mm;
+    color: #888;
+    letter-spacing: 0.5mm;
+    line-height: 1.8;
+}
+.cover-card .cover-divider {
+    width: 20mm;
+    height: 0.3pt;
+    background: #ccc;
+}
+
+/* 設計理念卡片（批次版） */
+.story-card {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding: 6mm;
+    display: flex;
+    flex-direction: column;
+    gap: 3mm;
+}
+.story-card .story-header {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3mm;
+    letter-spacing: 1mm;
+    color: #aaa;
+    border-bottom: 0.3pt solid #ddd;
+    padding-bottom: 2mm;
+}
+.story-card .story-text {
+    font-family: 'Ma Shan Zheng', 'Noto Serif TC', serif;
+    font-size: 3.8mm;
+    line-height: 1.65;
+    color: #2e2a24;
+    text-align: justify;
+    overflow: hidden;
+    flex: 1;
+}
+.story-card .story-text p { margin-bottom: 0.5em; }
+.story-card .story-sig {
+    text-align: right;
+    padding-top: 3mm;
+}
+.story-card .story-sig-line {
+    display: inline-block;
+    width: 25mm;
+    border-bottom: 0.5pt solid #c0392b;
+    vertical-align: bottom;
+}
+
+/* 批次列印螢幕預覽容器 */
+#batch-container {
+    display: none;
+    margin-top: 16px;
+}
+#batch-preview {
+    font-size: 11px;
+    color: rgba(212,175,55,0.7);
+    margin-top: 4px;
 }
 </style>
 </head>
@@ -288,6 +443,27 @@ body {
 
     <!-- 左側：輸入面板 -->
     <div class="input-panel">
+        <div>
+            <label>訂單編號自動匯入</label>
+            <div style="display:flex;gap:8px;">
+                <input id="order-id-input" type="text" placeholder="例：D20260502-001"
+                    style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+                           border-radius:8px;padding:10px 12px;color:#e8e0d0;
+                           font-family:'Noto Serif TC',serif;font-size:13px;outline:none;
+                           transition:border-color 0.2s;"
+                    onfocus="this.style.borderColor='rgba(212,175,55,0.35)'"
+                    onblur="this.style.borderColor='rgba(255,255,255,0.1)'"
+                    onkeydown="if(event.key==='Enter')importOrder()">
+                <button onclick="importOrder()"
+                    style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);
+                           color:#d4af37;padding:10px 14px;border-radius:8px;font-size:13px;
+                           cursor:pointer;white-space:nowrap;transition:background 0.2s;"
+                    onmouseover="this.style.background='rgba(212,175,55,0.25)'"
+                    onmouseout="this.style.background='rgba(212,175,55,0.15)'">匯入</button>
+            </div>
+            <div id="import-status" style="font-size:11px;color:rgba(232,224,208,0.4);margin-top:6px;min-height:16px;"></div>
+        </div>
+
         <div>
             <label>設計理念（貼入文字）</label>
             <textarea id="story-input" placeholder="在此貼入設計理念文字...
@@ -304,6 +480,16 @@ body {
         </div>
 
         <button class="print-btn" onclick="window.print()">列印 / 匯出 PDF</button>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;">
+            <button class="batch-toggle" id="batchToggleBtn" onclick="toggleBatchMode()">批次模式（多筆訂單）</button>
+            <div class="batch-section" id="batchSection">
+                <label style="margin-top:8px;">批次訂單編號（一行一筆）</label>
+                <textarea id="batchInput" placeholder="D20260502-001&#10;D20260502-002&#10;D20260502-003"></textarea>
+                <button class="print-btn" onclick="batchImport()">批次匯入並列印</button>
+                <div id="batchStatus" style="font-size:11px;color:rgba(232,224,208,0.4);min-height:16px;"></div>
+            </div>
+        </div>
 
         <div class="print-note">
             列印設定：<br>
@@ -366,9 +552,36 @@ body {
     </div>
 </div>
 
+<!-- 批次列印容器（螢幕隱藏，列印時顯示） -->
+<div id="batch-container"></div>
+
 <script>
 const storyInput = document.getElementById('story-input');
 const charCountEl = document.getElementById('char-count');
+
+async function importOrder() {
+    const orderId = document.getElementById('order-id-input').value.trim();
+    const statusEl = document.getElementById('import-status');
+    if (!orderId) { statusEl.textContent = '請輸入訂單編號'; return; }
+
+    statusEl.textContent = '載入中...';
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/order/${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+        if (!data.success) { statusEl.textContent = '找不到此訂單'; return; }
+
+        const order = data.order;
+        const story = order.finalDesignStory || order.design_story ||
+            (order.items && order.items[0] && order.items[0].designStory) || '';
+        if (!story) { statusEl.textContent = '此訂單尚無設計理念'; return; }
+
+        storyInput.value = story;
+        updateCards();
+        statusEl.textContent = `已匯入（${story.length} 字）`;
+    } catch {
+        statusEl.textContent = '網路錯誤，請稍後再試';
+    }
+}
 
 /* 將純文字轉為 HTML（段落 + 簽名線） */
 function buildCardHTML(text) {
@@ -408,16 +621,140 @@ function scalePreview() {
 }
 
 /* 列印前：顯示列印容器 */
+let _batchMode = false;
 window.onbeforeprint = function () {
+    if (_batchMode) return; // 批次模式：batch-container 已顯示
     document.getElementById('print-container').style.display = 'block';
 };
 
 /* 列印後：隱藏列印容器，重置輸入欄位 */
 window.onafterprint = function () {
+    if (_batchMode) {
+        document.getElementById('batch-container').innerHTML = '';
+        _batchMode = false;
+        return;
+    }
     document.getElementById('print-container').style.display = 'none';
     storyInput.value = '';
     updateCards();
 };
+
+/* ── 批次模式切換 ── */
+function toggleBatchMode() {
+    const btn = document.getElementById('batchToggleBtn');
+    const section = document.getElementById('batchSection');
+    const isVisible = section.classList.contains('visible');
+    section.classList.toggle('visible', !isVisible);
+    btn.classList.toggle('active', !isVisible);
+}
+
+/* ── 批次列印主函數 ── */
+async function batchImport() {
+    const statusEl = document.getElementById('batchStatus');
+    const lines = document.getElementById('batchInput').value
+        .split('\n').map(l => l.trim()).filter(Boolean);
+
+    if (lines.length === 0) { statusEl.textContent = '請輸入至少一筆訂單編號'; return; }
+
+    statusEl.textContent = `載入 ${lines.length} 筆訂單中...`;
+
+    // 並行 fetch 所有訂單
+    const results = await Promise.all(lines.map(async id => {
+        try {
+            const res = await fetch(`${window.BACKEND_URL}/api/order/${encodeURIComponent(id)}`);
+            const data = await res.json();
+            if (data.success) return { id, order: data.order };
+            return { id, error: '找不到此訂單' };
+        } catch {
+            return { id, error: '網路錯誤' };
+        }
+    }));
+
+    const ok = results.filter(r => r.order);
+    const failed = results.filter(r => r.error);
+    if (failed.length > 0) {
+        const msg = failed.map(r => `${r.id}: ${r.error}`).join('、');
+        statusEl.textContent = `${ok.length} 筆成功，${failed.length} 筆失敗（${msg}）`;
+        if (ok.length === 0) return;
+    } else {
+        statusEl.textContent = `已載入 ${ok.length} 筆訂單，準備列印...`;
+    }
+
+    // 建立批次列印 HTML
+    const container = document.getElementById('batch-container');
+    container.innerHTML = '';
+
+    // 每 2 筆訂單 = 1 對頁（Cover 頁 + Story 頁）
+    for (let i = 0; i < ok.length; i += 2) {
+        const o1 = ok[i];
+        const o2 = ok[i + 1] || null;
+
+        // 奇數頁：Cover_N | Cover_N+1
+        const coverPage = document.createElement('div');
+        coverPage.className = 'batch-page';
+        coverPage.appendChild(buildSlot('cover', o1, 'slot-left'));
+        if (o2) coverPage.appendChild(buildSlot('cover', o2, 'slot-right'));
+        container.appendChild(coverPage);
+
+        // 偶數頁：Story_N | Story_N+1
+        const storyPage = document.createElement('div');
+        storyPage.className = 'batch-page';
+        storyPage.appendChild(buildSlot('story', o1, 'slot-left'));
+        if (o2) storyPage.appendChild(buildSlot('story', o2, 'slot-right'));
+        container.appendChild(storyPage);
+    }
+
+    _batchMode = true;
+    setTimeout(() => window.print(), 200);
+}
+
+function buildSlot(type, result, slotClass) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `batch-slot ${slotClass}`;
+
+    const order = result.order;
+    // 解析 order.items[0] 取得字母/材質
+    const item = (order.items && order.items[0]) || {};
+    const userInfo = order.userInfo || {};
+    const letter1 = item.letter1 || item.Letter1 || '';
+    const letter2 = item.letter2 || item.Letter2 || '';
+    const lettersDisplay = (letter1 && letter2) ? `${letter1} × ${letter2}` : (letter1 || letter2 || '—');
+    const material = item.material || item.Material || '';
+    const name = userInfo.name || userInfo.firstName || '';
+    const email = userInfo.email || '';
+    const dateStr = order.timestamp
+        ? new Date(order.timestamp).toLocaleDateString('zh-TW')
+        : (order.created_at ? new Date(order.created_at).toLocaleDateString('zh-TW') : '');
+
+    if (type === 'cover') {
+        wrapper.innerHTML = `
+            <div class="cover-card">
+                <div class="cover-brand">DUET</div>
+                <div class="cover-letters">${lettersDisplay}</div>
+                <div class="cover-divider"></div>
+                <div class="cover-meta">
+                    ${name ? name + '<br>' : ''}
+                    ${result.id}<br>
+                    ${dateStr}
+                </div>
+            </div>`;
+    } else {
+        const story = order.finalDesignStory || order.design_story ||
+            (item.designStory) || (item.design_story) || '';
+        const parasHTML = story.trim()
+            ? story.trim().split(/\n+/).filter(p => p.trim())
+                .map(p => `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
+                .join('')
+            : '<p style="color:#aaa;font-size:3.2mm;">（尚無設計理念）</p>';
+        wrapper.innerHTML = `
+            <div class="story-card">
+                <div class="story-header">${result.id}${lettersDisplay ? ' · ' + lettersDisplay : ''}</div>
+                <div class="story-text">${parasHTML}</div>
+                <div class="story-sig"><span class="story-sig-line"></span></div>
+            </div>`;
+    }
+    return wrapper;
+}
 
 storyInput.addEventListener('input', updateCards);
 window.addEventListener('resize', scalePreview);
@@ -425,6 +762,11 @@ window.addEventListener('resize', scalePreview);
 /* 初始化 */
 updateCards();
 scalePreview();
+
+if (window !== window.top) {
+    document.querySelector('.app-header').style.display = 'none';
+    document.querySelector('.app-layout').style.height = '100vh';
+}
 </script>
 </body>
 </html>
