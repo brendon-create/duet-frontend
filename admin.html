@@ -3,6 +3,7 @@
 <head>
     <!-- 環境設定（必須在最前面載入） -->
     <script src="assets/js/config.js"></script>
+    <script src="assets/js/translations.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>員工後台 - DUET 訂單管理</title>
@@ -498,13 +499,16 @@
         
         <div class="main-content">
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('orders')">訂單管理</button>
-                <button class="tab" onclick="switchTab('users')">員工管理</button>
-                <button class="tab" onclick="switchTab('promos')">優惠券管理</button>
-                <button class="tab" onclick="switchTab('feedback')">客戶回饋</button>
-                <button class="tab" onclick="switchTab('system')">系統監控</button>
-                <a href="admin-fonts.html" class="tab" style="text-decoration:none;">字體規範</a>
-                <a href="print-tool.html" class="tab" style="text-decoration:none;" target="_blank">🖨 列印工具</a>
+                <button class="tab active" onclick="switchTab('orders')" data-i18n="admin.tab.orders">訂單管理</button>
+                <button class="tab" onclick="switchTab('users')" data-i18n="admin.tab.users">員工管理</button>
+                <button class="tab" onclick="switchTab('promos')" data-i18n="admin.tab.promos">優惠券管理</button>
+                <button class="tab" onclick="switchTab('redeem')" data-i18n="admin.tab.redeem">兌換碼管理</button>
+                <button class="tab" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋</button>
+                <button class="tab" onclick="switchTab('system')" data-i18n="admin.tab.system">系統監控</button>
+                <button class="tab" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
+                <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
+                <button class="tab" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
+                <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
             </div>
             
             <!-- Orders Tab -->
@@ -725,6 +729,74 @@
                 </div>
             </div>
             
+            <!-- Redeem Codes Tab -->
+            <div id="redeemTab" style="display: none;">
+                <!-- 匯入區 -->
+                <div class="detail-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 16px;">📥 CSV 批次匯入兌換碼</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">折扣方式</label>
+                            <select id="redeemDiscountType" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                                <option value="fixed">固定金額（NT$）</option>
+                                <option value="percentage">百分比折扣（%）</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">折扣數值</label>
+                            <input id="redeemDiscountValue" type="number" value="3850" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">批次名稱（選填）</label>
+                            <input id="redeemBatchName" type="text" placeholder="例：Kickstarter 2026" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">有效期限（選填）</label>
+                            <input id="redeemValidUntil" type="date" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        </div>
+                    </div>
+                    <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">兌換碼（每行一個）</label>
+                    <textarea id="redeemCodesInput" rows="6" placeholder="DUET-ABC123&#10;DUET-DEF456&#10;DUET-GHI789" style="width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); font-family: monospace; font-size: 13px; resize: vertical;"></textarea>
+                    <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
+                        <button class="btn btn-primary" onclick="bulkCreateRedeemCodes()">匯入</button>
+                        <span id="redeemImportStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
+                </div>
+
+                <!-- 兌換碼列表 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">兌換碼列表</h3>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select id="redeemStatusFilter" onchange="renderRedeemTable()" style="padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); font-size: 13px;">
+                            <option value="all">全部</option>
+                            <option value="unused">未使用</option>
+                            <option value="used">已使用</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="loadRedeemCodes()">重新整理</button>
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+                    共 <span id="redeemTotal">0</span> 個 · 已使用 <span id="redeemUsed">0</span> 個 · 未使用 <span id="redeemUnused">0</span> 個
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>兌換碼</th>
+                                <th>折扣</th>
+                                <th>批次</th>
+                                <th>有效期</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="redeemTableBody">
+                            <tr><td colspan="6" class="loading">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Feedback Tab -->
             <div id="feedbackTab" style="display: none;">
                 <div class="stats-row">
@@ -762,6 +834,23 @@
             
             <!-- System Tab -->
             <div id="systemTab" style="display: none;">
+                <!-- AI Prompt 優化分析 -->
+                <div class="detail-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 12px;">🤖 AI Prompt 優化分析</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">分析近期 AI 諮詢對話，生成 system prompt 改進建議（會呼叫 Claude API，約需 10–20 秒）。</p>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 14px;">
+                        <label style="font-size: 13px; color: var(--text-muted);">分析最近</label>
+                        <input id="aiAnalysisLimit" type="number" value="20" min="5" max="50" style="width: 70px; padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        <label style="font-size: 13px; color: var(--text-muted);">筆訂單</label>
+                        <button class="btn btn-primary" onclick="runAiPromptAnalysis()">開始分析</button>
+                        <span id="aiAnalysisStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
+                    <div id="aiAnalysisResult" style="display: none; background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 18px;">
+                        <div style="font-size: 11px; color: rgba(212,175,55,0.7); letter-spacing: 1px; margin-bottom: 10px;">分析結果</div>
+                        <pre id="aiAnalysisText" style="font-family: inherit; font-size: 13px; color: var(--text-light); line-height: 1.8; white-space: pre-wrap; margin: 0;"></pre>
+                    </div>
+                </div>
+
                 <!-- 郵件測試 -->
                 <div class="stats-row">
                     <div class="stat-card">
@@ -818,6 +907,23 @@
         </div>
     </div>
     
+    <!-- 字體規範 Tab -->
+    <div id="fontsTab" style="display:none; height:calc(100vh - 120px);">
+        <iframe id="fonts-iframe" src="" style="width:100%;height:100%;border:none;background:#0a0a0a;" title="字體規範"></iframe>
+    </div>
+
+    <!-- 列印工具 Tab -->
+    <div id="printTab" style="display:none; height:calc(100vh - 120px);">
+        <iframe id="print-iframe" src="" style="width:100%;height:100%;border:none;background:#1a1814;" title="列印工具"></iframe>
+    </div>
+
+    <!-- Gallery 管理 Tab -->
+    <div id="galleryTab" style="display:none; padding:24px;">
+        <h2 style="color:#c9a96e; margin-bottom:24px;">Gallery 管理</h2>
+        <p style="color:#999; margin-bottom:24px; font-size:14px;">每個 slot 可上傳圖片或影片。上傳後儲存即生效於首頁 Gallery。</p>
+        <div id="gallerySlots" style="display:grid; gap:24px; grid-template-columns: repeat(auto-fill, minmax(280px,1fr));"></div>
+    </div>
+
     <!-- Order Detail Modal -->
     <div class="modal-overlay" id="orderModal">
         <div class="modal">
@@ -999,6 +1105,7 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
+            if (typeof window.initLanguage === 'function') window.initLanguage();
             loadOrders();
             
             // 自動每 30 秒刷新訂單
@@ -1013,19 +1120,29 @@
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
-            
-            document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
-            document.getElementById('usersTab').style.display = tab === 'users' ? 'block' : 'none';
-            document.getElementById('promosTab').style.display = tab === 'promos' ? 'block' : 'none';
-            document.getElementById('feedbackTab').style.display = tab === 'feedback' ? 'block' : 'none';
-            document.getElementById('systemTab').style.display = tab === 'system' ? 'block' : 'none';
-            
+
+            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery'];
+            allTabs.forEach(t => {
+                const el = document.getElementById(t + 'Tab');
+                if (el) el.style.display = t === tab ? 'block' : 'none';
+            });
+
+            // iframe 延遲載入（切換時才設定 src，避免一開始就載入）
+            if (tab === 'fonts') {
+                const iframe = document.getElementById('fonts-iframe');
+                if (!iframe.src || iframe.src === window.location.href) iframe.src = 'admin-fonts.html';
+            }
+            if (tab === 'print') {
+                const iframe = document.getElementById('print-iframe');
+                if (!iframe.src || iframe.src === window.location.href) iframe.src = 'print-tool.html';
+            }
+
             if (tab === 'users') loadUsers();
             if (tab === 'promos') loadPromoCodes();
+            if (tab === 'redeem') loadRedeemCodes();
             if (tab === 'feedback') loadFeedback();
-            if (tab === 'system') {
-                loadMemoryStats();
-            }
+            if (tab === 'system') loadMemoryStats();
+            if (tab === 'gallery') loadGallery();
         }
         
         // 測試郵件
@@ -1054,6 +1171,31 @@
             }
         }
         
+        // AI Prompt 優化分析
+        async function runAiPromptAnalysis() {
+            const limit = parseInt(document.getElementById('aiAnalysisLimit').value) || 20;
+            const statusEl = document.getElementById('aiAnalysisStatus');
+            const resultEl = document.getElementById('aiAnalysisResult');
+            const textEl   = document.getElementById('aiAnalysisText');
+            statusEl.textContent = '分析中，請稍候⋯⋯';
+            resultEl.style.display = 'none';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-prompt-analysis`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ limit })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                statusEl.textContent = `已分析 ${data.analyzed_count} 筆對話`;
+                textEl.textContent = data.suggestion;
+                resultEl.style.display = 'block';
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '分析失敗：' + e.message;
+            }
+        }
+
         // Memory Stats
         async function loadMemoryStats() {
             try {
@@ -1658,9 +1800,11 @@
             const isTest = order.isTest ? 'checked' : '';
             const isInvalid = order.isInvalid ? 'checked' : '';
             
-            // 取得設計理念
-            const designStory = order.design_story || order.finalDesignStory || '';
-            
+            // 取得設計理念（分辨原始 vs 最終）
+            const finalStory = order.finalDesignStory || order.design_story || '';
+            const originalStory = items[0]?.designStory || '';
+            const designStory = finalStory;
+
             let content = `
                 <div class="detail-section">
                     <h3>基本資訊</h3>
@@ -1684,13 +1828,23 @@
                 </div>`;
             
             // 如果有設計理念，顯示在基本資訊下方
-            if (designStory) {
+            if (designStory || originalStory) {
+                const hasDiff = originalStory && finalStory && originalStory !== finalStory;
+                const diffHtml = hasDiff ? `
+                    <div style="margin-top:12px;">
+                        <div style="font-size:11px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px;">原始 AI 生成版本</div>
+                        <div style="background:rgba(255,255,255,0.04);padding:12px;border-radius:6px;border-left:3px solid rgba(255,255,255,0.2);">
+                            <p style="line-height:1.8;font-size:13px;color:var(--text-muted);white-space:pre-wrap;margin:0;">${originalStory}</p>
+                        </div>
+                    </div>` : '';
                 content += `
                 <div class="detail-section">
-                    <h3>設計理念</h3>
+                    <h3>設計理念${hasDiff ? ' <span style="font-size:12px;font-weight:400;color:var(--text-muted);">（顧客有修改）</span>' : ''}</h3>
                     <div style="background:rgba(212,175,55,0.1);padding:16px;border-radius:8px;border-left:3px solid var(--primary);">
-                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;">${designStory}</p>
+                        <div style="font-size:11px;color:rgba(212,175,55,0.7);letter-spacing:1px;margin-bottom:8px;">${hasDiff ? '最終確認版本' : '設計理念'}</div>
+                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;margin:0;">${designStory || originalStory}</p>
                     </div>
+                    ${diffHtml}
                 </div>`;
             }
 
@@ -2112,13 +2266,16 @@
                     <h3>購買歷史 (${customerOrders.length} 筆)</h3>
                     ${customerOrders.map(o => `
                         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                                <strong>${o.orderId}</strong>
-                                <span class="status-badge ${statusMap[o.status]?.class || ''}">${statusMap[o.status]?.text || o.status}</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <strong>${o.orderId}</strong>
+                                    <span class="status-badge ${statusMap[o.status]?.class || ''}">${statusMap[o.status]?.text || o.status}</span>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="closeCustomerDetailModal(); viewOrder('${o.orderId}')">查看詳情</button>
                             </div>
                             <div style="font-size:12px;color:var(--text-muted)">
-                                ${(o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ') || '-'} | 
-                                NT$ ${(o.total || 0).toLocaleString()} | 
+                                ${(o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ') || '-'} |
+                                NT$ ${(o.total || 0).toLocaleString()} |
                                 ${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : '-'}
                             </div>
                         </div>
@@ -2134,6 +2291,116 @@
             document.getElementById('customerDetailModal').classList.remove('active');
         }
         
+        // ========== 兌換碼管理 ==========
+        let _redeemCodes = [];
+
+        async function loadRedeemCodes() {
+            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="6" class="loading">載入中...</td></tr>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                _redeemCodes = data.redeem_codes || [];
+                renderRedeemTable();
+            } catch (e) {
+                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="6" class="loading">載入失敗：${e.message}</td></tr>`;
+            }
+        }
+
+        function renderRedeemTable() {
+            const filter = document.getElementById('redeemStatusFilter').value;
+            const filtered = _redeemCodes.filter(c => {
+                if (filter === 'used') return c.usage_count >= 1;
+                if (filter === 'unused') return !c.usage_count;
+                return true;
+            });
+            const total = _redeemCodes.length;
+            const used = _redeemCodes.filter(c => c.usage_count >= 1).length;
+            document.getElementById('redeemTotal').textContent = total;
+            document.getElementById('redeemUsed').textContent = used;
+            document.getElementById('redeemUnused').textContent = total - used;
+
+            if (!filtered.length) {
+                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="6" class="loading">無資料</td></tr>';
+                return;
+            }
+            document.getElementById('redeemTableBody').innerHTML = filtered.map(c => {
+                const isUsed = c.usage_count >= 1;
+                const discount = c.promo_type === 'percentage' ? `${c.value}% 折扣` : `NT$ ${c.value.toLocaleString()} 折扣`;
+                const batch = (c.description || '').replace('[兌換碼]', '').trim() || '-';
+                const validUntil = c.valid_until || '無期限';
+                const statusBadge = isUsed
+                    ? '<span style="color:#ef4444;font-size:12px;">已使用</span>'
+                    : '<span style="color:#4ade80;font-size:12px;">未使用</span>';
+                return `<tr>
+                    <td style="font-family:monospace;">${c.code}</td>
+                    <td>${discount}</td>
+                    <td>${batch}</td>
+                    <td>${validUntil}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleRedeemCode('${c.code}', ${c.active})">
+                            ${c.active ? '停用' : '啟用'}
+                        </button>
+                        <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="deleteRedeemCode('${c.code}')">刪除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function bulkCreateRedeemCodes() {
+            const codes = document.getElementById('redeemCodesInput').value;
+            const promo_type = document.getElementById('redeemDiscountType').value;
+            const value = parseFloat(document.getElementById('redeemDiscountValue').value);
+            const batch_name = document.getElementById('redeemBatchName').value;
+            const valid_until = document.getElementById('redeemValidUntil').value || null;
+            const statusEl = document.getElementById('redeemImportStatus');
+
+            if (!codes.trim()) { statusEl.textContent = '請貼入兌換碼'; return; }
+            statusEl.textContent = '匯入中...';
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ codes, promo_type, value, batch_name, valid_until })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                statusEl.style.color = '#4ade80';
+                statusEl.textContent = data.message;
+                document.getElementById('redeemCodesInput').value = '';
+                loadRedeemCodes();
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '匯入失敗：' + e.message;
+            }
+        }
+
+        async function toggleRedeemCode(code, currentActive) {
+            try {
+                await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ active: !currentActive })
+                });
+                loadRedeemCodes();
+            } catch (e) { alert('操作失敗'); }
+        }
+
+        async function deleteRedeemCode(code) {
+            if (!confirm(`確定刪除兌換碼 ${code}？`)) return;
+            try {
+                await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
+                    method: 'DELETE',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                loadRedeemCodes();
+            } catch (e) { alert('刪除失敗'); }
+        }
+
         // ========== 客戶回饋 ==========
         async function loadFeedback() {
             try {
@@ -2187,6 +2454,133 @@
                     <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
                 </tr>
             `).join('');
+        }
+
+        // ==================== Gallery 管理 ====================
+
+        async function loadGallery() {
+            const container = document.getElementById('gallerySlots');
+            container.innerHTML = '<p style="color:#999;">載入中...</p>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/gallery`);
+                const data = await res.json();
+                const existing = {};
+                (data.slots || []).forEach(s => { existing[s.slot] = s; });
+                container.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    container.appendChild(buildGallerySlotCard(i, existing[i] || {}));
+                }
+            } catch (e) {
+                container.innerHTML = '<p style="color:#f87171;">載入失敗</p>';
+            }
+        }
+
+        function buildGallerySlotCard(slot, cfg) {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;';
+            card.id = `galleryCard${slot}`;
+
+            const previewHtml = cfg.url
+                ? (cfg.type === 'video'
+                    ? `<video src="${cfg.url}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`
+                    : `<img src="${cfg.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`)
+                : `<div style="width:100%;aspect-ratio:1;background:#2a2a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#555;font-size:13px;">尚未設定</div>`;
+
+            card.innerHTML = `
+                <div style="font-weight:600;color:#c9a96e;">Slot ${slot}</div>
+                <div id="galleryPreview${slot}">${previewHtml}</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="file" id="galleryFile${slot}" accept="image/*,video/*" style="display:none;" onchange="handleGalleryUpload(${slot})">
+                    <button onclick="document.getElementById('galleryFile${slot}').click()" style="flex:1;padding:8px;background:#2a2a2a;border:1px solid #444;border-radius:6px;color:#ccc;cursor:pointer;font-size:13px;">上傳檔案</button>
+                    <span id="galleryUploadStatus${slot}" style="font-size:12px;color:#999;"></span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <input id="galleryUrl${slot}" value="${cfg.url || ''}" placeholder="或直接貼上 URL" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <input id="galleryTitle${slot}" value="${cfg.title || ''}" placeholder="標題（如 B × R）" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <input id="galleryDesc${slot}" value="${cfg.description || ''}" placeholder="說明文字" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <select id="galleryType${slot}" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;">
+                        <option value="image" ${cfg.type !== 'video' ? 'selected' : ''}>圖片</option>
+                        <option value="video" ${cfg.type === 'video' ? 'selected' : ''}>影片</option>
+                    </select>
+                </div>
+                <button onclick="saveGallerySlot(${slot})" style="padding:10px;background:#c9a96e;border:none;border-radius:6px;color:#1a1a1a;font-weight:600;cursor:pointer;">儲存 Slot ${slot}</button>
+                <span id="gallerySaveStatus${slot}" style="font-size:12px;color:#999;text-align:center;"></span>
+            `;
+            return card;
+        }
+
+        async function handleGalleryUpload(slot) {
+            const fileInput = document.getElementById(`galleryFile${slot}`);
+            const statusEl = document.getElementById(`galleryUploadStatus${slot}`);
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            statusEl.textContent = '上傳中...';
+            statusEl.style.color = '#c9a96e';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/gallery/upload`, {
+                    method: 'POST',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY },
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById(`galleryUrl${slot}`).value = data.url;
+                    document.getElementById(`galleryType${slot}`).value = data.type;
+                    statusEl.textContent = '✓ 上傳成功';
+                    statusEl.style.color = '#4ade80';
+                    // 即時更新預覽
+                    const preview = document.getElementById(`galleryPreview${slot}`);
+                    if (data.type === 'video') {
+                        preview.innerHTML = `<video src="${data.url}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`;
+                    } else {
+                        preview.innerHTML = `<img src="${data.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`;
+                    }
+                } else {
+                    statusEl.textContent = '上傳失敗：' + (data.error || '未知錯誤');
+                    statusEl.style.color = '#f87171';
+                }
+            } catch (e) {
+                statusEl.textContent = '網路錯誤';
+                statusEl.style.color = '#f87171';
+            }
+        }
+
+        async function saveGallerySlot(slot) {
+            const statusEl = document.getElementById(`gallerySaveStatus${slot}`);
+            statusEl.textContent = '儲存中...';
+            statusEl.style.color = '#c9a96e';
+
+            const payload = {
+                slot,
+                type: document.getElementById(`galleryType${slot}`).value,
+                url: document.getElementById(`galleryUrl${slot}`).value.trim(),
+                title: document.getElementById(`galleryTitle${slot}`).value.trim(),
+                description: document.getElementById(`galleryDesc${slot}`).value.trim()
+            };
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/gallery`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = '✓ 已儲存';
+                    statusEl.style.color = '#4ade80';
+                } else {
+                    statusEl.textContent = '儲存失敗：' + (data.error || '未知錯誤');
+                    statusEl.style.color = '#f87171';
+                }
+            } catch (e) {
+                statusEl.textContent = '網路錯誤';
+                statusEl.style.color = '#f87171';
+            }
         }
     </script>
 
