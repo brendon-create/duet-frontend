@@ -585,6 +585,7 @@
                         <option value="delete">刪除選取</option>
                     </select>
                     <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
+                    <button id="emailMfrBtn" class="btn btn-secondary" onclick="showEmailMfrModal()" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                     <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
@@ -1667,8 +1668,10 @@
             } else {
                 selectedOrders.push(orderId);
             }
+            const btn = document.getElementById('emailMfrBtn');
+            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
         }
-        
+
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAllOrders');
             const pageOrders = filteredOrders.filter(o => !o.isTest && !o.isInvalid);
@@ -1679,6 +1682,8 @@
                 // 取消選取目前頁面
                 selectedOrders = selectedOrders.filter(id => !pageOrders.some(o => o.orderId === id));
             }
+            const btn = document.getElementById('emailMfrBtn');
+            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
             renderOrders(filteredOrders);
         }
         
@@ -3061,6 +3066,121 @@
                 alert('匯出時發生錯誤：' + e.message);
             }
         }
+
+        // ── 發送給廠商 Modal ──────────────────────────────────────────────
+        async function showEmailMfrModal() {
+            if (selectedOrders.length === 0) { alert('請先選取要操作的訂單'); return; }
+            document.getElementById('emailMfrOrderCount').textContent = selectedOrders.length;
+            // 填充廠商下拉選單（即時從 API 取得，確保資料最新）
+            const sel = document.getElementById('emailMfrSelect');
+            sel.innerHTML = '<option value="">載入廠商中…</option>';
+            document.getElementById('emailMfrModal').style.display = 'flex';
+            try {
+                const mfrRes = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, { headers: { 'X-Admin-Key': ADMIN_API_KEY } });
+                const mfrData = await mfrRes.json();
+                const mfrs = (mfrData.manufacturers || []).filter(m => m.is_active);
+                sel.innerHTML = '<option value="">請選擇廠商...</option>';
+                mfrs.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = `${m.company_name}（${m.email}）`;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                sel.innerHTML = '<option value="">無法載入廠商</option>';
+            }
+            // 預設信件內文
+            const today = new Date().toLocaleDateString('zh-TW');
+            document.getElementById('emailMfrBody').value =
+                `您好，\n\n感謝您與 DUET 合作。以下是本次製作委託，共 ${selectedOrders.length} 筆訂單，詳細規格請參閱附件 Excel 檔案。\n\n請依照規格製作並於完成後告知出貨資訊。如有疑問歡迎來信。\n\n謝謝！\nDUET 團隊\n${today}`;
+            // 訂單預覽清單
+            const preview = selectedOrders.map(id => {
+                const order = (allOrders || []).find(o => o.orderId === id);
+                if (!order) return `<li>${id}</li>`;
+                const letters = (order.items || []).map(i => i.letter1 + i.letter2).join(', ');
+                return `<li><strong>${id}</strong> — ${letters} | ${order.userInfo?.name || '-'}</li>`;
+            }).join('');
+            document.getElementById('emailMfrOrderList').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--text-muted);">${preview}</ul>`;
+        }
+
+        function closeEmailMfrModal() {
+            document.getElementById('emailMfrModal').style.display = 'none';
+        }
+
+        async function sendEmailToManufacturer() {
+            const mfrId = document.getElementById('emailMfrSelect').value;
+            if (!mfrId) { alert('請選擇廠商'); return; }
+            const subject = document.getElementById('emailMfrSubject').value.trim() || '【DUET】製作委託';
+            const body = document.getElementById('emailMfrBody').value;
+            const sendBtn = document.getElementById('emailMfrSendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '發送中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/orders/email-manufacturer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ order_ids: selectedOrders, manufacturer_id: parseInt(mfrId), subject, body })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ 已成功發送 ${data.sent_count} 筆訂單給廠商`);
+                    closeEmailMfrModal();
+                } else {
+                    alert('❌ 發送失敗：' + data.error);
+                }
+            } catch (e) {
+                alert('❌ 網路錯誤：' + e.message);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '發送';
+            }
+        }
+
+        function openStickerTool() {
+            localStorage.setItem('stickerOrderIds', JSON.stringify(selectedOrders));
+            // 傳遞訂單資料供貼紙工具使用
+            const ordersForSticker = selectedOrders.map(id => {
+                const o = (allOrders || []).find(x => x.orderId === id);
+                if (!o) return { orderId: id, items: [] };
+                return {
+                    orderId: o.orderId,
+                    items: (o.items || []).map(i => ({
+                        letter1: i.letter1, letter2: i.letter2,
+                        material: i.material, plating: i.plating, size: i.size, finish: i.finish
+                    }))
+                };
+            });
+            localStorage.setItem('stickerOrders', JSON.stringify(ordersForSticker));
+            window.open('/sticker-tool.html', '_blank');
+        }
     </script>
+
+    <!-- 發送給廠商 Modal -->
+    <div id="emailMfrModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:560px;max-height:85vh;overflow-y:auto;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">📧 發送給廠商</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px 0;">已選取 <strong id="emailMfrOrderCount" style="color:var(--primary)"></strong> 筆訂單，將附上 Excel 訂單明細</p>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">選擇廠商</label>
+            <select id="emailMfrSelect" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:14px;margin-bottom:16px;">
+                <option value="">請選擇廠商...</option>
+            </select>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">信件主旨</label>
+            <input id="emailMfrSubject" type="text" value="【DUET】製作委託" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:14px;margin-bottom:16px;box-sizing:border-box;">
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">信件內文</label>
+            <textarea id="emailMfrBody" rows="8" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.6;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">訂單預覽</label>
+            <div id="emailMfrOrderList" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px;max-height:160px;overflow-y:auto;"></div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeEmailMfrModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button onclick="openStickerTool()" style="padding:9px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">🏷 列印貼紙</button>
+                <button id="emailMfrSendBtn" onclick="sendEmailToManufacturer()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">發送</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
