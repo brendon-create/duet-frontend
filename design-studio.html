@@ -53,10 +53,10 @@
     <div id="constraint-overlay"></div>
 
     <div id="control-panel" class="glass">
-        <div class="panel-header">
+        <div class="panel-header" style="position:relative;">
             <h1>DUET</h1>
             <div class="subtitle">BY BCAG</div>
-            <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:4px 10px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;margin-top:6px;">EN</button>
+            <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:3px 8px;border-radius:12px;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;position:absolute;top:0;right:0;">EN</button>
         </div>
 
         <div class="section">
@@ -76,18 +76,18 @@
             </div>
             
             <div class="control-group">
-                <label>Letter 1</label>
+                <label data-i18n="studio.letter1">字母 1</label>
                 <div class="flex-row">
                     <div><select id="letter1"></select></div>
-                    <div><button class="font-select-btn" id="font1-btn">Choose Fonts</button></div>
+                    <div><button class="font-select-btn" id="font1-btn" data-i18n="studio.choose.fonts">選擇字體</button></div>
                 </div>
             </div>
 
             <div class="control-group">
-                <label>Letter 2</label>
+                <label data-i18n="studio.letter2">字母 2</label>
                 <div class="flex-row">
                     <div><select id="letter2"></select></div>
-                    <div><button class="font-select-btn" id="font2-btn">Choose Fonts</button></div>
+                    <div><button class="font-select-btn" id="font2-btn" data-i18n="studio.choose.fonts">選擇字體</button></div>
                 </div>
             </div>
         </div>

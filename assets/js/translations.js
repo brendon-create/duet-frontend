@@ -102,6 +102,9 @@ window.translations = {
         'footer.terms':      '使用條款',
 
         // ── Design Studio 控制面板 ──
+        'studio.letter1':          '字母 1',
+        'studio.letter2':          '字母 2',
+        'studio.choose.fonts':     '選擇字體',
         'studio.material':         '材質 (Material)',
         'studio.plating':          '表面電鍍 (Plating)',
         'studio.finish':           '表面質地 (Finish)',
@@ -144,7 +147,7 @@ window.translations = {
         'nav.lang':    '中文',
 
         // ── Hero ──
-        'hero.subtitle': 'BCAG's New Online Custom Jewelry Series — DUET',
+        'hero.subtitle': "BCAG's New Online Custom Jewelry Series — DUET",
         'hero.title':    'Where every bond<br>begins to <em>intertwine</em>',
         'hero.body':     'The best relationships let each person remain fully themselves — while making life richer, deeper, and more alive.<br>DUET captures this in two letters. Through a warm, guided consultation, we help you craft a pendant that carries your story, and no one else\'s.',
         'hero.tagline':  '"Your bond, woven forever."',
@@ -198,12 +201,12 @@ window.translations = {
         'faq.a1': 'After payment is confirmed, production takes approximately 7–14 business days (not including shipping). We ship immediately upon completion and provide a tracking number.',
         'faq.q2': 'What materials are available?',
         'faq.a2': 'We currently offer 925 sterling silver and brass, with options for no plating, 18K gold, or 18K white gold plating. For other precious metals, submit your inquiry after completing your design and our team will contact you with a quote. All materials are quality certified and come with a certificate of authenticity.',
-        'faq.q3': 'What if I'm not satisfied with the design?',
+        'faq.q3': "What if I'm not satisfied with the design?",
         'faq.a3': 'You may revise your design unlimited times before payment. After payment, if there are clear concerns (such as pendant position drift or disconnected components), we will confirm with you before production. If there is a quality issue with the finished piece, we offer a 30-day unconditional exchange or refund. (As each piece is produced exactly to the 3D preview you approved, dissatisfaction with the design itself is not covered — please review carefully before ordering.)',
         'faq.q4': 'Where is my conversation stored? Is my privacy protected?',
         'faq.a4': 'Your conversation is used solely for design recommendations. It is end-to-end encrypted and stored in a database certified to SOC2 Type II, HIPAA, and ISO 27001 standards. It will never be shared or used for any other purpose without your consent. Your story belongs only to you.',
         'faq.q5': 'Can I order with just one letter?',
-        'faq.a5': 'DUET's core is "intertwining," so all designs feature two letters. However, you can choose the same letter twice (e.g., A × A) for a symmetrical aesthetic, or choose "I" as one of the letters for a more minimal look.',
+        'faq.a5': `DUET's core is "intertwining," so all designs feature two letters. However, you can choose the same letter twice (e.g., A × A) for a symmetrical aesthetic, or choose "I" as one of the letters for a more minimal look.`,
         'faq.q6': 'What is the return policy?',
         'faq.a6': 'If there is a production quality issue (such as surface defects or missing components), please contact us within 30 days of receiving your piece and we will provide a free remake or refund. Because each piece is custom-produced to your exact specifications, subjective design changes are not eligible for return. Please review the 3D preview carefully before ordering.',
         'faq.q7': 'How can I contact customer support?',
@@ -230,6 +233,9 @@ window.translations = {
         'footer.terms':      'Terms of Use',
 
         // ── Design Studio ──
+        'studio.letter1':          'Letter 1',
+        'studio.letter2':          'Letter 2',
+        'studio.choose.fonts':     'Choose Fonts',
         'studio.material':         'Material',
         'studio.plating':          'Surface Plating',
         'studio.finish':           'Surface Finish',
