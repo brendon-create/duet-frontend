@@ -1336,10 +1336,12 @@
                 let frame = 0;
 
                 // 初始化：放入第一個 group
+                // carousel 模式：第一幀從透明開始淡入
+                // full360 模式：直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
                 if (pendantGroup) scene.remove(pendantGroup);
                 pendantGroup = groups[0];
                 scene.add(pendantGroup);
-                setGroupOpacity(pendantGroup, 0);
+                setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
 
                 function tick() {
                     if (frame >= totalFr) {
@@ -1372,13 +1374,24 @@
                     pendantGroup.position.z  = vertOffset;
                     pendantGroup.position.x  = horizOffset;
 
-                    // 透明度：淡入（開頭）→ 持續 → 淡出（結尾，最後一對除外）
+                    // 透明度：
+                    // carousel：影片開頭淡入、組間淡出淡入（最後一組不淡出）
+                    // full360：組間才淡出淡入（第一組直接全亮，確保 loop 無縫）
                     const isLastPair = pairIdx >= groups.length - 1;
                     let opacity = 1.0;
-                    if (pairFrm < fadeFr) {
-                        opacity = pairFrm / fadeFr; // 淡入
-                    } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                        opacity = (pairFr - pairFrm) / fadeFr; // 淡出
+                    if (mode === 'carousel') {
+                        if (pairFrm < fadeFr) {
+                            opacity = pairFrm / fadeFr;
+                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                            opacity = (pairFr - pairFrm) / fadeFr;
+                        }
+                    } else {
+                        // full360：只在多組切換之間過場，第一組開頭不淡入
+                        if (pairFrm < fadeFr && pairIdx > 0) {
+                            opacity = pairFrm / fadeFr;
+                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                            opacity = (pairFr - pairFrm) / fadeFr;
+                        }
                     }
                     setGroupOpacity(pendantGroup, opacity);
 
