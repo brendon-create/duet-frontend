@@ -836,20 +836,48 @@
             
             <!-- System Tab -->
             <div id="systemTab" style="display: none;">
-                <!-- AI Prompt 優化分析 -->
-                <div class="detail-section" style="margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 12px;">🤖 AI Prompt 優化分析</h3>
-                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">分析近期 AI 諮詢對話，生成 system prompt 改進建議（會呼叫 Claude API，約需 10–20 秒）。</p>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 14px;">
-                        <label style="font-size: 13px; color: var(--text-muted);">分析最近</label>
-                        <input id="aiAnalysisLimit" type="number" value="20" min="5" max="50" style="width: 70px; padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
-                        <label style="font-size: 13px; color: var(--text-muted);">筆訂單</label>
-                        <button class="btn btn-primary" onclick="runAiPromptAnalysis()">開始分析</button>
-                        <span id="aiAnalysisStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                <!-- AI 設計理念審視 & System Prompt 優化 -->
+                <div class="detail-section" style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 6px;">🔍 設計理念審視 & System Prompt 優化</h3>
+                    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">選取時間區間撈取設計理念，由 AI 分析對話品質與修改原因，生成 system prompt 改進建議。</p>
+
+                    <!-- 日期區間選擇 -->
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                        <label style="font-size:13px;color:var(--text-muted);">從</label>
+                        <input type="date" id="reviewDateFrom" style="padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;">
+                        <label style="font-size:13px;color:var(--text-muted);">到</label>
+                        <input type="date" id="reviewDateTo" style="padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;">
+                        <button class="btn btn-secondary" onclick="previewReviewOrders()">撈取訂單</button>
+                        <span id="reviewPreviewStatus" style="font-size:13px;color:var(--text-muted);"></span>
                     </div>
-                    <div id="aiAnalysisResult" style="display: none; background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 18px;">
-                        <div style="font-size: 11px; color: rgba(212,175,55,0.7); letter-spacing: 1px; margin-bottom: 10px;">分析結果</div>
-                        <pre id="aiAnalysisText" style="font-family: inherit; font-size: 13px; color: var(--text-light); line-height: 1.8; white-space: pre-wrap; margin: 0;"></pre>
+
+                    <!-- 訂單預覽清單（撈取後顯示）-->
+                    <div id="reviewOrderList" style="display:none;margin-bottom:14px;">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;">撈取結果 — <span id="reviewOrderSummary"></span></div>
+                        <div id="reviewOrderTable" style="max-height:200px;overflow-y:auto;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:8px 12px;"></div>
+                        <button class="btn btn-primary" id="runReviewBtn" onclick="runAiReview()" style="margin-top:12px;">🤖 開始 AI 審視</button>
+                        <span id="reviewRunStatus" style="font-size:13px;color:var(--text-muted);margin-left:10px;"></span>
+                    </div>
+
+                    <!-- AI 建議結果（最新一筆）-->
+                    <div id="reviewLatestResult" style="display:none;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:18px;margin-bottom:20px;">
+                        <div style="font-size:11px;color:rgba(212,175,55,0.7);letter-spacing:1px;margin-bottom:10px;">最新 AI 分析建議</div>
+                        <pre id="reviewLatestText" style="font-family:inherit;font-size:13px;color:var(--text-light);line-height:1.8;white-space:pre-wrap;margin:0 0 14px 0;"></pre>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-primary" onclick="approveLatestSuggestion()" id="approveBtn" style="background:#16a34a;border-color:#16a34a;">✓ 採用建議</button>
+                            <button class="btn btn-secondary" onclick="rejectLatestSuggestion()" id="rejectBtn">✗ 不採用</button>
+                        </div>
+                    </div>
+
+                    <!-- 歷史建議清單 -->
+                    <div style="margin-top:20px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                            <h4 style="font-size:14px;color:var(--text-muted);font-weight:400;">歷史建議紀錄</h4>
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="loadPromptSuggestions()">重新整理</button>
+                        </div>
+                        <div id="suggestionHistoryList" style="display:flex;flex-direction:column;gap:10px;">
+                            <div style="color:var(--text-muted);font-size:13px;">載入中…</div>
+                        </div>
                     </div>
                 </div>
 
@@ -1268,7 +1296,7 @@
             if (tab === 'promos') loadPromoCodes();
             if (tab === 'redeem') loadRedeemCodes();
             if (tab === 'feedback') loadFeedback();
-            if (tab === 'system') loadMemoryStats();
+            if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
             if (tab === 'manufacturers') loadManufacturers();
         }
@@ -1299,30 +1327,7 @@
             }
         }
         
-        // AI Prompt 優化分析
-        async function runAiPromptAnalysis() {
-            const limit = parseInt(document.getElementById('aiAnalysisLimit').value) || 20;
-            const statusEl = document.getElementById('aiAnalysisStatus');
-            const resultEl = document.getElementById('aiAnalysisResult');
-            const textEl   = document.getElementById('aiAnalysisText');
-            statusEl.textContent = '分析中，請稍候⋯⋯';
-            resultEl.style.display = 'none';
-            try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-prompt-analysis`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
-                    body: JSON.stringify({ limit })
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-                statusEl.textContent = `已分析 ${data.analyzed_count} 筆對話`;
-                textEl.textContent = data.suggestion;
-                resultEl.style.display = 'block';
-            } catch (e) {
-                statusEl.style.color = '#ef4444';
-                statusEl.textContent = '分析失敗：' + e.message;
-            }
-        }
+        // （已移除舊 AI Prompt 優化分析，由第二 script block 的新函數取代）
 
         // Memory Stats
         async function loadMemoryStats() {
@@ -3153,6 +3158,185 @@
             localStorage.setItem('stickerOrders', JSON.stringify(ordersForSticker));
             window.open('/sticker-tool.html', '_blank');
         }
+
+        // ── AI 設計理念審視 ──────────────────────────────────────────────────
+        let reviewOrders = [];  // 撈取到的訂單（含 previously_reviewed 旗標）
+        let latestSuggestionId = null;
+
+        async function previewReviewOrders() {
+            const from = document.getElementById('reviewDateFrom').value;
+            const to = document.getElementById('reviewDateTo').value;
+            if (!from || !to) { alert('請選擇日期區間'); return; }
+            const statusEl = document.getElementById('reviewPreviewStatus');
+            statusEl.textContent = '撈取中…';
+            document.getElementById('reviewOrderList').style.display = 'none';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/preview?from=${from}&to=${to}`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                reviewOrders = data.orders || [];
+                const prevCount = data.previously_reviewed_count || 0;
+                statusEl.textContent = '';
+                document.getElementById('reviewOrderSummary').textContent =
+                    `共 ${data.total} 筆，${reviewOrders.filter(o=>o.has_story_diff).length} 筆有設計理念差異` +
+                    (prevCount > 0 ? `，⚠️ ${prevCount} 筆曾被撈取過` : '');
+                // 渲染清單
+                if (reviewOrders.length === 0) {
+                    document.getElementById('reviewOrderTable').innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:4px 0;">此區間無符合條件的訂單（需有 AI 諮詢對話）</div>';
+                } else {
+                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => `
+                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+                            <span style="color:var(--text-muted);min-width:100px;">${o.orderId}</span>
+                            <span style="color:var(--text-light);min-width:40px;">${o.letters || '-'}</span>
+                            <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
+                            ${o.previously_reviewed ? '<span style="color:#fbbf24;font-size:11px;">⚠️ 曾撈取</span>' : ''}
+                            <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : ''}</span>
+                        </div>`).join('');
+                }
+                document.getElementById('reviewOrderList').style.display = 'block';
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '撈取失敗：' + e.message;
+            }
+        }
+
+        async function runAiReview() {
+            if (reviewOrders.length === 0) { alert('請先撈取訂單'); return; }
+            const hasPrev = reviewOrders.some(o => o.previously_reviewed);
+            if (hasPrev && !confirm(`有 ${reviewOrders.filter(o=>o.previously_reviewed).length} 筆訂單曾被撈取過分析，繼續會重複使用 API token，確定要繼續嗎？`)) return;
+            const btn = document.getElementById('runReviewBtn');
+            const statusEl = document.getElementById('reviewRunStatus');
+            btn.disabled = true;
+            statusEl.textContent = 'AI 分析中（約 15–30 秒）…';
+            document.getElementById('reviewLatestResult').style.display = 'none';
+            try {
+                const from = document.getElementById('reviewDateFrom').value;
+                const to = document.getElementById('reviewDateTo').value;
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ date_from: from, date_to: to, order_ids: reviewOrders.map(o => o.orderId) })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                latestSuggestionId = data.suggestion_id;
+                statusEl.textContent = `已分析 ${data.analyzed_count} 筆`;
+                document.getElementById('reviewLatestText').textContent = data.suggestion_text;
+                document.getElementById('reviewLatestResult').style.display = 'block';
+                document.getElementById('approveBtn').disabled = false;
+                document.getElementById('rejectBtn').disabled = false;
+                loadPromptSuggestions();
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '分析失敗：' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function resolveLatestSuggestion(action) {
+            if (!latestSuggestionId) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${latestSuggestionId}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                document.getElementById('approveBtn').disabled = true;
+                document.getElementById('rejectBtn').disabled = true;
+                document.getElementById('approveBtn').textContent = action === 'approve' ? '✓ 已採用' : '✓ 採用建議';
+                document.getElementById('rejectBtn').textContent = action === 'reject' ? '✗ 已拒絕' : '✗ 不採用';
+                if (action === 'approve') {
+                    alert('已標記為採用。請在下方「System Prompt 編輯」區手動套用建議內容。');
+                }
+                loadPromptSuggestions();
+            } catch(e) { alert('操作失敗：' + e.message); }
+        }
+
+        function approveLatestSuggestion() { resolveLatestSuggestion('approve'); }
+        function rejectLatestSuggestion() { resolveLatestSuggestion('reject'); }
+
+        async function loadPromptSuggestions() {
+            const listEl = document.getElementById('suggestionHistoryList');
+            listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">載入中…</div>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const items = data.suggestions || [];
+                if (items.length === 0) {
+                    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">尚無歷史建議</div>';
+                    return;
+                }
+                const statusColor = { pending: '#fbbf24', approved: '#4ade80', rejected: '#9ca3af' };
+                const statusLabel = { pending: '待處理', approved: '已採用', rejected: '已拒絕' };
+                listEl.innerHTML = items.map(item => `
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <span style="font-size:11px;color:${statusColor[item.status] || '#888'};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px;">${statusLabel[item.status] || item.status}</span>
+                            <span style="font-size:11px;color:var(--text-muted);">${item.date_from || '?'} ~ ${item.date_to || '?'} · ${item.order_count || 0} 筆</span>
+                            <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-TW') : ''}</span>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}">
+                            ${(item.suggestion_text || '').slice(0, 200)}${(item.suggestion_text || '').length > 200 ? '…' : ''}
+                        </div>
+                        <button onclick="toggleSuggestionExpand(${item.id})" style="background:none;border:none;color:var(--primary);font-size:11px;cursor:pointer;margin-top:4px;padding:0;" id="sugg-expand-${item.id}">展開全文</button>
+                        ${item.status === 'pending' ? `
+                        <div style="display:flex;gap:6px;margin-top:8px;">
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;background:#16a34a;color:#fff;border-color:#16a34a;" onclick="resolveSuggestion(${item.id},'approve')">採用</button>
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="resolveSuggestion(${item.id},'reject')">拒絕</button>
+                        </div>` : ''}
+                    </div>`).join('');
+            } catch(e) {
+                listEl.innerHTML = `<div style="color:#f87171;font-size:13px;">載入失敗：${e.message}</div>`;
+            }
+        }
+
+        const _suggestionFullText = {};
+        function toggleSuggestionExpand(id) {
+            const bodyEl = document.getElementById(`sugg-body-${id}`);
+            const btnEl = document.getElementById(`sugg-expand-${id}`);
+            if (!bodyEl) return;
+            if (bodyEl.dataset.expanded === '1') {
+                bodyEl.style.maxHeight = '80px';
+                bodyEl.dataset.expanded = '0';
+                btnEl.textContent = '展開全文';
+            } else {
+                bodyEl.style.maxHeight = 'none';
+                bodyEl.dataset.expanded = '1';
+                btnEl.textContent = '收起';
+            }
+        }
+
+        async function resolveSuggestion(id, action) {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${id}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                if (action === 'approve') alert('已標記為採用。請手動將建議套用至 System Prompt。');
+                loadPromptSuggestions();
+            } catch(e) { alert('操作失敗：' + e.message); }
+        }
+
+        // 初始化日期預設值（今天往前 30 天）
+        (function() {
+            const today = new Date();
+            const from = new Date(today);
+            from.setDate(from.getDate() - 30);
+            document.getElementById('reviewDateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('reviewDateFrom').value = from.toISOString().split('T')[0];
+            // 進入 systemTab 時自動載入歷史建議
+        })();
     </script>
 
     <!-- 發送給廠商 Modal -->
