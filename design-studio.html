@@ -164,7 +164,7 @@
         <!-- 🧹 清理零碎部件開關 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
+                <label id="cleanup-label" data-i18n="studio.cleanup.label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
                 
                 <!-- Toggle Switch -->
                 <div class="toggle-switch" id="cleanup-toggle-container">
@@ -195,7 +195,7 @@
 
         <div class="info-box">
             <div class="info-row">
-                <span class="info-label">價格</span>
+                <span class="info-label" data-i18n="studio.price">價格</span>
                 <span class="info-value" id="price-display">NT$ 3,850</span>
             </div>
             <!-- 體積重量資訊隱藏，但保留在 DOM 中供後端使用 -->
@@ -216,11 +216,11 @@
             </div>
         </div>
 
-        <button class="btn-secondary" id="save-slot-1">Save to Slot 1</button>
-        <button class="btn-secondary" id="save-slot-2">Save to Slot 2</button>
+        <button class="btn-secondary" id="save-slot-1" data-i18n="studio.save.slot1">儲存到版本 1</button>
+        <button class="btn-secondary" id="save-slot-2" data-i18n="studio.save.slot2">儲存到版本 2</button>
 
         <button class="btn-primary" id="addToCartBtn">
-            <span style="flex: 1;">Add to Cart</span>
+            <span style="flex: 1;" data-i18n="studio.cart.add">加入購物車</span>
             <div class="view-cart-section" id="viewCartBtn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     style="margin-bottom: 2px;">
@@ -228,7 +228,7 @@
                     <circle cx="20" cy="21" r="1" />
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
                 </svg>
-                <span style="margin-top: 2px;">View Cart</span>
+                <span style="margin-top: 2px;" data-i18n="studio.cart.view">查看購物車</span>
             </div>
         </button>
 
@@ -271,17 +271,17 @@
         <div class="ai-consultant-link">
             <a onclick="openDesignConsultant()">
                 <span>💎</span>
-                <span>重新開始 AI 設計諮詢</span>
+                <span data-i18n="studio.ai.restart">重新開始 AI 設計諮詢</span>
             </a>
         </div>
     </div>
 
     <div id="saved-versions">
         <div class="version-slot empty" data-slot="1">
-            <div class="version-label">SLOT 1</div>
+            <div class="version-label" data-i18n="studio.slot.1">版本 1</div>
         </div>
         <div class="version-slot empty" data-slot="2">
-            <div class="version-label">SLOT 2</div>
+            <div class="version-label" data-i18n="studio.slot.2">版本 2</div>
         </div>
     </div>
 
@@ -2034,7 +2034,7 @@
             }
             
             if (cleanupLabel) {
-                cleanupLabel.textContent = '清理作品分離部件';  // 重置文字
+                cleanupLabel.textContent = window.t('studio.cleanup.label');  // 重置文字
                 cleanupLabel.style.color = '';  // 重置顏色
             }
             
@@ -2214,7 +2214,7 @@
             
             // 更新 label 狀態
             if (cleanupLabel) {
-                cleanupLabel.innerHTML = '正在清理<span class="dots-animation"></span>';
+                cleanupLabel.innerHTML = window.t('studio.cleanup.cleaning') + '<span class="dots-animation"></span>';
                 cleanupLabel.style.color = '#4a90e2';
             }
 
@@ -2393,7 +2393,7 @@
 
                 // 更新 label 顯示
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '分離部件已清理';
+                    cleanupLabel.textContent = window.t('studio.cleanup.done');
                     cleanupLabel.style.color = '#4caf50';
                 }
 
@@ -2409,7 +2409,7 @@
                 }
                 
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = '清理作品分離部件';
+                    cleanupLabel.textContent = window.t('studio.cleanup.label');
                     cleanupLabel.style.color = '';
                 }
                 
