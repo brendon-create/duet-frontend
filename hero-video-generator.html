@@ -515,7 +515,7 @@
             <div class="field-group">
                 <div class="field-label">每對轉場秒數</div>
                 <div class="range-row">
-                    <input type="range" id="sec-per-pair" min="1" max="10" step="0.5" value="5">
+                    <input type="range" id="sec-per-pair" min="1" max="20" step="0.5" value="5">
                     <span class="range-value" id="sec-value">5s</span>
                 </div>
             </div>
@@ -639,6 +639,14 @@
                 <div class="range-row">
                     <input type="range" id="pendant-size" min="6" max="12" step="1" value="12">
                     <span class="range-value" id="size-value">12mm</span>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">打光強度</div>
+                <div class="range-row">
+                    <input type="range" id="light-intensity" min="0.3" max="2.5" step="0.05" value="1.0">
+                    <span class="range-value" id="light-intensity-value">1.00×</span>
                 </div>
             </div>
 
@@ -829,6 +837,9 @@
         });
         document.getElementById('pendant-size').addEventListener('input', (e) => {
             document.getElementById('size-value').textContent = e.target.value + 'mm';
+        });
+        document.getElementById('light-intensity').addEventListener('input', (e) => {
+            document.getElementById('light-intensity-value').textContent = parseFloat(e.target.value).toFixed(2) + '×';
         });
         document.getElementById('vertical-offset').addEventListener('input', (e) => {
             document.getElementById('voffset-value').textContent = e.target.value;
@@ -1154,17 +1165,18 @@
             renderer.outputColorSpace    = THREE.SRGBColorSpace;
 
             // 燈光（HDR 載入前的保底光源；HDR 到位後會疊加）
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const lightMult = parseFloat(document.getElementById('light-intensity')?.value || '1.0');
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8 * lightMult));
 
-            const key = new THREE.DirectionalLight(0xFFF5E8, 2.8);
+            const key = new THREE.DirectionalLight(0xFFF5E8, 2.8 * lightMult);
             key.position.set(20, -15, 30);
             scene.add(key);
 
-            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8);
+            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8 * lightMult);
             fill.position.set(-20, 15, 10);
             scene.add(fill);
 
-            const rim = new THREE.DirectionalLight(0xffffff, 0.5);
+            const rim = new THREE.DirectionalLight(0xffffff, 0.5 * lightMult);
             rim.position.set(0, 30, -10);
             scene.add(rim);
 
