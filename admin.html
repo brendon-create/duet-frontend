@@ -991,6 +991,33 @@
                     <label>地址</label>
                     <input type="text" id="mfrAddress">
                 </div>
+                <div style="margin:16px 0 8px;font-size:13px;font-weight:600;color:var(--text-muted);letter-spacing:0.05em;border-top:1px solid var(--border);padding-top:14px;">銀行帳號資訊</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>銀行名稱</label>
+                        <input type="text" id="mfrBankName" placeholder="例如：台灣銀行">
+                    </div>
+                    <div class="form-group">
+                        <label>銀行代碼</label>
+                        <input type="text" id="mfrBankCode" placeholder="例如：004">
+                    </div>
+                    <div class="form-group">
+                        <label>分行名稱</label>
+                        <input type="text" id="mfrBranchName" placeholder="例如：信義分行">
+                    </div>
+                    <div class="form-group">
+                        <label>分行代碼</label>
+                        <input type="text" id="mfrBranchCode" placeholder="例如：0163">
+                    </div>
+                    <div class="form-group">
+                        <label>戶名</label>
+                        <input type="text" id="mfrAccountHolder" placeholder="帳戶持有人姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>帳號</label>
+                        <input type="text" id="mfrAccountNumber" placeholder="銀行帳號">
+                    </div>
+                </div>
                 <div class="form-group">
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                         <input type="checkbox" id="mfrIsActive" checked style="width:16px;height:16px;">
@@ -2752,6 +2779,12 @@
             document.getElementById('mfrCompanyOwner').value = m.company_owner || '';
             document.getElementById('mfrPhone').value = m.phone || '';
             document.getElementById('mfrAddress').value = m.address || '';
+            document.getElementById('mfrBankName').value = m.bank_name || '';
+            document.getElementById('mfrBankCode').value = m.bank_code || '';
+            document.getElementById('mfrBranchName').value = m.branch_name || '';
+            document.getElementById('mfrBranchCode').value = m.branch_code || '';
+            document.getElementById('mfrAccountHolder').value = m.account_holder || '';
+            document.getElementById('mfrAccountNumber').value = m.account_number || '';
             document.getElementById('mfrIsActive').checked = !!m.is_active;
             document.getElementById('manufacturerFormModal').classList.add('active');
         }
@@ -2772,6 +2805,12 @@
                 company_owner: document.getElementById('mfrCompanyOwner').value.trim() || null,
                 phone: document.getElementById('mfrPhone').value.trim() || null,
                 address: document.getElementById('mfrAddress').value.trim() || null,
+                bank_name: document.getElementById('mfrBankName').value.trim() || null,
+                bank_code: document.getElementById('mfrBankCode').value.trim() || null,
+                branch_name: document.getElementById('mfrBranchName').value.trim() || null,
+                branch_code: document.getElementById('mfrBranchCode').value.trim() || null,
+                account_holder: document.getElementById('mfrAccountHolder').value.trim() || null,
+                account_number: document.getElementById('mfrAccountNumber').value.trim() || null,
                 is_active: document.getElementById('mfrIsActive').checked
             };
             try {
