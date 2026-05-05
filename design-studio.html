@@ -53,10 +53,9 @@
     <div id="constraint-overlay"></div>
 
     <div id="control-panel" class="glass">
-        <div class="panel-header" style="position:relative;">
+        <div class="panel-header">
             <h1>DUET</h1>
             <div class="subtitle">BY BCAG</div>
-            <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:3px 8px;border-radius:12px;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;position:absolute;top:0;right:0;">EN</button>
         </div>
 
         <div class="section">
@@ -5371,6 +5370,9 @@
             <span class="custom-toast-message"></span>
         </div>
     </div>
+
+    <!-- 語言切換按鈕 - 固定在畫面右上角 -->
+    <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="position:fixed;top:16px;right:16px;z-index:999;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);border:1px solid rgba(201,169,110,0.4);color:#c9a96e;padding:5px 12px;border-radius:14px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;">EN</button>
 
 </body>
 
