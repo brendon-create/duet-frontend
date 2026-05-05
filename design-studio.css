@@ -52,6 +52,7 @@
         }
 
         .panel-header {
+            position: relative;
             text-align: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
@@ -1180,9 +1181,6 @@
                 align-items: center;
                 gap: 8px;
                 justify-content: stretch;
-            }
-            #saved-versions > button {
-                display: none;
             }
             
             .version-slot {
