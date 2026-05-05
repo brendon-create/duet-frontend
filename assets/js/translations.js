@@ -123,6 +123,17 @@ window.translations = {
         'studio.plating.rose18k':  '18K 玫瑰金',
         'studio.finish.glossy':    '亮面',
         'studio.finish.matte':     '霧面',
+        'studio.cleanup.label':    '清理作品分離部件',
+        'studio.cleanup.done':     '分離部件已清理',
+        'studio.cleanup.cleaning': '正在清理',
+        'studio.price':            '價格',
+        'studio.ai.restart':       '重新開始 AI 設計諮詢',
+        'studio.save.slot1':       '儲存到版本 1',
+        'studio.save.slot2':       '儲存到版本 2',
+        'studio.cart.add':         '加入購物車',
+        'studio.cart.view':        '查看購物車',
+        'studio.slot.1':           '版本 1',
+        'studio.slot.2':           '版本 2',
 
         // ── Admin 後台 ──
         'admin.tab.orders':   '訂單管理',
@@ -254,6 +265,17 @@ window.translations = {
         'studio.plating.rose18k':  '18K Rose Gold',
         'studio.finish.glossy':    'Glossy',
         'studio.finish.matte':     'Matte',
+        'studio.cleanup.label':    'Clean Up Detached Parts',
+        'studio.cleanup.done':     'Detached Parts Cleaned',
+        'studio.cleanup.cleaning': 'Cleaning Up',
+        'studio.price':            'Price',
+        'studio.ai.restart':       'Restart AI Consultation',
+        'studio.save.slot1':       'Save to Slot 1',
+        'studio.save.slot2':       'Save to Slot 2',
+        'studio.cart.add':         'Add to Cart',
+        'studio.cart.view':        'View Cart',
+        'studio.slot.1':           'Slot 1',
+        'studio.slot.2':           'Slot 2',
 
         // ── Admin ──
         'admin.tab.orders':   'Orders',
@@ -318,6 +340,14 @@ window.initLanguage = function() {
     const saved = localStorage.getItem('duet_language') || 'zh';
     window.applyLanguage(saved);
     return saved;
+};
+
+/**
+ * 取得單一翻譯字串（供 JS 動態設定文字用）
+ */
+window.t = function(key) {
+    const lang = localStorage.getItem('duet_language') || 'zh';
+    return window.translations[lang]?.[key] ?? window.translations.zh[key] ?? key;
 };
 
 /**
