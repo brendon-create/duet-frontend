@@ -132,12 +132,12 @@ export function createBail() {
 
             bailMesh = new THREE.Mesh(geometry, material);
 
-            // 🔧 Bail 縮放調整：根據 targetBailWidth 等比例縮放
-            const targetBailWidth = 4; // 目標寬度 4mm
-            const scaleFactor = targetBailWidth / Math.max(sizeX, sizeY);
-            geometry.scale(scaleFactor, scaleFactor, scaleFactor);
-
-            console.log(`🔧 Bail 縮放: scaleFactor=${scaleFactor.toFixed(3)}（等比例，寬度=${targetBailWidth}mm）`);
+            // 🔧 Bail 縮放：一步非等比縮放到目標尺寸（寬 4mm，高 6mm）
+            const targetBailWidth  = 4; // 目標寬度/深度 4mm
+            const targetBailHeight = 6; // 目標高度 6mm
+            const scaleXY = targetBailWidth  / Math.max(sizeX, sizeY);
+            const scaleZ  = targetBailHeight / sizeZ;
+            geometry.scale(scaleXY, scaleXY, scaleZ);
 
             // 重新計算縮放後的 BBox
             geometry.computeBoundingBox();
@@ -145,6 +145,7 @@ export function createBail() {
             const scaledSizeX = scaledBbox.max.x - scaledBbox.min.x;
             const scaledSizeY = scaledBbox.max.y - scaledBbox.min.y;
             const scaledSizeZ = scaledBbox.max.z - scaledBbox.min.z;
+            console.log(`🔧 Bail 縮放（非等比）: XY=${scaleXY.toFixed(3)}, Z=${scaleZ.toFixed(3)}`);
             console.log(`📐 Bail 縮放後尺寸: X=${scaledSizeX.toFixed(2)}, Y=${scaledSizeY.toFixed(2)}, Z=${scaledSizeZ.toFixed(2)}`);
 
             // 定位：Bail 中心點在 modelTopZ + 1.2 + bail高度的一半

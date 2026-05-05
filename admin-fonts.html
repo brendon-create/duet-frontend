@@ -218,6 +218,7 @@
             <a href="admin.html" class="tab-link">客戶回饋</a>
             <a href="admin.html" class="tab-link">系統監控</a>
             <span class="tab-link active-tab">字體規範</span>
+            <a href="print-tool.html" class="tab-link">列印工具</a>
         </div>
     </div>
 
@@ -322,6 +323,10 @@ function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
+    if (window !== window.top) {
+        document.querySelector('.nav').style.display = 'none';
+        document.querySelector('#mainApp > div[style*="border-bottom"]').style.display = 'none';
+    }
     initPage();
 }
 

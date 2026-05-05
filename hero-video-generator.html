@@ -534,7 +534,29 @@
                         <option value="1080x1920">1080 × 1920（Stories / Reels 9:16）</option>
                         <option value="600x750">600 × 750（輕量預覽）</option>
                     </optgroup>
+                    <optgroup label="── 方形（Gallery 縮圖）──">
+                        <option value="500x500">500 × 500（Gallery 方形）</option>
+                        <option value="400x400">400 × 400（輕量 Gallery）</option>
+                    </optgroup>
                 </select>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">影片位元率</div>
+                <select id="bitrate">
+                    <option value="10000000" selected>10 Mbps（高畫質 Hero / Banner）</option>
+                    <option value="3000000">3 Mbps（一般品質）</option>
+                    <option value="1000000">1 Mbps（輕量 Gallery 小影片）</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">旋轉模式</div>
+                <select id="rotation-mode">
+                    <option value="carousel">輪播（每組旋轉 90°）</option>
+                    <option value="full360">360° 完整旋轉</option>
+                </select>
+                <div class="field-sublabel" id="rotation-mode-hint">多組字母依序出場，適合 Hero Banner</div>
             </div>
 
             <div class="field-group">
@@ -804,6 +826,11 @@
         document.getElementById('horizontal-offset').addEventListener('input', (e) => {
             document.getElementById('hoffset-value').textContent = e.target.value;
         });
+        document.getElementById('rotation-mode').addEventListener('change', (e) => {
+            document.getElementById('rotation-mode-hint').textContent = e.target.value === 'full360'
+                ? '每組字母旋轉完整一圈，可看到正反面，適合 Gallery 縮圖'
+                : '多組字母依序出場，各旋轉 90° 後換下一組，適合 Hero Banner';
+        });
 
         // 顏色選取器 ↔ 文字框同步
         const bgColorPicker    = document.getElementById('bg-color');
@@ -947,6 +974,7 @@
                 const pendantMM    = parseInt(document.getElementById('pendant-size').value);
                 const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
                 const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
+                const rotationMode = document.getElementById('rotation-mode').value;
 
                 // 調整 canvas 尺寸
                 canvas.width  = W;
@@ -991,7 +1019,7 @@
                 statusText.textContent = '錄製中，請稍候...';
 
                 // 錄製動畫
-                const blob = await recordAnimation(groups, secPerPair, vertOffset, horizOffset);
+                const blob = await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode);
                 resultBlob = blob;
 
                 // 顯示結果
@@ -1272,7 +1300,7 @@
         }
 
         // ── 錄製動畫 ─────────────────────────────────────────────
-        function recordAnimation(groups, secPerPair, vertOffset = 10, horizOffset = 0) {
+        function recordAnimation(groups, secPerPair, vertOffset = 10, horizOffset = 0, mode = 'carousel') {
             return new Promise((resolve, reject) => {
                 const FPS       = 30;
                 const FADE_SEC  = 0.2; // 0.2 秒過場淡入淡出
@@ -1290,9 +1318,11 @@
                 const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
 
                 const stream   = canvas.captureStream(FPS);
+                const bitrateEl = document.getElementById('bitrate');
+                const videoBitsPerSecond = bitrateEl ? parseInt(bitrateEl.value, 10) : 10_000_000;
                 const recorder = new MediaRecorder(stream, {
                     mimeType,
-                    videoBitsPerSecond: 10_000_000
+                    videoBitsPerSecond
                 });
                 const chunks   = [];
 
@@ -1329,11 +1359,16 @@
                         scene.add(pendantGroup);
                     }
 
-                    // 旋轉：每對從 pairIdx * 90° 繼續轉到 (pairIdx+1) * 90°
-                    // bail/ring 無縫延續旋轉；letter 內有反向 offset，永遠正面對鏡頭
-                    // horizCorrAngle：修正吊墜偏離相機中心線時的視角偏差，讓正面真正對準鏡頭
+                    // 旋轉：
+                    //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
+                    //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
+                    // letterWrapper 內建 pairIdx * π/2 補償角，確保任何模式下字母正面都對準鏡頭
                     const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
-                    pendantGroup.rotation.z  = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
+                    if (mode === 'full360') {
+                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t * Math.PI * 2) - horizCorrAngle;
+                    } else {
+                        pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
+                    }
                     pendantGroup.position.z  = vertOffset;
                     pendantGroup.position.x  = horizOffset;
 

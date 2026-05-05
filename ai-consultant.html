@@ -831,8 +831,11 @@
 
             updateProgress(0);
 
-            // First message from AI
-            const welcomeMessage = "您好！我是 BCAG 的設計顧問。很高興能協助您設計專屬的 DUET 作品。\n\n首先，這件作品是要送給誰的呢？";
+            // First message from AI — follow duet_language preference
+            const _lang = localStorage.getItem('duet_language') || 'zh';
+            const welcomeMessage = _lang === 'en'
+                ? "Hello! I'm BCAG's design consultant. It's my pleasure to help you create your DUET piece.\n\nFirst, who will this piece be for?"
+                : "您好！我是 BCAG 的設計顧問。很高興能協助您設計專屬的 DUET 作品。\n\n首先，這件作品是要送給誰的呢？";
 
             addMessage('assistant', welcomeMessage);
             conversationHistory.push({
