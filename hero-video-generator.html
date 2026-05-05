@@ -1352,7 +1352,7 @@
 
                     const pairIdx  = Math.floor(frame / pairFr);
                     const pairFrm  = frame % pairFr;
-                    const t        = pairFrm / pairFr; // 0 → 1
+                    const t        = pairFrm / pairFr; // 0 → 1（用於淡入淡出計算）
 
                     // 切換 group
                     if (pairFrm === 0) {
@@ -1364,10 +1364,12 @@
                     // 旋轉：
                     //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
                     //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
-                    // letterWrapper 內建 pairIdx * π/2 補償角，確保任何模式下字母正面都對準鏡頭
+                    //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於旋轉 360° = 0°，
+                    //   使影片頭尾旋轉角度完全相同，browser loop 無縫
                     const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
                     if (mode === 'full360') {
-                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t * Math.PI * 2) - horizCorrAngle;
+                        const t360 = pairFrm / Math.max(pairFr - 1, 1);
+                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t360 * Math.PI * 2) - horizCorrAngle;
                     } else {
                         pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
                     }
