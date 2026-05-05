@@ -409,12 +409,14 @@
             gap: 24px;
         }
 
-        .story-images img {
+        .story-images img,
+        .story-images video {
             width: 100%;
             height: auto;
             border-radius: 8px;
             object-fit: cover;
             animation: fadeInUp 0.8s ease-out;
+            display: block;
         }
 
         @keyframes fadeInUp {
@@ -1120,8 +1122,8 @@
             <div class="story-quote" data-i18n="story.quote">「最好的珠寶，不是最昂貴的，而是乘載著真實故事的作品。」</div>
         </div>
         <div class="story-images">
-            <img src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80" alt="手工製作過程">
-            <img src="https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&q=80" alt="細節工藝">
+            <img src="assets/images/index/goldsmith.jpg" alt="手工製作過程">
+            <video src="assets/videos/index/3D.mp4" autoplay loop muted playsinline></video>
         </div>
     </section>
 
