@@ -642,6 +642,16 @@
                 </div>
             </div>
 
+            <div class="field-group">
+                <div class="field-label">電鍍效果</div>
+                <select id="plating">
+                    <option value="none">無（925 銀）</option>
+                    <option value="gold18k">18K 金</option>
+                    <option value="whitegold18k">18K 白K金</option>
+                    <option value="rosegold18k">18K 玫瑰金</option>
+                </select>
+            </div>
+
             <div class="divider"></div>
 
             <button id="generate-btn">▶ 開始生成</button>
@@ -975,6 +985,7 @@
                 const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
                 const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
                 const rotationMode = document.getElementById('rotation-mode').value;
+                const plating      = document.getElementById('plating').value;
 
                 // 調整 canvas 尺寸
                 canvas.width  = W;
@@ -1011,7 +1022,7 @@
                     );
                     statusText.textContent = `計算幾何體 ${i + 1} / ${pairs.length}`;
 
-                    const group = await buildPendant(p.fontA, p.letterA, p.fontB, p.letterB, pendantMM, i);
+                    const group = await buildPendant(p.fontA, p.letterA, p.fontB, p.letterB, pendantMM, i, plating);
                     groups.push(group);
                 }
 
@@ -1163,7 +1174,14 @@
 
         // ── 建立一組吊墜（主體 + Ring + Bail）────────────────────
         // pairIdx: 第幾對（0, 1, 2...），用於讓 bail 旋轉連續不跳動
-        async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0) {
+        const PLATING_COLORS = {
+            none:         0xC0C0C0,
+            gold18k:      0xFFD700,
+            whitegold18k: 0xE5E5E5,
+            rosegold18k:  0xC9A386
+        };
+
+        async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0, plating = 'none') {
             // 生成幾何體
             let geo1 = await createV3LetterGeometry(fontA, letterA, targetHeight, 18);
             let geo2 = await createV3LetterGeometry(fontB, letterB, targetHeight, 18);
@@ -1225,11 +1243,11 @@
             result.geometry.computeBoundingBox();
             const modelTopZ = result.geometry.boundingBox.max.z;
 
-            // 材質：925 銀，光澤
+            // 材質：依電鍍選項決定顏色，與 materials.js 數值一致
             const silverMat = new THREE.MeshStandardMaterial({
-                color:     0xD4D0CC,
+                color:     PLATING_COLORS[plating] ?? PLATING_COLORS.none,
                 metalness: 1.0,
-                roughness: 0.04,
+                roughness: 0.0,
                 envMapIntensity: 1.2
             });
             result.material = silverMat;
