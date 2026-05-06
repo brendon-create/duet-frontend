@@ -149,6 +149,12 @@
             transform: rotate(-45deg) translate(5px, -5px);
         }
 
+        /* 手機版：漢堡左側語言鈕顯示；nav-links 內的語言鈕隱藏 */
+        @media (max-width: 768px) {
+            #mobile-lang-btn { display: inline-block !important; }
+            .nav-links .lang-toggle-btn { display: none !important; }
+        }
+
         /* ===== 手機版樣式 ===== */
         @media (max-width: 768px) {
             /* 顯示漢堡選單 */
@@ -1085,6 +1091,7 @@
             <div class="logo">DUET</div>
             <div class="logo-subtitle">by BCAG</div>
         </div>
+        <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="display:none;background:transparent;border:1px solid rgba(44,42,38,0.25);color:#2C2A26;padding:5px 12px;border-radius:20px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:inherit;width:auto;" id="mobile-lang-btn">EN</button>
         <div class="hamburger" onclick="toggleMenu()">
             <span></span>
             <span></span>
