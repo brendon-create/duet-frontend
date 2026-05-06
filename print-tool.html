@@ -195,7 +195,7 @@ body {
 .cut.bl { bottom: -2mm; left: -2mm;    border-bottom-width: 0.4pt; border-left-width: 0.4pt;  }
 .cut.br { bottom: -2mm; right: -2mm;   border-bottom-width: 0.4pt; border-right-width: 0.4pt; }
 
-/* ── 右半文字區（左半永遠空白，文字只放右 90mm）── */
+/* ── 右半文字區（短文時文字只放右 90mm；長文時左半也會啟用）── */
 .text-panel {
     position: absolute;
     left: 96mm;    /* start at 90mm (left half) + 6mm padding */
@@ -213,6 +213,25 @@ body {
 .text-panel p {
     margin-bottom: 0.55em;
 }
+
+/* ── 左半文字區（長文時從左起始，僅在 wide 模式顯示）── */
+.text-panel-left {
+    position: absolute;
+    left: 6mm;
+    right: 96mm;   /* 90mm fold - 6mm padding = stops at 84mm from left */
+    top: 8mm;
+    bottom: 22mm;
+    font-family: 'Noto Serif TC', 'PingFang TC', serif;
+    font-size: 4.5mm;
+    line-height: 1.65;
+    color: #2e2a24;
+    text-align: justify;
+    overflow: hidden;
+    word-break: break-word;
+    display: none;
+}
+.text-panel-left p { margin-bottom: 0.55em; }
+.card-inner.wide .text-panel-left { display: block; }
 
 /* 簽名區：絕對定位，JS 控制顯示 */
 .card-sig {
@@ -429,14 +448,14 @@ body {
             <label>設計理念（貼入文字）</label>
             <textarea id="story-input" oninput="updateCards()" placeholder="在此貼入設計理念文字...
 
-溢出時文字會延伸至下一張卡片的右側面板。
-左半面板永遠留白。"></textarea>
+短文：只用右半面板。
+長文：自動從左半開始，延伸至右半（同一張卡）。"></textarea>
             <div class="char-count"><span id="char-count">0</span> 字</div>
         </div>
 
         <div class="layout-hint">
-            卡片右半放置文字，左半永遠留白<br>
-            溢出時延伸至下一張卡片右側，簽名線自動出現
+            短文：文字放右半面板<br>
+            長文：從左半開始，延伸至右半（同一張卡），簽名線自動出現
         </div>
 
         <button class="print-btn" onclick="window.print()">列印 / 匯出 PDF</button>
@@ -470,6 +489,7 @@ body {
             <div class="print-sheet" id="preview-sheet">
                 <!-- 卡片 1 -->
                 <div class="card-inner card-1">
+                    <div class="text-panel-left" id="preview-left-1"></div>
                     <div class="fold-guide"></div>
                     <div class="cut tl"></div>
                     <div class="cut tr"></div>
@@ -541,39 +561,46 @@ function updateCards() {
 
     const allHTML = buildParagraphsHTML(text);
 
+    // Reset wide mode
+    document.querySelectorAll('.card-inner').forEach(c => c.classList.remove('wide'));
+
     // Clear all panels
-    ['preview-right-1','preview-right-2','print-right-1','print-right-2'].forEach(id => {
+    ['preview-left-1','preview-right-1','preview-right-2'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '';
     });
-    ['preview-sig-1','preview-sig-2','print-sig-1','print-sig-2'].forEach(id => {
+    ['preview-sig-1','preview-sig-2'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
 
     if (!allHTML) return;
 
-    const panel1 = document.getElementById('preview-right-1');
-    panel1.innerHTML = allHTML;
+    const panelRight = document.getElementById('preview-right-1');
+    panelRight.innerHTML = allHTML;
 
-    if (panel1.scrollHeight <= panel1.clientHeight + 2) {
-        // Fits in card-1 right panel
-        if (document.getElementById('print-right-1')) document.getElementById('print-right-1').innerHTML = allHTML;
-        ['preview-sig-1','print-sig-1'].forEach(id => {
-            const el = document.getElementById(id); if (el) el.style.display = '';
-        });
+    if (panelRight.scrollHeight <= panelRight.clientHeight + 2) {
+        // 短文：只放右半面板
+        document.getElementById('preview-sig-1').style.display = '';
     } else {
-        // Need to split across two cards
+        // 長文：啟用 wide 模式，從左半開始
+        const card1 = document.querySelector('.card-inner.card-1');
+        card1.classList.add('wide');
+
+        const panelLeft = document.getElementById('preview-left-1');
         const paras = text.trim().split(/\n+/).filter(p => p.trim());
+
+        // 量測左半可放幾段
         let lo = 0, hi = paras.length;
         while (lo < hi - 1) {
             const mid = Math.floor((lo + hi) / 2);
             const testHTML = paras.slice(0, mid).map(p =>
                 `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
             ).join('');
-            panel1.innerHTML = testHTML;
-            if (panel1.scrollHeight <= panel1.clientHeight + 2) lo = mid; else hi = mid;
+            panelLeft.innerHTML = testHTML;
+            if (panelLeft.scrollHeight <= panelLeft.clientHeight + 2) lo = mid; else hi = mid;
         }
+
         const part1 = paras.slice(0, lo).map(p =>
             `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
         ).join('');
@@ -581,15 +608,11 @@ function updateCards() {
             `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
         ).join('');
 
-        panel1.innerHTML = part1;
-        const panel2 = document.getElementById('preview-right-2');
-        if (panel2) panel2.innerHTML = part2;
-        if (document.getElementById('print-right-1')) document.getElementById('print-right-1').innerHTML = part1;
-        if (document.getElementById('print-right-2')) document.getElementById('print-right-2').innerHTML = part2;
+        panelLeft.innerHTML = part1;
+        panelRight.innerHTML = part2;
 
-        ['preview-sig-2','print-sig-2'].forEach(id => {
-            const el = document.getElementById(id); if (el) el.style.display = '';
-        });
+        // 簽名線放右半底部
+        document.getElementById('preview-sig-1').style.display = '';
     }
 }
 
