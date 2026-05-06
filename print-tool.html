@@ -581,7 +581,7 @@ function updateCards() {
 
     if (panelRight.scrollHeight <= panelRight.clientHeight + 2) {
         // 短文：只放右半面板
-        document.getElementById('preview-sig-1').style.display = '';
+        document.getElementById('preview-sig-1').style.display = 'block';
     } else {
         // 長文：啟用 wide 模式，從左半開始
         const card1 = document.querySelector('.card-inner.card-1');
@@ -612,7 +612,7 @@ function updateCards() {
         panelRight.innerHTML = part2;
 
         // 簽名線放右半底部
-        document.getElementById('preview-sig-1').style.display = '';
+        document.getElementById('preview-sig-1').style.display = 'block';
     }
 }
 
