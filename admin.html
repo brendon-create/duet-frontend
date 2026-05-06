@@ -3143,15 +3143,24 @@
 
         function openStickerTool() {
             localStorage.setItem('stickerOrderIds', JSON.stringify(selectedOrders));
-            // 傳遞訂單資料供貼紙工具使用
             const ordersForSticker = selectedOrders.map(id => {
                 const o = (allOrders || []).find(x => x.orderId === id);
-                if (!o) return { orderId: id, items: [] };
+                if (!o) return { orderId: id, customerName: '', items: [] };
+
+                const userInfo = o.userInfo || {};
+                const rawName = userInfo.name || userInfo.buyerName || '';
+                let maskedName = rawName;
+                if (rawName.length >= 2) {
+                    maskedName = rawName.slice(0, -2) + '＊' + rawName.slice(-1);
+                }
+
                 return {
                     orderId: o.orderId,
+                    customerName: maskedName,
                     items: (o.items || []).map(i => ({
                         letter1: i.letter1, letter2: i.letter2,
-                        material: i.material, plating: i.plating, size: i.size, finish: i.finish
+                        material: i.material, plating: i.plating, size: i.size, finish: i.finish,
+                        heroView: (i.threeViews || []).find(v => v.name === 'hero_view') || null
                     }))
                 };
             });

@@ -2428,7 +2428,8 @@
 
         // 只更新材質，不重建模型（即時切換！）
         function updateMaterial() {
-            if (!mainMesh) return;
+            const meshToUpdate = mainMesh || window.mainMesh;
+            if (!meshToUpdate) return;
 
             const materialType = document.getElementById('material').value;
             const finish = document.getElementById('finish').value;
@@ -2436,7 +2437,7 @@
             const newMaterial = getMaterial(materialType, finish, plating);
 
             // 更換主體和圓環的材質
-            mainMesh.material = newMaterial;
+            meshToUpdate.material = newMaterial;
             if (ringMesh) {
                 ringMesh.material = newMaterial.clone();
             }
@@ -4966,13 +4967,14 @@
             document.getElementById('continue-shopping').addEventListener('click', closeCart);
             document.getElementById('checkout').addEventListener('click', checkout);
 
-            // 材質切換：選到貴金屬時彈說明
+            // 材質切換：選到貴金屬時彈說明；更新電鍍選項後再同步材質
             document.getElementById('material').addEventListener('change', function () {
                 if (this.value === 'precious_metal') {
                     document.getElementById('precious-metal-notice-modal').style.display = 'flex';
                 }
                 updatePlatingForMaterial(this.value);
                 updatePriceDisplay();
+                updateMaterial();
             });
 
             function updatePlatingForMaterial(material) {
