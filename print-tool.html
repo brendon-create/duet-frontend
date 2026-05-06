@@ -6,7 +6,7 @@
 <title>設計理念列印工具 | DUET</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Caveat:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="assets/js/config.js"></script>
 <style>
 /* ── 全域 reset ── */
@@ -195,48 +195,51 @@ body {
 .cut.bl { bottom: -2mm; left: -2mm;    border-bottom-width: 0.4pt; border-left-width: 0.4pt;  }
 .cut.br { bottom: -2mm; right: -2mm;   border-bottom-width: 0.4pt; border-right-width: 0.4pt; }
 
-/* ── 文字區（CSS 雙欄，自動從左欄流入右欄）──
-   總文字寬：180-6-6 = 168mm
-   欄間距（折線兩側各 6mm）：12mm
-   每欄寬：(168-12)/2 = 78mm
-   容器高：110-8-6 = 96mm
-   簽名佔：17mm(margin)+1mm(線) = 18mm
-   文字可用：96-18 = 78mm → 行高 8.3mm → 9.4 行 → 精準 9 行
-*/
-.card-text {
+/* ── 右半文字區（短文時文字只放右 90mm；長文時左半也會啟用）── */
+.text-panel {
     position: absolute;
-    left: 6mm;
+    left: 96mm;    /* start at 90mm (left half) + 6mm padding */
     right: 6mm;
     top: 8mm;
-    bottom: 6mm;
-    columns: 2;
-    column-gap: 12mm;
-    column-fill: auto;
-    font-family: 'Ma Shan Zheng', 'Caveat', 'Noto Serif TC', serif;
+    bottom: 22mm;  /* leave room for signature */
+    font-family: 'Noto Serif TC', 'PingFang TC', serif;
     font-size: 4.5mm;
     line-height: 1.65;
     color: #2e2a24;
     text-align: justify;
     overflow: hidden;
-    orphans: 2;
-    widows: 2;
+    word-break: break-word;
 }
-
-/* 段落間距 */
-.card-text p {
+.text-panel p {
     margin-bottom: 0.55em;
-    break-inside: avoid;
 }
-.card-text p:last-of-type { margin-bottom: 0; }
 
-/* 簽名區：在文字流末端，右對齊紅線
-   margin-top: 17mm = 2 行視覺距離（行高 8.3mm × 2 ≈ 16.6mm）
-*/
-.sig-block {
-    break-inside: avoid;
-    break-before: avoid;
-    margin-top: 17mm;
+/* ── 左半文字區（長文時從左起始，僅在 wide 模式顯示）── */
+.text-panel-left {
+    position: absolute;
+    left: 6mm;
+    right: 96mm;   /* 90mm fold - 6mm padding = stops at 84mm from left */
+    top: 8mm;
+    bottom: 22mm;
+    font-family: 'Noto Serif TC', 'PingFang TC', serif;
+    font-size: 4.5mm;
+    line-height: 1.65;
+    color: #2e2a24;
+    text-align: justify;
+    overflow: hidden;
+    word-break: break-word;
+    display: none;
+}
+.text-panel-left p { margin-bottom: 0.55em; }
+.card-inner.wide .text-panel-left { display: block; }
+
+/* 簽名區：絕對定位，JS 控制顯示 */
+.card-sig {
+    position: absolute;
+    right: 6mm;
+    bottom: 8mm;
     text-align: right;
+    display: none;  /* hidden by default, shown by JS */
 }
 .sig-line {
     display: inline-block;
@@ -250,43 +253,20 @@ body {
 ──────────────────────────────────────────── */
 @media print {
     @page { size: 210mm 297mm; margin: 0; }
-
-    /* 螢幕 UI 全部隱藏 */
-    .app-header,
-    .app-layout { display: none !important; }
-
-    /* 列印時 print-sheet 以原始尺寸輸出 */
-    #print-container {
-        display: block !important;
-        position: fixed;
-        top: 0; left: 0;
-        width: 210mm;
-        height: 297mm;
-    }
-
-    .print-sheet {
-        transform: none !important;
-        width: 210mm;
-        height: 297mm;
-    }
-
-    /* 折疊虛線列印時隱藏 */
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .app-header { display: none !important; }
+    .app-layout { display: block !important; height: auto !important; }
+    .input-panel { display: none !important; }
+    .preview-panel { overflow: visible !important; padding: 0 !important; background: white !important; display: block !important; align-items: flex-start !important; }
+    .preview-label { display: none !important; }
+    #scale-wrap { transform: none !important; margin: 0 !important; }
+    .print-sheet { width: 210mm !important; height: 297mm !important; }
     .fold-guide { display: none !important; }
-
-    /* 螢幕預覽縮放包裝：取消 transform */
-    #scale-wrap { transform: none !important; }
-
-    /* 批次列印頁 */
-    .batch-page {
-        width: 210mm;
-        height: 297mm;
-        position: relative;
-        background: white;
-        page-break-after: always;
-    }
+    #batch-container { display: none !important; }
+    body.batch-active #batch-container { display: block !important; }
+    body.batch-active #scale-wrap { display: none !important; }
+    .batch-page { width: 210mm; height: 297mm; position: relative; background: white; page-break-after: always; }
     .batch-page:last-child { page-break-after: auto; }
-    #batch-container { display: block !important; }
-    #print-container { display: none !important; }
 }
 
 /* ── 批次模式 UI ── */
@@ -400,7 +380,7 @@ body {
     padding-bottom: 2mm;
 }
 .story-card .story-text {
-    font-family: 'Ma Shan Zheng', 'Noto Serif TC', serif;
+    font-family: 'Noto Serif TC', 'PingFang TC', serif;
     font-size: 3.8mm;
     line-height: 1.65;
     color: #2e2a24;
@@ -466,17 +446,16 @@ body {
 
         <div>
             <label>設計理念（貼入文字）</label>
-            <textarea id="story-input" placeholder="在此貼入設計理念文字...
+            <textarea id="story-input" oninput="updateCards()" placeholder="在此貼入設計理念文字...
 
-文字會自動從左欄填滿後流入右欄。
-左欄為打開卡片後正面（封面內側），
-右欄為背面內側。"></textarea>
+短文：只用右半面板。
+長文：自動從左半開始，延伸至右半（同一張卡）。"></textarea>
             <div class="char-count"><span id="char-count">0</span> 字</div>
         </div>
 
         <div class="layout-hint">
-            📄 雙欄排版 · 左欄優先，自動流入右欄<br>
-            ✍️ 簽名線自動出現在文字末尾
+            短文：文字放右半面板<br>
+            長文：從左半開始，延伸至右半（同一張卡），簽名線自動出現
         </div>
 
         <button class="print-btn" onclick="window.print()">列印 / 匯出 PDF</button>
@@ -510,12 +489,14 @@ body {
             <div class="print-sheet" id="preview-sheet">
                 <!-- 卡片 1 -->
                 <div class="card-inner card-1">
+                    <div class="text-panel-left" id="preview-left-1"></div>
                     <div class="fold-guide"></div>
                     <div class="cut tl"></div>
                     <div class="cut tr"></div>
                     <div class="cut bl"></div>
                     <div class="cut br"></div>
-                    <div class="card-text" id="preview-text-1"></div>
+                    <div class="text-panel" id="preview-right-1"></div>
+                    <div class="card-sig" id="preview-sig-1"><span class="sig-line"></span></div>
                 </div>
                 <!-- 卡片 2 -->
                 <div class="card-inner card-2">
@@ -524,32 +505,13 @@ body {
                     <div class="cut tr"></div>
                     <div class="cut bl"></div>
                     <div class="cut br"></div>
-                    <div class="card-text" id="preview-text-2"></div>
+                    <div class="text-panel" id="preview-right-2"></div>
+                    <div class="card-sig" id="preview-sig-2"><span class="sig-line"></span></div>
                 </div>
             </div>
         </div>
     </div>
 
-</div>
-
-<!-- 列印專用容器（螢幕隱藏，列印時顯示） -->
-<div id="print-container" style="display:none;">
-    <div class="print-sheet">
-        <div class="card-inner card-1">
-            <div class="cut tl"></div>
-            <div class="cut tr"></div>
-            <div class="cut bl"></div>
-            <div class="cut br"></div>
-            <div class="card-text" id="print-text-1"></div>
-        </div>
-        <div class="card-inner card-2">
-            <div class="cut tl"></div>
-            <div class="cut tr"></div>
-            <div class="cut bl"></div>
-            <div class="cut br"></div>
-            <div class="card-text" id="print-text-2"></div>
-        </div>
-    </div>
 </div>
 
 <!-- 批次列印容器（螢幕隱藏，列印時顯示） -->
@@ -583,28 +545,75 @@ async function importOrder() {
     }
 }
 
-/* 將純文字轉為 HTML（段落 + 簽名線） */
-function buildCardHTML(text) {
+/* 將純文字轉為段落 HTML */
+function buildParagraphsHTML(text) {
     const trimmed = text.trim();
     if (!trimmed) return '';
-
-    const paras = trimmed.split(/\n+/).filter(p => p.trim());
-    const parasHTML = paras.map(p =>
+    return trimmed.split(/\n+/).filter(p => p.trim()).map(p =>
         `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
     ).join('');
-
-    const sigHTML = `<div class="sig-block"><span class="sig-line"></span></div>`;
-    return parasHTML + sigHTML;
 }
 
 /* 更新所有卡片文字 */
 function updateCards() {
-    const html = buildCardHTML(storyInput.value);
-    charCountEl.textContent = storyInput.value.length;
-    ['preview-text-1', 'preview-text-2', 'print-text-1', 'print-text-2'].forEach(id => {
+    const text = storyInput.value;
+    charCountEl.textContent = text.length;
+
+    const allHTML = buildParagraphsHTML(text);
+
+    // Reset wide mode
+    document.querySelectorAll('.card-inner').forEach(c => c.classList.remove('wide'));
+
+    // Clear all panels
+    ['preview-left-1','preview-right-1','preview-right-2'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = html;
+        if (el) el.innerHTML = '';
     });
+    ['preview-sig-1','preview-sig-2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    if (!allHTML) return;
+
+    const panelRight = document.getElementById('preview-right-1');
+    panelRight.innerHTML = allHTML;
+
+    if (panelRight.scrollHeight <= panelRight.clientHeight + 2) {
+        // 短文：只放右半面板
+        document.getElementById('preview-sig-1').style.display = 'block';
+    } else {
+        // 長文：啟用 wide 模式，從左半開始
+        const card1 = document.querySelector('.card-inner.card-1');
+        card1.classList.add('wide');
+
+        const panelLeft = document.getElementById('preview-left-1');
+        const paras = text.trim().split(/\n+/).filter(p => p.trim());
+
+        // 量測左半可放幾段
+        let lo = 0, hi = paras.length;
+        while (lo < hi - 1) {
+            const mid = Math.floor((lo + hi) / 2);
+            const testHTML = paras.slice(0, mid).map(p =>
+                `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
+            ).join('');
+            panelLeft.innerHTML = testHTML;
+            if (panelLeft.scrollHeight <= panelLeft.clientHeight + 2) lo = mid; else hi = mid;
+        }
+
+        const part1 = paras.slice(0, lo).map(p =>
+            `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
+        ).join('');
+        const part2 = paras.slice(lo).map(p =>
+            `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
+        ).join('');
+
+        panelLeft.innerHTML = part1;
+        panelRight.innerHTML = part2;
+
+        // 簽名線放右半底部
+        document.getElementById('preview-sig-1').style.display = 'block';
+    }
 }
 
 /* 縮放螢幕預覽以符合可用寬度 */
@@ -620,22 +629,22 @@ function scalePreview() {
     wrap.style.marginBottom = `${sheetPxH * (scale - 1)}px`;
 }
 
-/* 列印前：顯示列印容器 */
 let _batchMode = false;
 window.onbeforeprint = function () {
-    if (_batchMode) return; // 批次模式：batch-container 已顯示
-    document.getElementById('print-container').style.display = 'block';
+    if (_batchMode) return;
+    // No action needed — CSS @media print handles preview sheet directly
 };
 
-/* 列印後：隱藏列印容器，重置輸入欄位 */
+/* 列印後：重置輸入欄位 */
 window.onafterprint = function () {
     if (_batchMode) {
+        document.body.classList.remove('batch-active');
         document.getElementById('batch-container').innerHTML = '';
         _batchMode = false;
         return;
     }
-    document.getElementById('print-container').style.display = 'none';
     storyInput.value = '';
+    document.getElementById('order-id-input').value = '';
     updateCards();
 };
 
@@ -705,6 +714,7 @@ async function batchImport() {
     }
 
     _batchMode = true;
+    document.body.classList.add('batch-active');
     setTimeout(() => window.print(), 200);
 }
 

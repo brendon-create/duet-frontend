@@ -123,6 +123,17 @@ window.translations = {
         'studio.plating.rose18k':  '18K 玫瑰金',
         'studio.finish.glossy':    '亮面',
         'studio.finish.matte':     '霧面',
+        'studio.cleanup.label':    '清理作品分離部件',
+        'studio.cleanup.done':     '分離部件已清理',
+        'studio.cleanup.cleaning': '正在清理',
+        'studio.price':            '價格',
+        'studio.ai.restart':       '重新開始 AI 設計諮詢',
+        'studio.save.slot1':       '儲存到版本 1',
+        'studio.save.slot2':       '儲存到版本 2',
+        'studio.cart.add':         '加入購物車',
+        'studio.cart.view':        '查看購物車',
+        'studio.slot.1':           '版本 1',
+        'studio.slot.2':           '版本 2',
 
         // ── Admin 後台 ──
         'admin.tab.orders':   '訂單管理',
@@ -147,17 +158,17 @@ window.translations = {
         'nav.lang':    '中文',
 
         // ── Hero ──
-        'hero.subtitle': "BCAG's New Online Custom Jewelry Series — DUET",
+        'hero.subtitle': "BCAG's New Online Custom Jewelry Collection — DUET",
         'hero.title':    'Where every bond<br>begins to <em>intertwine</em>',
-        'hero.body':     'The best relationships let each person remain fully themselves — while making life richer, deeper, and more alive.<br>DUET captures this in two letters. Through a warm, guided consultation, we help you craft a pendant that carries your story, and no one else\'s.',
+        'hero.body':     'The best relationships let each person stay true to who they are — while making life richer, deeper, and more alive.<br>DUET captures this in two letters. Through a warm, guided consultation, we help you craft a pendant that carries your story, and no one else\'s.',
         'hero.tagline':  '"Your bond, woven forever."',
         'hero.btn.start':'Begin Your Story →',
         'hero.btn.more': 'Explore ↓',
         'hero.drag':     '← Drag to rotate →',
 
         // ── Brand Story ──
-        'story.title': 'Where Technology Meets<br>Artisan Warmth',
-        'story.body':  'For over three decades, BCAG has crafted countless pieces for more than 300 private clients. We have always believed that every piece of jewelry exists to tell a story. Now, with DUET, online custom jewelry is no longer about choosing from existing designs or laser engraving — it begins with your emotions and memories, weaving them through precision digital craft and traditional goldsmithing into a pendant shaped by the two letters that mean the most to you.',
+        'story.title': 'Where Technology Meets<br>the Human Touch',
+        'story.body':  'For over three decades, BCAG has crafted countless pieces for more than 300 discerning clients. We have always believed that every piece of jewelry exists to tell a story. Now, with DUET, online custom jewelry is no longer about choosing from existing designs or laser engraving — it begins with your emotions and memories, transformed by digital precision and traditional goldsmithing into a pendant shaped by the two letters that mean the most to you.',
         'story.quote': '"The finest jewelry is not the most expensive — it is the piece that carries a true story."',
 
         // ── Process ──
@@ -166,14 +177,14 @@ window.translations = {
         'process.lead':     'Five steps to bring your piece to life',
         'process.s1.title': 'Share Your Story',
         'process.s1.body':  'During the consultation, share the meaning behind this piece — a commemoration, a thank-you, or a promise.',
-        'process.s2.title': 'Explore Typeface Combinations',
-        'process.s2.body':  'Based on the feeling of your story, we recommend the most fitting typeface styles. Or freely explore over a hundred curated fonts.',
+        'process.s2.title': 'Explore Font Pairings',
+        'process.s2.body':  'Based on the feeling of your story, we recommend the most fitting font styles. Or freely explore over a hundred curated fonts.',
         'process.s3.title': 'Real-Time 3D Preview',
         'process.s3.body':  'View your design from every angle in 360°, fine-tune the details, until it looks exactly the way you envisioned.',
         'process.s4.title': 'Confirm & Pay',
         'process.s4.body':  'Once details are finalized, complete payment through our secure checkout. If needed, our team will confirm with you again before production begins.',
         'process.s5.title': 'Receive Your Piece',
-        'process.s5.body':  'In approximately 7–14 business days, you will receive your beautifully packaged piece along with a personalized design story card.',
+        'process.s5.body':  'In approximately 7–14 business days, you will receive your beautifully packaged piece along with a personalized design concept card.',
 
         // ── Gallery ──
         'gallery.subtitle': 'Gallery',
@@ -185,11 +196,11 @@ window.translations = {
         'craft.i1.title': 'Intuitive Interface',
         'craft.i1.body':  'Our thoughtfully designed studio makes it effortless to explore millions of possible combinations with just a few clicks.',
         'craft.i2.title': 'Personalized Design Service',
-        'craft.i2.body':  'Dedicated design consultation, typeface recommendations, and fully automated 3D modeling — so you can create your ideal piece with ease.',
+        'craft.i2.body':  'Dedicated design consultation, font recommendations, and fully automated 3D modeling — so you can create your ideal piece with ease.',
         'craft.i3.title': 'Traditional Craftsmanship',
-        'craft.i3.body':  'Executed by expert jewelry artisans whose skilled hands ensure that what you see in the preview is exactly what you receive.',
-        'craft.i4.title': 'Your Design Story Card',
-        'craft.i4.body':  'We write a design story drawn from your words. You review and confirm it, so the sentiment is communicated exactly as you intend.',
+        'craft.i3.body':  'Hand-finished by master jewelers who ensure that what you see in the preview is exactly what you receive.',
+        'craft.i4.title': 'Your Design Concept Card',
+        'craft.i4.body':  'We write a design story drawn from your words. You review and confirm it, so the sentiment comes through exactly as you mean it.',
 
         // ── Testimonials ──
         'testimonials.subtitle': 'Customer Stories',
@@ -202,11 +213,11 @@ window.translations = {
         'faq.q2': 'What materials are available?',
         'faq.a2': 'We currently offer 925 sterling silver and brass, with options for no plating, 18K gold, or 18K white gold plating. For other precious metals, submit your inquiry after completing your design and our team will contact you with a quote. All materials are quality certified and come with a certificate of authenticity.',
         'faq.q3': "What if I'm not satisfied with the design?",
-        'faq.a3': 'You may revise your design unlimited times before payment. After payment, if there are clear concerns (such as pendant position drift or disconnected components), we will confirm with you before production. If there is a quality issue with the finished piece, we offer a 30-day unconditional exchange or refund. (As each piece is produced exactly to the 3D preview you approved, dissatisfaction with the design itself is not covered — please review carefully before ordering.)',
+        'faq.a3': 'You may revise your design unlimited times before payment. After payment, if there are clear concerns (such as misaligned bail or disconnected components), we will confirm with you before production. If there is a quality issue with the finished piece, we offer a 30-day unconditional exchange or refund. (As each piece is produced exactly to the 3D preview you approved, dissatisfaction with the design itself is not covered — please review carefully before ordering.)',
         'faq.q4': 'Where is my conversation stored? Is my privacy protected?',
         'faq.a4': 'Your conversation is used solely for design recommendations. It is end-to-end encrypted and stored in a database certified to SOC2 Type II, HIPAA, and ISO 27001 standards. It will never be shared or used for any other purpose without your consent. Your story belongs only to you.',
         'faq.q5': 'Can I order with just one letter?',
-        'faq.a5': `DUET's core is "intertwining," so all designs feature two letters. However, you can choose the same letter twice (e.g., A × A) for a symmetrical aesthetic, or choose "I" as one of the letters for a more minimal look.`,
+        'faq.a5': `At the heart of DUET is the concept of intertwining, so all designs feature two letters. However, you can choose the same letter twice (e.g., A × A) for a symmetrical aesthetic, or choose "I" as one of the letters for a more minimal look.`,
         'faq.q6': 'What is the return policy?',
         'faq.a6': 'If there is a production quality issue (such as surface defects or missing components), please contact us within 30 days of receiving your piece and we will provide a free remake or refund. Because each piece is custom-produced to your exact specifications, subjective design changes are not eligible for return. Please review the 3D preview carefully before ordering.',
         'faq.q7': 'How can I contact customer support?',
@@ -219,7 +230,7 @@ window.translations = {
         'cta.btn':      'Start Designing Now →',
 
         // ── Footer ──
-        'footer.brand.body': 'Forging your story into a bond that lasts. Precision digital craft meets traditional goldsmithing to create a piece that is truly, entirely yours.',
+        'footer.brand.body': 'Forging your story into a bond that lasts. Digital precision meets traditional goldsmithing to create a piece that is truly, entirely yours.',
         'footer.services':   'Services',
         'footer.explore':    'Explore',
         'footer.contact':    'Contact',
@@ -254,6 +265,17 @@ window.translations = {
         'studio.plating.rose18k':  '18K Rose Gold',
         'studio.finish.glossy':    'Glossy',
         'studio.finish.matte':     'Matte',
+        'studio.cleanup.label':    'Clean Up Detached Parts',
+        'studio.cleanup.done':     'Detached Parts Cleaned',
+        'studio.cleanup.cleaning': 'Cleaning Up',
+        'studio.price':            'Price',
+        'studio.ai.restart':       'Restart AI Consultation',
+        'studio.save.slot1':       'Save to Slot 1',
+        'studio.save.slot2':       'Save to Slot 2',
+        'studio.cart.add':         'Add to Cart',
+        'studio.cart.view':        'View Cart',
+        'studio.slot.1':           'Slot 1',
+        'studio.slot.2':           'Slot 2',
 
         // ── Admin ──
         'admin.tab.orders':   'Orders',
@@ -318,6 +340,14 @@ window.initLanguage = function() {
     const saved = localStorage.getItem('duet_language') || 'zh';
     window.applyLanguage(saved);
     return saved;
+};
+
+/**
+ * 取得單一翻譯字串（供 JS 動態設定文字用）
+ */
+window.t = function(key) {
+    const lang = localStorage.getItem('duet_language') || 'zh';
+    return window.translations[lang]?.[key] ?? window.translations.zh[key] ?? key;
 };
 
 /**

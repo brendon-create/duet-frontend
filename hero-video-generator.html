@@ -515,7 +515,7 @@
             <div class="field-group">
                 <div class="field-label">每對轉場秒數</div>
                 <div class="range-row">
-                    <input type="range" id="sec-per-pair" min="1" max="10" step="0.5" value="5">
+                    <input type="range" id="sec-per-pair" min="1" max="20" step="0.5" value="5">
                     <span class="range-value" id="sec-value">5s</span>
                 </div>
             </div>
@@ -640,6 +640,24 @@
                     <input type="range" id="pendant-size" min="6" max="12" step="1" value="12">
                     <span class="range-value" id="size-value">12mm</span>
                 </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">打光強度</div>
+                <div class="range-row">
+                    <input type="range" id="light-intensity" min="0.3" max="2.5" step="0.05" value="1.0">
+                    <span class="range-value" id="light-intensity-value">1.00×</span>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">電鍍效果</div>
+                <select id="plating">
+                    <option value="none">無（925 銀）</option>
+                    <option value="gold18k">18K 金</option>
+                    <option value="whitegold18k">18K 白K金</option>
+                    <option value="rosegold18k">18K 玫瑰金</option>
+                </select>
             </div>
 
             <div class="divider"></div>
@@ -820,6 +838,9 @@
         document.getElementById('pendant-size').addEventListener('input', (e) => {
             document.getElementById('size-value').textContent = e.target.value + 'mm';
         });
+        document.getElementById('light-intensity').addEventListener('input', (e) => {
+            document.getElementById('light-intensity-value').textContent = parseFloat(e.target.value).toFixed(2) + '×';
+        });
         document.getElementById('vertical-offset').addEventListener('input', (e) => {
             document.getElementById('voffset-value').textContent = e.target.value;
         });
@@ -975,6 +996,7 @@
                 const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
                 const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
                 const rotationMode = document.getElementById('rotation-mode').value;
+                const plating      = document.getElementById('plating').value;
 
                 // 調整 canvas 尺寸
                 canvas.width  = W;
@@ -1011,7 +1033,7 @@
                     );
                     statusText.textContent = `計算幾何體 ${i + 1} / ${pairs.length}`;
 
-                    const group = await buildPendant(p.fontA, p.letterA, p.fontB, p.letterB, pendantMM, i);
+                    const group = await buildPendant(p.fontA, p.letterA, p.fontB, p.letterB, pendantMM, i, plating);
                     groups.push(group);
                 }
 
@@ -1143,17 +1165,18 @@
             renderer.outputColorSpace    = THREE.SRGBColorSpace;
 
             // 燈光（HDR 載入前的保底光源；HDR 到位後會疊加）
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const lightMult = parseFloat(document.getElementById('light-intensity')?.value || '1.0');
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8 * lightMult));
 
-            const key = new THREE.DirectionalLight(0xFFF5E8, 2.8);
+            const key = new THREE.DirectionalLight(0xFFF5E8, 2.8 * lightMult);
             key.position.set(20, -15, 30);
             scene.add(key);
 
-            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8);
+            const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8 * lightMult);
             fill.position.set(-20, 15, 10);
             scene.add(fill);
 
-            const rim = new THREE.DirectionalLight(0xffffff, 0.5);
+            const rim = new THREE.DirectionalLight(0xffffff, 0.5 * lightMult);
             rim.position.set(0, 30, -10);
             scene.add(rim);
 
@@ -1163,7 +1186,14 @@
 
         // ── 建立一組吊墜（主體 + Ring + Bail）────────────────────
         // pairIdx: 第幾對（0, 1, 2...），用於讓 bail 旋轉連續不跳動
-        async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0) {
+        const PLATING_COLORS = {
+            none:         0xC0C0C0,
+            gold18k:      0xFFD700,
+            whitegold18k: 0xE5E5E5,
+            rosegold18k:  0xC9A386
+        };
+
+        async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0, plating = 'none') {
             // 生成幾何體
             let geo1 = await createV3LetterGeometry(fontA, letterA, targetHeight, 18);
             let geo2 = await createV3LetterGeometry(fontB, letterB, targetHeight, 18);
@@ -1225,11 +1255,11 @@
             result.geometry.computeBoundingBox();
             const modelTopZ = result.geometry.boundingBox.max.z;
 
-            // 材質：925 銀，光澤
+            // 材質：依電鍍選項決定顏色，與 materials.js 數值一致
             const silverMat = new THREE.MeshStandardMaterial({
-                color:     0xD4D0CC,
+                color:     PLATING_COLORS[plating] ?? PLATING_COLORS.none,
                 metalness: 1.0,
-                roughness: 0.04,
+                roughness: 0.0,
                 envMapIntensity: 1.2
             });
             result.material = silverMat;
@@ -1336,10 +1366,12 @@
                 let frame = 0;
 
                 // 初始化：放入第一個 group
+                // carousel 模式：第一幀從透明開始淡入
+                // full360 模式：直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
                 if (pendantGroup) scene.remove(pendantGroup);
                 pendantGroup = groups[0];
                 scene.add(pendantGroup);
-                setGroupOpacity(pendantGroup, 0);
+                setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
 
                 function tick() {
                     if (frame >= totalFr) {
@@ -1350,7 +1382,7 @@
 
                     const pairIdx  = Math.floor(frame / pairFr);
                     const pairFrm  = frame % pairFr;
-                    const t        = pairFrm / pairFr; // 0 → 1
+                    const t        = pairFrm / pairFr; // 0 → 1（用於淡入淡出計算）
 
                     // 切換 group
                     if (pairFrm === 0) {
@@ -1362,23 +1394,36 @@
                     // 旋轉：
                     //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
                     //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
-                    // letterWrapper 內建 pairIdx * π/2 補償角，確保任何模式下字母正面都對準鏡頭
+                    //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於旋轉 360° = 0°，
+                    //   使影片頭尾旋轉角度完全相同，browser loop 無縫
                     const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
                     if (mode === 'full360') {
-                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t * Math.PI * 2) - horizCorrAngle;
+                        const t360 = pairFrm / Math.max(pairFr - 1, 1);
+                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t360 * Math.PI * 2) - horizCorrAngle;
                     } else {
                         pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
                     }
                     pendantGroup.position.z  = vertOffset;
                     pendantGroup.position.x  = horizOffset;
 
-                    // 透明度：淡入（開頭）→ 持續 → 淡出（結尾，最後一對除外）
+                    // 透明度：
+                    // carousel：影片開頭淡入、組間淡出淡入（最後一組不淡出）
+                    // full360：組間才淡出淡入（第一組直接全亮，確保 loop 無縫）
                     const isLastPair = pairIdx >= groups.length - 1;
                     let opacity = 1.0;
-                    if (pairFrm < fadeFr) {
-                        opacity = pairFrm / fadeFr; // 淡入
-                    } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                        opacity = (pairFr - pairFrm) / fadeFr; // 淡出
+                    if (mode === 'carousel') {
+                        if (pairFrm < fadeFr) {
+                            opacity = pairFrm / fadeFr;
+                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                            opacity = (pairFr - pairFrm) / fadeFr;
+                        }
+                    } else {
+                        // full360：只在多組切換之間過場，第一組開頭不淡入
+                        if (pairFrm < fadeFr && pairIdx > 0) {
+                            opacity = pairFrm / fadeFr;
+                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                            opacity = (pairFr - pairFrm) / fadeFr;
+                        }
                     }
                     setGroupOpacity(pendantGroup, opacity);
 
