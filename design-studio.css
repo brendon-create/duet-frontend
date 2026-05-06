@@ -52,6 +52,7 @@
         }
 
         .panel-header {
+            position: relative;
             text-align: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
@@ -274,6 +275,7 @@
             top: 20px;
             right: 20px;
             display: flex;
+            align-items: center;
             gap: 12px;
             z-index: 100;
         }
@@ -1176,6 +1178,7 @@
                 right: 10px;
                 width: auto;
                 flex-direction: row;
+                align-items: center;
                 gap: 8px;
                 justify-content: stretch;
             }

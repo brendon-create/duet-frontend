@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>貼紙列印工具 — DUET</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif TC', serif;
+    background: #111;
+    color: #e0e0e0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── 左側設定面板 ── */
+  #panel {
+    width: 280px;
+    flex-shrink: 0;
+    background: #1a1a1a;
+    border-right: 1px solid #333;
+    padding: 20px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #panel h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #d4af37;
+    margin-bottom: 18px;
+    letter-spacing: 0.05em;
+  }
+
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: #888;
+    text-transform: uppercase;
+    margin: 14px 0 8px 0;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 12px;
+  }
+  .section-title:first-of-type { border-top: none; margin-top: 0; }
+
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 4px;
+  }
+  .field input[type="number"] {
+    width: 100%;
+    padding: 7px 10px;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .field input[type="number"]:focus {
+    outline: none;
+    border-color: #d4af37;
+  }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .info-box {
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #c9a96e;
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+
+  .btn-print {
+    margin-top: 16px;
+    width: 100%;
+    padding: 11px;
+    background: #d4af37;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+  }
+  .btn-print:hover { background: #c9a96e; }
+
+  /* ── 右側預覽區 ── */
+  #preview-area {
+    flex: 1;
+    overflow-y: auto;
+    background: #222;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .a4-sheet {
+    background: #fff;
+    width: 210mm;
+    height: 297mm;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  /* ── 貼紙樣式（螢幕預覽用） ── */
+  .sticker {
+    position: absolute;
+    background: #fff;
+    border: 0.3mm solid #aaa;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 1.5mm;
+    overflow: hidden;
+    font-family: 'Noto Serif TC', serif;
+  }
+  .sticker-inner {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    gap: 1.5mm;
+    align-items: center;
+  }
+  .sticker .s-hero {
+    flex-shrink: 0;
+    width: 22%;
+    height: 85%;
+    object-fit: contain;
+    border-radius: 1mm;
+    background: #f5f5f5;
+  }
+  .sticker-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .sticker .s-id {
+    font-size: 5.5pt;
+    color: #666;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+  .sticker .s-customer {
+    font-size: 6pt;
+    color: #333;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+  .sticker .s-letters {
+    font-size: 13pt;
+    font-weight: 600;
+    color: #111;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+  }
+  .sticker .s-detail {
+    font-size: 6pt;
+    color: #444;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  /* ── 列印樣式 ── */
+  @media print {
+    body {
+      display: block;
+      height: auto;
+      overflow: visible;
+      background: #fff;
+    }
+    #panel { display: none; }
+    #preview-area {
+      display: block;
+      overflow: visible;
+      background: #fff;
+      padding: 0;
+    }
+    .a4-sheet {
+      box-shadow: none;
+      margin: 0;
+      page-break-after: always;
+      break-after: page;
+    }
+    .a4-sheet:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .sticker {
+      border: 0.3mm solid #999;
+    }
+  }
+  @page { size: A4; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- 左側設定面板 -->
+<div id="panel">
+  <h1>🏷 貼紙列印工具</h1>
+
+  <div class="section-title">貼紙尺寸</div>
+  <div class="row2">
+    <div class="field">
+      <label>寬度 (mm)</label>
+      <input type="number" id="sW" value="50" min="10" max="200" step="1" oninput="render()">
+    </div>
+    <div class="field">
+      <label>高度 (mm)</label>
+      <input type="number" id="sH" value="30" min="8" max="200" step="1" oninput="render()">
+    </div>
+  </div>
+
+  <div class="section-title">間距</div>
+  <div class="row2">
+    <div class="field">
+      <label>水平間距 (mm)</label>
+      <input type="number" id="gapX" value="3" min="0" max="30" step="0.5" oninput="render()">
+    </div>
+    <div class="field">
+      <label>垂直間距 (mm)</label>
+      <input type="number" id="gapY" value="3" min="0" max="30" step="0.5" oninput="render()">
+    </div>
+  </div>
+
+  <div class="section-title">頁面邊距 (mm)</div>
+  <div class="row2">
+    <div class="field">
+      <label>上</label>
+      <input type="number" id="mTop" value="10" min="0" max="50" step="1" oninput="render()">
+    </div>
+    <div class="field">
+      <label>下</label>
+      <input type="number" id="mBot" value="10" min="0" max="50" step="1" oninput="render()">
+    </div>
+  </div>
+  <div class="row2">
+    <div class="field">
+      <label>左</label>
+      <input type="number" id="mLeft" value="10" min="0" max="50" step="1" oninput="render()">
+    </div>
+    <div class="field">
+      <label>右</label>
+      <input type="number" id="mRight" value="10" min="0" max="50" step="1" oninput="render()">
+    </div>
+  </div>
+
+  <div class="info-box" id="infoBox">載入中…</div>
+
+  <button class="btn-print" onclick="window.print()">列印</button>
+</div>
+
+<!-- 右側預覽區 -->
+<div id="preview-area"></div>
+
+<script>
+  // 從 localStorage 讀取訂單資料
+  let orders = [];
+  try {
+    orders = JSON.parse(localStorage.getItem('stickerOrders') || '[]');
+  } catch (e) {}
+
+  // 每筆訂單的每個 item 各產生一張貼紙
+  const stickers = [];
+  orders.forEach(order => {
+    (order.items || []).forEach(item => {
+      stickers.push({
+        orderId: order.orderId,
+        customerName: order.customerName || '',
+        letters: (item.letter1 || '') + (item.letter2 || ''),
+        material: item.material || '',
+        plating: item.plating || '',
+        size: item.size || '',
+        finish: item.finish || '',
+        heroUrl: item.heroView ? item.heroView.dataURL : null,
+      });
+    });
+    // 若沒有 items，仍產生一張只有訂單號的貼紙
+    if (!order.items || order.items.length === 0) {
+      stickers.push({ orderId: order.orderId, customerName: order.customerName || '', letters: '', material: '', plating: '', size: '', finish: '', heroUrl: null });
+    }
+  });
+
+  const PAGE_W = 210; // A4 mm
+  const PAGE_H = 297;
+
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+  function render() {
+    const sW = num('sW'), sH = num('sH');
+    const gX = num('gapX'), gY = num('gapY');
+    const mT = num('mTop'), mB = num('mBot'), mL = num('mLeft'), mR = num('mRight');
+
+    const areaW = PAGE_W - mL - mR;
+    const areaH = PAGE_H - mT - mB;
+    const cols = Math.max(1, Math.floor((areaW + gX) / (sW + gX)));
+    const rows = Math.max(1, Math.floor((areaH + gY) / (sH + gY)));
+    const perPage = cols * rows;
+
+    const totalPages = Math.max(1, Math.ceil(stickers.length / perPage));
+
+    // Info box
+    document.getElementById('infoBox').textContent =
+      `共 ${stickers.length} 張貼紙 · 每頁 ${cols}×${rows}=${perPage} 張 · 共 ${totalPages} 頁`;
+
+    // mm → px: 1mm ≈ 3.7795px (96dpi)
+    const mmToPx = 96 / 25.4;
+
+    const area = document.getElementById('preview-area');
+    area.innerHTML = '';
+
+    for (let p = 0; p < totalPages; p++) {
+      const sheet = document.createElement('div');
+      sheet.className = 'a4-sheet';
+      sheet.style.width = PAGE_W * mmToPx + 'px';
+      sheet.style.height = PAGE_H * mmToPx + 'px';
+
+      const pageStickers = stickers.slice(p * perPage, (p + 1) * perPage);
+      pageStickers.forEach((s, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = mL + col * (sW + gX);
+        const y = mT + row * (sH + gY);
+
+        const div = document.createElement('div');
+        div.className = 'sticker';
+        div.style.left = x * mmToPx + 'px';
+        div.style.top = y * mmToPx + 'px';
+        div.style.width = sW * mmToPx + 'px';
+        div.style.height = sH * mmToPx + 'px';
+
+        const detailParts = [s.material, s.plating, s.size ? s.size + 'mm' : '', s.finish].filter(Boolean);
+        const heroHtml = s.heroUrl
+          ? `<img class="s-hero" src="${s.heroUrl}" alt="hero">`
+          : '';
+        div.innerHTML = `
+          <div class="sticker-inner">
+            ${heroHtml}
+            <div class="sticker-text">
+              <div class="s-id">${s.orderId}</div>
+              ${s.customerName ? `<div class="s-customer">${s.customerName}</div>` : ''}
+              <div class="s-letters">${s.letters || '—'}</div>
+              <div class="s-detail">${detailParts.join(' · ') || '—'}</div>
+            </div>
+          </div>
+        `;
+        sheet.appendChild(div);
+      });
+
+      area.appendChild(sheet);
+    }
+  }
+
+  // 初始渲染
+  render();
+
+  // 空訂單提示
+  if (stickers.length === 0) {
+    document.getElementById('infoBox').textContent = '⚠️ 未收到訂單資料，請從後台重新開啟';
+  }
+</script>
+</body>
+</html>

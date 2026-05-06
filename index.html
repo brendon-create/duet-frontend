@@ -149,6 +149,12 @@
             transform: rotate(-45deg) translate(5px, -5px);
         }
 
+        /* 手機版：漢堡左側語言鈕顯示；nav-links 內的語言鈕隱藏 */
+        @media (max-width: 768px) {
+            #mobile-lang-btn { display: inline-block !important; margin-left: auto; margin-right: 6px; }
+            .nav-links .lang-toggle-btn { display: none !important; }
+        }
+
         /* ===== 手機版樣式 ===== */
         @media (max-width: 768px) {
             /* 顯示漢堡選單 */
@@ -409,12 +415,14 @@
             gap: 24px;
         }
 
-        .story-images img {
+        .story-images img,
+        .story-images video {
             width: 100%;
-            height: auto;
+            aspect-ratio: 1 / 1;
             border-radius: 8px;
             object-fit: cover;
             animation: fadeInUp 0.8s ease-out;
+            display: block;
         }
 
         @keyframes fadeInUp {
@@ -1034,6 +1042,46 @@
             transform: translateY(0);
             transition: all 0.6s ease-out;
         }
+
+        /* ===== 英文排版調整 ===== */
+        /* 中文 h1/h2/h3 用 line-height:1.2（方塊字緊湊），英文需要更多行距 */
+        html[lang="en"] h1,
+        html[lang="en"] h2,
+        html[lang="en"] h3 {
+            line-height: 1.4;
+            letter-spacing: 0;
+        }
+
+        /* Hero 主標題：移除負字距，行距稍緊（有手動 <br> 斷行） */
+        html[lang="en"] .hero-content h1 {
+            letter-spacing: 0.01em;
+            line-height: 1.3;
+        }
+
+        /* Hero 副標題與各 section subtitle：英文全大寫加一點字距更精緻 */
+        html[lang="en"] .hero-content .subtitle,
+        html[lang="en"] .section-header .subtitle,
+        html[lang="en"] .gallery-header .subtitle,
+        html[lang="en"] .testimonials-header .subtitle,
+        html[lang="en"] .faq-header .subtitle,
+        html[lang="en"] .cta-section .subtitle {
+            letter-spacing: 0.12em;
+        }
+
+        /* FAQ 問題：英文模式改用 Cormorant Garamond（與工藝特色標題一致） */
+        html[lang="en"] .faq-question {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 500;
+            font-size: 18px;
+            letter-spacing: 0.01em;
+        }
+
+        /* em（intertwine 等）確保使用斜體 */
+        html[lang="en"] h1 em,
+        html[lang="en"] h2 em {
+            font-style: italic;
+            font-weight: 400;
+        }
     </style>
 </head>
 <body>
@@ -1043,6 +1091,7 @@
             <div class="logo">DUET</div>
             <div class="logo-subtitle">by BCAG</div>
         </div>
+        <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="display:none;background:transparent;border:1px solid rgba(44,42,38,0.25);color:#2C2A26;padding:5px 12px;border-radius:20px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:inherit;width:auto;" id="mobile-lang-btn">EN</button>
         <div class="hamburger" onclick="toggleMenu()">
             <span></span>
             <span></span>
@@ -1054,8 +1103,8 @@
             <li><a href="#gallery" data-i18n="nav.gallery">作品展示</a></li>
             <li><a href="#faq" data-i18n="nav.faq">常見問題</a></li>
             <li><a href="order-tracker.html" data-i18n="nav.order">訂單查詢</a></li>
+            <li><button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(44,42,38,0.25);color:#2C2A26;padding:6px 14px;border-radius:20px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:inherit;width:auto;">EN</button></li>
             <li><button class="cta-button" data-i18n="nav.start">開始設計</button></li>
-            <li><button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="background:transparent;border:1px solid rgba(44,42,38,0.25);color:#2C2A26;padding:6px 14px;border-radius:20px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:inherit;">EN</button></li>
         </ul>
     </nav>
 
@@ -1088,8 +1137,8 @@
             <div class="story-quote" data-i18n="story.quote">「最好的珠寶，不是最昂貴的，而是乘載著真實故事的作品。」</div>
         </div>
         <div class="story-images">
-            <img src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=80" alt="手工製作過程">
-            <img src="https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&q=80" alt="細節工藝">
+            <video src="assets/videos/index/3D.mp4" autoplay loop muted playsinline></video>
+            <img src="assets/images/index/goldsmith.jpg" alt="手工製作過程">
         </div>
     </section>
 

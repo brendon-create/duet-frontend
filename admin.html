@@ -508,6 +508,7 @@
                 <button class="tab" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
                 <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
                 <button class="tab" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
+                <button class="tab" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
                 <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
             </div>
             
@@ -584,6 +585,7 @@
                         <option value="delete">刪除選取</option>
                     </select>
                     <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
+                    <button id="emailMfrBtn" class="btn btn-secondary" onclick="showEmailMfrModal()" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                     <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
@@ -834,20 +836,48 @@
             
             <!-- System Tab -->
             <div id="systemTab" style="display: none;">
-                <!-- AI Prompt 優化分析 -->
-                <div class="detail-section" style="margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 12px;">🤖 AI Prompt 優化分析</h3>
-                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">分析近期 AI 諮詢對話，生成 system prompt 改進建議（會呼叫 Claude API，約需 10–20 秒）。</p>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 14px;">
-                        <label style="font-size: 13px; color: var(--text-muted);">分析最近</label>
-                        <input id="aiAnalysisLimit" type="number" value="20" min="5" max="50" style="width: 70px; padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
-                        <label style="font-size: 13px; color: var(--text-muted);">筆訂單</label>
-                        <button class="btn btn-primary" onclick="runAiPromptAnalysis()">開始分析</button>
-                        <span id="aiAnalysisStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                <!-- AI 設計理念審視 & System Prompt 優化 -->
+                <div class="detail-section" style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 6px;">🔍 設計理念審視 & System Prompt 優化</h3>
+                    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">選取時間區間撈取設計理念，由 AI 分析對話品質與修改原因，生成 system prompt 改進建議。</p>
+
+                    <!-- 日期區間選擇 -->
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                        <label style="font-size:13px;color:var(--text-muted);">從</label>
+                        <input type="date" id="reviewDateFrom" style="padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;">
+                        <label style="font-size:13px;color:var(--text-muted);">到</label>
+                        <input type="date" id="reviewDateTo" style="padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;">
+                        <button class="btn btn-secondary" onclick="previewReviewOrders()">撈取訂單</button>
+                        <span id="reviewPreviewStatus" style="font-size:13px;color:var(--text-muted);"></span>
                     </div>
-                    <div id="aiAnalysisResult" style="display: none; background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 18px;">
-                        <div style="font-size: 11px; color: rgba(212,175,55,0.7); letter-spacing: 1px; margin-bottom: 10px;">分析結果</div>
-                        <pre id="aiAnalysisText" style="font-family: inherit; font-size: 13px; color: var(--text-light); line-height: 1.8; white-space: pre-wrap; margin: 0;"></pre>
+
+                    <!-- 訂單預覽清單（撈取後顯示）-->
+                    <div id="reviewOrderList" style="display:none;margin-bottom:14px;">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;">撈取結果 — <span id="reviewOrderSummary"></span></div>
+                        <div id="reviewOrderTable" style="max-height:200px;overflow-y:auto;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:8px 12px;"></div>
+                        <button class="btn btn-primary" id="runReviewBtn" onclick="runAiReview()" style="margin-top:12px;">🤖 開始 AI 審視</button>
+                        <span id="reviewRunStatus" style="font-size:13px;color:var(--text-muted);margin-left:10px;"></span>
+                    </div>
+
+                    <!-- AI 建議結果（最新一筆）-->
+                    <div id="reviewLatestResult" style="display:none;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:18px;margin-bottom:20px;">
+                        <div style="font-size:11px;color:rgba(212,175,55,0.7);letter-spacing:1px;margin-bottom:10px;">最新 AI 分析建議</div>
+                        <pre id="reviewLatestText" style="font-family:inherit;font-size:13px;color:var(--text-light);line-height:1.8;white-space:pre-wrap;margin:0 0 14px 0;"></pre>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-primary" onclick="approveLatestSuggestion()" id="approveBtn" style="background:#16a34a;border-color:#16a34a;">✓ 採用建議</button>
+                            <button class="btn btn-secondary" onclick="rejectLatestSuggestion()" id="rejectBtn">✗ 不採用</button>
+                        </div>
+                    </div>
+
+                    <!-- 歷史建議清單 -->
+                    <div style="margin-top:20px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                            <h4 style="font-size:14px;color:var(--text-muted);font-weight:400;">歷史建議紀錄</h4>
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="loadPromptSuggestions()">重新整理</button>
+                        </div>
+                        <div id="suggestionHistoryList" style="display:flex;flex-direction:column;gap:10px;">
+                            <div style="color:var(--text-muted);font-size:13px;">載入中…</div>
+                        </div>
                     </div>
                 </div>
 
@@ -922,6 +952,131 @@
         <h2 style="color:#c9a96e; margin-bottom:24px;">Gallery 管理</h2>
         <p style="color:#999; margin-bottom:24px; font-size:14px;">每個 slot 可上傳圖片或影片。上傳後儲存即生效於首頁 Gallery。</p>
         <div id="gallerySlots" style="display:grid; gap:24px; grid-template-columns: repeat(auto-fill, minmax(280px,1fr));"></div>
+    </div>
+
+    <!-- 廠商管理 Tab -->
+    <div id="manufacturersTab" style="display:none; padding:24px;">
+        <h2 style="color:#c9a96e; margin-bottom:8px;">廠商管理</h2>
+        <p style="color:#999; margin-bottom:24px; font-size:14px;">管理製作委託廠商資料，選擇廠商後可直接從訂單發送委託郵件（含 STL）。</p>
+        <button class="btn btn-primary" onclick="showAddManufacturerModal()" style="margin-bottom:20px;">+ 新增廠商</button>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>公司名稱</th>
+                        <th>製程</th>
+                        <th>聯絡人</th>
+                        <th>電話</th>
+                        <th>Email</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="manufacturersTableBody">
+                    <tr><td colspan="7" class="loading">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 廠商新增/編輯 Modal -->
+    <div class="modal-overlay" id="manufacturerFormModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="manufacturerFormTitle">新增廠商</h2>
+                <button class="modal-close" onclick="closeManufacturerFormModal()">&times;</button>
+            </div>
+            <form onsubmit="handleSaveManufacturer(event)">
+                <input type="hidden" id="mfrId">
+                <div class="form-group">
+                    <label>公司名稱 *</label>
+                    <input type="text" id="mfrCompanyName" required placeholder="例如：銀藝工作室">
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="mfrEmail" required placeholder="contact@example.com">
+                </div>
+                <div class="form-group">
+                    <label>製程</label>
+                    <input type="text" id="mfrProcess" placeholder="例如：脫蠟鑄造、3D列印">
+                </div>
+                <div class="form-group">
+                    <label>統一編號</label>
+                    <input type="text" id="mfrTaxId" placeholder="12345678">
+                </div>
+                <div class="form-group">
+                    <label>聯絡人</label>
+                    <input type="text" id="mfrContactPerson">
+                </div>
+                <div class="form-group">
+                    <label>負責人</label>
+                    <input type="text" id="mfrCompanyOwner">
+                </div>
+                <div class="form-group">
+                    <label>電話</label>
+                    <input type="text" id="mfrPhone">
+                </div>
+                <div class="form-group">
+                    <label>地址</label>
+                    <input type="text" id="mfrAddress">
+                </div>
+                <div style="margin:16px 0 8px;font-size:13px;font-weight:600;color:var(--text-muted);letter-spacing:0.05em;border-top:1px solid var(--border);padding-top:14px;">銀行帳號資訊</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>銀行名稱</label>
+                        <input type="text" id="mfrBankName" placeholder="例如：台灣銀行">
+                    </div>
+                    <div class="form-group">
+                        <label>銀行代碼</label>
+                        <input type="text" id="mfrBankCode" placeholder="例如：004">
+                    </div>
+                    <div class="form-group">
+                        <label>分行名稱</label>
+                        <input type="text" id="mfrBranchName" placeholder="例如：信義分行">
+                    </div>
+                    <div class="form-group">
+                        <label>分行代碼</label>
+                        <input type="text" id="mfrBranchCode" placeholder="例如：0163">
+                    </div>
+                    <div class="form-group">
+                        <label>戶名</label>
+                        <input type="text" id="mfrAccountHolder" placeholder="帳戶持有人姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>帳號</label>
+                        <input type="text" id="mfrAccountNumber" placeholder="銀行帳號">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="mfrIsActive" checked style="width:16px;height:16px;">
+                        <span>啟用（可選為委託廠商）</span>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">儲存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 開始製作 Modal（選擇廠商）-->
+    <div class="modal-overlay" id="startProductionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">開始製作</h2>
+                <button class="modal-close" onclick="closeStartProductionModal()">&times;</button>
+            </div>
+            <div style="padding:8px 0;">
+                <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">選擇委託廠商後，系統將自動：<br>① 更新訂單狀態為「製作中」<br>② 寄送委託郵件（含 STL）給廠商<br>③ 寄送狀態通知給客戶</p>
+                <div class="form-group">
+                    <label>委託廠商</label>
+                    <select id="startProductionMfrSelect" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:14px;">
+                        <option value="">不指定廠商（只更新狀態）</option>
+                    </select>
+                </div>
+                <input type="hidden" id="startProductionOrderId">
+                <button class="btn btn-primary" onclick="confirmStartProduction()" style="width:100%;margin-top:8px;">確認開始製作</button>
+            </div>
+        </div>
     </div>
 
     <!-- Order Detail Modal -->
@@ -1121,7 +1276,7 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
 
-            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery'];
+            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers'];
             allTabs.forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -1141,10 +1296,11 @@
             if (tab === 'promos') loadPromoCodes();
             if (tab === 'redeem') loadRedeemCodes();
             if (tab === 'feedback') loadFeedback();
-            if (tab === 'system') loadMemoryStats();
+            if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
+            if (tab === 'manufacturers') loadManufacturers();
         }
-        
+
         // 測試郵件
         async function testEmail(status) {
             const btn = event.target;
@@ -1171,30 +1327,7 @@
             }
         }
         
-        // AI Prompt 優化分析
-        async function runAiPromptAnalysis() {
-            const limit = parseInt(document.getElementById('aiAnalysisLimit').value) || 20;
-            const statusEl = document.getElementById('aiAnalysisStatus');
-            const resultEl = document.getElementById('aiAnalysisResult');
-            const textEl   = document.getElementById('aiAnalysisText');
-            statusEl.textContent = '分析中，請稍候⋯⋯';
-            resultEl.style.display = 'none';
-            try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-prompt-analysis`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
-                    body: JSON.stringify({ limit })
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-                statusEl.textContent = `已分析 ${data.analyzed_count} 筆對話`;
-                textEl.textContent = data.suggestion;
-                resultEl.style.display = 'block';
-            } catch (e) {
-                statusEl.style.color = '#ef4444';
-                statusEl.textContent = '分析失敗：' + e.message;
-            }
-        }
+        // （已移除舊 AI Prompt 優化分析，由第二 script block 的新函數取代）
 
         // Memory Stats
         async function loadMemoryStats() {
@@ -1540,8 +1673,10 @@
             } else {
                 selectedOrders.push(orderId);
             }
+            const btn = document.getElementById('emailMfrBtn');
+            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
         }
-        
+
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAllOrders');
             const pageOrders = filteredOrders.filter(o => !o.isTest && !o.isInvalid);
@@ -1552,6 +1687,8 @@
                 // 取消選取目前頁面
                 selectedOrders = selectedOrders.filter(id => !pageOrders.some(o => o.orderId === id));
             }
+            const btn = document.getElementById('emailMfrBtn');
+            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
             renderOrders(filteredOrders);
         }
         
@@ -1809,7 +1946,7 @@
                 <div class="detail-section">
                     <h3>基本資訊</h3>
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
-                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span></div>
+                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${order.status === 'paid' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
@@ -2582,6 +2719,205 @@
                 statusEl.style.color = '#f87171';
             }
         }
+
+        // ==================== 廠商管理 ====================
+
+        let allManufacturers = [];
+
+        async function loadManufacturers() {
+            const tbody = document.getElementById('manufacturersTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                allManufacturers = data.manufacturers || [];
+                renderManufacturers();
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">載入失敗：${e.message}</td></tr>`;
+            }
+        }
+
+        function renderManufacturers() {
+            const tbody = document.getElementById('manufacturersTableBody');
+            if (!allManufacturers.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">尚無廠商資料</td></tr>';
+                return;
+            }
+            tbody.innerHTML = allManufacturers.map(m => `
+                <tr>
+                    <td><strong>${m.company_name}</strong></td>
+                    <td>${m.process || '-'}</td>
+                    <td>${m.contact_person || '-'}</td>
+                    <td>${m.phone || '-'}</td>
+                    <td>${m.email}</td>
+                    <td><span style="color:${m.is_active ? '#4ade80' : '#888'}">${m.is_active ? '啟用' : '停用'}</span></td>
+                    <td style="display:flex;gap:6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="editManufacturer(${m.id})">編輯</button>
+                        <button class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;" onclick="deleteManufacturerConfirm(${m.id}, '${m.company_name.replace(/'/g, "\\'")}')">刪除</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function showAddManufacturerModal() {
+            document.getElementById('manufacturerFormTitle').textContent = '新增廠商';
+            document.getElementById('mfrId').value = '';
+            document.getElementById('mfrCompanyName').value = '';
+            document.getElementById('mfrEmail').value = '';
+            document.getElementById('mfrProcess').value = '';
+            document.getElementById('mfrTaxId').value = '';
+            document.getElementById('mfrContactPerson').value = '';
+            document.getElementById('mfrCompanyOwner').value = '';
+            document.getElementById('mfrPhone').value = '';
+            document.getElementById('mfrAddress').value = '';
+            document.getElementById('mfrIsActive').checked = true;
+            document.getElementById('manufacturerFormModal').classList.add('active');
+        }
+
+        function editManufacturer(id) {
+            const m = allManufacturers.find(x => x.id === id);
+            if (!m) return;
+            document.getElementById('manufacturerFormTitle').textContent = '編輯廠商';
+            document.getElementById('mfrId').value = m.id;
+            document.getElementById('mfrCompanyName').value = m.company_name || '';
+            document.getElementById('mfrEmail').value = m.email || '';
+            document.getElementById('mfrProcess').value = m.process || '';
+            document.getElementById('mfrTaxId').value = m.tax_id || '';
+            document.getElementById('mfrContactPerson').value = m.contact_person || '';
+            document.getElementById('mfrCompanyOwner').value = m.company_owner || '';
+            document.getElementById('mfrPhone').value = m.phone || '';
+            document.getElementById('mfrAddress').value = m.address || '';
+            document.getElementById('mfrBankName').value = m.bank_name || '';
+            document.getElementById('mfrBankCode').value = m.bank_code || '';
+            document.getElementById('mfrBranchName').value = m.branch_name || '';
+            document.getElementById('mfrBranchCode').value = m.branch_code || '';
+            document.getElementById('mfrAccountHolder').value = m.account_holder || '';
+            document.getElementById('mfrAccountNumber').value = m.account_number || '';
+            document.getElementById('mfrIsActive').checked = !!m.is_active;
+            document.getElementById('manufacturerFormModal').classList.add('active');
+        }
+
+        function closeManufacturerFormModal() {
+            document.getElementById('manufacturerFormModal').classList.remove('active');
+        }
+
+        async function handleSaveManufacturer(e) {
+            e.preventDefault();
+            const id = document.getElementById('mfrId').value;
+            const payload = {
+                company_name: document.getElementById('mfrCompanyName').value.trim(),
+                email: document.getElementById('mfrEmail').value.trim(),
+                process: document.getElementById('mfrProcess').value.trim() || null,
+                tax_id: document.getElementById('mfrTaxId').value.trim() || null,
+                contact_person: document.getElementById('mfrContactPerson').value.trim() || null,
+                company_owner: document.getElementById('mfrCompanyOwner').value.trim() || null,
+                phone: document.getElementById('mfrPhone').value.trim() || null,
+                address: document.getElementById('mfrAddress').value.trim() || null,
+                bank_name: document.getElementById('mfrBankName').value.trim() || null,
+                bank_code: document.getElementById('mfrBankCode').value.trim() || null,
+                branch_name: document.getElementById('mfrBranchName').value.trim() || null,
+                branch_code: document.getElementById('mfrBranchCode').value.trim() || null,
+                account_holder: document.getElementById('mfrAccountHolder').value.trim() || null,
+                account_number: document.getElementById('mfrAccountNumber').value.trim() || null,
+                is_active: document.getElementById('mfrIsActive').checked
+            };
+            try {
+                const url = id
+                    ? `${window.BACKEND_URL}/api/admin/manufacturers/${id}`
+                    : `${window.BACKEND_URL}/api/admin/manufacturers`;
+                const res = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeManufacturerFormModal();
+                    loadManufacturers();
+                } else {
+                    alert('儲存失敗：' + (data.error || '未知錯誤'));
+                }
+            } catch (e) {
+                alert('網路錯誤');
+            }
+        }
+
+        async function deleteManufacturerConfirm(id, name) {
+            if (!confirm(`確定要刪除廠商「${name}」？`)) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (data.success) loadManufacturers();
+                else alert('刪除失敗：' + (data.error || '未知錯誤'));
+            } catch (e) {
+                alert('網路錯誤');
+            }
+        }
+
+        // ==================== 開始製作 Modal ====================
+
+        async function openStartProductionModal(orderId) {
+            document.getElementById('startProductionOrderId').value = orderId;
+            // 載入啟用中的廠商
+            const sel = document.getElementById('startProductionMfrSelect');
+            sel.innerHTML = '<option value="">不指定廠商（只更新狀態）</option>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    data.manufacturers.filter(m => m.is_active).forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = `${m.company_name}${m.contact_person ? ' (' + m.contact_person + ')' : ''}`;
+                        sel.appendChild(opt);
+                    });
+                }
+            } catch {}
+            document.getElementById('startProductionModal').classList.add('active');
+        }
+
+        function closeStartProductionModal() {
+            document.getElementById('startProductionModal').classList.remove('active');
+        }
+
+        async function confirmStartProduction() {
+            const orderId = document.getElementById('startProductionOrderId').value;
+            const mfrId = document.getElementById('startProductionMfrSelect').value;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '處理中...';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/start-production`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ manufacturer_id: mfrId ? parseInt(mfrId) : null })
+                });
+                const data = await res.json();
+                closeStartProductionModal();
+                closeModal();
+                if (data.success) {
+                    const mfrMsg = data.manufacturer ? `\n委託廠商：${data.manufacturer}` : '';
+                    const emailMsg = data.manufacturer_email_sent ? '\n委託郵件已寄出' : (data.manufacturer ? '\n（委託郵件發送失敗，請手動聯絡廠商）' : '');
+                    alert(`✅ 訂單已更新為「製作中」${mfrMsg}${emailMsg}`);
+                    loadOrders();
+                } else {
+                    alert('失敗：' + (data.error || '未知錯誤'));
+                }
+            } catch (e) {
+                alert('網路錯誤');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '確認開始製作';
+            }
+        }
+
     </script>
 
     <!-- Export Consultations Modal -->
@@ -2735,6 +3071,309 @@
                 alert('匯出時發生錯誤：' + e.message);
             }
         }
+
+        // ── 發送給廠商 Modal ──────────────────────────────────────────────
+        async function showEmailMfrModal() {
+            if (selectedOrders.length === 0) { alert('請先選取要操作的訂單'); return; }
+            document.getElementById('emailMfrOrderCount').textContent = selectedOrders.length;
+            // 填充廠商下拉選單（即時從 API 取得，確保資料最新）
+            const sel = document.getElementById('emailMfrSelect');
+            sel.innerHTML = '<option value="">載入廠商中…</option>';
+            document.getElementById('emailMfrModal').style.display = 'flex';
+            try {
+                const mfrRes = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, { headers: { 'X-Admin-Key': ADMIN_API_KEY } });
+                const mfrData = await mfrRes.json();
+                const mfrs = (mfrData.manufacturers || []).filter(m => m.is_active);
+                sel.innerHTML = '<option value="">請選擇廠商...</option>';
+                mfrs.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = `${m.company_name}（${m.email}）`;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                sel.innerHTML = '<option value="">無法載入廠商</option>';
+            }
+            // 預設信件內文
+            const today = new Date().toLocaleDateString('zh-TW');
+            document.getElementById('emailMfrBody').value =
+                `您好，\n\n感謝您與 DUET 合作。以下是本次製作委託，共 ${selectedOrders.length} 筆訂單，詳細規格請參閱附件 Excel 檔案。\n\n請依照規格製作並於完成後告知出貨資訊。如有疑問歡迎來信。\n\n謝謝！\nDUET 團隊\n${today}`;
+            // 訂單預覽清單
+            const preview = selectedOrders.map(id => {
+                const order = (allOrders || []).find(o => o.orderId === id);
+                if (!order) return `<li>${id}</li>`;
+                const letters = (order.items || []).map(i => i.letter1 + i.letter2).join(', ');
+                return `<li><strong>${id}</strong> — ${letters} | ${order.userInfo?.name || '-'}</li>`;
+            }).join('');
+            document.getElementById('emailMfrOrderList').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--text-muted);">${preview}</ul>`;
+        }
+
+        function closeEmailMfrModal() {
+            document.getElementById('emailMfrModal').style.display = 'none';
+        }
+
+        async function sendEmailToManufacturer() {
+            const mfrId = document.getElementById('emailMfrSelect').value;
+            if (!mfrId) { alert('請選擇廠商'); return; }
+            const subject = document.getElementById('emailMfrSubject').value.trim() || '【DUET】製作委託';
+            const body = document.getElementById('emailMfrBody').value;
+            const sendBtn = document.getElementById('emailMfrSendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '發送中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/orders/email-manufacturer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ order_ids: selectedOrders, manufacturer_id: parseInt(mfrId), subject, body })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ 已成功發送 ${data.sent_count} 筆訂單給廠商`);
+                    closeEmailMfrModal();
+                } else {
+                    alert('❌ 發送失敗：' + data.error);
+                }
+            } catch (e) {
+                alert('❌ 網路錯誤：' + e.message);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '發送';
+            }
+        }
+
+        function openStickerTool() {
+            localStorage.setItem('stickerOrderIds', JSON.stringify(selectedOrders));
+            const ordersForSticker = selectedOrders.map(id => {
+                const o = (allOrders || []).find(x => x.orderId === id);
+                if (!o) return { orderId: id, customerName: '', items: [] };
+
+                const userInfo = o.userInfo || {};
+                const rawName = userInfo.name || userInfo.buyerName || '';
+                let maskedName = rawName;
+                if (rawName.length >= 2) {
+                    maskedName = rawName.slice(0, -2) + '＊' + rawName.slice(-1);
+                }
+
+                return {
+                    orderId: o.orderId,
+                    customerName: maskedName,
+                    items: (o.items || []).map(i => ({
+                        letter1: i.letter1, letter2: i.letter2,
+                        material: i.material, plating: i.plating, size: i.size, finish: i.finish,
+                        heroView: (i.threeViews || []).find(v => v.name === 'hero_view') || null
+                    }))
+                };
+            });
+            localStorage.setItem('stickerOrders', JSON.stringify(ordersForSticker));
+            window.open('/sticker-tool.html', '_blank');
+        }
+
+        // ── AI 設計理念審視 ──────────────────────────────────────────────────
+        let reviewOrders = [];  // 撈取到的訂單（含 previously_reviewed 旗標）
+        let latestSuggestionId = null;
+
+        async function previewReviewOrders() {
+            const from = document.getElementById('reviewDateFrom').value;
+            const to = document.getElementById('reviewDateTo').value;
+            if (!from || !to) { alert('請選擇日期區間'); return; }
+            const statusEl = document.getElementById('reviewPreviewStatus');
+            statusEl.textContent = '撈取中…';
+            document.getElementById('reviewOrderList').style.display = 'none';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/preview?from=${from}&to=${to}`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                reviewOrders = data.orders || [];
+                const prevCount = data.previously_reviewed_count || 0;
+                statusEl.textContent = '';
+                document.getElementById('reviewOrderSummary').textContent =
+                    `共 ${data.total} 筆，${reviewOrders.filter(o=>o.has_story_diff).length} 筆有設計理念差異` +
+                    (prevCount > 0 ? `，⚠️ ${prevCount} 筆曾被撈取過` : '');
+                // 渲染清單
+                if (reviewOrders.length === 0) {
+                    document.getElementById('reviewOrderTable').innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:4px 0;">此區間無符合條件的訂單（需有 AI 諮詢對話）</div>';
+                } else {
+                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => `
+                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+                            <span style="color:var(--text-muted);min-width:100px;">${o.orderId}</span>
+                            <span style="color:var(--text-light);min-width:40px;">${o.letters || '-'}</span>
+                            <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
+                            ${o.previously_reviewed ? '<span style="color:#fbbf24;font-size:11px;">⚠️ 曾撈取</span>' : ''}
+                            <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : ''}</span>
+                        </div>`).join('');
+                }
+                document.getElementById('reviewOrderList').style.display = 'block';
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '撈取失敗：' + e.message;
+            }
+        }
+
+        async function runAiReview() {
+            if (reviewOrders.length === 0) { alert('請先撈取訂單'); return; }
+            const hasPrev = reviewOrders.some(o => o.previously_reviewed);
+            if (hasPrev && !confirm(`有 ${reviewOrders.filter(o=>o.previously_reviewed).length} 筆訂單曾被撈取過分析，繼續會重複使用 API token，確定要繼續嗎？`)) return;
+            const btn = document.getElementById('runReviewBtn');
+            const statusEl = document.getElementById('reviewRunStatus');
+            btn.disabled = true;
+            statusEl.textContent = 'AI 分析中（約 15–30 秒）…';
+            document.getElementById('reviewLatestResult').style.display = 'none';
+            try {
+                const from = document.getElementById('reviewDateFrom').value;
+                const to = document.getElementById('reviewDateTo').value;
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ date_from: from, date_to: to, order_ids: reviewOrders.map(o => o.orderId) })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                latestSuggestionId = data.suggestion_id;
+                statusEl.textContent = `已分析 ${data.analyzed_count} 筆`;
+                document.getElementById('reviewLatestText').textContent = data.suggestion_text;
+                document.getElementById('reviewLatestResult').style.display = 'block';
+                document.getElementById('approveBtn').disabled = false;
+                document.getElementById('rejectBtn').disabled = false;
+                loadPromptSuggestions();
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '分析失敗：' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function resolveLatestSuggestion(action) {
+            if (!latestSuggestionId) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${latestSuggestionId}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                document.getElementById('approveBtn').disabled = true;
+                document.getElementById('rejectBtn').disabled = true;
+                document.getElementById('approveBtn').textContent = action === 'approve' ? '✓ 已採用' : '✓ 採用建議';
+                document.getElementById('rejectBtn').textContent = action === 'reject' ? '✗ 已拒絕' : '✗ 不採用';
+                if (action === 'approve') {
+                    alert('已標記為採用。請在下方「System Prompt 編輯」區手動套用建議內容。');
+                }
+                loadPromptSuggestions();
+            } catch(e) { alert('操作失敗：' + e.message); }
+        }
+
+        function approveLatestSuggestion() { resolveLatestSuggestion('approve'); }
+        function rejectLatestSuggestion() { resolveLatestSuggestion('reject'); }
+
+        async function loadPromptSuggestions() {
+            const listEl = document.getElementById('suggestionHistoryList');
+            listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">載入中…</div>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const items = data.suggestions || [];
+                if (items.length === 0) {
+                    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">尚無歷史建議</div>';
+                    return;
+                }
+                const statusColor = { pending: '#fbbf24', approved: '#4ade80', rejected: '#9ca3af' };
+                const statusLabel = { pending: '待處理', approved: '已採用', rejected: '已拒絕' };
+                listEl.innerHTML = items.map(item => `
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <span style="font-size:11px;color:${statusColor[item.status] || '#888'};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px;">${statusLabel[item.status] || item.status}</span>
+                            <span style="font-size:11px;color:var(--text-muted);">${item.date_from || '?'} ~ ${item.date_to || '?'} · ${item.order_count || 0} 筆</span>
+                            <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-TW') : ''}</span>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}">
+                            ${(item.suggestion_text || '').slice(0, 200)}${(item.suggestion_text || '').length > 200 ? '…' : ''}
+                        </div>
+                        <button onclick="toggleSuggestionExpand(${item.id})" style="background:none;border:none;color:var(--primary);font-size:11px;cursor:pointer;margin-top:4px;padding:0;" id="sugg-expand-${item.id}">展開全文</button>
+                        ${item.status === 'pending' ? `
+                        <div style="display:flex;gap:6px;margin-top:8px;">
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;background:#16a34a;color:#fff;border-color:#16a34a;" onclick="resolveSuggestion(${item.id},'approve')">採用</button>
+                            <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="resolveSuggestion(${item.id},'reject')">拒絕</button>
+                        </div>` : ''}
+                    </div>`).join('');
+            } catch(e) {
+                listEl.innerHTML = `<div style="color:#f87171;font-size:13px;">載入失敗：${e.message}</div>`;
+            }
+        }
+
+        const _suggestionFullText = {};
+        function toggleSuggestionExpand(id) {
+            const bodyEl = document.getElementById(`sugg-body-${id}`);
+            const btnEl = document.getElementById(`sugg-expand-${id}`);
+            if (!bodyEl) return;
+            if (bodyEl.dataset.expanded === '1') {
+                bodyEl.style.maxHeight = '80px';
+                bodyEl.dataset.expanded = '0';
+                btnEl.textContent = '展開全文';
+            } else {
+                bodyEl.style.maxHeight = 'none';
+                bodyEl.dataset.expanded = '1';
+                btnEl.textContent = '收起';
+            }
+        }
+
+        async function resolveSuggestion(id, action) {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${id}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                if (action === 'approve') alert('已標記為採用。請手動將建議套用至 System Prompt。');
+                loadPromptSuggestions();
+            } catch(e) { alert('操作失敗：' + e.message); }
+        }
+
+        // 初始化日期預設值（今天往前 30 天）
+        (function() {
+            const today = new Date();
+            const from = new Date(today);
+            from.setDate(from.getDate() - 30);
+            document.getElementById('reviewDateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('reviewDateFrom').value = from.toISOString().split('T')[0];
+            // 進入 systemTab 時自動載入歷史建議
+        })();
     </script>
+
+    <!-- 發送給廠商 Modal -->
+    <div id="emailMfrModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:560px;max-height:85vh;overflow-y:auto;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">📧 發送給廠商</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px 0;">已選取 <strong id="emailMfrOrderCount" style="color:var(--primary)"></strong> 筆訂單，將附上 Excel 訂單明細</p>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">選擇廠商</label>
+            <select id="emailMfrSelect" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:14px;margin-bottom:16px;">
+                <option value="">請選擇廠商...</option>
+            </select>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">信件主旨</label>
+            <input id="emailMfrSubject" type="text" value="【DUET】製作委託" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:14px;margin-bottom:16px;box-sizing:border-box;">
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">信件內文</label>
+            <textarea id="emailMfrBody" rows="8" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.6;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">訂單預覽</label>
+            <div id="emailMfrOrderList" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px;max-height:160px;overflow-y:auto;"></div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeEmailMfrModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button onclick="openStickerTool()" style="padding:9px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">🏷 列印貼紙</button>
+                <button id="emailMfrSendBtn" onclick="sendEmailToManufacturer()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">發送</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
