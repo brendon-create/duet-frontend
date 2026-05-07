@@ -636,7 +636,7 @@
                 </div>
                 <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">預計交期</div>
-                    <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
+                    <div id="design-confirm-delivery" style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
                 </div>
             </div>
 
@@ -4148,6 +4148,14 @@
                 // 金額
                 const finalTotal = Math.max(0, originalTotal - promoDiscount);
                 totalEl.textContent = `NT$ ${finalTotal.toLocaleString()}`;
+
+                // 交期：零元訂單（VIP 體驗）顯示不同交貨期
+                const deliveryEl = document.getElementById('design-confirm-delivery');
+                if (deliveryEl) {
+                    deliveryEl.innerHTML = finalTotal === 0
+                        ? '約 15 個工作天'
+                        : '群眾募資結束後<br>約 14 個工作天';
+                }
 
                 modal.style.display = 'flex';
 
