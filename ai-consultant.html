@@ -931,6 +931,9 @@
 
             try {
                 // Call AI API
+                // 取得目前語言（預設 zh）
+                const currentLang = localStorage.getItem('duet_language') || 'zh';
+                
                 const response = await fetch(`${window.BACKEND_URL}/api/ai-consultant`, {
                     method: 'POST',
                     headers: {
@@ -938,7 +941,8 @@
                     },
                     body: JSON.stringify({
                         message: message,
-                        history: conversationHistory
+                        history: conversationHistory,
+                        lang: currentLang
                     })
                 });
 
