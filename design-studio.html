@@ -621,8 +621,8 @@
             <!-- 標題 -->
             <div style="text-align:center;margin-bottom:28px;">
                 <div style="font-size:42px;margin-bottom:10px;">📋</div>
-                <h2 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px;letter-spacing:0.5px;">確認您的設計</h2>
-                <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0;">請仔細確認以下資訊，付款後無法修改設計</p>
+                <h2 data-i18n="checkout.confirm.title" style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px;letter-spacing:0.5px;">確認您的設計</h2>
+                <p data-i18n="checkout.confirm.subtitle" style="font-size:13px;color:rgba(255,255,255,0.5);margin:0;">請仔細確認以下資訊，付款後無法修改設計</p>
             </div>
 
             <!-- 動態商品區塊 -->
@@ -631,22 +631,22 @@
             <!-- 訂單金額 ＋ 交期 -->
             <div style="display:flex;gap:12px;margin-bottom:22px;">
                 <div style="flex:1;background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.18);border-radius:14px;padding:16px;text-align:center;">
-                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">訂單金額</div>
+                    <div data-i18n="checkout.confirm.total" style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">訂單金額</div>
                     <div id="design-confirm-total" style="font-size:20px;font-weight:600;color:#d4af37;"></div>
                 </div>
                 <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;text-align:center;">
-                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">預計交期</div>
-                    <div id="design-confirm-delivery" style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
+                    <div data-i18n="checkout.confirm.delivery" style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">預計交期</div>
+                    <div id="design-confirm-delivery" data-i18n-html="checkout.confirm.delivery.text" style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
                 </div>
             </div>
 
             <!-- 聲明區 -->
             <div style="background:rgba(220,80,30,0.07);border:1px solid rgba(220,100,50,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
+                <div data-i18n="checkout.confirm.warning" style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
                 <ul style="margin:0;padding-left:16px;color:rgba(255,255,255,0.65);font-size:13px;line-height:2.1;">
-                    <li>此為客製化商品，確認後無法修改設計</li>
-                    <li>實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
-                    <li>客製化商品不適用七天鑑賞期</li>
+                    <li data-i18n="checkout.confirm.warning1">此為客製化商品，確認後無法修改設計</li>
+                    <li data-i18n="checkout.confirm.warning2">實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
+                    <li data-i18n="checkout.confirm.warning3">客製化商品不適用七天鑑賞期</li>
                 </ul>
             </div>
 
@@ -659,14 +659,14 @@
                         btn.style.opacity=this.checked?'1':'0.4';
                         btn.style.cursor=this.checked?'pointer':'not-allowed';
                     ">
-                <span style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.65;">
+                <span data-i18n="checkout.confirm.checkbox" style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.65;">
                     我已確認以上設計，並了解客製化商品不適用七天鑑賞期
                 </span>
             </label>
 
             <!-- 按鈕組 -->
             <div style="display:flex;gap:10px;">
-                <button id="design-confirm-cancel-btn" style="
+                <button id="design-confirm-cancel-btn" data-i18n="checkout.confirm.cancel" style="
                     flex:0 0 auto;width:auto;padding:15px 22px;
                     background:transparent;border:1px solid rgba(255,255,255,0.14);
                     border-radius:14px;color:rgba(255,255,255,0.55);
@@ -675,7 +675,7 @@
                    onmouseout="this.style.borderColor='rgba(255,255,255,0.14)';this.style.color='rgba(255,255,255,0.55)'">
                     返回修改
                 </button>
-                <button id="design-confirm-btn" disabled style="
+                <button id="design-confirm-btn" disabled data-i18n="checkout.confirm.proceed" style="
                     flex:1;width:auto;padding:15px;
                     background:linear-gradient(135deg,#d4af37,#f4d03f);
                     border:none;border-radius:14px;color:#000;
@@ -935,15 +935,15 @@
                         </p>
                         <ul style="list-style: none; margin-bottom: 35px;">
                             <li style="display: flex; align-items: flex-start; padding: 12px 0;
-                                       font-size: 14px; color: #ddd; line-height: 1.6;">
+                                       font-size: ${_aiLang === 'en' ? '16px' : '14px'}; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">💎</span>
                                 <span>${_aiLang === 'en' ? 'A few simple questions to help uncover the deeper meaning behind your design' : '透過簡單的幾個問答，引導您發掘設計的獨特意義'}</span>
                             </li>
-                            <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: 14px; color: #ddd; line-height: 1.6;">
+                            <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: ${_aiLang === 'en' ? '16px' : '14px'}; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">✨</span>
                                 <span>${_aiLang === 'en' ? 'Personalized typeface recommendations from over a hundred curated options' : '在上百款可選字體中，為您推薦可能適合您的字體'}</span>
                             </li>
-                            <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: 14px; color: #ddd; line-height: 1.6;">
+                            <li style="display: flex; align-items: flex-start; padding: 12px 0; font-size: ${_aiLang === 'en' ? '16px' : '14px'}; color: #ddd; line-height: 1.6;">
                                 <span style="font-size: 22px; margin-right: 15px;">🎁</span>
                                 <span>${_aiLang === 'en' ? 'A special surprise waiting for you after checkout' : '結帳後還有專屬小驚喜'}</span>
                             </li>
@@ -3420,7 +3420,7 @@
 
             // 顯示載入中
             applyBtn.disabled = true;
-            applyBtn.textContent = '驗證中...';
+            applyBtn.textContent = window.t('studio.promo.validating');
 
             try {
                 console.log('🌐 呼叫後端 API:', `${window.BACKEND_URL}/api/validate-promo`);
