@@ -703,10 +703,10 @@
                     style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
                     <label
                         style="display: block; margin-bottom: 10px; font-weight: bold; color: #d4af37; font-size: 14px;">
-                        🎁 優惠碼
+                        <span data-i18n="studio.promo.title">🎁 優惠碼</span>
                     </label>
                     <div style="display: flex; align-items: stretch; gap: 10px; width: 100%;">
-                        <input type="text" id="promo-code-input" placeholder="輸入優惠碼" maxlength="20" style="flex: 1; 
+                        <input type="text" id="promo-code-input" data-i18n-placeholder="studio.promo.placeholder" placeholder="輸入優惠碼" maxlength="20" style="flex: 1; 
                                       min-width: 0;
                                       padding: 10px 12px; 
                                       border: 1px solid rgba(255,255,255,0.3); 
@@ -732,7 +732,7 @@
                                        font-size: 14px; 
                                        white-space: nowrap; 
                                        transition: all 0.3s;">
-                            套用
+                            <span data-i18n="studio.promo.apply">套用</span>
                         </button>
                     </div>
                     <div id="promo-message" style="margin-top: 8px; font-size: 13px; min-height: 18px;"></div>
@@ -3409,7 +3409,7 @@
             promoMessage.innerHTML = '';
 
             if (!promoCode) {
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">⚠️ 請輸入優惠碼</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.empty')}</span>`;
                 return;
             }
 
@@ -3461,7 +3461,7 @@
                     // 禁用輸入框
                     promoInput.disabled = true;
                     applyBtn.disabled = true;
-                    applyBtn.textContent = '已套用';
+                    applyBtn.textContent = window.t('studio.promo.applied');
 
                     // 更新顯示
                     renderCart();
@@ -3479,13 +3479,13 @@
 
             } catch (error) {
                 console.error('❌ 優惠碼驗證錯誤:', error);
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">❌ 驗證失敗，請稍後再試</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.failed')}</span>`;
                 appliedPromoCode = '';
                 promoDiscount = 0;
             } finally {
                 // 重置按鈕
                 applyBtn.disabled = false;
-                applyBtn.textContent = '套用';
+                applyBtn.textContent = window.t('studio.promo.apply');
             }
         }
 
@@ -3500,7 +3500,7 @@
             promoInput.value = '';
             promoInput.disabled = false;
             applyBtn.disabled = false;
-            applyBtn.textContent = '套用';
+            applyBtn.textContent = window.t('studio.promo.apply');
             promoMessage.innerHTML = '';
 
             renderCart();
