@@ -621,8 +621,8 @@
             <!-- 標題 -->
             <div style="text-align:center;margin-bottom:28px;">
                 <div style="font-size:42px;margin-bottom:10px;">📋</div>
-                <h2 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px;letter-spacing:0.5px;">確認您的設計</h2>
-                <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0;">請仔細確認以下資訊，付款後無法修改設計</p>
+                <h2 data-i18n="checkout.confirm.title" style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px;letter-spacing:0.5px;">確認您的設計</h2>
+                <p data-i18n="checkout.confirm.subtitle" style="font-size:13px;color:rgba(255,255,255,0.5);margin:0;">請仔細確認以下資訊，付款後無法修改設計</p>
             </div>
 
             <!-- 動態商品區塊 -->
@@ -631,22 +631,22 @@
             <!-- 訂單金額 ＋ 交期 -->
             <div style="display:flex;gap:12px;margin-bottom:22px;">
                 <div style="flex:1;background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.18);border-radius:14px;padding:16px;text-align:center;">
-                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">訂單金額</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;" data-i18n="checkout.confirm.orderTotal">訂單金額</div>
                     <div id="design-confirm-total" style="font-size:20px;font-weight:600;color:#d4af37;"></div>
                 </div>
                 <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;text-align:center;">
-                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;">預計交期</div>
-                    <div id="design-confirm-delivery" style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;" data-i18n="checkout.confirm.delivery">預計交期</div>
+                    <div id="design-confirm-delivery" data-i18n-html="checkout.confirm.deliveryText" style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);">群眾募資結束後<br>約 14 個工作天</div>
                 </div>
             </div>
 
             <!-- 聲明區 -->
             <div style="background:rgba(220,80,30,0.07);border:1px solid rgba(220,100,50,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
+                <div style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;" data-i18n="checkout.confirm.warning">⚠️ 重要聲明</div>
                 <ul style="margin:0;padding-left:16px;color:rgba(255,255,255,0.65);font-size:13px;line-height:2.1;">
-                    <li>此為客製化商品，確認後無法修改設計</li>
-                    <li>實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
-                    <li>客製化商品不適用七天鑑賞期</li>
+                    <li data-i18n="checkout.confirm.warning1">此為客製化商品，確認後無法修改設計</li>
+                    <li data-i18n="checkout.confirm.warning2">實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
+                    <li data-i18n="checkout.confirm.warning3">客製化商品不適用七天鑑賞期</li>
                 </ul>
             </div>
 
@@ -684,7 +684,7 @@
                     box-shadow:0 8px 25px rgba(212,175,55,0.35);
                 " onmouseover="if(!this.disabled){this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 35px rgba(212,175,55,0.5)'}"
                    onmouseout="if(!this.disabled){this.style.transform='translateY(0)';this.style.boxShadow='0 8px 25px rgba(212,175,55,0.35)'}">
-                    確認，前往付款
+                    <span data-i18n="checkout.confirm.btn">確認，前往付款</span>
                 </button>
             </div>
         </div>
@@ -3251,16 +3251,16 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'cart-item-info';
-                const platingText  = item.plating === 'none' ? '無電鍍' : item.plating;
-                const finishText   = item.finish === 'glossy' ? '亮面' : '霧面';
+                const platingText  = item.plating === 'none' ? window.t('cart.item.plating.none') : item.plating;
+                const finishText   = item.finish === 'glossy' ? window.t('cart.item.finish.glossy') : window.t('cart.item.finish.matte');
                 const materialText = item.isPreciousMetal ? '貴金屬訂製（待報價）' : item.material;
                 infoDiv.innerHTML = `
                     <h3>DUET "${item.letter1}${item.letter2}"</h3>
                     <div class="cart-item-details">
-                        "${item.letter1}" in font "${item.font1}"<br>
-                        "${item.letter2}" in font "${item.font2}"<br>
-                        材質: ${materialText} | 電鍍: ${platingText} | 質地: ${finishText}<br>
-                        尺寸: ${item.size}mm | 重量: ${item.weight}
+                        "${item.letter1}" ${window.t('cart.item.infont')} "${item.font1}"<br>
+                        "${item.letter2}" ${window.t('cart.item.infont')} "${item.font2}"<br>
+                        ${window.t('cart.item.material')}: ${materialText} | ${platingText} | ${window.t('cart.item.finish')}: ${finishText}<br>
+                        ${window.t('cart.item.size')}: ${item.size}mm | ${window.t('cart.item.weight')}: ${item.weight}
                     </div>
                 `;
                 div.appendChild(infoDiv);
@@ -4323,39 +4323,39 @@
                 modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center;';
                 modal.innerHTML = `
                     <div class="modal-content" style="max-width: 1000px !important; width: 90%; max-height: 90vh; overflow-y: auto; background: #1a1a2e; padding: 50px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2);">
-                        <h2 style="margin-bottom: 20px; color: #d4af37;">填寫訂購資訊</h2>
+                        <h2 data-i18n="order.form.title" style="margin-bottom: 20px; color: #d4af37;">填寫訂購資訊</h2>
                         ${appliedPromoCode ? `
                         <div style="margin-bottom: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px;">
                             <div style="display: flex; align-items: center; gap: 8px; color: #4CAF50; font-size: 14px;">
                                 <span>✅</span>
-                                <span>已套用優惠碼：<strong>${appliedPromoCode}</strong></span>
+                                <span data-i18n="order.form.promoApplied">已套用優惠碼</span>
                             </div>
                             <div style="margin-top: 5px; font-size: 13px; color: rgba(255,255,255,0.6);">
-                                折扣 NT$ ${promoDiscount.toLocaleString()}
+                                折扣 <span data-i18n="order.form.promoDiscount">NT$</span> ${promoDiscount.toLocaleString()}
                             </div>
                         </div>
                         ` : ''}
                         <form id="user-info-form">
                             <!-- 購買人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">購買人資訊</h3>
+                                <h3 data-i18n="order.form.buyerInfo" style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">購買人資訊</h3>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">購買人姓名 *</label>
+                                    <label data-i18n="order.form.buyerName" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">購買人姓名 *</label>
                                     <input type="text" id="buyer-name" required 
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">Email *</label>
+                                    <label data-i18n="order.form.email" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">Email *</label>
                                     <input type="email" id="buyer-email" required
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">手機號碼 *</label>
+                                    <label data-i18n="order.form.phone" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">手機號碼 *</label>
                                     <input type="tel" id="buyer-phone" required pattern="[0-9]{10}"
                                            placeholder="0912345678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
@@ -4365,26 +4365,26 @@
                             
                             <!-- 收件人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收件人資訊</h3>
+                                <h3 data-i18n="order.form.recipientInfo" style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收件人資訊</h3>
                                 
                                 <div style="margin-bottom: 15px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                                         <input type="checkbox" id="same-as-buyer" 
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleRecipientFields(this.checked)">
-                                        <label for="same-as-buyer" style="cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.7);">
+                                        <label for="same-as-buyer" data-i18n="order.form.sameAsBuyer" style="cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.7);">
                                             同購買人
                                         </label>
                                     </div>
                                     
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人姓名 *</label>
+                                    <label data-i18n="order.form.recipientName" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人姓名 *</label>
                                     <input type="text" id="recipient-name" required 
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人手機 *</label>
+                                    <label data-i18n="order.form.recipientPhone" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人手機 *</label>
                                     <input type="tel" id="recipient-phone" required pattern="[0-9]{10}"
                                            placeholder="0912345678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
@@ -4394,10 +4394,10 @@
                             
                             <!-- 收貨地址 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收貨地址</h3>
+                                <h3 data-i18n="order.form.shippingAddr" style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收貨地址</h3>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">郵遞區號</label>
+                                    <label data-i18n="order.form.postalCode" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">郵遞區號</label>
                                     <input type="text" id="postal-code" pattern="[0-9]{3,5}"
                                            placeholder="例：100"
                                            style="width: 120px; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
@@ -4405,9 +4405,10 @@
                                 </div>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收貨地址 *</label>
+                                    <label data-i18n="order.form.fullAddress" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收貨地址 *</label>
                                     <textarea id="shipping-address" required rows="3"
-                                              placeholder="請填寫完整收貨地址（縣市、鄉鎮區、路街巷弄號）"
+                                          data-i18n-placeholder="order.form.addressHint"
+                                          placeholder="請填寫完整收貨地址（縣市、鄉鎮區、路街巷弄號）"
                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
                                                      background: rgba(255,255,255,0.1); color: white; border-radius: 5px; 
                                                      resize: vertical; font-family: inherit;"></textarea>
@@ -4416,14 +4417,14 @@
                             
                             <!-- 發票資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">發票資訊</h3>
+                                <h3 data-i18n="order.form.invoiceInfo" style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">發票資訊</h3>
                                 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                                         <input type="radio" name="invoice-type" value="personal" checked
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleInvoiceFields(false)">
-                                        <span style="color: rgba(255,255,255,0.8);">個人發票（二聯式）</span>
+                                        <span data-i18n="order.form.invoicePersonal" style="color: rgba(255,255,255,0.8);">個人發票（二聯式）</span>
                                     </label>
                                 </div>
                                 
@@ -4432,13 +4433,13 @@
                                         <input type="radio" name="invoice-type" value="company"
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleInvoiceFields(true)">
-                                        <span style="color: rgba(255,255,255,0.8);">公司發票（三聯式）</span>
+                                        <span data-i18n="order.form.invoiceCompany" style="color: rgba(255,255,255,0.8);">公司發票（三聯式）</span>
                                     </label>
                                 </div>
                                 
                                 <div id="company-invoice-fields" style="display: none;">
                                     <div style="margin-bottom: 15px;">
-                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">統一編號 *</label>
+                                        <label data-i18n="order.form.taxId" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">統一編號 *</label>
                                         <input type="text" id="company-tax-id" pattern="[0-9]{8}"
                                                placeholder="8位數字"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
@@ -4446,7 +4447,7 @@
                                     </div>
                                     
                                     <div style="margin-bottom: 15px;">
-                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">公司抬頭 *</label>
+                                        <label data-i18n="order.form.companyName" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">公司抬頭 *</label>
                                         <input type="text" id="company-name"
                                                placeholder="公司名稱"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
@@ -4457,8 +4458,9 @@
                             
                             <!-- 備註 -->
                             <div style="margin-bottom: 20px;">
-                                <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">備註</label>
+                                <label data-i18n="order.form.note" style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">備註</label>
                                 <textarea id="order-note" rows="3"
+                                          data-i18n-placeholder="order.form.noteHint"
                                           placeholder="有任何特殊需求或備註，請在此填寫"
                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
                                                  background: rgba(255,255,255,0.1); color: white; border-radius: 5px; 
@@ -4467,19 +4469,19 @@
                             
                             <!-- 金額摘要 -->
                             <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                                <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">訂單金額：</div>
+                                <div data-i18n="order.form.orderTotal" style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">訂單金額：</div>
                                 ${promoDiscount > 0 ? `
                                 <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.5); text-decoration: line-through; margin-bottom: 5px;">
-                                    <span>原價</span>
+                                    <span data-i18n="order.form.originalPrice">原價</span>
                                     <span>NT$ ${originalTotal.toLocaleString()}</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 14px; color: #4CAF50; margin-bottom: 5px;">
-                                    <span>優惠折扣</span>
+                                    <span data-i18n="order.form.discount">優惠折扣</span>
                                     <span>-NT$ ${promoDiscount.toLocaleString()}</span>
                                 </div>
                                 ` : ''}
                                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #d4af37; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-                                    <span>應付金額</span>
+                                    <span data-i18n="order.form.total">應付金額</span>
                                     <span>NT$ ${calculateCartTotal().toLocaleString()}</span>
                                 </div>
                             </div>
@@ -4487,10 +4489,10 @@
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
-                                    取消
+                                    <span data-i18n="order.form.cancel">取消</span>
                                 </button>
                                 <button type="submit" class="btn" style="flex: 1;">
-                                    繼續付款
+                                    <span data-i18n="order.form.continue">繼續付款</span>
                                 </button>
                             </div>
                         </form>
