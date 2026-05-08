@@ -672,15 +672,15 @@
     <!-- Main Container -->
     <div class="container" id="main-container">
         <div class="header">
-            <h1>DUET 設計諮詢</h1>
-            <p>讓我們一起創造獨一無二的作品</p>
+            <h1 data-i18n="ai.page.title">DUET 設計諮詢</h1>
+            <p data-i18n="ai.page.subtitle">讓我們一起創造獨一無二的作品</p>
         </div>
 
         <div class="progress-container">
             <div class="progress-bar">
                 <div class="progress-fill" id="progress-fill"></div>
             </div>
-            <div class="progress-text" id="progress-text">準備開始...</div>
+            <div class="progress-text" id="progress-text" data-i18n="ai.page.preparing">準備開始...</div>
         </div>
 
         <div class="chat-container" id="chat-container">
@@ -688,7 +688,7 @@
         </div>
 
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="輸入您的回答..."
+            <input type="text" id="user-input" data-i18n-placeholder="ai.page.input.placeholder" placeholder="輸入您的回答..."
                 onkeypress="if(event.key==='Enter') sendMessage()" />
             <button class="send-btn" id="send-btn" onclick="sendMessage()">
                 <svg viewBox="0 0 24 24">
@@ -701,14 +701,14 @@
     <!-- Completion Screen -->
     <div class="completion-screen" id="completion-screen">
         <div class="completion-icon">✨</div>
-        <h2>設計諮詢完成！</h2>
-        <p>根據您的分享，我們為您準備了專屬的字體推薦</p>
+        <h2 data-i18n="ai.page.complete.title">設計諮詢完成！</h2>
+        <p data-i18n="ai.page.complete.body">根據您的分享，我們為您準備了專屬的字體推薦</p>
 
         <div class="recommendations" id="recommendations">
             <!-- Will be filled by JavaScript -->
         </div>
 
-        <button class="continue-btn" onclick="continueToDesign()">
+        <button class="continue-btn" onclick="continueToDesign()" data-i18n="ai.page.continue">
             開始設計我的 DUET
         </button>
     </div>
@@ -1148,6 +1148,11 @@
                 ? (returnUrl.includes('?') ? returnUrl + '&from=ai' : returnUrl + '?from=ai')
                 : 'https://duet.brendonchen.com/design-studio.html?from=ai';
             window.top.location.href = target;
+        }
+
+        // 初始化語言翻譯
+        if (window.initLanguage) {
+            window.initLanguage();
         }
     </script>
 </body>
