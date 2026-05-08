@@ -134,6 +134,12 @@ window.translations = {
         'studio.cart.view':        '查看購物車',
         'studio.slot.1':           '版本 1',
         'studio.slot.2':           '版本 2',
+        'studio.promo.title':      '🎁 優惠碼',
+        'studio.promo.placeholder':'輸入優惠碼',
+        'studio.promo.apply':      '套用',
+        'studio.promo.applied':    '已套用',
+        'studio.promo.error.empty':    '⚠️ 請輸入優惠碼',
+        'studio.promo.error.failed':   '❌ 驗證失敗，請稍後再試',
 
         // ── Admin 後台 ──
         'admin.tab.orders':   '訂單管理',
@@ -276,6 +282,12 @@ window.translations = {
         'studio.cart.view':        'View Cart',
         'studio.slot.1':           'Slot 1',
         'studio.slot.2':           'Slot 2',
+        'studio.promo.title':      '🎁 Promo Code',
+        'studio.promo.placeholder':'Enter promo code',
+        'studio.promo.apply':      'Apply',
+        'studio.promo.applied':    'Applied',
+        'studio.promo.error.empty':    '⚠️ Please enter a promo code',
+        'studio.promo.error.failed':   '❌ Verification failed, please try again',
 
         // ── Admin ──
         'admin.tab.orders':   'Orders',
