@@ -135,6 +135,37 @@ window.translations = {
         'studio.slot.1':           '版本 1',
         'studio.slot.2':           '版本 2',
 
+        // ── AI 諮詢 Modal ──
+        'ai.modal.consultant':      '設計諮詢',
+        'ai.modal.start':          '開始我的設計旅程',
+        'ai.modal.skip':           '跳過直接設計',
+
+        // ── AI 頁面 ──
+        'ai.page.title':           'DUET 設計諮詢',
+        'ai.page.subtitle':        '讓我們一起創造獨一無二的作品',
+        'ai.page.preparing':       '準備開始...',
+        'ai.page.complete.title':  '設計諮詢完成！',
+        'ai.page.complete.body':   '根據您的分享，我們為您準備了專屬的字體推薦',
+        'ai.page.continue':        '開始設計我的 DUET',
+        'ai.page.input.placeholder': '輸入您的回答...',
+
+        // ── 結帳確認 Modal ──
+        'checkout.confirm.title':      '確認您的設計',
+        'checkout.confirm.subtitle':   '請仔細確認以下資訊，付款後無法修改設計',
+        'checkout.confirm.total':      '訂單金額',
+        'checkout.confirm.delivery':   '預計交期',
+        'checkout.confirm.delivery.text': '群眾募資結束後<br>約 14 個工作天',
+        'checkout.confirm.warning':    '重要聲明',
+        'checkout.confirm.warning1':   '此為客製化商品，確認後無法修改設計',
+        'checkout.confirm.warning2':   '實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）',
+        'checkout.confirm.warning3':   '客製化商品不適用七天鑑賞期',
+        'checkout.confirm.checkbox':   '我已確認以上設計，並了解客製化商品不適用七天鑑賞期',
+        'checkout.confirm.cancel':     '返回修改',
+        'checkout.confirm.proceed':    '確認，前往付款',
+
+        // ── 優惠碼 ──
+        'studio.promo.validating':  '驗證中...',
+
         // ── Admin 後台 ──
         'admin.tab.orders':   '訂單管理',
         'admin.tab.users':    '員工管理',
@@ -276,6 +307,37 @@ window.translations = {
         'studio.cart.view':        'View Cart',
         'studio.slot.1':           'Slot 1',
         'studio.slot.2':           'Slot 2',
+
+        // ── AI 諮詢 Modal ──
+        'ai.modal.consultant':      'Design Consultation',
+        'ai.modal.start':          'Start My Design Journey',
+        'ai.modal.skip':           'Skip & Design Directly',
+
+        // ── AI 頁面 ──
+        'ai.page.title':           'DUET Design Consultation',
+        'ai.page.subtitle':        "Let's create something unique together",
+        'ai.page.preparing':       'Getting ready...',
+        'ai.page.complete.title':  'Consultation Complete!',
+        'ai.page.complete.body':   'Based on your sharing, we have prepared personalized font recommendations for you',
+        'ai.page.continue':        'Start Designing My DUET',
+        'ai.page.input.placeholder': 'Enter your response...',
+
+        // ── 結帳確認 Modal ──
+        'checkout.confirm.title':      'Confirm Your Design',
+        'checkout.confirm.subtitle':   'Please review the details carefully — design cannot be modified after payment',
+        'checkout.confirm.total':      'Order Total',
+        'checkout.confirm.delivery':   'Estimated Delivery',
+        'checkout.confirm.delivery.text': 'After crowdfunding ends<br>approx. 14 business days',
+        'checkout.confirm.warning':    'Important Notice',
+        'checkout.confirm.warning1':   'This is a custom-made item — design cannot be modified after payment',
+        'checkout.confirm.warning2':   'Actual item may differ slightly from 3D preview due to handcrafting (sharp corners will be rounded)',
+        'checkout.confirm.warning3':   'Custom items are not eligible for the 7-day cooling off period',
+        'checkout.confirm.checkbox':   'I have reviewed the design details and understand that custom items are not eligible for the 7-day cooling off period',
+        'checkout.confirm.cancel':     'Go Back',
+        'checkout.confirm.proceed':    'Confirm & Proceed to Payment',
+
+        // ── 優惠碼 ──
+        'studio.promo.validating':  'Validating...',
 
         // ── Admin ──
         'admin.tab.orders':   'Orders',
