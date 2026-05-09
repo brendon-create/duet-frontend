@@ -225,6 +225,50 @@ window.translations = {
         // ── 優惠碼 ──
         'studio.promo.validating':  '驗證中...',
 
+        // ── AI 諮詢完成頁面 ──
+        'ai.completion.title':         '為您精選的字體組合',
+        'ai.completion.subtitle':      '請為兩個字母各自選出最喜歡的一款字體，再點選下方「繼續設計」',
+        'ai.completion.defaultSummary': '根據您的分享，我為您挑選了以下字體',
+        'ai.completion.letter1.label': '字母 "${letter}" 的推薦',
+        'ai.completion.letter2.label': '字母 "${letter}" 的推薦',
+
+        // ── 結帳提醒 Modal ──
+        'checkout.reminder.title':       '即將完成您的專屬作品',
+        'checkout.reminder.subtitle':    '還有一個特別的步驟在等著您...',
+        'checkout.reminder.step1':       '我們會詢問您幾個關於字體的問題',
+        'checkout.reminder.step2':       '系統將為您生成專屬設計理念',
+        'checkout.reminder.step3':       '最後呈現設計理念讓您修改與確認',
+        'checkout.reminder.warning':     '請在付款完成後，稍候片刻不要關閉視窗',
+        'checkout.reminder.btn':         '我知道了，前往結帳',
+
+        // ── 設計理念產生中 ──
+        'design.story.generating':       '正在為您撰寫設計理念',
+
+        // ── 字體選擇原因 Modal ──
+        'font.reason.title':             '分享您的設計理念',
+        'font.reason.question':          '可以分享一下選擇這兩個字體的原因嗎？',
+        'font.reason.placeholder':        '分享您的想法...',
+        'font.reason.skip':               '跳過',
+        'font.reason.submit':              '送出',
+        'font.reason.alert.empty':        '請分享您的想法',
+        'font.reason.letter.label':       '字母 "${letter}"',
+
+        // ── 交期文字 ──
+        'delivery.vip':                   '約 15 個工作天',
+        'delivery.crowdfunding':         '群眾募資結束後<br>約 14 個工作天',
+
+        // ── 購物車商品資訊 ──
+        'cart.item.material.label':       '材質',
+        'cart.item.plating.label':        '電鍍',
+        'cart.item.plating.none':         '無電鍍',
+        'cart.item.finish.label':         '質地',
+        'cart.item.finish.glossy':        '亮面',
+        'cart.item.finish.matte':         '霧面',
+        'cart.item.size.label':            '尺寸',
+        'cart.item.weight.label':          '重量',
+        'cart.item.price.pending':         '價格待詢',
+        'cart.item.precious.metal':        '貴金屬訂製（待報價）',
+
         // ── Admin 後台 ──
         'admin.tab.orders':   '訂單管理',
         'admin.tab.users':    '員工管理',
@@ -456,6 +500,50 @@ window.translations = {
 
         // ── 優惠碼 ──
         'studio.promo.validating':  'Validating...',
+
+        // ── AI 諮詢完成頁面 ──
+        'ai.completion.title':         'Curated Font Combinations',
+        'ai.completion.subtitle':      'Pick your favorite font for each letter, then click "Continue to Design" below',
+        'ai.completion.defaultSummary': "Based on your sharing, I've selected these fonts for you",
+        'ai.completion.letter1.label': 'Recommended for letter "${letter}"',
+        'ai.completion.letter2.label': 'Recommended for letter "${letter}"',
+
+        // ── 結帳提醒 Modal ──
+        'checkout.reminder.title':       'Your Unique Piece is Almost Ready',
+        'checkout.reminder.subtitle':    'One special step awaits you...',
+        'checkout.reminder.step1':       "We'll ask you a few questions about your fonts",
+        'checkout.reminder.step2':       'Our system will generate a personalized design concept for you',
+        'checkout.reminder.step3':       'Finally, we\'ll present the design concept for your review and edits',
+        'checkout.reminder.warning':     '⏳ Please stay on this page after completing payment',
+        'checkout.reminder.btn':         "Got it, proceed to checkout",
+
+        // ── 設計理念產生中 ──
+        'design.story.generating':       'Writing your design concept',
+
+        // ── 字體選擇原因 Modal ──
+        'font.reason.title':             'Share Your Design Story',
+        'font.reason.question':          'Could you share why you chose these two fonts?',
+        'font.reason.placeholder':        'Share your thoughts...',
+        'font.reason.skip':               'Skip',
+        'font.reason.submit':              'Submit',
+        'font.reason.alert.empty':        'Please share your thoughts',
+        'font.reason.letter.label':       'Letter "${letter}"',
+
+        // ── 交期文字 ──
+        'delivery.vip':                   'Approx. 15 business days',
+        'delivery.crowdfunding':         'After campaign ends<br>~14 business days',
+
+        // ── 購物車商品資訊 ──
+        'cart.item.material.label':       'Material',
+        'cart.item.plating.label':        'Plating',
+        'cart.item.plating.none':         'None',
+        'cart.item.finish.label':         'Finish',
+        'cart.item.finish.glossy':        'Glossy',
+        'cart.item.finish.matte':         'Matte',
+        'cart.item.size.label':            'Size',
+        'cart.item.weight.label':          'Weight',
+        'cart.item.price.pending':         'Price upon inquiry',
+        'cart.item.precious.metal':        'Precious metal (Quote upon inquiry)',
 
         // ── Admin ──
         'admin.tab.orders':   'Orders',
