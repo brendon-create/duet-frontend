@@ -1063,18 +1063,18 @@
 
             recommendationsDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px;">
-            <h3 style="color: #d4af37; font-size: 24px; margin-bottom: 15px;">為您精選的字體組合</h3>
+            <h3 style="color: #d4af37; font-size: 24px; margin-bottom: 15px;">${window.t('ai.completion.title')}</h3>
             <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
-                ${data.summary || '根據您的分享，我為您挑選了以下字體'}
+                ${data.summary || window.t('ai.completion.defaultSummary')}
             </p>
-            <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 8px;">請為兩個字母各自選出最喜歡的一款字體，再點選下方「繼續設計」</p>
+            <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 8px;">${window.t('ai.completion.subtitle')}</p>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
             <!-- Letter 1 推薦 -->
             <div>
                 <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
-                    字母 "${letter1}" 的推薦
+                    ${window.t('ai.completion.letter1.label').replace('\${letter}', letter1)}
                 </h4>
                 <div style="display: flex; flex-direction: column; gap: 15px;" id="letter1-cards">
                     ${data.recommendations.letter1.map((rec, index) => `
@@ -1103,7 +1103,7 @@
             <!-- Letter 2 推薦 -->
             <div>
                 <h4 style="color: #d4af37; font-size: 18px; margin-bottom: 20px; text-align: center;">
-                    字母 "${letter2}" 的推薦
+                    ${window.t('ai.completion.letter2.label').replace('\${letter}', letter2)}
                 </h4>
                 <div style="display: flex; flex-direction: column; gap: 15px;" id="letter2-cards">
                     ${data.recommendations.letter2.map((rec, index) => `

@@ -517,12 +517,12 @@
                     color: #fff;
                     margin: 0 0 12px 0;
                     letter-spacing: 0.5px;
-                ">即將完成您的專屬作品</h2>
+                " data-i18n="checkout.reminder.title">即將完成您的專屬作品</h2>
                 <p style="
                     font-size: 15px;
                     color: rgba(255, 255, 255, 0.7);
                     margin: 0;
-                ">還有一個特別的步驟在等著您...</p>
+                " data-i18n="checkout.reminder.subtitle">還有一個特別的步驟在等著您...</p>
             </div>
 
             <!-- 內容 -->
@@ -541,15 +541,15 @@
                 ">
                     <li style="margin-bottom: 18px; font-size: 16px;">
                         <span style="color: #d4af37; margin-right: 12px;">📝</span>
-                        我們會詢問您幾個關於字體的問題
+                        <span data-i18n="checkout.reminder.step1">我們會詢問您幾個關於字體的問題</span>
                     </li>
                     <li style="margin-bottom: 18px; font-size: 16px;">
                         <span style="color: #d4af37; margin-right: 12px;">✨</span>
-                        系統將為您生成專屬設計理念
+                        <span data-i18n="checkout.reminder.step2">系統將為您生成專屬設計理念</span>
                     </li>
                     <li style="font-size: 16px;">
                         <span style="color: #d4af37; margin-right: 12px;">🎨</span>
-                        最後呈現設計理念讓您修改與確認
+                        <span data-i18n="checkout.reminder.step3">最後呈現設計理念讓您修改與確認</span>
                     </li>
                 </ul>
             </div>
@@ -569,7 +569,7 @@
                     font-weight: 500;
                     margin: 0;
                     line-height: 1.8;
-                ">
+                " data-i18n="checkout.reminder.warning">
                     ⏳ 請在付款完成後，稍候片刻不要關閉視窗
                 </p>
             </div>
@@ -588,7 +588,8 @@
                 transition: all 0.3s;
                 box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
             " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 35px rgba(212, 175, 55, 0.5)'"
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.4)'">
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(212, 175, 55, 0.4)'"
+                data-i18n="checkout.reminder.btn">
                 我知道了，前往結帳
             </button>
         </div>
@@ -718,7 +719,7 @@
                                       outline: none;
                                       transition: all 0.3s;">
                         <button id="apply-promo-btn" type="button" onclick="applyPromoCode()" class="glass" style="flex-shrink: 0;
-                                       width: 70px;
+                                       width: 90px;
                                        padding: 10px 12px; 
                                        background: rgba(255, 255, 255, 0.08);
                                        backdrop-filter: blur(10px) saturate(100%);
@@ -3251,16 +3252,16 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'cart-item-info';
-                const platingText  = item.plating === 'none' ? '無電鍍' : item.plating;
-                const finishText   = item.finish === 'glossy' ? '亮面' : '霧面';
-                const materialText = item.isPreciousMetal ? '貴金屬訂製（待報價）' : item.material;
+                const platingText  = item.plating === 'none' ? window.t('cart.item.plating.none') : item.plating;
+                const finishText   = item.finish === 'glossy' ? window.t('cart.item.finish.glossy') : window.t('cart.item.finish.matte');
+                const materialText = item.isPreciousMetal ? window.t('cart.item.precious.metal') : item.material;
                 infoDiv.innerHTML = `
                     <h3>DUET "${item.letter1}${item.letter2}"</h3>
                     <div class="cart-item-details">
                         "${item.letter1}" in font "${item.font1}"<br>
                         "${item.letter2}" in font "${item.font2}"<br>
-                        材質: ${materialText} | 電鍍: ${platingText} | 質地: ${finishText}<br>
-                        尺寸: ${item.size}mm | 重量: ${item.weight}
+                        ${window.t('cart.item.material.label')}: ${materialText} | ${window.t('cart.item.plating.label')}: ${platingText} | ${window.t('cart.item.finish.label')}: ${finishText}<br>
+                        ${window.t('cart.item.size.label')}: ${item.size}mm | ${window.t('cart.item.weight.label')}: ${item.weight}
                     </div>
                 `;
                 div.appendChild(infoDiv);
@@ -3268,7 +3269,7 @@
                 const priceDiv = document.createElement('div');
                 priceDiv.className = 'cart-item-price';
                 if (item.isPreciousMetal) {
-                    priceDiv.textContent = '價格待詢';
+                    priceDiv.textContent = window.t('cart.item.price.pending');
                     priceDiv.style.color = '#d4af37';
                     priceDiv.style.fontSize = '13px';
                 } else {
@@ -3753,7 +3754,7 @@
                     font-size: 14px;
                 ">
                     <div style="font-size: 32px; margin-bottom: 15px;">✍️</div>
-                    <div>正在為您撰寫設計理念<span class="dots-animation"></span></div>
+                    <div>${window.t('design.story.generating')}<span class="dots-animation"></span></div>
                 </div>
             `;
 
@@ -3808,7 +3809,7 @@
                 </div>
                 
                 <h2 style="color: #d4af37; text-align: center; margin-bottom: 30px;">
-                    ✨ 分享您的設計理念
+                    ✨ ${window.t('font.reason.title')}
                 </h2>
                 
                 <!-- 字體預覽 -->
@@ -3820,7 +3821,7 @@
                             ${combination.letters.letter1}
                         </div>
                         <div style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 5px;">
-                            字母 "${combination.letters.letter1}"
+                            ${window.t('font.reason.letter.label').replace('\${letter}', combination.letters.letter1)}
                         </div>
                         <div style="color: #d4af37; font-size: 12px;">
                             ${combination.fonts.font1}
@@ -3834,7 +3835,7 @@
                             ${combination.letters.letter2}
                         </div>
                         <div style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 5px;">
-                            字母 "${combination.letters.letter2}"
+                            ${window.t('font.reason.letter.label').replace('\${letter}', combination.letters.letter2)}
                         </div>
                         <div style="color: #d4af37; font-size: 12px;">
                             ${combination.fonts.font2}
@@ -3847,12 +3848,12 @@
                             border-radius: 12px; margin-bottom: 20px;
                             border-left: 3px solid #d4af37;">
                     <div style="color: rgba(255,255,255,0.9); font-size: 15px; line-height: 1.6;">
-                        可以分享一下選擇這兩個字體的原因嗎？
+                        ${window.t('font.reason.question')}
                     </div>
                 </div>
                 
                 <textarea id="font-reason-input" 
-                          placeholder="分享您的想法..."
+                          placeholder="${window.t('font.reason.placeholder')}"
                           style="width: 100%; height: 120px; padding: 15px; 
                                  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);
                                  color: white; border-radius: 12px; font-size: 14px; resize: vertical;
@@ -3862,12 +3863,12 @@
                     <button id="skip-reason-btn" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08);
                                    border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 12px;
                                    font-size: 14px; font-weight: 600; cursor: pointer;">
-                        跳過
+                        ${window.t('font.reason.skip')}
                     </button>
                     <button id="submit-reason-btn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d4af37, #aa8a2e);
                                    color: #000; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
                                    cursor: pointer;">
-                        送出
+                        ${window.t('font.reason.submit')}
                     </button>
                 </div>
             </div>
@@ -3880,7 +3881,7 @@
                     const reason = document.getElementById('font-reason-input').value.trim();
 
                     if (!reason) {
-                        alert('請分享您的想法');
+                        alert(window.t('font.reason.alert.empty'));
                         return;
                     }
 
@@ -4153,8 +4154,8 @@
                 const deliveryEl = document.getElementById('design-confirm-delivery');
                 if (deliveryEl) {
                     deliveryEl.innerHTML = finalTotal === 0
-                        ? '約 15 個工作天'
-                        : '群眾募資結束後<br>約 14 個工作天';
+                        ? window.t('delivery.vip')
+                        : window.t('delivery.crowdfunding');
                 }
 
                 modal.style.display = 'flex';
