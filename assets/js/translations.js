@@ -227,8 +227,7 @@ window.translations = {
 
         // ── AI 諮詢完成頁面 ──
         'ai.completion.title':         '為您精選的字體組合',
-        'ai.completion.subtitle':      '請為兩個字母各自選出最喜歡的一款字體，再點選下方「繼續設計」',
-        'ai.completion.defaultSummary': '根據您的分享，我為您挑選了以下字體',
+        'ai.completion.transition':    '好，接下來我為兩個字母各推薦三款字體，請各選一個你喜歡的，我先做出第一件作品給你看。想試試其他組合的話，也可以到字體庫自由搭配。',
         'ai.completion.letter1.label': '字母 "${letter}" 的推薦',
         'ai.completion.letter2.label': '字母 "${letter}" 的推薦',
 
@@ -503,8 +502,7 @@ window.translations = {
 
         // ── AI 諮詢完成頁面 ──
         'ai.completion.title':         'Curated Font Combinations',
-        'ai.completion.subtitle':      'Pick your favorite font for each letter, then click "Continue to Design" below',
-        'ai.completion.defaultSummary': "Based on your sharing, I've selected these fonts for you",
+        'ai.completion.transition':    "Based on what you've shared, here are three font options for each letter. Pick one you like for each — I'll use your combination to make the first piece. You can also explore the font library for more pairings.",
         'ai.completion.letter1.label': 'Recommended for letter "${letter}"',
         'ai.completion.letter2.label': 'Recommended for letter "${letter}"',
 
