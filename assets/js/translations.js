@@ -17,24 +17,24 @@ window.translations = {
 
         // ── Hero ──
         'hero.subtitle': 'BCAG 全新 線上訂製珠寶 系列 — DUET',
-        'hero.title':    '兩個字母，打造一件只屬於你們的珠寶',
-        'hero.body':     '透過設計諮詢了解你的靈感，推薦最適合的字體組合，即時 3D 預覽確認成品，滿意再付款。',
+        'hero.title':    '每一個關係的交織，<br>都是一段<em>故事</em>的開始',
+        'hero.body':     '最棒的關係，是各自保有真實的自己，但讓彼此的生命都更有深度、空間、層次！<br>DUET 系列用兩個字母，承載你們的故事。透過溫暖的訂製諮詢，引導您親手打造獨一無二的交織墜飾。',
         'hero.tagline':  '「專屬於你們的交織印記」',
-        'hero.btn.start':'馬上試試看 →',
+        'hero.btn.start':'開始你的故事 →',
         'hero.btn.more': '了解更多 ↓',
         'hero.drag':     '← 拖曳旋轉 →',
 
         // ── 品牌故事 ──
         'story.title': '當科技遇見<br>手作溫度',
         'story.body':  '三十多年來，BCAG為超過300位私人訂製客戶設計過無數作品，我們始終相信，每一件珠寶的存在，都是為了訴說一個故事。而現在，BCAG 的 DUET 系列，讓線上訂製珠寶不再只是選擇現有款式、雷射雕刻，而是從您的情感與記憶出發，結合數位精密工藝與傳統金工手藝，將無形的故事與對您來說具有意義的兩個字母，轉化為獨特造型的珠寶作品。',
-        'story.quote': '「最棒的關係，是各自保有真實的自己，但讓彼此的生命都更有深度、空間、層次。」',
+        'story.quote': '「最好的珠寶，不是最昂貴的，而是乘載著真實故事的作品。」',
 
         // ── 設計旅程 ──
         'process.subtitle': '設計旅程',
         'process.title':    '從對話到實體',
-        'process.lead':     '五個步驟，最快三分鐘完成您的專屬設計',
+        'process.lead':     '五個步驟，創造你的專屬作品',
         'process.s1.title': '分享你的故事',
-        'process.s1.body':  '只要回答幾個問題，讓 DUET 了解你送禮的心意，我們就能推薦最適合的字體風格，並為你撰寫一份專屬設計理念。',
+        'process.s1.body':  '在訂製諮詢的過程中，分享這份禮物背後的意義 —— 是紀念、是感謝，還是承諾?',
         'process.s2.title': '探索字型組合',
         'process.s2.body':  '根據您的故事情感，為您推薦最適合的字型風格。您也可以自由探索百種精選字體。',
         'process.s3.title': '即時 3D 預覽',
@@ -53,7 +53,7 @@ window.translations = {
         'craft.title':       '每個細節<br>都為了精準實現您的想像',
         'craft.i1.title':    '簡潔介面',
         'craft.i1.body':     '精心設計的介面，讓您用最簡單的操作，組合出超過千萬種可能的設計',
-        'craft.i2.title':    '即時預覽，確認再付款',
+        'craft.i2.title':    '個人化設計服務',
         'craft.i2.body':     '專屬設計諮詢、字體推薦、全自動 3D 建模，讓您輕鬆完成專屬設計',
         'craft.i3.title':    '傳統工藝',
         'craft.i3.body':     '以專業珠寶師傅的手工技藝，完美呈現作品，確保完成品與您看到的預覽一致',
@@ -319,24 +319,24 @@ window.translations = {
 
         // ── Hero ──
         'hero.subtitle': "BCAG's New Online Custom Jewelry Collection — DUET",
-        'hero.title':    'Two letters, crafted into one piece made only for you two.',
-        'hero.body':     'Through a design consultation we learn what inspires you, recommend the right font pairing, and let you preview in 3D — pay only when you love it.',
+        'hero.title':    'Where every bond<br>begins to <em>intertwine</em>',
+        'hero.body':     'The best relationships let each person stay true to who they are — while making life richer, deeper, and more alive.<br>DUET captures this in two letters. Through a warm, guided consultation, we help you craft a pendant that carries your story, and no one else\'s.',
         'hero.tagline':  '"Your bond, woven forever."',
-        'hero.btn.start':'Try It Now →',
+        'hero.btn.start':'Begin Your Story →',
         'hero.btn.more': 'Explore ↓',
         'hero.drag':     '← Drag to rotate →',
 
         // ── Brand Story ──
         'story.title': 'Where Technology Meets<br>the Human Touch',
         'story.body':  'For over three decades, BCAG has crafted countless pieces for more than 300 discerning clients. We have always believed that every piece of jewelry exists to tell a story. Now, with DUET, online custom jewelry is no longer about choosing from existing designs or laser engraving — it begins with your emotions and memories, transformed by digital precision and traditional goldsmithing into a pendant shaped by the two letters that mean the most to you.',
-        'story.quote': '"The best relationships let each person stay true to who they are — while making life richer, deeper, and more alive."',
+        'story.quote': '"The finest jewelry is not the most expensive — it is the piece that carries a true story."',
 
         // ── Process ──
         'process.subtitle': 'Design Journey',
         'process.title':    'From Conversation to Creation',
-        'process.lead':     'Five steps. Your design ready in as little as three minutes.',
+        'process.lead':     'Five steps to bring your piece to life',
         'process.s1.title': 'Share Your Story',
-        'process.s1.body':  'Answer a few questions so DUET can understand the heart behind your gift — we\'ll recommend the most fitting font styles and write you a personalized design story.',
+        'process.s1.body':  'During the consultation, share the meaning behind this piece — a commemoration, a thank-you, or a promise.',
         'process.s2.title': 'Explore Font Pairings',
         'process.s2.body':  'Based on the feeling of your story, we recommend the most fitting font styles. Or freely explore over a hundred curated fonts.',
         'process.s3.title': 'Real-Time 3D Preview',
@@ -355,7 +355,7 @@ window.translations = {
         'craft.title':    'Every detail, crafted<br>to realize your vision',
         'craft.i1.title': 'Intuitive Interface',
         'craft.i1.body':  'Our thoughtfully designed studio makes it effortless to explore millions of possible combinations with just a few clicks.',
-        'craft.i2.title': 'Live Preview, Pay When You\'re Sure',
+        'craft.i2.title': 'Personalized Design Service',
         'craft.i2.body':  'Dedicated design consultation, font recommendations, and fully automated 3D modeling — so you can create your ideal piece with ease.',
         'craft.i3.title': 'Traditional Craftsmanship',
         'craft.i3.body':  'Hand-finished by master jewelers who ensure that what you see in the preview is exactly what you receive.',
