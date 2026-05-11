@@ -398,10 +398,10 @@
 
         <!-- 提示 + 確定按鈕 -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-            <div style="font-size:10px;color:rgba(255,255,255,0.45);background:rgba(0,0,0,0.3);backdrop-filter:blur(5px);padding:4px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+            <div data-i18n="design.story.edit.hint" style="font-size:10px;color:rgba(255,255,255,0.45);background:rgba(0,0,0,0.3);backdrop-filter:blur(5px);padding:4px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
                 💡 點擊卡片內文字可編輯
             </div>
-            <button id="confirm-story-card" style="
+            <button id="confirm-story-card" data-i18n="design.story.confirm" style="
                 background: rgba(212,175,55,0.15);
                 border: 1px solid rgba(212,175,55,0.3);
                 color: rgba(212,175,55,0.9);
@@ -702,12 +702,12 @@
                 <!-- 優惠碼區塊 -->
                 <div
                     style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
-                    <label
+                    <label data-i18n="studio.promo.title"
                         style="display: block; margin-bottom: 10px; font-weight: bold; color: #d4af37; font-size: 14px;">
                         🎁 優惠碼
                     </label>
                     <div style="display: flex; align-items: stretch; gap: 10px; width: 100%;">
-                        <input type="text" id="promo-code-input" placeholder="輸入優惠碼" maxlength="20" style="flex: 1; 
+                        <input type="text" id="promo-code-input" data-i18n-placeholder="studio.promo.placeholder" placeholder="輸入優惠碼" maxlength="20" style="flex: 1;
                                       min-width: 0;
                                       padding: 10px 12px; 
                                       border: 1px solid rgba(255,255,255,0.3); 
@@ -718,20 +718,20 @@
                                       text-transform: uppercase;
                                       outline: none;
                                       transition: all 0.3s;">
-                        <button id="apply-promo-btn" type="button" onclick="applyPromoCode()" class="glass" style="flex-shrink: 0;
+                        <button id="apply-promo-btn" type="button" onclick="applyPromoCode()" class="glass" data-i18n="studio.promo.apply" style="flex-shrink: 0;
                                        width: 90px;
-                                       padding: 10px 12px; 
+                                       padding: 10px 12px;
                                        background: rgba(255, 255, 255, 0.08);
                                        backdrop-filter: blur(10px) saturate(100%);
                                        -webkit-backdrop-filter: blur(10px) saturate(100%);
                                        border: 1px solid rgba(255, 255, 255, 0.2);
                                        box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-                                       color: white; 
-                                       border-radius: 8px; 
-                                       cursor: pointer; 
-                                       font-weight: bold; 
-                                       font-size: 14px; 
-                                       white-space: nowrap; 
+                                       color: white;
+                                       border-radius: 8px;
+                                       cursor: pointer;
+                                       font-weight: bold;
+                                       font-size: 14px;
+                                       white-space: nowrap;
                                        transition: all 0.3s;">
                             套用
                         </button>
@@ -3376,7 +3376,7 @@
             const totalElement = document.getElementById('cart-total');
 
             if (allPreciousMetal) {
-                totalElement.textContent = '價格待詢';
+                totalElement.textContent = window.t('cart.poa');
                 totalElement.style.color = '#d4af37';
                 return;
             }
@@ -3391,7 +3391,7 @@
                             NT$ ${original.toLocaleString()}
                         </div>
                         <div style="font-size: 16px; color: #4CAF50; margin-bottom: 5px;">
-                            優惠折扣 -NT$ ${discount.toLocaleString()}
+                            ${window.t('order.form.discount')} -NT$ ${discount.toLocaleString()}
                         </div>
                         <div style="font-size: 24px; font-weight: bold; color: #d4af37;">
                             NT$ ${final.toLocaleString()}
@@ -4088,8 +4088,8 @@
         // ── 設計確認 Modal ──────────────────────────────────
         const _DESIGN_STATEMENT_TEXT = '此為客製化商品，確認後無法修改設計；實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）；客製化商品不適用七天鑑賞期。';
         const _DESIGN_STATEMENT_VERSION = 'v1';
-        const _MATERIAL_LABELS = { silver925:'925 銀', brass:'黃銅', precious_metal:'貴金屬' };
-        const _PLATING_LABELS  = { none:'無', gold18k:'18K 金', whitegold18k:'18K 白金', rosegold18k:'18K 玫瑰金' };
+        const _MATERIAL_LABELS = { silver925: window.t('mat.silver925'), brass: window.t('mat.brass'), precious_metal: window.t('mat.precious') };
+        const _PLATING_LABELS  = { none: window.t('plating.none') || '無', gold18k: window.t('plating.gold18k'), whitegold18k: window.t('plating.whitegold18k'), rosegold18k: window.t('plating.rosegold18k') };
 
         function showDesignConfirmation() {
             return new Promise((resolve, reject) => {
@@ -4125,23 +4125,24 @@
 
                     const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
                     const platingStr = (item.plating && item.plating !== 'none')
-                        ? ` + ${_PLATING_LABELS[item.plating] || item.plating}電鍍` : '';
+                        ? ` + ${_PLATING_LABELS[item.plating] || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
 
                     const viewCell = (img, lbl) => `
                         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
                             ${img || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">${lbl}</div>`}
                         </div>`;
 
-                    const title = cartItems.length > 1 ? `作品 ${idx + 1}` : '作品';
+                    const _itemWord = window.t('checkout.item');
+                    const title = cartItems.length > 1 ? `${_itemWord} ${idx + 1}` : _itemWord;
                     container.innerHTML += `
                     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:20px;margin-bottom:18px;">
                         <div style="font-size:12px;font-weight:600;color:#d4af37;letter-spacing:1px;margin-bottom:14px;">${title}</div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
                             <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:2.3;">
-                                <span style="color:rgba(255,255,255,0.3);">字母　</span>${item.letter1} + ${item.letter2}<br>
-                                <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
-                                <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
-                                <span style="color:rgba(255,255,255,0.3);">材質　</span>${materialLabel}${platingStr}
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.letter')}　</span>${item.letter1} + ${item.letter2}<br>
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.font')}　</span>${item.font1} / ${item.font2}<br>
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.size')}　</span>${item.size} mm<br>
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.material')}　</span>${materialLabel}${platingStr}
                             </div>
                             <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
                                 ${heroImg || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">Hero</div>`}
@@ -4257,7 +4258,8 @@
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
                         designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
                         returnUrl: window.location.origin + '/payment-success.html',
-                        renderCount: renderCount        // 本次 session 的 render 次數（後台統計用）
+                        renderCount: renderCount,       // 本次 session 的 render 次數（後台統計用）
+                        lang: localStorage.getItem('duet_language') || 'zh'
                     })
                 });
 
@@ -4333,174 +4335,174 @@
                 modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center;';
                 modal.innerHTML = `
                     <div class="modal-content" style="max-width: 1000px !important; width: 90%; max-height: 90vh; overflow-y: auto; background: #1a1a2e; padding: 50px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2);">
-                        <h2 style="margin-bottom: 20px; color: #d4af37;">填寫訂購資訊</h2>
+                        <h2 style="margin-bottom: 20px; color: #d4af37;">${window.t('order.form.title')}</h2>
                         ${appliedPromoCode ? `
                         <div style="margin-bottom: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 8px;">
                             <div style="display: flex; align-items: center; gap: 8px; color: #4CAF50; font-size: 14px;">
                                 <span>✅</span>
-                                <span>已套用優惠碼：<strong>${appliedPromoCode}</strong></span>
+                                <span>${window.t('order.form.promoApplied')}：<strong>${appliedPromoCode}</strong></span>
                             </div>
                             <div style="margin-top: 5px; font-size: 13px; color: rgba(255,255,255,0.6);">
-                                折扣 NT$ ${promoDiscount.toLocaleString()}
+                                ${window.t('order.form.promoDiscount')} NT$ ${promoDiscount.toLocaleString()}
                             </div>
                         </div>
                         ` : ''}
                         <form id="user-info-form">
                             <!-- 購買人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">購買人資訊</h3>
-                                
+                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.buyerInfo')}</h3>
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">購買人姓名 *</label>
-                                    <input type="text" id="buyer-name" required 
-                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.buyerName')} *</label>
+                                    <input type="text" id="buyer-name" required
+                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
-                                
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">Email *</label>
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.email')} *</label>
                                     <input type="email" id="buyer-email" required
-                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
-                                
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">手機號碼 *</label>
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.phone')} *</label>
                                     <input type="tel" id="buyer-phone" required pattern="[0-9]{10}"
                                            placeholder="0912345678"
-                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
                             </div>
-                            
+
                             <!-- 收件人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收件人資訊</h3>
-                                
+                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.recipientInfo')}</h3>
+
                                 <div style="margin-bottom: 15px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                                        <input type="checkbox" id="same-as-buyer" 
+                                        <input type="checkbox" id="same-as-buyer"
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleRecipientFields(this.checked)">
                                         <label for="same-as-buyer" style="cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.7);">
-                                            同購買人
+                                            ${window.t('order.form.sameAsBuyer')}
                                         </label>
                                     </div>
-                                    
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人姓名 *</label>
-                                    <input type="text" id="recipient-name" required 
-                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientName')} *</label>
+                                    <input type="text" id="recipient-name" required
+                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
-                                
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收件人手機 *</label>
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientPhone')} *</label>
                                     <input type="tel" id="recipient-phone" required pattern="[0-9]{10}"
                                            placeholder="0912345678"
-                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                           style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
                             </div>
-                            
+
                             <!-- 收貨地址 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">收貨地址</h3>
-                                
+                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.shippingAddr')}</h3>
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">郵遞區號</label>
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.postalCode')}</label>
                                     <input type="text" id="postal-code" pattern="[0-9]{3,5}"
                                            placeholder="例：100"
-                                           style="width: 120px; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                           style="width: 120px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
-                                
+
                                 <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">收貨地址 *</label>
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.fullAddress')} *</label>
                                     <textarea id="shipping-address" required rows="3"
-                                              placeholder="請填寫完整收貨地址（縣市、鄉鎮區、路街巷弄號）"
-                                              style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
-                                                     background: rgba(255,255,255,0.1); color: white; border-radius: 5px; 
+                                              placeholder="${window.t('order.form.addressHint')}"
+                                              style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
+                                                     background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
                                                      resize: vertical; font-family: inherit;"></textarea>
                                 </div>
                             </div>
-                            
+
                             <!-- 發票資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">發票資訊</h3>
-                                
+                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.invoiceInfo')}</h3>
+
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                                         <input type="radio" name="invoice-type" value="personal" checked
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleInvoiceFields(false)">
-                                        <span style="color: rgba(255,255,255,0.8);">個人發票（二聯式）</span>
+                                        <span style="color: rgba(255,255,255,0.8);">${window.t('order.form.invoicePersonal')}</span>
                                     </label>
                                 </div>
-                                
+
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                                         <input type="radio" name="invoice-type" value="company"
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleInvoiceFields(true)">
-                                        <span style="color: rgba(255,255,255,0.8);">公司發票（三聯式）</span>
+                                        <span style="color: rgba(255,255,255,0.8);">${window.t('order.form.invoiceCompany')}</span>
                                     </label>
                                 </div>
-                                
+
                                 <div id="company-invoice-fields" style="display: none;">
                                     <div style="margin-bottom: 15px;">
-                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">統一編號 *</label>
+                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.taxId')} *</label>
                                         <input type="text" id="company-tax-id" pattern="[0-9]{8}"
-                                               placeholder="8位數字"
-                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                               placeholder="${window.t('order.form.taxIdHint')}"
+                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                     </div>
-                                    
+
                                     <div style="margin-bottom: 15px;">
-                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">公司抬頭 *</label>
+                                        <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.companyName')} *</label>
                                         <input type="text" id="company-name"
-                                               placeholder="公司名稱"
-                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
+                                               placeholder="${window.t('order.form.companyNameHint')}"
+                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- 備註 -->
                             <div style="margin-bottom: 20px;">
-                                <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">備註</label>
+                                <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.note')}</label>
                                 <textarea id="order-note" rows="3"
-                                          placeholder="有任何特殊需求或備註，請在此填寫"
-                                          style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); 
-                                                 background: rgba(255,255,255,0.1); color: white; border-radius: 5px; 
+                                          placeholder="${window.t('order.form.noteHint')}"
+                                          style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
+                                                 background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
                                                  resize: vertical; font-family: inherit;"></textarea>
                             </div>
-                            
+
                             <!-- 金額摘要 -->
                             <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                                <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">訂單金額：</div>
+                                <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px;">${window.t('order.form.orderTotal')}：</div>
                                 ${promoDiscount > 0 ? `
                                 <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.5); text-decoration: line-through; margin-bottom: 5px;">
-                                    <span>原價</span>
+                                    <span>${window.t('order.form.originalPrice')}</span>
                                     <span>NT$ ${originalTotal.toLocaleString()}</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 14px; color: #4CAF50; margin-bottom: 5px;">
-                                    <span>優惠折扣</span>
+                                    <span>${window.t('order.form.discount')}</span>
                                     <span>-NT$ ${promoDiscount.toLocaleString()}</span>
                                 </div>
                                 ` : ''}
                                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #d4af37; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-                                    <span>應付金額</span>
+                                    <span>${window.t('order.form.total')}</span>
                                     <span>NT$ ${calculateCartTotal().toLocaleString()}</span>
                                 </div>
                             </div>
-                            
+
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
-                                    取消
+                                    ${window.t('order.form.cancel')}
                                 </button>
                                 <button type="submit" class="btn" style="flex: 1;">
-                                    繼續付款
+                                    ${window.t('order.form.continue')}
                                 </button>
                             </div>
                         </form>
@@ -4598,8 +4600,8 @@
                     `;
                     loadingDiv.innerHTML = `
                         <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
-                        <div style="font-size: 16px; font-weight: 500;">正在處理訂單...</div>
-                        <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">請稍候，即將跳轉至付款頁面</div>
+                        <div style="font-size: 16px; font-weight: 500;">${window.t('order.processing')}</div>
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">${window.t('order.processing.desc')}</div>
                     `;
                     modal.appendChild(loadingDiv);
                     
