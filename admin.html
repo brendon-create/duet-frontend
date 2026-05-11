@@ -291,6 +291,7 @@
         
         .status-badge.pending { background: rgba(255,165,0,0.2); color: #ffa500; }
         .status-badge.paid { background: rgba(76,175,80,0.2); color: #4CAF50; }
+        .status-badge.free_order { background: rgba(76,175,80,0.12); color: #2e7d32; border: 1px dashed #4CAF50; }
         .status-badge.processing { background: rgba(33,150,243,0.2); color: #2196F3; }
         .status-badge.completed { background: rgba(156,39,176,0.2); color: #9C27B0; }
         .status-badge.shipped { background: rgba(0,188,212,0.2); color: #00BCD4; }
@@ -560,6 +561,7 @@
                         <option value="">全部狀態</option>
                         <option value="pending">待付款</option>
                         <option value="paid">已付款</option>
+                        <option value="free_order">免付款</option>
                         <option value="processing">製作中</option>
                         <option value="completed">已完成</option>
                         <option value="shipped">已出貨</option>
@@ -1204,6 +1206,7 @@
         const statusMap = {
             'pending': { text: '待付款', class: 'pending' },
             'paid': { text: '已付款', class: 'paid' },
+            'free_order': { text: '免付款', class: 'free_order' },
             'processing': { text: '製作中', class: 'processing' },
             'completed': { text: '已完成', class: 'completed' },
             'shipped': { text: '已出貨', class: 'shipped' },
@@ -1398,7 +1401,7 @@
                 
                 if (counts[o.status] !== undefined) counts[o.status]++;
                 // 只計算已付款訂單的營收
-                if (o.status === 'paid' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
+                if (o.status === 'paid' || o.status === 'free_order' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
                     const orderTotal = o.total || o.originalTotal || 0;
                     totalRevenue += orderTotal;
                     paidOrdersCount++;
@@ -1946,7 +1949,7 @@
                 <div class="detail-section">
                     <h3>基本資訊</h3>
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
-                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${order.status === 'paid' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}</div>
+                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
@@ -2066,6 +2069,7 @@
                         <select id="newStatus" onchange="showLogisticsFields()">
                             <option value="pending" ${order.status==='pending'?'selected':''}>待付款</option>
                             <option value="paid" ${order.status==='paid'?'selected':''}>已付款</option>
+                            <option value="free_order" ${order.status==='free_order'?'selected':''}>免付款</option>
                             <option value="processing" ${order.status==='processing'?'selected':''}>製作中</option>
                             <option value="completed" ${order.status==='completed'?'selected':''}>已完成</option>
                             <option value="shipped" ${order.status==='shipped'?'selected':''}>已出貨</option>

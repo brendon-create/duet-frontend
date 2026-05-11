@@ -321,6 +321,7 @@
         
         .status-badge.pending { background: #fef3c7; color: #d97706; }
         .status-badge.paid { background: #dbeafe; color: #2563eb; }
+        .status-badge.free_order { background: #dcfce7; color: #16a34a; border: 1px dashed #4ade80; }
         .status-badge.processing { background: #e0e7ff; color: #4338ca; }
         .status-badge.completed { background: #d1fae5; color: #059669; }
         .status-badge.shipped { background: #fce7f3; color: #db2777; }
@@ -516,6 +517,7 @@
         const statusMap = {
             'pending': { text: '待付款', class: 'pending' },
             'paid': { text: '已付款', class: 'paid' },
+            'free_order': { text: '免付款', class: 'free_order' },
             'processing': { text: '製作中', class: 'processing' },
             'completed': { text: '已完成', class: 'completed' },
             'shipped': { text: '已出貨', class: 'shipped' },
