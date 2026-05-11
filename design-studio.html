@@ -864,7 +864,10 @@
                 z-index: 9999;
                 box-shadow: 0 5px 20px rgba(212, 175, 55, 0.4);
             `;
-            notification.textContent = '✨ AI 已為您準備好推薦字體';
+            const _notifLang = localStorage.getItem('duet_language') || 'zh';
+            notification.textContent = _notifLang === 'en'
+                ? '✨ AI has prepared font recommendations for you'
+                : '✨ AI 已為您準備好推薦字體';
             document.body.appendChild(notification);
 
             setTimeout(() => {
@@ -1009,7 +1012,11 @@
         window.openDesignConsultant = function () {
             const existingData = localStorage.getItem('duet_ai_consultation');
             if (existingData) {
-                if (confirm('重新開始 AI 設計諮詢？這將清除之前的推薦。')) {
+                const _confirmLang = localStorage.getItem('duet_language') || 'zh';
+                const _confirmMsg = _confirmLang === 'en'
+                    ? 'Restart AI design consultation? This will clear your previous recommendations.'
+                    : '重新開始 AI 設計諮詢？這將清除之前的推薦。';
+                if (confirm(_confirmMsg)) {
                     localStorage.removeItem('duet_ai_consultation');
                     localStorage.setItem('duet_return_url', window.location.href);
                     window.location.href = getAIConsultantUrl();

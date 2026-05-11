@@ -761,6 +761,12 @@
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
+                    const currentLang = localStorage.getItem('duet_language') || 'zh';
+                    // 語言不符時丟棄舊對話，避免中英文混雜
+                    if (data.lang && data.lang !== currentLang) {
+                        sessionStorage.removeItem('duet_conversation_history');
+                        return false;
+                    }
                     if (data.history && Array.isArray(data.history) && data.history.length > 0) {
                         conversationHistory = data.history;
                         currentTurn = data.currentTurn || 0;
@@ -791,7 +797,8 @@
                 history: conversationHistory,
                 currentTurn: currentTurn,
                 selectedLetters: selectedLetters,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                lang: localStorage.getItem('duet_language') || 'zh'
             };
             sessionStorage.setItem('duet_conversation_history', JSON.stringify(data));
         }
