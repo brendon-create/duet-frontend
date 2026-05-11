@@ -4,6 +4,7 @@
 <head>
     <!-- 環境設定（必須在最前面載入） -->
     <script src="assets/js/config.js"></script>
+    <script src="assets/js/translations.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DUET 設計諮詢 | BCAG</title>
@@ -752,6 +753,7 @@
 
         // Start Design Journey
         document.addEventListener('DOMContentLoaded', function () {
+            if (window.initLanguage) window.initLanguage();
             initializeConversation();
         });
 
@@ -1009,7 +1011,9 @@
         function updateProgress(turn) {
             const progress = Math.min((turn / 12) * 100, 100);
             document.getElementById('progress-fill').style.width = `${progress}%`;
-            document.getElementById('progress-text').textContent = `進度：${Math.round(progress)}%`;
+            const _progLang = localStorage.getItem('duet_language') || 'zh';
+            const _progLabel = _progLang === 'en' ? 'Progress' : '進度';
+            document.getElementById('progress-text').textContent = `${_progLabel}：${Math.round(progress)}%`;
         }
 
         // Show Completion Screen
@@ -1160,10 +1164,6 @@
             window.top.location.href = target;
         }
 
-        // 初始化語言翻譯
-        if (window.initLanguage) {
-            window.initLanguage();
-        }
     </script>
 </body>
 
