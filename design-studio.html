@@ -3775,6 +3775,7 @@
             const text   = (designStory || '').trim();
 
             window.finalDesignStory = text;
+            window.aiOriginalDesignStory = text;
             textEl.innerHTML = text.replace(/\n/g, '<br>');
 
             modal.style.display = 'flex';
@@ -3929,7 +3930,8 @@
                             letter2: combination.letters.letter2,
                             font2: combination.fonts.font2
                         },
-                        fontReason: fontReason
+                        fontReason: fontReason,
+                        lang: localStorage.getItem('duet_language') || 'zh'
                     })
                 });
 
@@ -5022,8 +5024,9 @@
                     fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
+                        body: JSON.stringify({
                             designStory: editedStory,
+                            aiDesignStory: window.aiOriginalDesignStory || '',
                             sendEmail: true  // ✅ 觸發發送確認郵件
                         })
                     })
