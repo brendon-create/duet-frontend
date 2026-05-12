@@ -196,8 +196,8 @@ export function clipperOffset(paths, offsetUnits) {
     co.Execute(
         ClipperLib.ClipType.ctUnion,
         polyTree,
-        ClipperLib.PolyFillType.pftEvenOdd,
-        ClipperLib.PolyFillType.pftEvenOdd
+        ClipperLib.PolyFillType.pftNonZero,
+        ClipperLib.PolyFillType.pftNonZero
     );
     console.log(`[V3] Union PolyTree 根節點數: ${polyTree.Childs().length}`);
 
