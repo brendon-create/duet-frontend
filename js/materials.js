@@ -44,7 +44,7 @@ export function getMaterial(materialType, finish, plating = 'none') {
         color: finalColor,
         metalness: mat.metalness,
         roughness: roughness,
-        envMapIntensity: finish === 'glossy' ? 2.0 : 1.0
+        envMapIntensity: finish === 'glossy' ? 3.0 : 1.5
     };
 
     // 從 window.envMap 讀取（由 3d-scene.js 設定）
