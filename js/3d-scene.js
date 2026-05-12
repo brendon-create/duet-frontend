@@ -38,7 +38,7 @@ export function initScene() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 2.0;
+    renderer.toneMappingExposure = 1.6;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     const viewportEl = document.getElementById('viewport');
     viewportEl.appendChild(renderer.domElement);
