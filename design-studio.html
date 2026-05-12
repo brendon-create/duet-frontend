@@ -5,17 +5,25 @@
     <!-- 環境設定（必須在最前面載入） -->
     <script src="assets/js/config.js"></script>
     <script src="assets/js/translations.js"></script>
+    <!-- PostHog Analytics -->
+    <script>
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init('phc_ouDRrx6CU24mFEBcGk5HV4tgGPV8dySaJ7Y4Fot8Qm2k', {
+            api_host: 'https://us.i.posthog.com',
+            person_profiles: 'identified_only'
+        });
+    </script>
     <meta charset="UTF-8">
     
     <!-- 🔒 Content Security Policy - 放行所有資源 -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self' https://*.supabase.co https://*.onrender.com;
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://us.i.posthog.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
         font-src 'self' https://fonts.gstatic.com https://raw.githubusercontent.com data:;
         img-src 'self' data: blob: https://*.supabase.co https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://raw.githubusercontent.com;
         frame-src 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw;
-        connect-src 'self' https://*.supabase.co https://*.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com;
+        connect-src 'self' https://*.supabase.co https://*.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://us.i.posthog.com;
     ">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1111,6 +1119,7 @@
 
             // 付款成功
             if (paymentSuccess && orderId) {
+                posthog.capture('payment_completed', { order_id: orderId });
                 console.log(`✅ 檢測到付款成功: ${orderId}`);
 
                 // 清除 URL 參數（避免重複觸發）
@@ -1245,6 +1254,7 @@
             }
 
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
+            posthog.capture('studio_entered', { with_ai_data: !!aiDataStr });
 
             if (aiDataStr) {
                 const aiData = JSON.parse(aiDataStr);
@@ -3193,6 +3203,7 @@
             };
 
             cartItems.push(item);
+            posthog.capture('add_to_cart', { font1: font1Name, font2: font2Name });
             openCart();
 
             // 若分離部件檢查尚未完成，在購物車頂端插入提示
@@ -3217,6 +3228,7 @@
         }
 
         function openCart() {
+            posthog.capture('cart_opened');
             document.getElementById('cart-modal').classList.add('active');
             renderCart();
         }
@@ -3777,6 +3789,7 @@
         }
 
         function showDesignStoryCard(designStory) {
+            posthog.capture('design_story_shown');
             const modal  = document.getElementById('design-story-modal');
             const textEl = document.getElementById('story-text');
             const text   = (designStory || '').trim();
@@ -3893,12 +3906,14 @@
                         return;
                     }
 
+                    posthog.capture('font_reason_submitted');
                     modal.remove();
                     resolve(reason);
                 };
 
                 // 跳過按鈕
                 document.getElementById('skip-reason-btn').onclick = () => {
+                    posthog.capture('font_reason_skipped');
                     modal.remove();
                     resolve('');  // 空字串代表跳過
                 };
@@ -4050,6 +4065,7 @@
 
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
+            posthog.capture('checkout_clicked');
             // 若含貴金屬訂製品，改走詢問表單流程
             if (cartItems.some(i => i.isPreciousMetal)) {
                 openCustomInquiryModal();
