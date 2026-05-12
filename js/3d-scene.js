@@ -77,8 +77,8 @@ export function initScene() {
 
     // HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
     const hdrUrls = [
-        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
-        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
+        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/duet_studio.hdr',
+        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/duet_studio.hdr'
     ];
 
     let currentHdrIndex = 0;
