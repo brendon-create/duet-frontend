@@ -35,7 +35,6 @@
     { "name": "Days One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Denk One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Dynalight", "weight": 400, "offset_r": 0.175, "is_bold_required": false },
-    { "name": "East Sea Dokdo", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Exo 2", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
     { "name": "Fascinate", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Federo", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
