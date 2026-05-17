@@ -5458,17 +5458,15 @@
         var loaderEl = document.getElementById('loader');
         var glowStarted = false;
 
-        function startHintAndGlow() {
+        function doHintAndGlow() {
             if (glowStarted) return;
             glowStarted = true;
             if (!hint) return;
 
-            // 淡入（中央位置由 CSS 決定）
             hint.style.transition = 'opacity 0.4s ease';
             hint.style.opacity = '1';
             if (switcher) switcher.classList.add('glowing');
 
-            // 停留 1.5 秒後飛往切換器
             setTimeout(function () {
                 if (!hint || !switcher) return;
                 var hRect = hint.getBoundingClientRect();
@@ -5481,7 +5479,6 @@
                 hint.style.opacity    = '0';
             }, 1500);
 
-            // 飛行結束後清理
             setTimeout(function () {
                 if (hint) {
                     hint.style.transition = 'none';
@@ -5490,6 +5487,23 @@
                 }
                 if (switcher) switcher.classList.remove('glowing');
             }, 3100);
+        }
+
+        function startHintAndGlow() {
+            // 若 AI 介紹 Modal 會出現，等它關閉後再顯示提示
+            var skipAI = localStorage.getItem('duet_skip_ai');
+            var aiData = localStorage.getItem('duet_ai_consultation');
+            if (!skipAI && !aiData) {
+                var bodyObs = new MutationObserver(function () {
+                    if (!document.getElementById('ai-intro-modal')) {
+                        bodyObs.disconnect();
+                        setTimeout(doHintAndGlow, 600);
+                    }
+                });
+                bodyObs.observe(document.body, { childList: true });
+                return;
+            }
+            doHintAndGlow();
         }
 
         if (loaderEl) {
