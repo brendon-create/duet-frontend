@@ -5412,8 +5412,8 @@
     </div>
 
     <!-- 背景切換器 -->
+    <div id="bg-switcher-hint">可切換背景 ↘</div>
     <div id="bg-switcher">
-        <div id="bg-switcher-hint">可切換背景</div>
         <span class="bg-switcher-label">切換背景</span>
         <div class="bg-switcher-dots">
             <button class="bg-dot active" data-bg="Toscana" title="Toscana"></button>
@@ -5433,6 +5433,12 @@
             Stage2:  BASE + 'Stage2.png',
         };
 
+        // 預載所有背景，確保切換時無等待
+        Object.values(BG_MAP).forEach(function(src) {
+            var img = new Image();
+            img.src = src;
+        });
+
         window.switchBackground = function (key) {
             document.body.style.backgroundImage = "url('" + BG_MAP[key] + "')";
             document.querySelectorAll('#bg-switcher .bg-dot').forEach(function (dot) {
@@ -5446,7 +5452,7 @@
             });
         });
 
-        // 偵測 loader 淡出後顯示提示與發光（5 秒後自動消失）
+        // 提示從畫面中央飛往右下角切換器
         var hint = document.getElementById('bg-switcher-hint');
         var switcher = document.getElementById('bg-switcher');
         var loaderEl = document.getElementById('loader');
@@ -5455,13 +5461,35 @@
         function startHintAndGlow() {
             if (glowStarted) return;
             glowStarted = true;
-            if (hint) hint.classList.add('visible');
+            if (!hint) return;
+
+            // 淡入（中央位置由 CSS 決定）
+            hint.style.transition = 'opacity 0.4s ease';
+            hint.style.opacity = '1';
             if (switcher) switcher.classList.add('glowing');
 
+            // 停留 1.5 秒後飛往切換器
             setTimeout(function () {
-                if (hint) hint.classList.remove('visible');
+                if (!hint || !switcher) return;
+                var hRect = hint.getBoundingClientRect();
+                var sRect = switcher.getBoundingClientRect();
+                var dx = (sRect.left + sRect.width / 2) - (hRect.left + hRect.width / 2);
+                var dy = (sRect.top  + sRect.height / 2) - (hRect.top  + hRect.height / 2);
+
+                hint.style.transition = 'transform 1.1s cubic-bezier(0.4,0,0.2,1), opacity 0.9s ease';
+                hint.style.transform  = 'translateX(calc(-50% + ' + dx + 'px)) translateY(' + dy + 'px)';
+                hint.style.opacity    = '0';
+            }, 1500);
+
+            // 飛行結束後清理
+            setTimeout(function () {
+                if (hint) {
+                    hint.style.transition = 'none';
+                    hint.style.transform  = 'translateX(-50%)';
+                    hint.style.opacity    = '0';
+                }
                 if (switcher) switcher.classList.remove('glowing');
-            }, 5000);
+            }, 3100);
         }
 
         if (loaderEl) {
@@ -5469,13 +5497,11 @@
                 mutations.forEach(function (m) {
                     if (m.target.classList.contains('fade-out')) {
                         obs.disconnect();
-                        // 等 loader 淡出動畫完成（0.8s）再顯示
                         setTimeout(startHintAndGlow, 900);
                     }
                 });
             });
             obs.observe(loaderEl, { attributes: true, attributeFilter: ['class'] });
-            // fallback：若 loader 3 秒內未觸發，直接顯示
             setTimeout(startHintAndGlow, 3000);
         } else {
             setTimeout(startHintAndGlow, 1000);
