@@ -1215,9 +1215,8 @@
 /* ── 背景切換器 ── */
 #bg-switcher {
     position: fixed;
-    bottom: 22px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 20px;
+    right: 20px;
     z-index: 100;
     display: flex;
     flex-direction: column;
@@ -1252,8 +1251,8 @@
 }
 
 @keyframes bgDotGlow {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 7px rgba(255,255,255,0.2); }
-    50%       { box-shadow: 0 0 0 3px rgba(255,255,255,0.22), 0 0 16px rgba(255,255,255,0.45); }
+    0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,0.12), 0 0 8px rgba(255,255,255,0.28); }
+    50%       { box-shadow: 0 0 0 3px rgba(255,255,255,0.28), 0 0 18px rgba(255,255,255,0.55); }
 }
 
 .bg-dot.active.glowing {
@@ -1262,7 +1261,7 @@
 
 .bg-switcher-label {
     font-size: 9px;
-    color: rgba(255,255,255,0.22);
+    color: rgba(255,255,255,0.32);
     letter-spacing: 1.5px;
     user-select: none;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
@@ -1274,11 +1273,11 @@
 }
 
 .bg-dot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.18);
-    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(255,255,255,0.28);
+    border: 1px solid rgba(255,255,255,0.45);
     cursor: pointer;
     transition: background 0.3s ease, border-color 0.3s ease;
     padding: 0;
@@ -1287,19 +1286,26 @@
 }
 
 .bg-dot.active {
-    background: rgba(255,255,255,0.68);
-    border-color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.75);
+    border-color: rgba(255,255,255,0.9);
 }
 
 .bg-dot:hover:not(.active) {
-    background: rgba(255,255,255,0.38);
-    border-color: rgba(255,255,255,0.52);
+    background: rgba(255,255,255,0.48);
+    border-color: rgba(255,255,255,0.65);
 }
 
 .bg-dot-line {
     width: 18px;
     height: 1px;
-    background: rgba(255,255,255,0.13);
+    background: rgba(255,255,255,0.2);
     flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    #bg-switcher {
+        bottom: calc(36vh + 10px);
+        right: 12px;
+    }
 }
 
