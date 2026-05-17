@@ -5411,6 +5411,71 @@
         </div>
     </div>
 
+    <!-- 背景切換器 -->
+    <div id="bg-switcher">
+        <div id="bg-switcher-hint">可切換背景</div>
+        <span class="bg-switcher-label">切換背景</span>
+        <div class="bg-switcher-dots">
+            <button class="bg-dot active" data-bg="Toscana" title="Toscana"></button>
+            <div class="bg-dot-line"></div>
+            <button class="bg-dot" data-bg="Stage1" title="Stage 1"></button>
+            <div class="bg-dot-line"></div>
+            <button class="bg-dot" data-bg="Stage2" title="Stage 2"></button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const BASE = 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/';
+        const BG_MAP = {
+            Toscana: BASE + 'Toscana.png',
+            Stage1:  BASE + 'Stage1.png',
+            Stage2:  BASE + 'Stage2.png',
+        };
+
+        window.switchBackground = function (key) {
+            document.body.style.backgroundImage = "url('" + BG_MAP[key] + "')";
+            document.querySelectorAll('#bg-switcher .bg-dot').forEach(function (dot) {
+                dot.classList.toggle('active', dot.dataset.bg === key);
+            });
+        };
+
+        document.querySelectorAll('#bg-switcher .bg-dot').forEach(function (dot) {
+            dot.addEventListener('click', function () {
+                window.switchBackground(dot.dataset.bg);
+            });
+        });
+
+        // 偵測 loader 淡出後顯示提示與發光（5 秒後自動消失）
+        var hint = document.getElementById('bg-switcher-hint');
+        var loaderEl = document.getElementById('loader');
+
+        function startHintAndGlow() {
+            var activeDot = document.querySelector('#bg-switcher .bg-dot.active');
+            if (hint) hint.classList.add('visible');
+            if (activeDot) activeDot.classList.add('glowing');
+
+            setTimeout(function () {
+                if (hint) hint.classList.remove('visible');
+                if (activeDot) activeDot.classList.remove('glowing');
+            }, 5000);
+        }
+
+        if (loaderEl) {
+            var obs = new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    if (m.target.classList.contains('fade-out')) {
+                        obs.disconnect();
+                        // 等 loader 淡出動畫完成（0.8s）再顯示
+                        setTimeout(startHintAndGlow, 900);
+                    }
+                });
+            });
+            obs.observe(loaderEl, { attributes: true, attributeFilter: ['class'] });
+        }
+    })();
+    </script>
+
 
 </body>
 
