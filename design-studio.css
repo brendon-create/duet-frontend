@@ -1256,17 +1256,17 @@
     opacity: 1;
 }
 
-@keyframes bgDotGlow {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(212,175,55,0.2), 0 0 8px rgba(212,175,55,0.35); }
-    50%       { box-shadow: 0 0 0 3px rgba(212,175,55,0.4), 0 0 18px rgba(212,175,55,0.7); }
+@keyframes bgSwitcherGlow {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(212,175,55,0.2), 0 0 10px rgba(212,175,55,0.3); }
+    50%       { box-shadow: 0 0 0 2px rgba(212,175,55,0.45), 0 0 22px rgba(212,175,55,0.65); }
 }
 
-.bg-dot.active.glowing {
-    animation: bgDotGlow 1.6s ease-in-out infinite;
+#bg-switcher.glowing {
+    animation: bgSwitcherGlow 1.6s ease-in-out infinite;
 }
 
 .bg-switcher-label {
-    font-size: 9px;
+    font-size: 11.7px;
     color: rgba(255,255,255,0.38);
     letter-spacing: 1.5px;
     user-select: none;

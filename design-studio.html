@@ -5448,16 +5448,19 @@
 
         // 偵測 loader 淡出後顯示提示與發光（5 秒後自動消失）
         var hint = document.getElementById('bg-switcher-hint');
+        var switcher = document.getElementById('bg-switcher');
         var loaderEl = document.getElementById('loader');
+        var glowStarted = false;
 
         function startHintAndGlow() {
-            var activeDot = document.querySelector('#bg-switcher .bg-dot.active');
+            if (glowStarted) return;
+            glowStarted = true;
             if (hint) hint.classList.add('visible');
-            if (activeDot) activeDot.classList.add('glowing');
+            if (switcher) switcher.classList.add('glowing');
 
             setTimeout(function () {
                 if (hint) hint.classList.remove('visible');
-                if (activeDot) activeDot.classList.remove('glowing');
+                if (switcher) switcher.classList.remove('glowing');
             }, 5000);
         }
 
@@ -5472,6 +5475,10 @@
                 });
             });
             obs.observe(loaderEl, { attributes: true, attributeFilter: ['class'] });
+            // fallback：若 loader 3 秒內未觸發，直接顯示
+            setTimeout(startHintAndGlow, 3000);
+        } else {
+            setTimeout(startHintAndGlow, 1000);
         }
     })();
     </script>
