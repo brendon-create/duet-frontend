@@ -13,6 +13,7 @@ export let ringMesh = null;
 export let bailMesh = null;
 export let bailRelativeOffset = new THREE.Vector3();
 export let bailInitialized = false;
+let bailLoadId = 0; // 每次 createBail 或 resetBailState 遞增，取消過期的 async STL 結果
 
 function getMaterial(materialType, finish, plating) {
     const mat = window.MATERIALS[materialType];
@@ -96,6 +97,7 @@ export function createBail() {
 
     if (!window.mainMesh) return;
 
+    const myBailId = ++bailLoadId;
     const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/models/bail.stl`;
     console.log('🔽 載入 Bail STL:', bailUrl);
 
@@ -103,6 +105,7 @@ export function createBail() {
     loader.load(
         bailUrl,
         (geometry) => {
+            if (myBailId !== bailLoadId) return; // 已被 reset 或新的 createBail 取代，捨棄
             console.log('✅ Bail STL 載入成功');
 
             // 計算 geometry 的中心
@@ -215,6 +218,7 @@ export function resetRingState() {
 }
 
 export function resetBailState() {
+    bailLoadId++; // 取消任何正在飛行中的 STL 載入
     if (bailMesh) {
         if (window.scene) window.scene.remove(bailMesh);
         bailMesh.geometry?.dispose();

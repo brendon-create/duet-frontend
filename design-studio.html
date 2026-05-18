@@ -1510,6 +1510,7 @@
         // 注意：scene, camera, renderer, controls, envMap 已移至 3d-scene.js
         // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
         let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
+        let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
         let cartItems = [];
@@ -1707,6 +1708,7 @@
         // ============================================================
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
+            const myGeneration = ++modelGeneration;
             console.log('[V3 generateModel] 開始生成模型');
 
             // 🛡️ 防禦性清理：如果 mainMesh 已存在但 placeholderSphere 還在，順手清掉
@@ -1722,6 +1724,8 @@
 
             // 讓瀏覽器先渲染指示器
             await new Promise(resolve => setTimeout(resolve, 50));
+
+            if (myGeneration !== modelGeneration) return;
 
             const l1 = document.getElementById('letter1').value;
             const l2 = document.getElementById('letter2').value;
@@ -1798,6 +1802,8 @@
                 });
                 return;
             }
+
+            if (myGeneration !== modelGeneration) return;
 
             // ── A. 檢查 V3 幾何體的「初始狀態」────────────────────
             // 在任何處理之前，先確認 geom 的 BBox 是否正常
@@ -2980,6 +2986,7 @@
         function loadFromSlot(slotIndex) {
             const slotData = savedVersions[slotIndex];
             if (!slotData) return;
+            modelGeneration++; // 取消任何正在飛行中的 generateModel async 結果
 
             // 載入槽位數據到主畫面
             document.getElementById('letter1').value = slotData.letter1;
