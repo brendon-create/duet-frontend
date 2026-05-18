@@ -229,6 +229,37 @@ export function resetBailState() {
     bailInitialized = false;
 }
 
+// 直接從儲存資料還原 ring（跳過重新計算，完全複製儲存時的 position/rotation）
+export function restoreRingFromSave(savedRing) {
+    if (ringMesh) {
+        if (window.scene) window.scene.remove(ringMesh);
+        ringMesh.geometry?.dispose();
+        ringMesh.material?.dispose();
+    }
+    ringMesh = savedRing.clone();
+    ringMesh.geometry = savedRing.geometry.clone();
+    ringMesh.material = savedRing.material.clone();
+    if (window.scene) window.scene.add(ringMesh);
+    window.ringMesh = ringMesh;
+}
+
+// 直接從儲存資料還原 bail（跳過 async STL 下載，完全複製儲存時的 position/rotation）
+export function restoreBailFromSave(savedBail, savedRelativeOffset) {
+    bailLoadId++; // 取消任何正在飛行中的 STL 載入
+    if (bailMesh) {
+        if (window.scene) window.scene.remove(bailMesh);
+        bailMesh.geometry?.dispose();
+        bailMesh.material?.dispose();
+    }
+    bailMesh = savedBail.clone();
+    bailMesh.geometry = savedBail.geometry.clone();
+    bailMesh.material = savedBail.material.clone();
+    if (window.scene) window.scene.add(bailMesh);
+    window.bailMesh = bailMesh;
+    bailRelativeOffset.copy(savedRelativeOffset);
+    bailInitialized = true;
+}
+
 export function updateRingPosition() {
     if (!ringMesh) return;
     const x = parseFloat(document.getElementById('ringX').value);

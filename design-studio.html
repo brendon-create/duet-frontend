@@ -823,7 +823,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
 
         // 字體載入系統
         import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
@@ -3029,7 +3029,8 @@
 
             // 載入新模型（使用深拷貝）
             mainMesh = slotData.mesh.clone();
-            mainMesh.material = mainMesh.material.clone();
+            mainMesh.geometry = slotData.mesh.geometry.clone();
+            mainMesh.material = slotData.mesh.material.clone();
             window.scene.add(mainMesh);
             window.mainMesh = mainMesh;
 
@@ -3039,15 +3040,12 @@
             window.modelCenter = recalledBBox.getCenter(new THREE.Vector3());
             window.modelTopZ = recalledBBox.max.z;
 
-            // 恢復 Ring（透過模組函式，避免直接寫入 ES module 匯入 binding）
+            // 直接還原儲存時的 Ring/Bail（跳過重新計算，確保方向與位置完全一致）
             if (slotData.ring) {
-                createRing();
-                updateRingPosition();
+                restoreRingFromSave(slotData.ring);
             }
-
-            // 恢復 Bail（透過模組函式，STL 會重新載入並正確定位）
             if (slotData.bail) {
-                createBail();
+                restoreBailFromSave(slotData.bail, slotData.bailRelativeOffset);
             }
 
             updateVolumeWeight();
