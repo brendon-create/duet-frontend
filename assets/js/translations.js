@@ -79,7 +79,7 @@ window.translations = {
         'faq.q6': '退換貨政策是什麼?',
         'faq.a6': '收到作品後若有製作品質問題（如表面瑕疵、零件缺損等），請於 30 天內聯繫我們，我們將提供免費重製或退款服務。由於每件作品皆為按照您的設計規格訂製生產，非品質問題（例如對作品造型的主觀改變意願）恕不接受退換。下單前請在設計工作室仔細確認 3D 預覽，如有任何疑問歡迎先聯絡我們。',
         'faq.q7': '如何聯絡客服?',
-        'faq.a7': '您可以透過 service@brendonchen.com 聯絡我們，或在 Instagram 和 Facebook 上私訊。我們通常會在 24 小時內回覆。',
+        'faq.a7': '您可以透過 service@brendonchen.com 聯絡我們，或在 Instagram 和 Facebook 上私訊，也歡迎加入我們的 LINE 官方帳號。我們通常會在 24 小時內回覆。<br><a href="https://lin.ee/7MW6Tjf" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/zh-Hant.png" alt="加入好友" height="36" border="0"></a>',
 
         // ── CTA ──
         'cta.subtitle': '開始創造',
@@ -382,7 +382,7 @@ window.translations = {
         'faq.q6': 'What is the return policy?',
         'faq.a6': 'If there is a production quality issue (such as surface defects or missing components), please contact us within 30 days of receiving your piece and we will provide a free remake or refund. Because each piece is custom-produced to your exact specifications, subjective design changes are not eligible for return. Please review the 3D preview carefully before ordering.',
         'faq.q7': 'How can I contact customer support?',
-        'faq.a7': 'You can reach us at service@brendonchen.com, or send a DM on Instagram or Facebook. We typically respond within 24 hours.',
+        'faq.a7': 'You can reach us at service@brendonchen.com, send a DM on Instagram or Facebook, or add us on LINE. We typically respond within 24 hours.<br><a href="https://lin.ee/7MW6Tjf" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/zh-Hant.png" alt="Add Friend" height="36" border="0"></a>',
 
         // ── CTA ──
         'cta.subtitle': 'Start Creating',

@@ -1032,6 +1032,13 @@
             posthog.capture('consultation_completed');
             console.log('📊 收到完整推薦資料:', data);
 
+            // 先在聊天中顯示過渡語句，再切換畫面
+            addMessage('assistant', window.t('ai.completion.transition'));
+
+            setTimeout(() => _renderCompletionScreen(data), 1200);
+        }
+
+        function _renderCompletionScreen(data) {
             // 載入推薦字體
             const allFonts = [
                 ...data.recommendations.letter1.map(r => r.font),
@@ -1087,9 +1094,6 @@
             recommendationsDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px;">
             <h3 style="color: #d4af37; font-size: 24px; margin-bottom: 15px;">${window.t('ai.completion.title')}</h3>
-            <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
-                ${window.t('ai.completion.transition')}
-            </p>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
