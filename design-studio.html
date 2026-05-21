@@ -2494,12 +2494,12 @@
                 return;
             }
 
-            // 基礎價格：925銀、黃銅都是 3850
-            let price = 3850;
+            // 基礎價格：925銀、黃銅都是 4250
+            let price = 4250;
 
-            // 有電鍍（任何電鍍）+400
+            // 有電鍍（任何電鍍）+600
             if (plating && plating !== 'none') {
-                price += 400;
+                price += 600;
             }
 
             // 更新顯示
@@ -3178,8 +3178,8 @@
                     const mat = document.getElementById('material').value;
                     if (mat === 'precious_metal') return 0;
                     const plating = document.getElementById('plating').value;
-                    let basePrice = 3850;
-                    if (plating && plating !== 'none') basePrice += 400;
+                    let basePrice = 4250;
+                    if (plating && plating !== 'none') basePrice += 600;
                     return basePrice;
                 })(),
                 isPreciousMetal: document.getElementById('material').value === 'precious_metal',
