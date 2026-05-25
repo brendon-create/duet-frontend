@@ -621,6 +621,38 @@
             background-color: #FAF8F5;
         }
 
+        .product-photos-section {
+            padding: 0 80px 120px;
+            background-color: #FAF8F5;
+        }
+
+        .product-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .product-photo-item img {
+            width: 100%;
+            height: 420px;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .product-photos-section {
+                padding: 0 24px 80px;
+            }
+            .product-photos-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .product-photo-item img {
+                height: 300px;
+            }
+        }
+
         .craft-header {
             margin-bottom: 80px;
         }
@@ -1301,6 +1333,21 @@
                     <h3 data-i18n="craft.i4.title">專屬設計理念卡</h3>
                     <p data-i18n="craft.i4.body">根據你的故事為你撰寫設計理念，由您微調並確認，讓心意完整傳達</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 作品實拍區塊 ===== -->
+    <section class="product-photos-section">
+        <div class="product-photos-grid">
+            <div class="product-photo-item">
+                <img src="assets/images/products/DUET_AB_01.PNG" alt="DUET 作品實拍">
+            </div>
+            <div class="product-photo-item">
+                <img src="assets/images/products/DUET_AB_02.PNG" alt="DUET 作品包裝">
+            </div>
+            <div class="product-photo-item">
+                <img src="assets/images/products/DUET_AB_RB_WC_B6.PNG" alt="DUET 系列作品">
             </div>
         </div>
     </section>
