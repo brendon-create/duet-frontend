@@ -565,9 +565,14 @@
                         <option value="paid">已付款</option>
                         <option value="free_order">免付款</option>
                         <option value="processing">製作中</option>
-                        <option value="completed">已完成</option>
+                        <option value="completed">製作完成</option>
                         <option value="shipped">已出貨</option>
                         <option value="delivered">已簽收</option>
+                    </select>
+                    <select id="sourceFilter" onchange="filterOrders()">
+                        <option value="">全部來源</option>
+                        <option value="domestic">國內訂單</option>
+                        <option value="distributor">代理商訂單</option>
                     </select>
                     <select id="dateRangeFilter" onchange="handleDateRangeChange()">
                         <option value="">全部日期</option>
@@ -1501,6 +1506,19 @@
                     updateStats();
                     renderOrders(allOrders);
                     renderCustomerStats();
+                    // 動態補充各代理商 region 篩選選項
+                    const sourceSelect = document.getElementById('sourceFilter');
+                    if (sourceSelect) {
+                        const regions = [...new Set(allOrders.filter(o => o.distributor_region).map(o => o.distributor_region))];
+                        // 移除舊的 region 選項（保留前三個固定選項）
+                        while (sourceSelect.options.length > 3) sourceSelect.remove(3);
+                        regions.sort().forEach(r => {
+                            const opt = document.createElement('option');
+                            opt.value = r;
+                            opt.textContent = `🌏 ${r} 代理商`;
+                            sourceSelect.appendChild(opt);
+                        });
+                    }
                 }
             } catch (err) {
                 document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
@@ -1769,7 +1787,12 @@
 
                 return `<tr style="${rowStyle}">
                     <td><input type="checkbox" ${isChecked} onchange="toggleOrderSelection('${order.orderId}')" style="width: 18px; height: 18px; cursor: pointer;"></td>
-                    <td><strong>${order.orderId}</strong>${order.isTest ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試</span>' : ''}${order.isInvalid ? '<span style="color:#ef4444;font-size:10px;margin-left:4px;">無效</span>' : ''}</td>
+                    <td>
+                        <strong>${order.orderId}</strong>
+                        ${order.isTest ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試</span>' : ''}
+                        ${order.isInvalid ? '<span style="color:#ef4444;font-size:10px;margin-left:4px;">無效</span>' : ''}
+                        ${order.distributor_region ? `<span style="background:rgba(100,160,255,0.15);color:#60a5fa;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:4px;">${order.distributor_region}</span>` : ''}
+                    </td>
                     <td>${u.name || '-'}<br><small style="color:var(--text-muted)">${u.email || '-'}</small></td>
                     <td>${items.map(i => i.letter1 + i.letter2).join(', ') || '-'}</td>
                     <td>NT$ ${total.toLocaleString()}</td>
@@ -1941,6 +1964,7 @@
         function filterOrders() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const status = document.getElementById('statusFilter').value;
+            const source = document.getElementById('sourceFilter')?.value || '';
             const dateRange = document.getElementById('dateRangeFilter').value;
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
@@ -1949,6 +1973,10 @@
                 const matchSearch = !search || o.orderId.toLowerCase().includes(search) ||
                     (o.userInfo?.name || '').toLowerCase().includes(search);
                 const matchStatus = !status || o.status === status;
+                let matchSource = true;
+                if (source === 'domestic') matchSource = !o.is_distributor_order;
+                else if (source === 'distributor') matchSource = !!o.is_distributor_order;
+                else if (source) matchSource = o.distributor_region === source;
 
                 // Date filtering
                 let matchDate = true;
@@ -1966,7 +1994,7 @@
                     }
                 }
 
-                return matchSearch && matchStatus && matchDate;
+                return matchSearch && matchStatus && matchSource && matchDate;
             });
             renderOrders(filtered);
             // 更新營收統計（根據篩選後的訂單）
