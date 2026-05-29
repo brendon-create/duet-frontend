@@ -340,7 +340,7 @@
             <button class="filter-btn" onclick="setFilter('dist', 'pending', this)">待處理</button>
             <button class="filter-btn" onclick="setFilter('dist', 'manufacturing', this)">製作中</button>
             <button class="filter-btn" onclick="setFilter('dist', 'shipped', this)">已出貨</button>
-            <button class="filter-btn" onclick="setFilter('dist', 'completed', this)">已交付</button>
+            <button class="filter-btn" onclick="setFilter('dist', 'completed', this)">已簽收</button>
         </div>
 
         <div class="table-wrap">
@@ -407,7 +407,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-    const DIST_STATUS_LABELS = { pending:'待處理', manufacturing:'製作中', shipped:'已出貨', completed:'已交付' };
+    const DIST_STATUS_LABELS = { pending:'待處理', manufacturing:'製作中', shipped:'已出貨', completed:'已簽收' };
     const DIST_STATUS_COLORS = { pending:'#f59e0b', manufacturing:'#60a5fa', shipped:'#34d399', completed:'#666' };
 
     const PAY_STATUS_LABELS = {
