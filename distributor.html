@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET 代理商後台</title>
+    <script src="assets/js/config.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0f;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* ── Login ── */
+        #loginScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 70%);
+        }
+        .login-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(201,169,110,0.2);
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 360px;
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-logo h1 {
+            font-size: 22px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            color: #c9a96e;
+        }
+        .login-logo p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+            letter-spacing: 2px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: rgba(201,169,110,0.5);
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: rgba(255,255,255,0.1); }
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(201,169,110,0.25), rgba(201,169,110,0.12));
+            border-color: rgba(201,169,110,0.4);
+            color: #c9a96e;
+            font-weight: 500;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, rgba(201,169,110,0.35), rgba(201,169,110,0.2)); }
+        .btn-full { width: 100%; }
+        .error-msg {
+            display: none;
+            color: #f87171;
+            font-size: 13px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        /* ── Main App ── */
+        #mainApp { display: none; }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            height: 56px;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .topbar-brand {
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            color: #c9a96e;
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .region-badge {
+            background: rgba(100,160,255,0.15);
+            color: #60a5fa;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .topbar-user { font-size: 13px; color: #999; }
+
+        .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+        /* ── Status filter ── */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: #999;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: rgba(201,169,110,0.3); color: #c9a96e; }
+        .filter-btn.active {
+            background: rgba(201,169,110,0.12);
+            border-color: rgba(201,169,110,0.4);
+            color: #c9a96e;
+        }
+
+        /* ── Order table ── */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #666;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        td {
+            padding: 12px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: middle;
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background: #141420;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 28px;
+            width: 540px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title { font-size: 16px; font-weight: 600; color: #c9a96e; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 22px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .modal-close:hover { color: #fff; }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: #666;
+            text-transform: uppercase;
+            margin: 20px 0 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .info-item label {
+            font-size: 11px;
+            color: #666;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .info-item span { font-size: 13px; color: #e2e8f0; }
+
+        .design-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .design-card img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .status-select {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .status-select select { flex: 1; min-width: 160px; }
+
+        .dist-status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 13px;
+            z-index: 999;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: rgba(52,211,153,0.4); color: #34d399; }
+        .toast.error { border-color: rgba(248,113,113,0.4); color: #f87171; }
+    </style>
+</head>
+<body>
+
+<!-- 登入畫面 -->
+<div id="loginScreen">
+    <div class="login-box">
+        <div class="login-logo">
+            <h1>DUET</h1>
+            <p>代理商後台</p>
+        </div>
+        <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" required placeholder="agent@example.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label>密碼</label>
+                <input type="password" id="loginPassword" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px;">登入</button>
+        </form>
+        <div class="error-msg" id="loginError"></div>
+    </div>
+</div>
+
+<!-- 主畫面 -->
+<div id="mainApp">
+    <div class="topbar">
+        <span class="topbar-brand">DUET DISTRIBUTOR</span>
+        <div class="topbar-right">
+            <span class="region-badge" id="topRegion">—</span>
+            <span class="topbar-user" id="topName"></span>
+            <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="handleLogout()">登出</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div style="margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:500;color:#c9a96e;">訂單列表</h2>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="setFilter(null, this)">全部</button>
+            <button class="filter-btn" onclick="setFilter('pending', this)">待處理</button>
+            <button class="filter-btn" onclick="setFilter('manufacturing', this)">製作中</button>
+            <button class="filter-btn" onclick="setFilter('shipped', this)">已出貨</button>
+            <button class="filter-btn" onclick="setFilter('completed', this)">已完成</button>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>訂單編號</th>
+                        <th>收件人</th>
+                        <th>商品</th>
+                        <th>狀態</th>
+                        <th>訂單日期</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="ordersBody">
+                    <tr><td colspan="6" style="text-align:center;padding:32px;color:#666;">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 訂單詳情 Modal -->
+<div class="modal-overlay" id="orderModal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title" id="modalOrderId">訂單詳情</span>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div id="modalContent">載入中...</div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const DIST_STATUS_LABELS = { pending:'待處理', manufacturing:'製作中', shipped:'已出貨', completed:'已完成' };
+    const DIST_STATUS_COLORS = { pending:'#f59e0b', manufacturing:'#60a5fa', shipping:'#a78bfa', shipped:'#34d399', completed:'#666' };
+
+    let _token = null;
+    let _region = null;
+    let _displayName = null;
+    let _currentFilter = null;
+    let _allOrders = [];
+
+    // ── Auth ──────────────────────────────────────────
+
+    function savedSession() {
+        const t = sessionStorage.getItem('dist_token');
+        const r = sessionStorage.getItem('dist_region');
+        const n = sessionStorage.getItem('dist_name');
+        return t && r ? { token: t, region: r, name: n } : null;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const s = savedSession();
+        if (s) { _token = s.token; _region = s.region; _displayName = s.name; showMain(); }
+    });
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errEl = document.getElementById('loginError');
+        errEl.style.display = 'none';
+        try {
+            const res = await fetch(`${window.BACKEND_URL}/api/distributor/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                _token = data.token;
+                _region = data.region;
+                _displayName = data.display_name;
+                sessionStorage.setItem('dist_token', _token);
+                sessionStorage.setItem('dist_region', _region);
+                sessionStorage.setItem('dist_name', _displayName);
+                showMain();
+            } else {
+                errEl.textContent = data.error || '登入失敗';
+                errEl.style.display = 'block';
+            }
+        } catch(err) {
+            errEl.textContent = '網路錯誤，請稍後再試';
+            errEl.style.display = 'block';
+        }
+    }
+
+    async function handleLogout() {
+        if (_token) {
+            fetch(`${window.BACKEND_URL}/api/distributor/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${_token}` }
+            }).catch(() => {});
+        }
+        sessionStorage.clear();
+        _token = null; _region = null;
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+    }
+
+    function showMain() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        document.getElementById('topRegion').textContent = _region;
+        document.getElementById('topName').textContent = _displayName;
+        loadOrders();
+    }
+
+    function apiFetch(path, opts = {}) {
+        return fetch(`${window.BACKEND_URL}${path}`, {
+            ...opts,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_token}`, ...(opts.headers || {}) }
+        });
+    }
+
+    // ── Orders ────────────────────────────────────────
+
+    async function loadOrders(statusFilter) {
+        _currentFilter = statusFilter || null;
+        const tbody = document.getElementById('ordersBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#666;">載入中...</td></tr>';
+        try {
+            const qs = statusFilter ? `?status=${statusFilter}` : '';
+            const res = await apiFetch(`/api/distributor/orders${qs}`);
+            if (res.status === 401) { handleLogout(); return; }
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+            _allOrders = data.orders || [];
+            renderOrders(_allOrders);
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;text-align:center;padding:24px;">${e.message}</td></tr>`;
+        }
+    }
+
+    function renderOrders(orders) {
+        const tbody = document.getElementById('ordersBody');
+        if (!orders.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#666;">沒有訂單</td></tr>';
+            return;
+        }
+        tbody.innerHTML = orders.map(o => {
+            const ds = o.distributor_status || 'pending';
+            const color = DIST_STATUS_COLORS[ds] || '#999';
+            const label = DIST_STATUS_LABELS[ds] || ds;
+            const date = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
+            return `<tr>
+                <td style="font-family:monospace;font-size:11px;color:#999;">${o.order_id}</td>
+                <td>${o.customer_name || '—'}</td>
+                <td style="color:#999;font-size:12px;">${o.items_summary || '—'}</td>
+                <td><span style="color:${color};font-weight:500;">${label}</span></td>
+                <td style="color:#999;">${date}</td>
+                <td><button class="btn" style="font-size:12px;padding:4px 12px;" onclick="openOrder('${o.order_id}')">查看</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function setFilter(status, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadOrders(status);
+    }
+
+    // ── Order Detail ──────────────────────────────────
+
+    async function openOrder(orderId) {
+        document.getElementById('modalOrderId').textContent = orderId;
+        document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:32px;color:#666;">載入中...</div>';
+        document.getElementById('orderModal').style.display = 'flex';
+        try {
+            const res = await apiFetch(`/api/distributor/orders/${orderId}`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+            renderOrderModal(data.order);
+        } catch(e) {
+            document.getElementById('modalContent').innerHTML = `<p style="color:#f87171;">${e.message}</p>`;
+        }
+    }
+
+    function renderOrderModal(o) {
+        const ds = o.distributor_status || 'pending';
+        const nextStatuses = { pending:['manufacturing'], manufacturing:['shipped'], shipped:['completed'], completed:[] };
+        const next = nextStatuses[ds] || [];
+
+        const itemsHtml = (o.items || []).map((item, i) => `
+            <div class="design-card">
+                ${item.design_photo_url ? `<img src="${item.design_photo_url}" alt="設計圖" onerror="this.style.display='none'">` : ''}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+                    <div><span style="color:#666;">字母：</span>${item.letter1} + ${item.letter2}</div>
+                    <div><span style="color:#666;">字型：</span>${item.font1} / ${item.font2}</div>
+                    <div><span style="color:#666;">尺寸：</span>${item.size || '—'} mm</div>
+                </div>
+                ${item.has_stl
+                    ? `<a href="${window.BACKEND_URL}/api/distributor/orders/${o.order_id}/stl/${i}"
+                          style="display:inline-block;margin-top:10px;color:#c9a96e;font-size:13px;text-decoration:none;border:1px solid rgba(201,169,110,0.3);padding:5px 14px;border-radius:6px;"
+                          download>⬇ 下載 STL</a>`
+                    : '<div style="margin-top:10px;font-size:12px;color:#666;">STL 生成中，請稍後</div>'
+                }
+            </div>
+        `).join('');
+
+        const trackingField = next.includes('shipped') ? `
+            <div class="form-group" id="trackingGroup" style="display:none;margin-top:10px;">
+                <label>貨運單號 *</label>
+                <input type="text" id="trackingInput" placeholder="輸入物流單號">
+                <input type="text" id="logisticsInput" placeholder="物流商（選填）" style="margin-top:8px;">
+            </div>` : '';
+
+        const statusOptions = next.map(s => `<option value="${s}">${DIST_STATUS_LABELS[s]}</option>`).join('');
+
+        document.getElementById('modalContent').innerHTML = `
+            <div class="section-title">顧客資訊</div>
+            <div class="info-grid">
+                <div class="info-item"><label>收件人</label><span>${o.customer_name || '—'}</span></div>
+                <div class="info-item"><label>電話</label><span>${o.customer_phone || '—'}</span></div>
+                <div class="info-item" style="grid-column:1/-1"><label>收件地址</label><span>${o.shipping_address || '—'}</span></div>
+                <div class="info-item" style="grid-column:1/-1"><label>Email</label><span>${o.customer_email || '—'}</span></div>
+            </div>
+
+            <div class="section-title">設計內容</div>
+            ${itemsHtml}
+
+            <div class="section-title">更新狀態</div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:14px;">
+                <div style="margin-bottom:10px;font-size:13px;">
+                    目前狀態：<span style="color:${DIST_STATUS_COLORS[ds]};font-weight:500;">${DIST_STATUS_LABELS[ds]}</span>
+                </div>
+                ${next.length ? `
+                <div class="status-select">
+                    <select id="newStatusSelect" onchange="onStatusSelectChange(this)" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:14px;font-family:inherit;cursor:pointer;">
+                        <option value="">— 選擇新狀態 —</option>
+                        ${statusOptions}
+                    </select>
+                    <button class="btn btn-primary" onclick="submitStatus('${o.order_id}')">更新</button>
+                </div>
+                ${trackingField}
+                ` : '<p style="color:#666;font-size:13px;">此訂單已完成，無法再更新狀態。</p>'}
+            </div>
+        `;
+    }
+
+    function onStatusSelectChange(sel) {
+        const trackingGroup = document.getElementById('trackingGroup');
+        if (trackingGroup) trackingGroup.style.display = sel.value === 'shipped' ? 'block' : 'none';
+    }
+
+    async function submitStatus(orderId) {
+        const select = document.getElementById('newStatusSelect');
+        const newStatus = select && select.value;
+        if (!newStatus) { showToast('請選擇新狀態', 'error'); return; }
+
+        const trackingInput = document.getElementById('trackingInput');
+        const logisticsInput = document.getElementById('logisticsInput');
+        const tracking = trackingInput ? trackingInput.value.trim() : '';
+        const logistics = logisticsInput ? logisticsInput.value.trim() : '';
+
+        if (newStatus === 'shipped' && !tracking) { showToast('已出貨狀態需填入貨運單號', 'error'); return; }
+
+        try {
+            const res = await apiFetch(`/api/distributor/orders/${orderId}/status`, {
+                method: 'POST',
+                body: JSON.stringify({ distributor_status: newStatus, tracking_number: tracking, logistics_provider: logistics })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('狀態已更新', 'success');
+                closeModal();
+                loadOrders(_currentFilter);
+            } else {
+                showToast(data.error || '更新失敗', 'error');
+            }
+        } catch(e) {
+            showToast('網路錯誤', 'error');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('orderModal').style.display = 'none';
+    }
+
+    // ── Toast ─────────────────────────────────────────
+
+    function showToast(msg, type = 'success') {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.className = `toast ${type} show`;
+        setTimeout(() => el.classList.remove('show'), 3000);
+    }
+</script>
+</body>
+</html>

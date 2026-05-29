@@ -510,6 +510,8 @@
                 <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
                 <button class="tab" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
                 <button class="tab" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
+                <button class="tab" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
+                <button class="tab" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
                 <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
             </div>
             
@@ -981,6 +983,112 @@
         </div>
     </div>
 
+    <!-- 代理商訂單 Tab -->
+    <div id="distributorOrdersTab" style="display:none; padding:24px;">
+        <h2 style="color:#c9a96e; margin-bottom:8px;">代理商訂單</h2>
+        <p style="color:#999; margin-bottom:20px; font-size:14px;">來自各地代理商負責地區的訂單，依 Region 分類顯示。</p>
+
+        <!-- 統計卡片 -->
+        <div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">代理商訂單總數</div>
+                <div id="distStatTotal" style="color:#c9a96e; font-size:24px; font-weight:600;">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">待處理</div>
+                <div id="distStatPending" style="color:#f59e0b; font-size:24px; font-weight:600;">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">製作中</div>
+                <div id="distStatManufacturing" style="color:#60a5fa; font-size:24px; font-weight:600;">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">已出貨</div>
+                <div id="distStatShipped" style="color:#34d399; font-size:24px; font-weight:600;">—</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>訂單編號</th>
+                        <th>Region</th>
+                        <th>顧客姓名</th>
+                        <th>金額</th>
+                        <th>主狀態</th>
+                        <th>代理商狀態</th>
+                        <th>訂單日期</th>
+                    </tr>
+                </thead>
+                <tbody id="distributorOrdersTableBody">
+                    <tr><td colspan="7" class="loading">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 代理商帳號管理 Tab -->
+    <div id="distributorAccountsTab" style="display:none; padding:24px;">
+        <h2 style="color:#c9a96e; margin-bottom:8px;">代理商帳號管理</h2>
+        <p style="color:#999; margin-bottom:20px; font-size:14px;">新增或停用各地區代理商的後台登入帳號。</p>
+        <button class="btn btn-primary" onclick="showAddDistributorModal()" style="margin-bottom:20px;">+ 新增代理商</button>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Region</th>
+                        <th>顯示名稱</th>
+                        <th>Email</th>
+                        <th>平台費 (NT$)</th>
+                        <th>狀態</th>
+                        <th>建立日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="distributorsTableBody">
+                    <tr><td colspan="7" class="loading">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新增代理商 Modal -->
+    <div class="modal-overlay" id="addDistributorModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">新增代理商</h2>
+                <button class="modal-close" onclick="document.getElementById('addDistributorModal').style.display='none'">&times;</button>
+            </div>
+            <form onsubmit="handleSaveDistributor(event)">
+                <div class="form-group">
+                    <label>Region 代碼 * <span style="color:#999;font-size:12px;">（2-5位英文，如 JP、TH）</span></label>
+                    <input type="text" id="distRegion" required maxlength="5" placeholder="JP" style="text-transform:uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>顯示名稱 *</label>
+                    <input type="text" id="distDisplayName" required placeholder="日本代理">
+                </div>
+                <div class="form-group">
+                    <label>登入 Email *</label>
+                    <input type="email" id="distEmail" required placeholder="agent@example.com">
+                </div>
+                <div class="form-group">
+                    <label>密碼 *</label>
+                    <input type="password" id="distPassword" required placeholder="設定登入密碼">
+                </div>
+                <div class="form-group">
+                    <label>每筆平台費 (NT$)</label>
+                    <input type="number" id="distPlatformFee" value="500" min="0">
+                </div>
+                <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+                    <button type="button" class="btn" onclick="document.getElementById('addDistributorModal').style.display='none'">取消</button>
+                    <button type="submit" class="btn btn-primary">建立</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 廠商新增/編輯 Modal -->
     <div class="modal-overlay" id="manufacturerFormModal">
         <div class="modal">
@@ -1178,15 +1286,14 @@
         // 管理員 API 金鑰（請填入您在 Render.com 設定的值）
         const ADMIN_API_KEY = 'beacreator27v5Tx8WHd2';
         
-        // 統一 API 呼叫函式
+        // 統一 API 呼叫函式（優先使用 session token，向後相容 API Key）
         async function callApi(endpoint, options = {}) {
-            const defaultHeaders = {
-                'Content-Type': 'application/json',
-                'X-Admin-Key': ADMIN_API_KEY
-            };
-            // 如果有 X-Admin-User，也一併傳遞
-            if (currentUser && currentUser.username) {
-                defaultHeaders['X-Admin-User'] = currentUser.username;
+            const token = localStorage.getItem('adminToken');
+            const defaultHeaders = { 'Content-Type': 'application/json' };
+            if (token) {
+                defaultHeaders['Authorization'] = `Bearer ${token}`;
+            } else {
+                defaultHeaders['X-Admin-Key'] = ADMIN_API_KEY;
             }
             const response = await fetch(`${window.BACKEND_URL}${endpoint}`, {
                 ...options,
@@ -1241,6 +1348,7 @@
                 if (data.success) {
                     currentUser = data.user;
                     localStorage.setItem('adminUser', JSON.stringify(currentUser));
+                    if (data.token) localStorage.setItem('adminToken', data.token);
                     showMainApp();
                 } else {
                     errorEl.textContent = data.error || '登入失敗';
@@ -1253,7 +1361,15 @@
         }
         
         function handleLogout() {
+            const token = localStorage.getItem('adminToken');
+            if (token) {
+                fetch(`${window.BACKEND_URL}/api/admin/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).catch(() => {});
+            }
             localStorage.removeItem('adminUser');
+            localStorage.removeItem('adminToken');
             currentUser = null;
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('mainApp').style.display = 'none';
@@ -1279,7 +1395,7 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
 
-            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers'];
+            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers', 'distributorOrders', 'distributorAccounts'];
             allTabs.forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -1302,6 +1418,8 @@
             if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
             if (tab === 'manufacturers') loadManufacturers();
+            if (tab === 'distributorOrders') loadDistributorOrders();
+            if (tab === 'distributorAccounts') loadDistributors();
         }
 
         // 測試郵件
@@ -3350,6 +3468,164 @@
             document.getElementById('reviewDateFrom').value = from.toISOString().split('T')[0];
             // 進入 systemTab 時自動載入歷史建議
         })();
+
+        // ─────────────────────────────────────────────
+        // 代理商訂單
+        // ─────────────────────────────────────────────
+
+        const DIST_STATUS_LABELS = {
+            pending:       '待處理',
+            manufacturing: '製作中',
+            shipped:       '已出貨',
+            completed:     '已完成',
+        };
+        const DIST_STATUS_COLORS = {
+            pending:       '#f59e0b',
+            manufacturing: '#60a5fa',
+            shipped:       '#34d399',
+            completed:     '#999',
+        };
+
+        async function loadDistributorOrders() {
+            const tbody = document.getElementById('distributorOrdersTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
+            try {
+                const res = await callApi('/api/admin/orders?distributor=true');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const orders = data.orders || [];
+
+                // 統計
+                const stats = { total: orders.length, pending: 0, manufacturing: 0, shipped: 0 };
+                orders.forEach(o => {
+                    const ds = o.distributor_status || 'pending';
+                    if (ds === 'pending') stats.pending++;
+                    if (ds === 'manufacturing') stats.manufacturing++;
+                    if (ds === 'shipped') stats.shipped++;
+                });
+                document.getElementById('distStatTotal').textContent = stats.total;
+                document.getElementById('distStatPending').textContent = stats.pending;
+                document.getElementById('distStatManufacturing').textContent = stats.manufacturing;
+                document.getElementById('distStatShipped').textContent = stats.shipped;
+
+                if (!orders.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:24px;">目前沒有代理商訂單</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = orders.map(o => {
+                    let orderData = {};
+                    try { orderData = JSON.parse(o.data || '{}'); } catch(e) {}
+                    const ui = orderData.userInfo || {};
+                    const name = ui.recipientName || ui.name || '—';
+                    const total = orderData.totalAmount || orderData.total || '—';
+                    const ds = o.distributor_status || 'pending';
+                    const color = DIST_STATUS_COLORS[ds] || '#999';
+                    const label = DIST_STATUS_LABELS[ds] || ds;
+                    const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
+                    return `<tr>
+                        <td style="font-family:monospace;font-size:12px;">${o.order_id}</td>
+                        <td><span style="background:rgba(100,160,255,0.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">${o.distributor_region || '—'}</span></td>
+                        <td>${name}</td>
+                        <td>${total !== '—' ? 'NT$ ' + Number(total).toLocaleString() : '—'}</td>
+                        <td>${(statusMap[o.status] || {text: o.status}).text || o.status}</td>
+                        <td><span style="color:${color};font-weight:500;">${label}</span></td>
+                        <td>${dateStr}</td>
+                    </tr>`;
+                }).join('');
+            } catch(e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${e.message}</td></tr>`;
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // 代理商帳號管理
+        // ─────────────────────────────────────────────
+
+        async function loadDistributors() {
+            const tbody = document.getElementById('distributorsTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
+            try {
+                const res = await callApi('/api/admin/distributors');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const items = data.distributors || [];
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:24px;">目前沒有代理商帳號</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = items.map(d => {
+                    const statusBadge = d.is_active
+                        ? '<span style="background:rgba(52,211,153,0.15);color:#34d399;padding:2px 8px;border-radius:4px;font-size:12px;">啟用</span>'
+                        : '<span style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 8px;border-radius:4px;font-size:12px;">停用</span>';
+                    const dateStr = d.created_at ? new Date(d.created_at).toLocaleDateString('zh-TW') : '—';
+                    const toggleLabel = d.is_active ? '停用' : '啟用';
+                    return `<tr>
+                        <td><strong style="color:#c9a96e;">${d.region}</strong></td>
+                        <td>${d.display_name}</td>
+                        <td>${d.email}</td>
+                        <td>NT$ ${d.platform_fee}</td>
+                        <td>${statusBadge}</td>
+                        <td>${dateStr}</td>
+                        <td>
+                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="toggleDistributor('${d.region}', ${!d.is_active})">${toggleLabel}</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${e.message}</td></tr>`;
+            }
+        }
+
+        function showAddDistributorModal() {
+            document.getElementById('distRegion').value = '';
+            document.getElementById('distDisplayName').value = '';
+            document.getElementById('distEmail').value = '';
+            document.getElementById('distPassword').value = '';
+            document.getElementById('distPlatformFee').value = '500';
+            document.getElementById('addDistributorModal').style.display = 'flex';
+        }
+
+        async function handleSaveDistributor(e) {
+            e.preventDefault();
+            const body = {
+                region:       document.getElementById('distRegion').value.toUpperCase(),
+                display_name: document.getElementById('distDisplayName').value,
+                email:        document.getElementById('distEmail').value,
+                password:     document.getElementById('distPassword').value,
+                platform_fee: parseInt(document.getElementById('distPlatformFee').value) || 500,
+            };
+            try {
+                const res = await callApi('/api/admin/distributors', { method: 'POST', body: JSON.stringify(body) });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('addDistributorModal').style.display = 'none';
+                    loadDistributors();
+                    alert(`代理商 ${body.region} 建立成功`);
+                } else {
+                    alert(data.error || '建立失敗');
+                }
+            } catch(e) {
+                alert('網路錯誤');
+            }
+        }
+
+        async function toggleDistributor(region, isActive) {
+            if (!confirm(`確定要${isActive ? '啟用' : '停用'}代理商 ${region}？`)) return;
+            try {
+                const res = await callApi(`/api/admin/distributors/${region}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ is_active: isActive })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadDistributors();
+                } else {
+                    alert(data.error || '操作失敗');
+                }
+            } catch(e) {
+                alert('網路錯誤');
+            }
+        }
     </script>
 
     <!-- 發送給廠商 Modal -->
