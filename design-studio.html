@@ -4389,8 +4389,8 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.phone')} *</label>
-                                    <input type="tel" id="buyer-phone" required pattern="[0-9]{10}"
-                                           placeholder="0912345678"
+                                    <input type="tel" id="buyer-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                           placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
@@ -4418,8 +4418,8 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientPhone')} *</label>
-                                    <input type="tel" id="recipient-phone" required pattern="[0-9]{10}"
-                                           placeholder="0912345678"
+                                    <input type="tel" id="recipient-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                           placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
@@ -4430,10 +4430,23 @@
                                 <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.shippingAddr')}</h3>
 
                                 <div style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.country')} *</label>
+                                    <select id="shipping-country" required
+                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
+                                                   background: rgba(30,30,40,0.9); color: white; border-radius: 5px; font-family: inherit;">
+                                        <option value="TW">🇹🇼 台灣 Taiwan</option>
+                                        <option value="JP">🇯🇵 日本 Japan</option>
+                                        <option value="TH">🇹🇭 泰國 Thailand</option>
+                                        <option value="US">🇺🇸 美國 United States</option>
+                                        <option value="OTHER">🌐 其他 Other</option>
+                                    </select>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.postalCode')}</label>
-                                    <input type="text" id="postal-code" pattern="[0-9]{3,5}"
-                                           placeholder="例：100"
-                                           style="width: 120px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
+                                    <input type="text" id="postal-code" pattern="[\w\-]{3,10}"
+                                           placeholder="例：100 / 100-0001"
+                                           style="width: 160px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
@@ -4588,6 +4601,7 @@
                         recipientPhone: document.getElementById('recipient-phone').value.trim(),
 
                         // 收貨地址
+                        shippingCountry: document.getElementById('shipping-country').value,
                         postalCode: document.getElementById('postal-code').value.trim(),
                         shippingAddress: document.getElementById('shipping-address').value.trim(),
 
