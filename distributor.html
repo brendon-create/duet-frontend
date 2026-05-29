@@ -322,6 +322,7 @@
         <div class="topbar-right">
             <span class="region-badge" id="topRegion">—</span>
             <span class="topbar-user" id="topName"></span>
+            <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="openChangePassword()">修改密碼</button>
             <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="handleLogout()">登出</button>
         </div>
     </div>
@@ -356,6 +357,35 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<!-- 修改密碼 Modal -->
+<div class="modal-overlay" id="pwModal">
+    <div class="modal" style="max-width:360px;">
+        <div class="modal-header">
+            <span class="modal-title">修改密碼</span>
+            <button class="modal-close" onclick="document.getElementById('pwModal').style.display='none'">&times;</button>
+        </div>
+        <form onsubmit="submitChangePassword(event)">
+            <div class="form-group">
+                <label>目前密碼</label>
+                <input type="password" id="pwCurrent" required autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label>新密碼 <span style="color:#666;font-size:11px;">（至少 8 個字元）</span></label>
+                <input type="password" id="pwNew" required minlength="8" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label>確認新密碼</label>
+                <input type="password" id="pwConfirm" required autocomplete="new-password">
+            </div>
+            <div id="pwError" style="display:none;color:#f87171;font-size:13px;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" class="btn" onclick="document.getElementById('pwModal').style.display='none'">取消</button>
+                <button type="submit" class="btn btn-primary">確認修改</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -617,6 +647,48 @@
 
     function closeModal() {
         document.getElementById('orderModal').style.display = 'none';
+    }
+
+    // ── Change Password ───────────────────────────────
+
+    function openChangePassword() {
+        document.getElementById('pwCurrent').value = '';
+        document.getElementById('pwNew').value = '';
+        document.getElementById('pwConfirm').value = '';
+        document.getElementById('pwError').style.display = 'none';
+        document.getElementById('pwModal').style.display = 'flex';
+    }
+
+    async function submitChangePassword(e) {
+        e.preventDefault();
+        const current = document.getElementById('pwCurrent').value;
+        const newPw   = document.getElementById('pwNew').value;
+        const confirm = document.getElementById('pwConfirm').value;
+        const errEl   = document.getElementById('pwError');
+        errEl.style.display = 'none';
+
+        if (newPw !== confirm) {
+            errEl.textContent = '新密碼與確認密碼不一致';
+            errEl.style.display = 'block';
+            return;
+        }
+        try {
+            const res = await apiFetch('/api/distributor/change-password', {
+                method: 'POST',
+                body: JSON.stringify({ current_password: current, new_password: newPw })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('pwModal').style.display = 'none';
+                showToast('密碼已更新', 'success');
+            } else {
+                errEl.textContent = data.error || '修改失敗';
+                errEl.style.display = 'block';
+            }
+        } catch(e) {
+            errEl.textContent = '網路錯誤';
+            errEl.style.display = 'block';
+        }
     }
 
     // ── Toast ─────────────────────────────────────────

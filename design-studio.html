@@ -4432,6 +4432,7 @@
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.country')} *</label>
                                     <select id="shipping-country" required
+                                            onchange="updatePostalHint(this.value)"
                                             style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                    background: rgba(30,30,40,0.9); color: white; border-radius: 5px; font-family: inherit;">
                                         <option value="TW">🇹🇼 台灣 Taiwan</option>
@@ -4566,6 +4567,33 @@
                         }
                     });
                 });
+
+                // 國家切換 → 更新郵遞區號格式提示與地址提示
+                const _POSTAL_HINTS = {
+                    TW:    { placeholder: '例：100 或 10601',      pattern: '[0-9]{3,6}' },
+                    JP:    { placeholder: '例：100-0001',           pattern: '[0-9]{3}-[0-9]{4}' },
+                    TH:    { placeholder: '例：10110',              pattern: '[0-9]{5}' },
+                    US:    { placeholder: '例：90210 或 90210-1234', pattern: '[0-9]{5}(-[0-9]{4})?' },
+                    OTHER: { placeholder: '郵遞區號 / Postal Code',  pattern: '[\\w\\-]{2,10}' },
+                };
+                const _ADDRESS_HINTS = {
+                    TW:    '請填寫完整收貨地址（縣市、鄉鎮區、路街巷弄號）',
+                    JP:    '都道府県・市区町村・番地・建物名・部屋番号',
+                    TH:    'บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด\n(House No., Road, Sub-district, District, Province)',
+                    US:    'Street address, City, State, ZIP Code',
+                    OTHER: 'Please enter your complete shipping address',
+                };
+                window.updatePostalHint = function (country) {
+                    const hint = _POSTAL_HINTS[country] || _POSTAL_HINTS.OTHER;
+                    const postalInput = document.getElementById('postal-code');
+                    if (postalInput) {
+                        postalInput.placeholder = hint.placeholder;
+                        postalInput.pattern = hint.pattern;
+                    }
+                    const addrHint = _ADDRESS_HINTS[country] || _ADDRESS_HINTS.OTHER;
+                    const addrInput = document.getElementById('shipping-address');
+                    if (addrInput) addrInput.placeholder = addrHint;
+                };
 
                 // 發票類型切換處理
                 window.toggleInvoiceFields = function (isCompany) {
