@@ -333,11 +333,14 @@
         </div>
 
         <div class="filter-bar">
-            <button class="filter-btn active" onclick="setFilter(null, this)">全部</button>
-            <button class="filter-btn" onclick="setFilter('pending', this)">待處理</button>
-            <button class="filter-btn" onclick="setFilter('manufacturing', this)">製作中</button>
-            <button class="filter-btn" onclick="setFilter('shipped', this)">已出貨</button>
-            <button class="filter-btn" onclick="setFilter('completed', this)">已完成</button>
+            <button class="filter-btn active" onclick="setFilter(null, null, this)">全部</button>
+            <button class="filter-btn" onclick="setFilter('pay', 'pending', this)">待付款</button>
+            <button class="filter-btn" onclick="setFilter('pay', 'paid', this)">已付款</button>
+            <button class="filter-btn" onclick="setFilter('pay', 'free_order', this)">免付費</button>
+            <button class="filter-btn" onclick="setFilter('dist', 'pending', this)">待處理</button>
+            <button class="filter-btn" onclick="setFilter('dist', 'manufacturing', this)">製作中</button>
+            <button class="filter-btn" onclick="setFilter('dist', 'shipped', this)">已出貨</button>
+            <button class="filter-btn" onclick="setFilter('dist', 'completed', this)">已完成</button>
         </div>
 
         <div class="table-wrap">
@@ -347,7 +350,8 @@
                         <th>訂單編號</th>
                         <th>收件人</th>
                         <th>商品</th>
-                        <th>狀態</th>
+                        <th>付款狀態</th>
+                        <th>處理狀態</th>
                         <th>訂單日期</th>
                         <th></th>
                     </tr>
@@ -404,7 +408,26 @@
 
 <script>
     const DIST_STATUS_LABELS = { pending:'待處理', manufacturing:'製作中', shipped:'已出貨', completed:'已完成' };
-    const DIST_STATUS_COLORS = { pending:'#f59e0b', manufacturing:'#60a5fa', shipping:'#a78bfa', shipped:'#34d399', completed:'#666' };
+    const DIST_STATUS_COLORS = { pending:'#f59e0b', manufacturing:'#60a5fa', shipped:'#34d399', completed:'#666' };
+
+    const PAY_STATUS_LABELS = {
+        pending:    '待付款',
+        paid:       '已付款',
+        free_order: '免付費',
+        processing: '已付款',
+        completed:  '已付款',
+        shipped:    '已付款',
+        delivered:  '已付款',
+    };
+    const PAY_STATUS_COLORS = {
+        pending:    '#f59e0b',
+        paid:       '#34d399',
+        free_order: '#60a5fa',
+        processing: '#34d399',
+        completed:  '#34d399',
+        shipped:    '#34d399',
+        delivered:  '#34d399',
+    };
 
     let _token = null;
     let _region = null;
@@ -487,49 +510,70 @@
 
     // ── Orders ────────────────────────────────────────
 
-    async function loadOrders(statusFilter) {
-        _currentFilter = statusFilter || null;
+    let _filterType = null;   // 'pay' | 'dist' | null
+    let _filterValue = null;
+
+    async function loadOrders() {
         const tbody = document.getElementById('ordersBody');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#666;">載入中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#666;">載入中...</td></tr>';
         try {
-            const qs = statusFilter ? `?status=${statusFilter}` : '';
-            const res = await apiFetch(`/api/distributor/orders${qs}`);
+            const res = await apiFetch('/api/distributor/orders');
             if (res.status === 401) { handleLogout(); return; }
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
             _allOrders = data.orders || [];
-            renderOrders(_allOrders);
+            applyFilter();
         } catch(e) {
-            tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;text-align:center;padding:24px;">${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;padding:24px;">${e.message}</td></tr>`;
         }
+    }
+
+    function applyFilter() {
+        if (!_filterType) { renderOrders(_allOrders); return; }
+        const filtered = _allOrders.filter(o => {
+            if (_filterType === 'pay') {
+                const ps = o.status || 'pending';
+                if (_filterValue === 'paid') return ['paid','processing','completed','shipped','delivered'].includes(ps);
+                return ps === _filterValue;
+            }
+            if (_filterType === 'dist') return (o.distributor_status || 'pending') === _filterValue;
+            return true;
+        });
+        renderOrders(filtered);
     }
 
     function renderOrders(orders) {
         const tbody = document.getElementById('ordersBody');
         if (!orders.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#666;">沒有訂單</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#666;">沒有訂單</td></tr>';
             return;
         }
         tbody.innerHTML = orders.map(o => {
             const ds = o.distributor_status || 'pending';
-            const color = DIST_STATUS_COLORS[ds] || '#999';
-            const label = DIST_STATUS_LABELS[ds] || ds;
+            const ps = o.status || 'pending';
+            const distColor = DIST_STATUS_COLORS[ds] || '#999';
+            const distLabel = DIST_STATUS_LABELS[ds] || ds;
+            const payColor  = PAY_STATUS_COLORS[ps]  || '#999';
+            const payLabel  = PAY_STATUS_LABELS[ps]  || ps;
             const date = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
             return `<tr>
                 <td style="font-family:monospace;font-size:11px;color:#999;">${o.order_id}</td>
                 <td>${o.customer_name || '—'}</td>
                 <td style="color:#999;font-size:12px;">${o.items_summary || '—'}</td>
-                <td><span style="color:${color};font-weight:500;">${label}</span></td>
+                <td><span style="color:${payColor};font-weight:500;">${payLabel}</span></td>
+                <td><span style="color:${distColor};font-weight:500;">${distLabel}</span></td>
                 <td style="color:#999;">${date}</td>
                 <td><button class="btn" style="font-size:12px;padding:4px 12px;" onclick="openOrder('${o.order_id}')">查看</button></td>
             </tr>`;
         }).join('');
     }
 
-    function setFilter(status, btn) {
+    function setFilter(type, value, btn) {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        loadOrders(status);
+        _filterType  = type;
+        _filterValue = value;
+        applyFilter();
     }
 
     // ── Order Detail ──────────────────────────────────
