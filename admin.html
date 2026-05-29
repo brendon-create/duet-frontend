@@ -3476,14 +3476,16 @@
         const DIST_STATUS_LABELS = {
             pending:       '待處理',
             manufacturing: '製作中',
+            completed:     '製作完成',
             shipped:       '已出貨',
-            completed:     '已簽收',
+            delivered:     '已簽收',
         };
         const DIST_STATUS_COLORS = {
             pending:       '#f59e0b',
             manufacturing: '#60a5fa',
+            completed:     '#a78bfa',
             shipped:       '#34d399',
-            completed:     '#999',
+            delivered:     '#999',
         };
 
         async function loadDistributorOrders() {
