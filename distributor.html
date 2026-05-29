@@ -595,7 +595,7 @@
 
     function renderOrderModal(o) {
         const ds = o.distributor_status || 'pending';
-        const nextStatuses = { pending:['manufacturing'], manufacturing:['shipped'], shipped:['completed'], completed:[] };
+        const nextStatuses = { pending:['manufacturing'], manufacturing:['completed'], completed:['shipped'], shipped:['delivered'], delivered:[] };
         const next = nextStatuses[ds] || [];
 
         const itemsHtml = (o.items || []).map((item, i) => `
