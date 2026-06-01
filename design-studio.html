@@ -5313,6 +5313,19 @@
                                 </span>
                             </label>
                         </div>
+                        <div id="bail-size-section" style="margin-bottom:20px;padding:10px 14px;border-radius:8px;border:1px solid #1e3a5f;background:#0f1e2e;${hasBail?'':'opacity:0.4;pointer-events:none;'}">
+                            <div style="font-size:12px;color:#94a3b8;margin-bottom:8px;">Bail 尺寸</div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                                    <input type="radio" name="bail-size" value="standard" checked style="accent-color:#818cf8;">
+                                    <span>標準（寬4mm × 高6mm）</span>
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                                    <input type="radio" name="bail-size" value="large" style="accent-color:#818cf8;">
+                                    <span>大（寬5mm × 高6.5mm）</span>
+                                </label>
+                            </div>
+                        </div>
                         <div style="display:flex;gap:10px;">
                             <button id="stl-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer;font-size:14px;">取消</button>
                             <button id="stl-download-btn" style="flex:2;padding:10px;border-radius:8px;border:none;background:#818cf8;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">下載</button>
@@ -5328,15 +5341,19 @@
                 };
                 overlay.querySelector('#stl-download-btn').onclick = () => {
                     const val = overlay.querySelector('input[name="stl-export"]:checked')?.value || 'main';
+                    const bailSize = overlay.querySelector('input[name="bail-size"]:checked')?.value || 'standard';
                     document.body.removeChild(overlay);
-                    resolve(val);
+                    resolve({ choice: val, bailSize });
                 };
             });
 
             if (!exportChoice) return; // 取消
 
-            const include_ring = exportChoice === 'ring' || exportChoice === 'bail';
-            const include_bail = exportChoice === 'bail';
+            const { choice: exportType, bailSize } = exportChoice;
+            const include_ring = exportType === 'ring' || exportType === 'bail';
+            const include_bail = exportType === 'bail';
+            const bailWidthMm  = bailSize === 'large' ? 5.0 : 4.0;
+            const bailHeightMm = bailSize === 'large' ? 6.5 : 6.0;
 
             const params = {
                 letter1, letter2, font1, font2,
@@ -5346,7 +5363,9 @@
                 bailRelativeX, bailRelativeY, bailRelativeZ,
                 cleanFragments: cleanFragmentsApplied,
                 include_ring,
-                include_bail
+                include_bail,
+                bailWidthMm,
+                bailHeightMm
             };
 
             console.log('📤 STL 請求:', JSON.stringify(params, null, 2));
