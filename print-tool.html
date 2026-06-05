@@ -171,29 +171,52 @@ body {
 .card-inner.card-1 { top: 25.67mm; }
 .card-inner.card-2 { top: 161.33mm; }
 
-/* 折疊虛線（僅螢幕顯示） */
-.fold-guide {
+/* ──────────────────────────────────────────
+   裁切角標 + 對折導引線容器
+   此容器與 .card-inner/.card-cover 同位置，
+   但不設 overflow:hidden，標記可溢出到卡片外
+────────────────────────────────────────── */
+.card-marks {
     position: absolute;
-    left: 90mm;
-    top: 0; bottom: 0;
-    width: 0;
-    border-left: 0.5pt dashed rgba(100,92,82,0.3);
+    width: 180mm;
+    height: 110mm;
+    left: 15mm;
     pointer-events: none;
+    overflow: visible;
 }
+.card-marks.marks-1 { top: 25.67mm; }
+.card-marks.marks-2 { top: 161.33mm; }
 
-/* 裁切角標 */
+/* 裁切角標：L 形，完全在卡片邊界外（2mm 空隙 + 5mm 長度 = 偏移 7mm） */
 .cut {
     position: absolute;
     width: 5mm; height: 5mm;
     border-color: #999;
     border-style: solid;
     border-width: 0;
-    /* 溢出卡片邊界 2mm */
 }
-.cut.tl { top: -2mm;    left: -2mm;    border-top-width: 0.4pt;    border-left-width: 0.4pt;  }
-.cut.tr { top: -2mm;    right: -2mm;   border-top-width: 0.4pt;    border-right-width: 0.4pt; }
-.cut.bl { bottom: -2mm; left: -2mm;    border-bottom-width: 0.4pt; border-left-width: 0.4pt;  }
-.cut.br { bottom: -2mm; right: -2mm;   border-bottom-width: 0.4pt; border-right-width: 0.4pt; }
+.cut.tl { top: -7mm;    left: -7mm;    border-top-width: 0.4pt;    border-left-width: 0.4pt;  }
+.cut.tr { top: -7mm;    right: -7mm;   border-top-width: 0.4pt;    border-right-width: 0.4pt; }
+.cut.bl { bottom: -7mm; left: -7mm;    border-bottom-width: 0.4pt; border-left-width: 0.4pt;  }
+.cut.br { bottom: -7mm; right: -7mm;   border-bottom-width: 0.4pt; border-right-width: 0.4pt; }
+
+/* 對折導引線：只在卡片上下邊緣外顯示，不穿過卡片 */
+.fold-top {
+    position: absolute;
+    left: 90mm;
+    top: -7mm;
+    width: 0;
+    height: 5mm;
+    border-left: 0.5pt dashed rgba(100,92,82,0.5);
+}
+.fold-bottom {
+    position: absolute;
+    left: 90mm;
+    bottom: -7mm;
+    width: 0;
+    height: 5mm;
+    border-left: 0.5pt dashed rgba(100,92,82,0.5);
+}
 
 /* ── 右半文字區（短文時文字只放右 90mm；長文時左半也會啟用）── */
 .text-panel {
@@ -325,7 +348,6 @@ body {
     #cover-scale-wrap { transform: none !important; margin: 0 !important; }
     .print-sheet { width: 210mm !important; height: 297mm !important; }
     .cover-sheet { page-break-before: always !important; }
-    .fold-guide { display: none !important; }
     #batch-container { display: none !important; }
     body.batch-active #batch-container { display: block !important; }
     body.batch-active #scale-wrap { display: none !important; }
@@ -552,26 +574,34 @@ body {
         <div class="preview-label">第一面：內頁預覽（設計理念）</div>
         <div id="scale-wrap">
             <div class="print-sheet" id="preview-sheet">
-                <!-- 卡片 1 -->
+                <!-- 卡片 1 內頁 -->
                 <div class="card-inner card-1">
                     <div class="text-panel-left" id="preview-left-1"></div>
-                    <div class="fold-guide"></div>
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
                     <div class="text-panel" id="preview-right-1"></div>
                     <div class="card-sig" id="preview-sig-1"><span class="sig-line"></span></div>
                 </div>
-                <!-- 卡片 2 -->
-                <div class="card-inner card-2">
-                    <div class="fold-guide"></div>
+                <!-- 卡片 1 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-1">
                     <div class="cut tl"></div>
                     <div class="cut tr"></div>
                     <div class="cut bl"></div>
                     <div class="cut br"></div>
+                    <div class="fold-top"></div>
+                    <div class="fold-bottom"></div>
+                </div>
+                <!-- 卡片 2 內頁 -->
+                <div class="card-inner card-2">
                     <div class="text-panel" id="preview-right-2"></div>
                     <div class="card-sig" id="preview-sig-2"><span class="sig-line"></span></div>
+                </div>
+                <!-- 卡片 2 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-2">
+                    <div class="cut tl"></div>
+                    <div class="cut tr"></div>
+                    <div class="cut bl"></div>
+                    <div class="cut br"></div>
+                    <div class="fold-top"></div>
+                    <div class="fold-bottom"></div>
                 </div>
             </div>
         </div>
@@ -580,29 +610,37 @@ body {
             <div class="print-sheet cover-sheet" id="cover-sheet">
                 <!-- 封面卡片 1 -->
                 <div class="card-cover cover-1">
-                    <div class="fold-guide"></div>
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
                     <div class="cover-front-panel">
                         <div class="cover-brand-name">DUET</div>
                         <div class="cover-brand-sub">by BCAG</div>
                     </div>
                     <div class="cover-back-panel">duet.brendonchen.com</div>
                 </div>
-                <!-- 封面卡片 2 -->
-                <div class="card-cover cover-2">
-                    <div class="fold-guide"></div>
+                <!-- 封面卡片 1 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-1">
                     <div class="cut tl"></div>
                     <div class="cut tr"></div>
                     <div class="cut bl"></div>
                     <div class="cut br"></div>
+                    <div class="fold-top"></div>
+                    <div class="fold-bottom"></div>
+                </div>
+                <!-- 封面卡片 2 -->
+                <div class="card-cover cover-2">
                     <div class="cover-front-panel">
                         <div class="cover-brand-name">DUET</div>
                         <div class="cover-brand-sub">by BCAG</div>
                     </div>
                     <div class="cover-back-panel">duet.brendonchen.com</div>
+                </div>
+                <!-- 封面卡片 2 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-2">
+                    <div class="cut tl"></div>
+                    <div class="cut tr"></div>
+                    <div class="cut bl"></div>
+                    <div class="cut br"></div>
+                    <div class="fold-top"></div>
+                    <div class="fold-bottom"></div>
                 </div>
             </div>
         </div>
