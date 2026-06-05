@@ -6,7 +6,7 @@
 <title>設計理念列印工具 | DUET</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="assets/js/config.js"></script>
 <style>
 /* ── 全字庫正楷體 ── */
@@ -15,7 +15,7 @@
     src: url('assets/fonts/TW-Kai-98_1.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
-    font-display: block;
+    font-display: swap;
 }
 
 /* ── 全域 reset ── */
@@ -25,7 +25,7 @@
    螢幕 UI
 ──────────────────────────────────────────── */
 body {
-    font-family: 'TW-Kai', serif;
+    font-family: 'Noto Serif TC', serif;
     background: #1a1814;
     color: #e8e0d0;
     min-height: 100vh;
@@ -82,7 +82,7 @@ body {
     border-radius: 8px;
     padding: 14px;
     color: #e8e0d0;
-    font-family: 'TW-Kai', serif;
+    font-family: 'Noto Serif TC', serif;
     font-size: 13px;
     line-height: 1.8;
     resize: vertical;
@@ -362,8 +362,9 @@ body {
     .preview-label { display: none !important; }
     #scale-wrap { transform: none !important; margin: 0 !important; }
     #cover-scale-wrap { transform: none !important; margin: 0 !important; }
-    .print-sheet { width: 210mm !important; height: 297mm !important; }
-    .cover-sheet { page-break-before: always !important; }
+    .print-sheet { width: 210mm !important; height: 296.9mm !important; }
+    #preview-sheet { break-after: page !important; page-break-after: always !important; }
+    .cover-sheet { break-before: auto !important; page-break-before: auto !important; }
     #batch-container { display: none !important; margin: 0 !important; padding: 0 !important; }
     body.batch-active > * { display: none !important; }
     body.batch-active > #batch-container { display: block !important; }
@@ -385,7 +386,7 @@ body {
     border-radius: 8px;
     padding: 12px;
     color: #e8e0d0;
-    font-family: 'TW-Kai', serif;
+    font-family: 'Noto Serif TC', serif;
     font-size: 12px;
     line-height: 1.8;
     resize: vertical;
@@ -529,7 +530,7 @@ body {
             <input id="order-id-input" type="text" placeholder="例：D20260502-001"
                 style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
                        border-radius:8px;padding:10px 12px;color:#e8e0d0;
-                       font-family:'TW-Kai',serif;font-size:13px;outline:none;
+                       font-family:'Noto Serif TC',serif;font-size:13px;outline:none;
                        transition:border-color 0.2s;"
                 onfocus="this.style.borderColor='rgba(212,175,55,0.35)'"
                 onblur="this.style.borderColor='rgba(255,255,255,0.1)'"
@@ -557,7 +558,7 @@ body {
             長文：從左半開始，延伸至右半（同一張卡），簽名線自動出現
         </div>
 
-        <button class="print-btn" onclick="window.print()">列印 / 匯出 PDF</button>
+        <button class="print-btn" onclick="document.fonts.ready.then(()=>window.print())">列印 / 匯出 PDF</button>
 
         <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;">
             <button class="batch-toggle" id="batchToggleBtn" onclick="toggleBatchMode()">批次模式（多筆訂單）</button>
@@ -824,7 +825,7 @@ window.onafterprint = function () {
 function triggerBatchPrint() {
     _batchMode = true;
     document.body.classList.add('batch-active');
-    window.print();
+    document.fonts.ready.then(() => window.print());
 }
 
 function clearBatch() {
@@ -923,7 +924,7 @@ function buildBatchCardInner(result, num) {
     let leftHTML = '', rightHTML = '', wide = false;
     if (paras.length === 0) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
-    } else if (paras.length >= 2 && story.trim().length > 150) {
+    } else if (paras.length >= 2 && story.trim().length > 220) {
         wide = true;
         const mid = Math.ceil(paras.length / 2);
         leftHTML = toHTML(paras.slice(0, mid));
@@ -972,6 +973,9 @@ window.addEventListener('resize', scalePreview);
 /* 初始化 */
 updateCards();
 scalePreview();
+
+/* TW-Kai 字體載入完成後重算排版（font-display:swap 會先用 fallback，loaded 後需重算） */
+document.fonts.ready.then(() => updateCards());
 
 if (window !== window.top) {
     document.querySelector('.app-header').style.display = 'none';
