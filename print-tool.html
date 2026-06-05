@@ -6,9 +6,18 @@
 <title>設計理念列印工具 | DUET</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 <script src="assets/js/config.js"></script>
 <style>
+/* ── 全字庫正楷體 ── */
+@font-face {
+    font-family: 'TW-Kai';
+    src: url('assets/fonts/TW-Kai-98_1.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
 /* ── 全域 reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,7 +25,7 @@
    螢幕 UI
 ──────────────────────────────────────────── */
 body {
-    font-family: 'Noto Serif TC', serif;
+    font-family: 'TW-Kai', serif;
     background: #1a1814;
     color: #e8e0d0;
     min-height: 100vh;
@@ -73,7 +82,7 @@ body {
     border-radius: 8px;
     padding: 14px;
     color: #e8e0d0;
-    font-family: 'Noto Serif TC', serif;
+    font-family: 'TW-Kai', serif;
     font-size: 13px;
     line-height: 1.8;
     resize: vertical;
@@ -202,7 +211,7 @@ body {
 .cm-v { width: 0; height: 6mm; border-left: 0.4pt solid #000; }
 
 /* 對折導引線（虛線，平行於左右切割線，在上下邊界外） */
-.cm-fold { width: 0; height: 6mm; border-left: 0.5pt dashed #555; }
+.cm-fold { width: 0; height: 6mm; border-left: 0.5pt dashed #000; }
 
 /* ── 左上角 ── */
 .cm-tl-h { top: 0;     left: -9mm;  }   /* 上切線，往左延伸 */
@@ -231,10 +240,10 @@ body {
     right: 6mm;
     top: 8mm;
     bottom: 22mm;  /* leave room for signature */
-    font-family: 'Noto Serif TC', 'PingFang TC', serif;
-    font-size: 4.5mm;
+    font-family: 'TW-Kai', serif;
+    font-size: 3.5mm;
     line-height: 1.65;
-    color: #2e2a24;
+    color: #000;
     text-align: justify;
     overflow: hidden;
     word-break: break-word;
@@ -250,10 +259,10 @@ body {
     right: 96mm;   /* 90mm fold - 6mm padding = stops at 84mm from left */
     top: 8mm;
     bottom: 22mm;
-    font-family: 'Noto Serif TC', 'PingFang TC', serif;
-    font-size: 4.5mm;
+    font-family: 'TW-Kai', serif;
+    font-size: 3.5mm;
     line-height: 1.65;
-    color: #2e2a24;
+    color: #000;
     text-align: justify;
     overflow: hidden;
     word-break: break-word;
@@ -273,7 +282,7 @@ body {
 .sig-line {
     display: inline-block;
     width: 38mm;
-    border-bottom: 0.5pt solid #c0392b;
+    border-bottom: 0.5pt solid #000;
     vertical-align: bottom;
 }
 
@@ -315,10 +324,10 @@ body {
     color: #000;
 }
 .cover-brand-sub {
-    font-size: 3mm;
+    font-size: 3.3mm;
     letter-spacing: 1.5mm;
     text-indent: 1.5mm;
-    color: #333;
+    color: #888;
     font-weight: 300;
 }
 
@@ -334,9 +343,9 @@ body {
     justify-content: center;
     padding-bottom: 8mm;
     font-family: 'Cormorant Garamond', serif;
-    font-size: 2.8mm;
+    font-size: 3mm;
     letter-spacing: 0.5mm;
-    color: #333;
+    color: #000;
 }
 
 /* ────────────────────────────────────────────
@@ -376,7 +385,7 @@ body {
     border-radius: 8px;
     padding: 12px;
     color: #e8e0d0;
-    font-family: 'Noto Serif TC', serif;
+    font-family: 'TW-Kai', serif;
     font-size: 12px;
     line-height: 1.8;
     resize: vertical;
@@ -472,8 +481,8 @@ body {
     padding-bottom: 2mm;
 }
 .story-card .story-text {
-    font-family: 'Noto Serif TC', 'PingFang TC', serif;
-    font-size: 3.8mm;
+    font-family: 'TW-Kai', serif;
+    font-size: 3.5mm;
     line-height: 1.65;
     color: #2e2a24;
     text-align: justify;
@@ -488,7 +497,7 @@ body {
 .story-card .story-sig-line {
     display: inline-block;
     width: 25mm;
-    border-bottom: 0.5pt solid #c0392b;
+    border-bottom: 0.5pt solid #000;
     vertical-align: bottom;
 }
 
@@ -520,7 +529,7 @@ body {
             <input id="order-id-input" type="text" placeholder="例：D20260502-001"
                 style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
                        border-radius:8px;padding:10px 12px;color:#e8e0d0;
-                       font-family:'Noto Serif TC',serif;font-size:13px;outline:none;
+                       font-family:'TW-Kai',serif;font-size:13px;outline:none;
                        transition:border-color 0.2s;"
                 onfocus="this.style.borderColor='rgba(212,175,55,0.35)'"
                 onblur="this.style.borderColor='rgba(255,255,255,0.1)'"
