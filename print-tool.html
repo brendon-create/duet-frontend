@@ -356,12 +356,10 @@ body {
     .print-sheet { width: 210mm !important; height: 297mm !important; }
     .cover-sheet { page-break-before: always !important; }
     #batch-container { display: none !important; }
-    body.batch-active .preview-panel { display: none !important; }
-    body.batch-active #batch-container { display: block !important; }
-    body.batch-active #scale-wrap { display: none !important; }
-    body.batch-active #cover-scale-wrap { display: none !important; }
-    .batch-page { width: 210mm; height: 297mm; position: relative; background: white; page-break-after: always; }
-    .batch-page:last-child { page-break-after: auto; }
+    body.batch-active > * { display: none !important; }
+    body.batch-active > #batch-container { display: block !important; }
+    .batch-page { width: 210mm; height: 296.9mm; position: relative; background: white; overflow: hidden; }
+    .batch-page + .batch-page { page-break-before: always; }
 }
 
 /* ── 批次模式 UI ── */
@@ -890,13 +888,13 @@ function buildBatchCardInner(result, num) {
     let leftHTML = '', rightHTML = '', wide = false;
     if (paras.length === 0) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
-    } else if (story.trim().length <= 100) {
-        rightHTML = toHTML(paras);
-    } else {
+    } else if (paras.length >= 2 && story.trim().length > 150) {
         wide = true;
         const mid = Math.ceil(paras.length / 2);
         leftHTML = toHTML(paras.slice(0, mid));
         rightHTML = toHTML(paras.slice(mid));
+    } else {
+        rightHTML = toHTML(paras);
     }
 
     return `
