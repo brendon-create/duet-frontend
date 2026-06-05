@@ -345,6 +345,7 @@ body {
 @media print {
     @page { size: 210mm 297mm; margin: 0; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { background: white !important; min-height: 0 !important; }
     .app-header { display: none !important; }
     .app-layout { display: block !important; height: auto !important; }
     .input-panel { display: none !important; }
@@ -355,6 +356,7 @@ body {
     .print-sheet { width: 210mm !important; height: 297mm !important; }
     .cover-sheet { page-break-before: always !important; }
     #batch-container { display: none !important; }
+    body.batch-active .preview-panel { display: none !important; }
     body.batch-active #batch-container { display: block !important; }
     body.batch-active #scale-wrap { display: none !important; }
     body.batch-active #cover-scale-wrap { display: none !important; }
@@ -846,27 +848,24 @@ async function batchImport() {
         statusEl.textContent = `已載入 ${ok.length} 筆訂單，準備列印...`;
     }
 
-    // 建立批次列印 HTML
+    // 建立批次列印 HTML（與單筆相同版面：上下各一張 bi-fold 卡）
     const container = document.getElementById('batch-container');
     container.innerHTML = '';
 
-    // 每 2 筆訂單 = 1 對頁（第一面 Story + 第二面 Cover，長邊雙面列印）
     for (let i = 0; i < ok.length; i += 2) {
         const o1 = ok[i];
         const o2 = ok[i + 1] || null;
 
-        // 第一面：Story_N | Story_N+1
+        // 第一面：設計理念（card-1 = 上方，card-2 = 下方）
         const storyPage = document.createElement('div');
         storyPage.className = 'batch-page';
-        storyPage.appendChild(buildSlot('story', o1, 'slot-left'));
-        if (o2) storyPage.appendChild(buildSlot('story', o2, 'slot-right'));
+        storyPage.innerHTML = buildBatchCardInner(o1, 1) + buildBatchCardInner(o2, 2);
         container.appendChild(storyPage);
 
-        // 第二面：Cover_N | Cover_N+1
+        // 第二面：封面
         const coverPage = document.createElement('div');
         coverPage.className = 'batch-page';
-        coverPage.appendChild(buildSlot('cover', o1, 'slot-left'));
-        if (o2) coverPage.appendChild(buildSlot('cover', o2, 'slot-right'));
+        coverPage.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
         container.appendChild(coverPage);
     }
 
@@ -875,52 +874,63 @@ async function batchImport() {
     setTimeout(() => window.print(), 200);
 }
 
-function buildSlot(type, result, slotClass) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `batch-slot ${slotClass}`;
-
+/* 批次內頁卡片（與單筆 card-inner 相同版面） */
+function buildBatchCardInner(result, num) {
+    if (!result) return '';
     const order = result.order;
-    // 解析 order.items[0] 取得字母/材質
     const item = (order.items && order.items[0]) || {};
-    const userInfo = order.userInfo || {};
-    const letter1 = item.letter1 || item.Letter1 || '';
-    const letter2 = item.letter2 || item.Letter2 || '';
-    const lettersDisplay = (letter1 && letter2) ? `${letter1} × ${letter2}` : (letter1 || letter2 || '—');
-    const material = item.material || item.Material || '';
-    const name = userInfo.name || userInfo.firstName || '';
-    const email = userInfo.email || '';
-    const dateStr = order.timestamp
-        ? new Date(order.timestamp).toLocaleDateString('zh-TW')
-        : (order.created_at ? new Date(order.created_at).toLocaleDateString('zh-TW') : '');
+    const story = order.finalDesignStory || order.design_story ||
+        item.designStory || item.design_story || '';
+    const paras = story.trim() ? story.trim().split(/\n+/).filter(p => p.trim()) : [];
 
-    if (type === 'cover') {
-        wrapper.innerHTML = `
-            <div class="cover-card">
-                <div class="cover-brand">DUET</div>
-                <div class="cover-letters">${lettersDisplay}</div>
-                <div class="cover-divider"></div>
-                <div class="cover-meta">
-                    ${name ? name + '<br>' : ''}
-                    ${result.id}<br>
-                    ${dateStr}
-                </div>
-            </div>`;
+    const toHTML = arr => arr.map(p =>
+        `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
+    ).join('');
+
+    let leftHTML = '', rightHTML = '', wide = false;
+    if (paras.length === 0) {
+        rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
+    } else if (story.trim().length <= 100) {
+        rightHTML = toHTML(paras);
     } else {
-        const story = order.finalDesignStory || order.design_story ||
-            (item.designStory) || (item.design_story) || '';
-        const parasHTML = story.trim()
-            ? story.trim().split(/\n+/).filter(p => p.trim())
-                .map(p => `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
-                .join('')
-            : '<p style="color:#aaa;font-size:3.2mm;">（尚無設計理念）</p>';
-        wrapper.innerHTML = `
-            <div class="story-card">
-                <div class="story-header">${result.id}${lettersDisplay ? ' · ' + lettersDisplay : ''}</div>
-                <div class="story-text">${parasHTML}</div>
-                <div class="story-sig"><span class="story-sig-line"></span></div>
-            </div>`;
+        wide = true;
+        const mid = Math.ceil(paras.length / 2);
+        leftHTML = toHTML(paras.slice(0, mid));
+        rightHTML = toHTML(paras.slice(mid));
     }
-    return wrapper;
+
+    return `
+        <div class="card-inner card-${num}${wide ? ' wide' : ''}">
+            <div class="text-panel-left">${leftHTML}</div>
+            <div class="text-panel">${rightHTML}</div>
+            <div class="card-sig" style="display:block"><span class="sig-line"></span></div>
+        </div>
+        <div class="card-marks marks-${num}">
+            <div class="cm cm-h cm-tl-h"></div><div class="cm cm-v cm-tl-v"></div>
+            <div class="cm cm-h cm-tr-h"></div><div class="cm cm-v cm-tr-v"></div>
+            <div class="cm cm-h cm-bl-h"></div><div class="cm cm-v cm-bl-v"></div>
+            <div class="cm cm-h cm-br-h"></div><div class="cm cm-v cm-br-v"></div>
+            <div class="cm cm-fold cm-fold-t"></div><div class="cm cm-fold cm-fold-b"></div>
+        </div>`;
+}
+
+/* 批次封面卡片（與單筆 card-cover 相同） */
+function buildBatchCoverCard(num) {
+    return `
+        <div class="card-cover cover-${num}">
+            <div class="cover-front-panel">
+                <div class="cover-brand-name">DUET</div>
+                <div class="cover-brand-sub">by BCAG</div>
+            </div>
+            <div class="cover-back-panel">duet.brendonchen.com</div>
+        </div>
+        <div class="card-marks marks-${num}">
+            <div class="cm cm-h cm-tl-h"></div><div class="cm cm-v cm-tl-v"></div>
+            <div class="cm cm-h cm-tr-h"></div><div class="cm cm-v cm-tr-v"></div>
+            <div class="cm cm-h cm-bl-h"></div><div class="cm cm-v cm-bl-v"></div>
+            <div class="cm cm-h cm-br-h"></div><div class="cm cm-v cm-br-v"></div>
+            <div class="cm cm-fold cm-fold-t"></div><div class="cm cm-fold cm-fold-b"></div>
+        </div>`;
 }
 
 storyInput.addEventListener('input', updateCards);
