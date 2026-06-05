@@ -258,7 +258,7 @@ body {
     left: 6mm;
     right: 96mm;   /* 90mm fold - 6mm padding = stops at 84mm from left */
     top: 8mm;
-    bottom: 22mm;
+    bottom: 6mm;
     font-family: 'TW-Kai', serif;
     font-size: 4.5mm;
     line-height: 1.65;
@@ -362,9 +362,10 @@ body {
     .preview-label { display: none !important; }
     #scale-wrap { transform: none !important; margin: 0 !important; }
     #cover-scale-wrap { transform: none !important; margin: 0 !important; }
+    #cover-scale-wrap-2 { transform: none !important; margin: 0 !important; }
     .print-sheet { width: 210mm !important; height: 296.9mm !important; }
+    #cover-sheet { break-after: page !important; page-break-after: always !important; }
     #preview-sheet { break-after: page !important; page-break-after: always !important; }
-    .cover-sheet { break-before: auto !important; page-break-before: auto !important; }
     #batch-container { display: none !important; margin: 0 !important; padding: 0 !important; }
     body.batch-active > * { display: none !important; }
     body.batch-active > #batch-container { display: block !important; }
@@ -593,7 +594,54 @@ body {
 
     <!-- 右側：螢幕預覽 -->
     <div class="preview-panel" id="preview-panel">
-        <div class="preview-label">第一面：內頁預覽（設計理念）</div>
+        <div class="preview-label">第一頁：封面</div>
+        <div id="cover-scale-wrap">
+            <div class="print-sheet cover-sheet" id="cover-sheet">
+                <!-- 封面卡片 1 -->
+                <div class="card-cover cover-1">
+                    <div class="cover-front-panel">
+                        <div class="cover-brand-name">DUET</div>
+                        <div class="cover-brand-sub">by BCAG</div>
+                    </div>
+                    <div class="cover-back-panel">duet.brendonchen.com</div>
+                </div>
+                <!-- 封面卡片 1 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-1">
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
+                </div>
+                <!-- 封面卡片 2 -->
+                <div class="card-cover cover-2">
+                    <div class="cover-front-panel">
+                        <div class="cover-brand-name">DUET</div>
+                        <div class="cover-brand-sub">by BCAG</div>
+                    </div>
+                    <div class="cover-back-panel">duet.brendonchen.com</div>
+                </div>
+                <!-- 封面卡片 2 裁切角標 + 對折導引（在卡片外） -->
+                <div class="card-marks marks-2">
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
+                </div>
+            </div>
+        </div>
+        <div class="preview-label" style="margin-top:20px;">第二頁：設計理念（右半 = 正面 · 左半 = 背面）</div>
         <div id="scale-wrap">
             <div class="print-sheet" id="preview-sheet">
                 <!-- 卡片 1 內頁 -->
@@ -635,9 +683,9 @@ body {
                 </div>
             </div>
         </div>
-        <div class="preview-label" style="margin-top:20px;">第二面：封面預覽（右半 = 正面 · 左半 = 背面）</div>
-        <div id="cover-scale-wrap">
-            <div class="print-sheet cover-sheet" id="cover-sheet">
+        <div class="preview-label" style="margin-top:20px;">第三頁：封面（空白卡用）</div>
+        <div id="cover-scale-wrap-2">
+            <div class="print-sheet cover-sheet" id="cover-sheet-2">
                 <!-- 封面卡片 1 -->
                 <div class="card-cover cover-1">
                     <div class="cover-front-panel">
@@ -796,7 +844,7 @@ function scalePreview() {
     const sheetPxH = 297 * 3.7795;
     const scale = Math.min(1, availW / sheetPxW);
     const compensate = `${sheetPxH * (scale - 1)}px`;
-    ['scale-wrap', 'cover-scale-wrap'].forEach(id => {
+    ['scale-wrap', 'cover-scale-wrap', 'cover-scale-wrap-2'].forEach(id => {
         const wrap = document.getElementById(id);
         wrap.style.transform = `scale(${scale})`;
         wrap.style.transformOrigin = 'top center';
@@ -884,17 +932,23 @@ async function batchImport() {
         const o1 = ok[i];
         const o2 = ok[i + 1] || null;
 
-        // 第一面：設計理念（card-1 = 上方，card-2 = 下方）
+        // 第一頁：封面
+        const coverPage = document.createElement('div');
+        coverPage.className = 'batch-page';
+        coverPage.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
+        container.appendChild(coverPage);
+
+        // 第二頁：設計理念（card-1 = 上方，card-2 = 下方）
         const storyPage = document.createElement('div');
         storyPage.className = 'batch-page';
         storyPage.innerHTML = buildBatchCardInner(o1, 1) + buildBatchCardInner(o2, 2);
         container.appendChild(storyPage);
 
-        // 第二面：封面
-        const coverPage = document.createElement('div');
-        coverPage.className = 'batch-page';
-        coverPage.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
-        container.appendChild(coverPage);
+        // 第三頁：封面（空白卡用）
+        const coverPage2 = document.createElement('div');
+        coverPage2.className = 'batch-page';
+        coverPage2.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
+        container.appendChild(coverPage2);
     }
 
     const names = ok.map(r => {
