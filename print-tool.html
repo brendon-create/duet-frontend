@@ -358,8 +358,7 @@ body {
     #batch-container { display: none !important; }
     body.batch-active > * { display: none !important; }
     body.batch-active > #batch-container { display: block !important; }
-    .batch-page { width: 210mm; height: 296.9mm; position: relative; background: white; overflow: hidden; }
-    .batch-page + .batch-page { page-break-before: always; }
+    .batch-page { width: 210mm; height: 296.9mm; position: relative; background: white; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
 }
 
 /* ── 批次模式 UI ── */
@@ -556,8 +555,17 @@ body {
             <div class="batch-section" id="batchSection">
                 <label style="margin-top:8px;">批次訂單編號（一行一筆）</label>
                 <textarea id="batchInput" placeholder="D20260502-001&#10;D20260502-002&#10;D20260502-003"></textarea>
-                <button class="print-btn" onclick="batchImport()">批次匯入並列印</button>
-                <div id="batchStatus" style="font-size:11px;color:rgba(232,224,208,0.4);min-height:16px;"></div>
+                <button class="print-btn" onclick="batchImport()">批次匯入並預覽</button>
+                <div id="batchStatus" style="font-size:11px;color:rgba(232,224,208,0.45);min-height:16px;line-height:1.7;"></div>
+                <div id="batchPrintBar" style="display:none;flex-direction:column;gap:8px;">
+                    <button class="print-btn" onclick="triggerBatchPrint()">列印 / 匯出 PDF</button>
+                    <button onclick="clearBatch()"
+                        style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(232,224,208,0.45);
+                               padding:8px;border-radius:8px;font-size:12px;cursor:pointer;letter-spacing:0.5px;
+                               transition:border-color 0.2s;"
+                        onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'"
+                        onmouseout="this.style.borderColor='rgba(255,255,255,0.12)'">清除批次</button>
+                </div>
             </div>
         </div>
 
@@ -792,18 +800,32 @@ window.onbeforeprint = function () {
     // No action needed — CSS @media print handles preview sheet directly
 };
 
-/* 列印後：重置輸入欄位 */
+/* 列印後：重置 */
 window.onafterprint = function () {
     if (_batchMode) {
         document.body.classList.remove('batch-active');
-        document.getElementById('batch-container').innerHTML = '';
-        _batchMode = false;
         return;
     }
     storyInput.value = '';
     document.getElementById('order-id-input').value = '';
     updateCards();
 };
+
+/* ── 批次列印觸發 ── */
+function triggerBatchPrint() {
+    _batchMode = true;
+    document.body.classList.add('batch-active');
+    window.print();
+}
+
+function clearBatch() {
+    document.getElementById('batch-container').innerHTML = '';
+    document.getElementById('batchPrintBar').style.display = 'none';
+    document.getElementById('batchStatus').textContent = '';
+    document.getElementById('batchInput').value = '';
+    document.body.classList.remove('batch-active');
+    _batchMode = false;
+}
 
 /* ── 批次模式切換 ── */
 function toggleBatchMode() {
@@ -842,8 +864,6 @@ async function batchImport() {
         const msg = failed.map(r => `${r.id}: ${r.error}`).join('、');
         statusEl.textContent = `${ok.length} 筆成功，${failed.length} 筆失敗（${msg}）`;
         if (ok.length === 0) return;
-    } else {
-        statusEl.textContent = `已載入 ${ok.length} 筆訂單，準備列印...`;
     }
 
     // 建立批次列印 HTML（與單筆相同版面：上下各一張 bi-fold 卡）
@@ -867,9 +887,15 @@ async function batchImport() {
         container.appendChild(coverPage);
     }
 
-    _batchMode = true;
-    document.body.classList.add('batch-active');
-    setTimeout(() => window.print(), 200);
+    const names = ok.map(r => {
+        const item = (r.order.items && r.order.items[0]) || {};
+        const name = r.order.customer_name || item.customer_name || '';
+        return name ? `${r.id}（${name}）` : r.id;
+    }).join('<br>');
+    if (failed.length === 0) {
+        statusEl.innerHTML = `已載入 ${ok.length} 筆：<br><span style="color:rgba(232,224,208,0.6)">${names}</span>`;
+    }
+    document.getElementById('batchPrintBar').style.display = 'flex';
 }
 
 /* 批次內頁卡片（與單筆 card-inner 相同版面） */
