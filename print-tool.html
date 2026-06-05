@@ -187,36 +187,42 @@ body {
 .card-marks.marks-1 { top: 25.67mm; }
 .card-marks.marks-2 { top: 161.33mm; }
 
-/* 裁切角標：L 形，完全在卡片邊界外（2mm 空隙 + 5mm 長度 = 偏移 7mm） */
-.cut {
-    position: absolute;
-    width: 5mm; height: 5mm;
-    border-color: #999;
-    border-style: solid;
-    border-width: 0;
-}
-.cut.tl { top: -7mm;    left: -7mm;    border-top-width: 0.4pt;    border-left-width: 0.4pt;  }
-.cut.tr { top: -7mm;    right: -7mm;   border-top-width: 0.4pt;    border-right-width: 0.4pt; }
-.cut.bl { bottom: -7mm; left: -7mm;    border-bottom-width: 0.4pt; border-left-width: 0.4pt;  }
-.cut.br { bottom: -7mm; right: -7mm;   border-bottom-width: 0.4pt; border-right-width: 0.4pt; }
+/* ──────────────────────────────────────────
+   裁切線與對折導引線
+   規則：線段平行於切割線，在切割邊界外 3mm 起，長 6mm
+   卡片尺寸：180mm × 110mm（相對於 .card-marks 原點）
+   折線位置：x = 90mm
+────────────────────────────────────────── */
+.cm { position: absolute; }
 
-/* 對折導引線：只在卡片上下邊緣外顯示，不穿過卡片 */
-.fold-top {
-    position: absolute;
-    left: 90mm;
-    top: -7mm;
-    width: 0;
-    height: 5mm;
-    border-left: 0.5pt dashed rgba(100,92,82,0.5);
-}
-.fold-bottom {
-    position: absolute;
-    left: 90mm;
-    bottom: -7mm;
-    width: 0;
-    height: 5mm;
-    border-left: 0.5pt dashed rgba(100,92,82,0.5);
-}
+/* 水平線段（平行於上下切割線） */
+.cm-h { width: 6mm; height: 0; border-top: 0.4pt solid #000; }
+
+/* 垂直線段（平行於左右切割線） */
+.cm-v { width: 0; height: 6mm; border-left: 0.4pt solid #000; }
+
+/* 對折導引線（虛線，平行於左右切割線，在上下邊界外） */
+.cm-fold { width: 0; height: 6mm; border-left: 0.5pt dashed #555; }
+
+/* ── 左上角 ── */
+.cm-tl-h { top: 0;     left: -9mm;  }   /* 上切線，往左延伸 */
+.cm-tl-v { top: -9mm;  left: 0;     }   /* 左切線，往上延伸 */
+
+/* ── 右上角 ── */
+.cm-tr-h { top: 0;     left: 183mm; }   /* 上切線，往右延伸 */
+.cm-tr-v { top: -9mm;  left: 180mm; }   /* 右切線，往上延伸 */
+
+/* ── 左下角 ── */
+.cm-bl-h { top: 110mm; left: -9mm;  }   /* 下切線，往左延伸 */
+.cm-bl-v { top: 113mm; left: 0;     }   /* 左切線，往下延伸 */
+
+/* ── 右下角 ── */
+.cm-br-h { top: 110mm; left: 183mm; }   /* 下切線，往右延伸 */
+.cm-br-v { top: 113mm; left: 180mm; }   /* 右切線，往下延伸 */
+
+/* ── 對折導引線（折線 x = 90mm，上下各一段） ── */
+.cm-fold-t { top: -9mm;  left: 90mm; }
+.cm-fold-b { top: 113mm; left: 90mm; }
 
 /* ── 右半文字區（短文時文字只放右 90mm；長文時左半也會啟用）── */
 .text-panel {
@@ -303,16 +309,16 @@ body {
 }
 .cover-brand-name {
     font-size: 10mm;
-    letter-spacing: 5mm;
-    text-indent: 5mm;
+    letter-spacing: 3mm;
+    text-indent: 3mm;
     font-weight: 400;
-    color: #c9a96e;
+    color: #000;
 }
 .cover-brand-sub {
     font-size: 3mm;
-    letter-spacing: 2mm;
-    text-indent: 2mm;
-    color: #aaa;
+    letter-spacing: 1.5mm;
+    text-indent: 1.5mm;
+    color: #333;
     font-weight: 300;
 }
 
@@ -330,7 +336,7 @@ body {
     font-family: 'Cormorant Garamond', serif;
     font-size: 2.8mm;
     letter-spacing: 0.5mm;
-    color: #aaa;
+    color: #333;
 }
 
 /* ────────────────────────────────────────────
@@ -582,12 +588,16 @@ body {
                 </div>
                 <!-- 卡片 1 裁切角標 + 對折導引（在卡片外） -->
                 <div class="card-marks marks-1">
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
-                    <div class="fold-top"></div>
-                    <div class="fold-bottom"></div>
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
                 </div>
                 <!-- 卡片 2 內頁 -->
                 <div class="card-inner card-2">
@@ -596,12 +606,16 @@ body {
                 </div>
                 <!-- 卡片 2 裁切角標 + 對折導引（在卡片外） -->
                 <div class="card-marks marks-2">
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
-                    <div class="fold-top"></div>
-                    <div class="fold-bottom"></div>
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
                 </div>
             </div>
         </div>
@@ -618,12 +632,16 @@ body {
                 </div>
                 <!-- 封面卡片 1 裁切角標 + 對折導引（在卡片外） -->
                 <div class="card-marks marks-1">
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
-                    <div class="fold-top"></div>
-                    <div class="fold-bottom"></div>
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
                 </div>
                 <!-- 封面卡片 2 -->
                 <div class="card-cover cover-2">
@@ -635,12 +653,16 @@ body {
                 </div>
                 <!-- 封面卡片 2 裁切角標 + 對折導引（在卡片外） -->
                 <div class="card-marks marks-2">
-                    <div class="cut tl"></div>
-                    <div class="cut tr"></div>
-                    <div class="cut bl"></div>
-                    <div class="cut br"></div>
-                    <div class="fold-top"></div>
-                    <div class="fold-bottom"></div>
+                    <div class="cm cm-h cm-tl-h"></div>
+                    <div class="cm cm-v cm-tl-v"></div>
+                    <div class="cm cm-h cm-tr-h"></div>
+                    <div class="cm cm-v cm-tr-v"></div>
+                    <div class="cm cm-h cm-bl-h"></div>
+                    <div class="cm cm-v cm-bl-v"></div>
+                    <div class="cm cm-h cm-br-h"></div>
+                    <div class="cm cm-v cm-br-v"></div>
+                    <div class="cm cm-fold cm-fold-t"></div>
+                    <div class="cm cm-fold cm-fold-b"></div>
                 </div>
             </div>
         </div>
