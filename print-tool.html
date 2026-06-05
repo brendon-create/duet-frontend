@@ -249,6 +249,68 @@ body {
 }
 
 /* ────────────────────────────────────────────
+   封面頁（第二面：正面 + 背面）
+   長邊翻頁對齊：
+     右半（90-180mm）= 正面（DUET + by BCAG）
+     左半（0-90mm）  = 背面（網址置底）
+──────────────────────────────────────────── */
+.card-cover {
+    position: absolute;
+    width: 180mm;
+    height: 110mm;
+    left: 15mm;
+    overflow: hidden;
+}
+.card-cover.cover-1 { top: 25.67mm; }
+.card-cover.cover-2 { top: 161.33mm; }
+
+/* 正面（右半）：DUET + by BCAG 居中 */
+.cover-front-panel {
+    position: absolute;
+    left: 90mm;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3mm;
+    font-family: 'Cormorant Garamond', serif;
+}
+.cover-brand-name {
+    font-size: 10mm;
+    letter-spacing: 5mm;
+    text-indent: 5mm;
+    font-weight: 400;
+    color: #c9a96e;
+}
+.cover-brand-sub {
+    font-size: 3mm;
+    letter-spacing: 2mm;
+    text-indent: 2mm;
+    color: #aaa;
+    font-weight: 300;
+}
+
+/* 背面（左半）：網址置底 */
+.cover-back-panel {
+    position: absolute;
+    left: 0;
+    width: 90mm;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8mm;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.8mm;
+    letter-spacing: 0.5mm;
+    color: #aaa;
+}
+
+/* ────────────────────────────────────────────
    列印樣式
 ──────────────────────────────────────────── */
 @media print {
@@ -260,11 +322,14 @@ body {
     .preview-panel { overflow: visible !important; padding: 0 !important; background: white !important; display: block !important; align-items: flex-start !important; }
     .preview-label { display: none !important; }
     #scale-wrap { transform: none !important; margin: 0 !important; }
+    #cover-scale-wrap { transform: none !important; margin: 0 !important; }
     .print-sheet { width: 210mm !important; height: 297mm !important; }
+    .cover-sheet { page-break-before: always !important; }
     .fold-guide { display: none !important; }
     #batch-container { display: none !important; }
     body.batch-active #batch-container { display: block !important; }
     body.batch-active #scale-wrap { display: none !important; }
+    body.batch-active #cover-scale-wrap { display: none !important; }
     .batch-page { width: 210mm; height: 297mm; position: relative; background: white; page-break-after: always; }
     .batch-page:last-child { page-break-after: auto; }
 }
@@ -475,7 +540,8 @@ body {
             • 紙張：A4 直式<br>
             • 邊距：無（或最小）<br>
             • <strong>雙面列印：長邊翻頁</strong><br>
-            • 封面另以設計稿 PDF 列印<br>
+            • 第一面 = 設計理念（內頁）<br>
+            • 第二面 = DUET 封面（自動產生）<br>
             • 印完沿折線對折即完成<br><br>
             匯出 PDF：選「另存為 PDF」
         </div>
@@ -483,9 +549,8 @@ body {
 
     <!-- 右側：螢幕預覽 -->
     <div class="preview-panel" id="preview-panel">
-        <div class="preview-label">內頁預覽（設計理念面，與封面背靠背列印）</div>
+        <div class="preview-label">第一面：內頁預覽（設計理念）</div>
         <div id="scale-wrap">
-            <!-- 螢幕預覽使用同一份 print-sheet 模板 -->
             <div class="print-sheet" id="preview-sheet">
                 <!-- 卡片 1 -->
                 <div class="card-inner card-1">
@@ -507,6 +572,37 @@ body {
                     <div class="cut br"></div>
                     <div class="text-panel" id="preview-right-2"></div>
                     <div class="card-sig" id="preview-sig-2"><span class="sig-line"></span></div>
+                </div>
+            </div>
+        </div>
+        <div class="preview-label" style="margin-top:20px;">第二面：封面預覽（右半 = 正面 · 左半 = 背面）</div>
+        <div id="cover-scale-wrap">
+            <div class="print-sheet cover-sheet" id="cover-sheet">
+                <!-- 封面卡片 1 -->
+                <div class="card-cover cover-1">
+                    <div class="fold-guide"></div>
+                    <div class="cut tl"></div>
+                    <div class="cut tr"></div>
+                    <div class="cut bl"></div>
+                    <div class="cut br"></div>
+                    <div class="cover-front-panel">
+                        <div class="cover-brand-name">DUET</div>
+                        <div class="cover-brand-sub">by BCAG</div>
+                    </div>
+                    <div class="cover-back-panel">duet.brendonchen.com</div>
+                </div>
+                <!-- 封面卡片 2 -->
+                <div class="card-cover cover-2">
+                    <div class="fold-guide"></div>
+                    <div class="cut tl"></div>
+                    <div class="cut tr"></div>
+                    <div class="cut bl"></div>
+                    <div class="cut br"></div>
+                    <div class="cover-front-panel">
+                        <div class="cover-brand-name">DUET</div>
+                        <div class="cover-brand-sub">by BCAG</div>
+                    </div>
+                    <div class="cover-back-panel">duet.brendonchen.com</div>
                 </div>
             </div>
         </div>
@@ -620,13 +716,16 @@ function updateCards() {
 function scalePreview() {
     const panel = document.getElementById('preview-panel');
     const availW = panel.clientWidth - 56;
-    const sheetPxW = 210 * 3.7795; // A4 直式寬度 ≈ 794px
-    const sheetPxH = 297 * 3.7795; // A4 直式高度 ≈ 1122px
+    const sheetPxW = 210 * 3.7795;
+    const sheetPxH = 297 * 3.7795;
     const scale = Math.min(1, availW / sheetPxW);
-    const wrap = document.getElementById('scale-wrap');
-    wrap.style.transform = `scale(${scale})`;
-    wrap.style.transformOrigin = 'top center';
-    wrap.style.marginBottom = `${sheetPxH * (scale - 1)}px`;
+    const compensate = `${sheetPxH * (scale - 1)}px`;
+    ['scale-wrap', 'cover-scale-wrap'].forEach(id => {
+        const wrap = document.getElementById(id);
+        wrap.style.transform = `scale(${scale})`;
+        wrap.style.transformOrigin = 'top center';
+        wrap.style.marginBottom = compensate;
+    });
 }
 
 let _batchMode = false;
@@ -693,24 +792,24 @@ async function batchImport() {
     const container = document.getElementById('batch-container');
     container.innerHTML = '';
 
-    // 每 2 筆訂單 = 1 對頁（Cover 頁 + Story 頁）
+    // 每 2 筆訂單 = 1 對頁（第一面 Story + 第二面 Cover，長邊雙面列印）
     for (let i = 0; i < ok.length; i += 2) {
         const o1 = ok[i];
         const o2 = ok[i + 1] || null;
 
-        // 奇數頁：Cover_N | Cover_N+1
-        const coverPage = document.createElement('div');
-        coverPage.className = 'batch-page';
-        coverPage.appendChild(buildSlot('cover', o1, 'slot-left'));
-        if (o2) coverPage.appendChild(buildSlot('cover', o2, 'slot-right'));
-        container.appendChild(coverPage);
-
-        // 偶數頁：Story_N | Story_N+1
+        // 第一面：Story_N | Story_N+1
         const storyPage = document.createElement('div');
         storyPage.className = 'batch-page';
         storyPage.appendChild(buildSlot('story', o1, 'slot-left'));
         if (o2) storyPage.appendChild(buildSlot('story', o2, 'slot-right'));
         container.appendChild(storyPage);
+
+        // 第二面：Cover_N | Cover_N+1
+        const coverPage = document.createElement('div');
+        coverPage.className = 'batch-page';
+        coverPage.appendChild(buildSlot('cover', o1, 'slot-left'));
+        if (o2) coverPage.appendChild(buildSlot('cover', o2, 'slot-right'));
+        container.appendChild(coverPage);
     }
 
     _batchMode = true;
