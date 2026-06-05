@@ -241,7 +241,7 @@ body {
     top: 8mm;
     bottom: 22mm;  /* leave room for signature */
     font-family: 'TW-Kai', serif;
-    font-size: 4mm;
+    font-size: 4.5mm;
     line-height: 1.65;
     color: #000;
     text-align: justify;
@@ -260,7 +260,7 @@ body {
     top: 8mm;
     bottom: 22mm;
     font-family: 'TW-Kai', serif;
-    font-size: 4mm;
+    font-size: 4.5mm;
     line-height: 1.65;
     color: #000;
     text-align: justify;
@@ -483,7 +483,7 @@ body {
 }
 .story-card .story-text {
     font-family: 'TW-Kai', serif;
-    font-size: 4mm;
+    font-size: 4.5mm;
     line-height: 1.65;
     color: #2e2a24;
     text-align: justify;
@@ -924,7 +924,7 @@ function buildBatchCardInner(result, num) {
     let leftHTML = '', rightHTML = '', wide = false;
     if (paras.length === 0) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
-    } else if (paras.length >= 2 && story.trim().length > 220) {
+    } else if (paras.length >= 2 && story.trim().length > 170) {
         wide = true;
         const mid = Math.ceil(paras.length / 2);
         leftHTML = toHTML(paras.slice(0, mid));
