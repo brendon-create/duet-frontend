@@ -622,6 +622,12 @@ class OrbitControls extends EventDispatcher {
 
 		}
 
+		// expose internal functions for custom wheel gesture handling in 3d-scene.js
+		this._rotateLeft = rotateLeft;
+		this._rotateUp = rotateUp;
+		this._dollyIn = dollyIn;
+		this._dollyOut = dollyOut;
+
 		function updateZoomParameters( x, y ) {
 
 			if ( ! scope.zoomToCursor ) {

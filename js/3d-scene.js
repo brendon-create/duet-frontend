@@ -50,6 +50,32 @@ export function initScene() {
     window.camera = camera;
     window.renderer = renderer;
 
+    // 必須在 new OrbitControls() 之前註冊，stopImmediatePropagation 才能攔截它的 wheel handler
+    const blockGesture = (e) => e.preventDefault();
+    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
+    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
+    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
+
+    viewportEl.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const height = viewportEl.clientHeight;
+        if (e.ctrlKey) {
+            // 觸控面板捏合縮放（OS 自動轉成 wheel + ctrlKey）
+            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
+            e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
+        } else if (Math.abs(e.deltaX) > 1) {
+            // 雙指左右/上下滑動 → 水平旋轉 + 仰俯角
+            controls._rotateLeft(2 * Math.PI * e.deltaX / height * controls.rotateSpeed);
+            controls._rotateUp(2 * Math.PI * e.deltaY / height * controls.rotateSpeed);
+        } else {
+            // 純垂直（滑鼠滾輪）→ 縮放
+            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
+            e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
+        }
+        controls.update();
+    }, { passive: false });
+
     controls = new OrbitControls(camera, viewportEl);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -58,14 +84,6 @@ export function initScene() {
     controls.minDistance = 5;
     controls.maxDistance = 500;
     window.controls = controls;
-
-    // Safari macOS 在 trackpad pinch 時同時觸發 gesturechange 和 wheel，
-    // 攔截 gesture 事件防止頁面層級縮放和 3D 縮放疊加暴衝
-    const blockGesture = (e) => e.preventDefault();
-    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
-    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
-    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
-    viewportEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
     // 光照
     const ambientLight = new THREE.AmbientLight(0xffffff, 3.5);
