@@ -3545,11 +3545,9 @@
                     return;
                 }
                 tbody.innerHTML = orders.map(o => {
-                    let orderData = {};
-                    try { orderData = JSON.parse(o.data || '{}'); } catch(e) {}
-                    const ui = orderData.userInfo || {};
+                    const ui = o.userInfo || {};
                     const name = ui.recipientName || ui.name || '—';
-                    const total = orderData.totalAmount || orderData.total || '—';
+                    const total = o.total || '—';
                     const ds = o.distributor_status || 'pending';
                     const color = DIST_STATUS_COLORS[ds] || '#999';
                     const label = DIST_STATUS_LABELS[ds] || ds;
