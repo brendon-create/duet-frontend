@@ -51,27 +51,40 @@ export function initScene() {
     window.renderer = renderer;
 
     // 必須在 new OrbitControls() 之前註冊，stopImmediatePropagation 才能攔截它的 wheel handler
-    const blockGesture = (e) => e.preventDefault();
-    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
-    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
-    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
+
+    // Safari gesturechange → 捏合縮放（Chrome 不觸發 gesturechange，改走 wheel+ctrlKey）
+    let _gestureScale = 1;
+    let _inGesture = false;
+    viewportEl.addEventListener('gesturestart', (e) => {
+        e.preventDefault();
+        _gestureScale = 1;
+        _inGesture = true;
+    }, { passive: false });
+    viewportEl.addEventListener('gesturechange', (e) => {
+        e.preventDefault();
+        const s = e.scale / _gestureScale;
+        _gestureScale = e.scale;
+        if (s > 1) controls._dollyIn(1 / s);   // 擴大 → 拉近
+        else       controls._dollyOut(s);       // 捏合 → 推遠
+        controls.update();
+    }, { passive: false });
+    viewportEl.addEventListener('gestureend', (e) => {
+        e.preventDefault();
+        _inGesture = false;
+    }, { passive: false });
 
     viewportEl.addEventListener('wheel', (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
         const height = viewportEl.clientHeight;
-        if (e.ctrlKey) {
-            // 觸控面板捏合縮放（OS 自動轉成 wheel + ctrlKey）
+        if (e.ctrlKey && !_inGesture) {
+            // Chrome on Mac：捏合 → wheel + ctrlKey（Safari 已由 gesturechange 處理）
             const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
             e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
-        } else if (Math.abs(e.deltaX) > 1) {
-            // 雙指左右/上下滑動 → 水平旋轉 + 仰俯角
-            controls._rotateLeft(2 * Math.PI * e.deltaX / height * controls.rotateSpeed);
-            controls._rotateUp(2 * Math.PI * e.deltaY / height * controls.rotateSpeed);
-        } else {
-            // 純垂直（滑鼠滾輪）→ 縮放
-            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
-            e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
+        } else if (!e.ctrlKey) {
+            // 雙指滑動（任意方向）→ 旋轉；負號修正方向
+            controls._rotateLeft(-2 * Math.PI * e.deltaX / height * controls.rotateSpeed);
+            controls._rotateUp(-2 * Math.PI * e.deltaY / height * controls.rotateSpeed);
         }
         controls.update();
     }, { passive: false });
