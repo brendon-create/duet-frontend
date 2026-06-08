@@ -585,9 +585,13 @@
                     </select>
                     <input type="date" id="dateFrom" style="display:none" onchange="filterOrders()">
                     <input type="date" id="dateTo" style="display:none" onchange="filterOrders()">
-                    <label style="display: flex; align-items: center; gap: 6px; margin-left: 8px; cursor: pointer; color: #888;">
-                        <input type="checkbox" id="showTestOrders" onchange="filterOrders()" style="width: 16px; height: 16px;">
+                    <label style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: #f59e0b; white-space: nowrap; font-size: 13px;">
+                        <input type="checkbox" id="showTestOrders" onchange="filterOrders()" style="width: 14px; height: 14px; accent-color: #f59e0b; cursor: pointer;">
                         顯示測試
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: #ef4444; white-space: nowrap; font-size: 13px;">
+                        <input type="checkbox" id="showInvalidOrders" onchange="filterOrders()" style="width: 14px; height: 14px; accent-color: #ef4444; cursor: pointer;">
+                        顯示無效
                     </label>
                     <select id="bulkActionSelect" style="margin-left: 16px; padding: 8px 12px; background: #2a2a2a; border: 1px solid var(--border); color: var(--text-light); border-radius: 6px;">
                         <option value="">批次動作...</option>
@@ -1755,11 +1759,10 @@
         function renderOrders(orders) {
             filteredOrders = orders;
             
-            // 根據「顯示測試」開關過濾訂單
-            const showTest = document.getElementById('showTestOrders')?.checked || false;
-            if (!showTest) {
-                orders = orders.filter(o => !o.isTest && !o.isInvalid);
-            }
+            const showTest    = document.getElementById('showTestOrders')?.checked || false;
+            const showInvalid = document.getElementById('showInvalidOrders')?.checked || false;
+            if (!showTest)    orders = orders.filter(o => !o.isTest);
+            if (!showInvalid) orders = orders.filter(o => !o.isInvalid);
             
             const totalPages = Math.ceil(orders.length / pageSize);
             if (currentPage > totalPages) currentPage = 1;
@@ -1825,7 +1828,9 @@
 
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAllOrders');
-            const pageOrders = filteredOrders.filter(o => !o.isTest && !o.isInvalid);
+            const _st = document.getElementById('showTestOrders')?.checked || false;
+            const _si = document.getElementById('showInvalidOrders')?.checked || false;
+            const pageOrders = filteredOrders.filter(o => (_st || !o.isTest) && (_si || !o.isInvalid));
             if (selectAll.checked) {
                 // 選取目前頁面所有可見訂單
                 selectedOrders = [...new Set([...selectedOrders, ...pageOrders.map(o => o.orderId)])];
