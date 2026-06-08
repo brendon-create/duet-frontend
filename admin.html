@@ -1943,22 +1943,28 @@
             } else {
                 dateFrom.style.display = 'none';
                 dateTo.style.display = 'none';
-                // Set default dates based on range
-                const today = new Date();
-                let fromDate = new Date();
-                let toDate = new Date();
 
-                if (range === 'today') {
-                    fromDate = today;
-                    toDate = today;
-                } else if (range === 'week') {
-                    fromDate.setDate(today.getDate() - 7);
-                } else if (range === 'month') {
-                    fromDate.setMonth(today.getMonth() - 1);
+                if (range === '') {
+                    // 全部日期：清除日期篩選
+                    dateFrom.value = '';
+                    dateTo.value = '';
+                } else {
+                    const today = new Date();
+                    let fromDate = new Date();
+                    let toDate = new Date();
+
+                    if (range === 'today') {
+                        fromDate = today;
+                        toDate = today;
+                    } else if (range === 'week') {
+                        fromDate.setDate(today.getDate() - 7);
+                    } else if (range === 'month') {
+                        fromDate.setMonth(today.getMonth() - 1);
+                    }
+
+                    dateFrom.value = fromDate.toISOString().split('T')[0];
+                    dateTo.value = toDate.toISOString().split('T')[0];
                 }
-
-                dateFrom.value = fromDate.toISOString().split('T')[0];
-                dateTo.value = toDate.toISOString().split('T')[0];
             }
             filterOrders();
         }
