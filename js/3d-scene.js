@@ -50,6 +50,45 @@ export function initScene() {
     window.camera = camera;
     window.renderer = renderer;
 
+    // 必須在 new OrbitControls() 之前註冊，stopImmediatePropagation 才能攔截它的 wheel handler
+
+    // Safari gesturechange → 捏合縮放（Chrome 不觸發 gesturechange，改走 wheel+ctrlKey）
+    let _gestureScale = 1;
+    let _inGesture = false;
+    viewportEl.addEventListener('gesturestart', (e) => {
+        e.preventDefault();
+        _gestureScale = 1;
+        _inGesture = true;
+    }, { passive: false });
+    viewportEl.addEventListener('gesturechange', (e) => {
+        e.preventDefault();
+        const s = e.scale / _gestureScale;
+        _gestureScale = e.scale;
+        if (s > 1) controls._dollyIn(1 / s);   // 擴大 → 拉近
+        else       controls._dollyOut(s);       // 捏合 → 推遠
+        controls.update();
+    }, { passive: false });
+    viewportEl.addEventListener('gestureend', (e) => {
+        e.preventDefault();
+        _inGesture = false;
+    }, { passive: false });
+
+    viewportEl.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const height = viewportEl.clientHeight;
+        if (e.ctrlKey && !_inGesture) {
+            // Chrome on Mac：捏合 → wheel + ctrlKey（Safari 已由 gesturechange 處理）
+            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
+            e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
+        } else if (!e.ctrlKey) {
+            // 雙指滑動（任意方向）→ 旋轉；負號修正方向
+            controls._rotateLeft(-2 * Math.PI * e.deltaX / height * controls.rotateSpeed);
+            controls._rotateUp(-2 * Math.PI * e.deltaY / height * controls.rotateSpeed);
+        }
+        controls.update();
+    }, { passive: false });
+
     controls = new OrbitControls(camera, viewportEl);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -58,14 +97,6 @@ export function initScene() {
     controls.minDistance = 5;
     controls.maxDistance = 500;
     window.controls = controls;
-
-    // Safari macOS 在 trackpad pinch 時同時觸發 gesturechange 和 wheel，
-    // 攔截 gesture 事件防止頁面層級縮放和 3D 縮放疊加暴衝
-    const blockGesture = (e) => e.preventDefault();
-    viewportEl.addEventListener('gesturestart',  blockGesture, { passive: false });
-    viewportEl.addEventListener('gesturechange', blockGesture, { passive: false });
-    viewportEl.addEventListener('gestureend',    blockGesture, { passive: false });
-    viewportEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
     // 光照
     const ambientLight = new THREE.AmbientLight(0xffffff, 3.5);
