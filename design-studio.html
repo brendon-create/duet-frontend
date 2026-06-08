@@ -98,6 +98,24 @@
                     <div><button class="font-select-btn" id="font2-btn" data-i18n="studio.choose.fonts">選擇字體</button></div>
                 </div>
             </div>
+
+            <button id="reselect-fonts-btn" onclick="openFontSelector()" style="
+                display: none;
+                width: 100%;
+                margin-top: 6px;
+                padding: 6px 0;
+                background: transparent;
+                border: 1px solid rgba(212, 175, 55, 0.3);
+                border-radius: 6px;
+                color: rgba(212, 175, 55, 0.75);
+                font-size: 11px;
+                letter-spacing: 1.5px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: border-color 0.2s, color 0.2s;
+            " onmouseenter="this.style.borderColor='rgba(212,175,55,0.6)';this.style.color='#d4af37'"
+               onmouseleave="this.style.borderColor='rgba(212,175,55,0.3)';this.style.color='rgba(212,175,55,0.75)'"
+               data-i18n="studio.reselect.fonts">＋ 重選字體</button>
         </div>
 
         <div class="divider"></div>
@@ -898,6 +916,46 @@
             link.href = `https://fonts.googleapis.com/css2?${uniqueFonts.map(f => `family=${f.replace(/ /g, '+')}`).join('&')}&display=swap`;
             document.head.appendChild(link);
         }
+        // AI 完成後延遲出現的字體提示泡泡
+        function showFontHint() {
+            // 若使用者已有互動（點過字體下拉），就不再提示
+            if (document.getElementById('font-hint-bubble')) return;
+            const reselectBtn = document.getElementById('reselect-fonts-btn');
+            if (!reselectBtn || reselectBtn.style.display === 'none') return;
+
+            const bubble = document.createElement('div');
+            bubble.id = 'font-hint-bubble';
+            const _lang = localStorage.getItem('duet_language') || 'zh';
+            bubble.textContent = _lang === 'en'
+                ? '← Try more font combinations'
+                : '← 可在此選擇更多字體嘗試';
+            Object.assign(bubble.style, {
+                position: 'absolute',
+                left: '100%',
+                bottom: '0',
+                marginLeft: '10px',
+                whiteSpace: 'nowrap',
+                padding: '6px 12px',
+                background: 'rgba(26,22,18,0.92)',
+                border: '1px solid rgba(212,175,55,0.5)',
+                borderRadius: '8px',
+                color: '#d4af37',
+                fontSize: '11px',
+                letterSpacing: '0.5px',
+                pointerEvents: 'none',
+                opacity: '0',
+                transition: 'opacity 0.4s ease',
+                zIndex: '9999',
+            });
+            reselectBtn.style.position = 'relative';
+            reselectBtn.appendChild(bubble);
+
+            requestAnimationFrame(() => { bubble.style.opacity = '1'; });
+            setTimeout(() => {
+                bubble.style.opacity = '0';
+                setTimeout(() => bubble.remove(), 450);
+            }, 6000);
+        }
         // 顯示 AI 推薦提示（在字體選擇視窗中）
         function showAINotification() {
             // ✅ 已停用此提示
@@ -1304,15 +1362,11 @@
                         const charInput = document.getElementById('char-input');
                         if (charInput) charInput.value = (document.getElementById('letter1').value || '') + (document.getElementById('letter2').value || '');
 
-                        // 建立下拉選單 + 觸發 generateModel()
+                        // 建立下拉選單 + 觸發 generateModel()，直接展示作品
                         confirmFontSelection();
 
-                        // 重新開啟字體選擇視窗讓使用者確認 / 修改
-                        setTimeout(() => {
-                            openFontSelector();
-                            updateFontDisplay();
-                            showAINotification();
-                        }, 400);
+                        // 10 秒後出現低調提示，引導使用者探索更多字體
+                        setTimeout(() => showFontHint(), 10000);
                     }
                 }, 1000);
             }
@@ -1593,7 +1647,7 @@
 
         function getCurrentFont(target) {
             const sel = document.getElementById(`${target}-select`);
-            if (sel && sel.value && sel.value !== '__reselect__') return sel.value;
+            if (sel && sel.value) return sel.value;
             const btn = document.getElementById(`${target}-btn`);
             return btn ? btn.getAttribute('data-selected') : null;
         }
@@ -1602,7 +1656,6 @@
         function applyConstraintsToFontSelect(selectEl, sizeMm) {
             if (!selectEl) return;
             Array.from(selectEl.options).forEach(opt => {
-                if (opt.value === '__reselect__') return;
                 const label = getFontConstraint(opt.value, sizeMm);
                 // Clean previous
                 opt.style.color = '';
@@ -2755,8 +2808,13 @@
             letter1Select.value = inputChars[0];
             letter2Select.value = inputChars[1];
 
-            // 直接使用 checkedFonts，因為 Set 會維持插入順序
-            const selectedFonts = Array.from(checkedFonts);
+            // 計算新增字體（本次確認相較上次的新選項）
+            const previousFonts = window._previousSelectedFonts || new Set();
+            const allChecked = Array.from(checkedFonts);
+            const newFonts = allChecked.filter(f => !previousFonts.has(f));
+            const oldFonts = allChecked.filter(f => previousFonts.has(f));
+            // 新字體排最前，舊字體排後
+            const selectedFonts = [...newFonts, ...oldFonts];
 
             // 更新字體按鈕為下拉選單
             ['font1', 'font2'].forEach((target, idx) => {
@@ -2807,27 +2865,19 @@
                     select.appendChild(option);
                 });
 
-                // 添加「重新選擇字體」選項
-                const reselectOption = document.createElement('option');
-                reselectOption.value = '__reselect__';
-                reselectOption.textContent = '＋ 重新選擇字體';
-                reselectOption.style.color = '#d4af37';
-                reselectOption.style.fontWeight = '600';
-                select.appendChild(reselectOption);
-
-                // 智能選擇預設字體（優先使用 AI 推薦）
-                let defaultFont = selectedFonts[0];
-
-                if (window.aiRecommendation) {
-                    const recommendedForThisLetter = target === 'font1'
-                        ? window.aiRecommendation.letter1
-                        : window.aiRecommendation.letter2;
-
-                    // 如果推薦字體在已選字體中，使用第一個推薦
-                    const firstRecommended = recommendedForThisLetter.find(f => selectedFonts.includes(f));
-                    if (firstRecommended) {
-                        defaultFont = firstRecommended;
-                        console.log(`✅ ${target} 使用 AI 推薦字體:`, defaultFont);
+                // 選擇預設字體：有新字體時各自對應 idx，否則用 AI 推薦或第一個
+                let defaultFont;
+                if (newFonts.length > 0) {
+                    // font1 → newFonts[0]，font2 → newFonts[1] 或 newFonts[0]
+                    defaultFont = newFonts[idx] || newFonts[0];
+                } else {
+                    defaultFont = selectedFonts[0];
+                    if (window.aiRecommendation) {
+                        const recommendedForThisLetter = target === 'font1'
+                            ? window.aiRecommendation.letter1
+                            : window.aiRecommendation.letter2;
+                        const firstRecommended = recommendedForThisLetter.find(f => selectedFonts.includes(f));
+                        if (firstRecommended) defaultFont = firstRecommended;
                     }
                 }
 
@@ -2843,15 +2893,6 @@
 
                 // 監聽下拉選單變更 - 選擇字體後自動生成模型
                 select.onchange = function () {
-                    // 檢查是否選擇「重新選擇字體」
-                    if (this.value === '__reselect__') {
-                        // 打開字體選擇器
-                        openFontSelector();
-                        // 恢復選擇當前使用的字體
-                        this.value = btn.getAttribute('data-selected');
-                        return;
-                    }
-                    
                     // 使用選擇的字體並生成模型
                     const selectedFont = this.value;
                     btn.setAttribute('data-selected', selectedFont);
@@ -2873,6 +2914,13 @@
             // 字體選定後同步更新尺寸選單規範
             updateSizeConstraints();
             closeFontSelector();
+
+            // 更新「上次選擇」基準，供下次 reselect 時比對新舊字體
+            window._previousSelectedFonts = new Set(checkedFonts);
+
+            // 顯示「重選字體」按鈕
+            const reselectBtn = document.getElementById('reselect-fonts-btn');
+            if (reselectBtn) reselectBtn.style.display = 'block';
 
             // 🚀 預載入所有選中的字體到 cache（背景載入）
             preloadSelectedFonts(selectedFonts);
