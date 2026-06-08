@@ -99,7 +99,7 @@
                 </div>
             </div>
 
-            <button id="reselect-fonts-btn" onclick="openFontSelector()" style="
+            <button id="reselect-fonts-btn" style="
                 display: none;
                 width: 100%;
                 margin-top: 6px;
@@ -1364,6 +1364,9 @@
 
                         // 建立下拉選單 + 觸發 generateModel()，直接展示作品
                         confirmFontSelection();
+
+                        // 第一個作品渲染需要 3-4 秒，渲染完再顯示背景切換提示
+                        setTimeout(() => window.showBgHint?.(), 4000);
 
                         // 10 秒後出現低調提示，引導使用者探索更多字體
                         setTimeout(() => showFontHint(), 10000);
@@ -5034,6 +5037,7 @@
 
             document.getElementById('font1-btn').addEventListener('click', openFontSelector);
             document.getElementById('font2-btn').addEventListener('click', openFontSelector);
+            document.getElementById('reselect-fonts-btn').addEventListener('click', openFontSelector);
             document.getElementById('close-modal').addEventListener('click', closeFontSelector);
             document.getElementById('confirm-btn').addEventListener('click', confirmFontSelection);
 
@@ -5583,6 +5587,7 @@
             hint.style.opacity = '1';
             if (switcher) switcher.classList.add('glowing');
 
+            // 顯示 5 秒後才開始移動
             setTimeout(function () {
                 if (!hint || !switcher) return;
                 var hRect = hint.getBoundingClientRect();
@@ -5590,10 +5595,11 @@
                 var dx = (sRect.left + sRect.width / 2) - (hRect.left + hRect.width / 2);
                 var dy = (sRect.top  + sRect.height / 2) - (hRect.top  + hRect.height / 2);
 
-                hint.style.transition = 'transform 1.1s cubic-bezier(0.4,0,0.2,1), opacity 0.9s ease';
+                // 移動速度放慢：2.2s 動畫，溫和緩動
+                hint.style.transition = 'transform 2.2s cubic-bezier(0.25,0.1,0.25,1), opacity 1.8s ease';
                 hint.style.transform  = 'translateX(calc(-50% + ' + dx + 'px)) translateY(' + dy + 'px)';
                 hint.style.opacity    = '0';
-            }, 1500);
+            }, 5000);
 
             setTimeout(function () {
                 if (hint) {
@@ -5602,14 +5608,22 @@
                     hint.style.opacity    = '0';
                 }
                 if (switcher) switcher.classList.remove('glowing');
-            }, 3100);
+            }, 8000);
         }
 
+        // 供外部（AI 流程）呼叫
+        window.showBgHint = doHintAndGlow;
+
         function startHintAndGlow() {
-            // 若 AI 介紹 Modal 會出現，等它關閉後再顯示提示
             var skipAI = localStorage.getItem('duet_skip_ai');
             var aiData = localStorage.getItem('duet_ai_consultation');
-            if (!skipAI && !aiData) {
+
+            if (aiData) {
+                // AI 諮詢完畢回到頁面：hint 交由 AI callback 在第一個作品渲染後觸發
+                return;
+            }
+            if (!skipAI) {
+                // 首次進入、尚未做 AI 諮詢：等 AI 介紹 Modal 關閉後再顯示
                 var bodyObs = new MutationObserver(function () {
                     if (!document.getElementById('ai-intro-modal')) {
                         bodyObs.disconnect();
@@ -5619,6 +5633,7 @@
                 bodyObs.observe(document.body, { childList: true });
                 return;
             }
+            // 選擇不諮詢（duet_skip_ai 已設定）：直接顯示
             doHintAndGlow();
         }
 
