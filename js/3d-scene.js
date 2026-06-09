@@ -79,12 +79,17 @@ export function initScene() {
         const height = viewportEl.clientHeight;
         if (e.ctrlKey && !_inGesture) {
             // Chrome on Mac：捏合 → wheel + ctrlKey（Safari 已由 gesturechange 處理）
-            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio | 0)));
+            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(e.deltaY) / (100 * (window.devicePixelRatio || 1)));
             e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
-        } else if (!e.ctrlKey) {
-            // 雙指滑動（任意方向）→ 旋轉；負號修正方向
+        } else if (!e.ctrlKey && Math.abs(e.deltaX) > 2) {
+            // 觸控板兩指斜向/橫向滑動（deltaX 明顯）→ 旋轉
             controls._rotateLeft(-2 * Math.PI * e.deltaX / height * controls.rotateSpeed);
             controls._rotateUp(-2 * Math.PI * e.deltaY / height * controls.rotateSpeed);
+        } else {
+            // 滑鼠滾輪（僅 deltaY）或觸控板純直向滑動 → 縮放
+            const delta = e.deltaMode !== 0 ? e.deltaY * 10 : e.deltaY;
+            const s = Math.pow(0.95, controls.zoomSpeed * Math.abs(delta) / 100);
+            e.deltaY > 0 ? controls._dollyOut(s) : controls._dollyIn(s);
         }
         controls.update();
     }, { passive: false });
