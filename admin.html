@@ -1893,6 +1893,28 @@
             }
         }
         
+        async function migrateOrderToDb(orderId) {
+            const btn = document.getElementById(`migrateBtn-${orderId}`);
+            if (btn) { btn.disabled = true; btn.textContent = '寫入中...'; }
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/migrate-to-db`, {
+                    method: 'POST',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (btn) { btn.textContent = '✓ 已寫入'; btn.style.color = '#22c55e'; }
+                    await loadOrders();
+                } else {
+                    if (btn) { btn.disabled = false; btn.textContent = '補寫入資料庫'; }
+                    alert(`遷移失敗：${data.error}`);
+                }
+            } catch (e) {
+                if (btn) { btn.disabled = false; btn.textContent = '補寫入資料庫'; }
+                alert('網路錯誤，請稍後再試');
+            }
+        }
+
         async function updateOrderTag(orderId, tagType, value) {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/test-status`, {
@@ -2124,6 +2146,11 @@
                             <span style="color:var(--text-muted);font-size:12px;">勾選表示此為無效訂單</span>
                         </label>
                     </div>
+                    ${!allOrders.some(o => o.orderId === order.orderId || o.order_id === order.orderId) ? `
+                    <div class="detail-row" style="margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
+                        <span class="detail-label" style="color:#f59e0b;">⚠ 不在 DB 清單</span>
+                        <button class="btn btn-secondary btn-sm" id="migrateBtn-${order.orderId}" onclick="migrateOrderToDb('${order.orderId}')">補寫入資料庫</button>
+                    </div>` : ''}
                 </div>`;
             
             // 如果有設計理念，顯示在基本資訊下方
