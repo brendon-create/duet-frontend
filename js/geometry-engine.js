@@ -698,8 +698,22 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
         if (!pathInput || pathInput.length === 0) {
             throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
         }
-        console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
-        clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
+        const fmt = glyphData.commands ? 'v2' : 'v1';
+        console.log(`[V3] Glyph 資料：${fmt}，資料點數=${pathInput.length}`);
+
+        // 按 M 指令切分子路徑，讓 pftNonZero 能正確識別洞（如字母 A 橫槓空洞）
+        const subCmds = [];
+        let cur = [];
+        for (const cmd of pathInput) {
+            if (cmd.type === 'M' && cur.length > 0) { subCmds.push(cur); cur = []; }
+            cur.push(cmd);
+        }
+        if (cur.length > 0) subCmds.push(cur);
+
+        clipperPaths = subCmds
+            .map(cmds => v3CommandsToClipperPath(cmds, CLIP_SCALE, targetHeight))
+            .filter(p => p.length >= 3);
+        console.log(`[V3] 舊格式切分後子路徑數：${subCmds.length}，有效路徑：${clipperPaths.length}`);
     }
 
     if (clipperPaths.length === 0 || clipperPaths[0].length === 0) {
