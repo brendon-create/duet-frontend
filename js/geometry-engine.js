@@ -403,30 +403,23 @@ export function clipperPathsToThreeShapes(clipperPaths, scale) {
             traversePolyTreeNode(child, scale, shapes, null);
         }
     } else {
-        // Step 1: 全點包含法分類 outer / hole
-        // 路徑 i 的所有點都在路徑 j 內 → i 是洞（被 j 完整包含）
-        // PointInPolygon 回傳 0 = 外部，1 = 內部，-1 = 邊界
+        // Step 1: 用 Orientation 判斷 outer / hole
+        // 字型座標 Y-up CW → Clipper 看作 CCW → Orientation = false → outer（+1）
+        // 字型座標 Y-up CCW → Clipper 看作 CW → Orientation = true → hole（-1）
+        // 這比全點包含法更準確：對「倒V+橫線」設計（兩個outer路徑），全點包含法
+        // 會把在外框內的橫槓誤判為hole；Orientation 直接讀路徑方向，不做幾何推斷。
         const outerPaths = [];
         const holePaths  = [];
 
         for (let i = 0; i < clipperPaths.length; i++) {
-            let isHole = false;
-            for (let j = 0; j < clipperPaths.length; j++) {
-                if (i === j) continue;
-                let allInside = true;
-                for (const pt of clipperPaths[i]) {
-                    if (ClipperLib.Clipper.PointInPolygon(pt, clipperPaths[j]) === 0) {
-                        allInside = false;
-                        break;
-                    }
-                }
-                if (allInside) { isHole = true; break; }
+            if (ClipperLib.Clipper.Orientation(clipperPaths[i])) {
+                holePaths.push(clipperPaths[i]);
+            } else {
+                outerPaths.push(clipperPaths[i]);
             }
-            if (isHole) holePaths.push(clipperPaths[i]);
-            else        outerPaths.push(clipperPaths[i]);
         }
 
-        console.log(`[V3] 全點包含法: outer=${outerPaths.length}, hole=${holePaths.length}`);
+        console.log(`[V3] Orientation 分類: outer=${outerPaths.length}, hole=${holePaths.length}`);
 
         // Step 2: 強制方向
         // 字型座標是 Y-up，ClipperLib 是 Y-down，方向剛好翻轉：
@@ -698,8 +691,26 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
         if (!pathInput || pathInput.length === 0) {
             throw new Error(`[V3] 字體 "${fontName}" 字母 "${letter}" 沒有路徑資料`);
         }
-        console.log(`[V3] Glyph 資料：${glyphData.commands ? 'v2' : 'v1'}，資料點數=${pathInput.length}`);
-        clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
+        const fmt = glyphData.commands ? 'v2' : 'v1';
+        console.log(`[V3] Glyph 資料：${fmt}，資料點數=${pathInput.length}`);
+
+        if (fmt === 'v2') {
+            // v2 格式：按 M 指令切分子路徑，再各自轉換
+            // 避免橋接線（M 被當 L）污染 winding 計算
+            const subCmds = [];
+            let cur = [];
+            for (const cmd of pathInput) {
+                if (cmd.type === 'M' && cur.length > 0) { subCmds.push(cur); cur = []; }
+                cur.push(cmd);
+            }
+            if (cur.length > 0) subCmds.push(cur);
+            clipperPaths = subCmds
+                .map(cmds => v3CommandsToClipperPath(cmds, CLIP_SCALE, targetHeight))
+                .filter(p => p.length >= 3);
+            console.log(`[V3] v2 切分子路徑：${subCmds.length} → ${clipperPaths.length} 條有效路徑`);
+        } else {
+            clipperPaths = [v3CommandsToClipperPath(pathInput, CLIP_SCALE, targetHeight)];
+        }
     }
 
     if (clipperPaths.length === 0 || clipperPaths[0].length === 0) {
