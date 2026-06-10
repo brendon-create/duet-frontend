@@ -5531,9 +5531,24 @@
         </div>
     </div>
 
-    <!-- 語言初始化 -->
+    <!-- 語言初始化：patch applyLanguage 使切換語言後同步重刷字體規範標籤 -->
     <script>
-    if (typeof window.initLanguage === 'function') window.initLanguage();
+    (function() {
+        const _orig = window.applyLanguage;
+        window.applyLanguage = function(lang) {
+            _orig(lang);
+            // Re-apply font constraint labels/tooltips after language switch
+            const sizeEl = document.getElementById('size');
+            const sizeMm = sizeEl ? parseInt(sizeEl.value) : 12;
+            ['font1', 'font2'].forEach(function(target) {
+                const sel = document.getElementById(target + '-select');
+                if (sel && typeof applyConstraintsToFontSelect === 'function') {
+                    applyConstraintsToFontSelect(sel, sizeMm);
+                }
+            });
+        };
+        if (typeof window.initLanguage === 'function') window.initLanguage();
+    })();
     </script>
 
     <!-- 自訂提示（低調風格） -->
