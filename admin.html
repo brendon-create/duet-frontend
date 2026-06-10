@@ -1545,7 +1545,7 @@
                 if (counts[o.status] !== undefined) counts[o.status]++;
                 // 只計算已付款訂單的營收
                 if (o.status === 'paid' || o.status === 'free_order' || o.status === 'processing' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered') {
-                    const orderTotal = o.total || o.originalTotal || 0;
+                    const orderTotal = o.total ?? o.originalTotal ?? 0;
                     totalRevenue += orderTotal;
                     paidOrdersCount++;
                 }
@@ -1603,20 +1603,20 @@
         }
 
         function renderCustomerStats() {
-            // 先計算每個客戶的所有訂單（用於總購買次數篩選）
+            // 先計算每個客戶的有效訂單數（用於購買次數篩選，排除測試與無效訂單）
             const customerOrderCounts = {};
             allOrders.forEach(o => {
+                if (o.isTest || o.isInvalid) return;
                 const u = o.userInfo || {};
                 const email = (u.email || u.buyerEmail || '').toLowerCase();
                 if (!email) return;
-                if (!customerOrderCounts[email]) {
-                    customerOrderCounts[email] = 0;
-                }
+                if (!customerOrderCounts[email]) customerOrderCounts[email] = 0;
                 customerOrderCounts[email]++;
             });
 
             const customers = {};
             allOrders.forEach(o => {
+                if (o.isTest) return;  // 測試訂單：完全不納入客戶管理
                 const u = o.userInfo || {};
                 const email = (u.email || u.buyerEmail || '').toLowerCase();
                 const name = u.name || u.buyerName || '未知';
@@ -1633,11 +1633,14 @@
                         totalSpent: 0,
                         lastOrder: o.timestamp,
                         firstOrder: o.timestamp,
-                        orderDates: []  // 追蹤所有訂單日期
+                        orderDates: []
                     };
                 }
-                customers[email].orderCount++;
-                customers[email].totalSpent += o.total || o.originalTotal || 0;
+                // 無效訂單：納入客戶清單，但不計入訂單數與總消費
+                if (!o.isInvalid) {
+                    customers[email].orderCount++;
+                    customers[email].totalSpent += o.total ?? o.originalTotal ?? 0;
+                }
                 // 更新最後購買日期
                 if (o.timestamp && (!customers[email].lastOrder || o.timestamp > customers[email].lastOrder)) {
                     customers[email].lastOrder = o.timestamp;
@@ -2562,19 +2565,24 @@
         
         // ========== 客戶詳情 ==========
         function showCustomerDetail(email) {
-            // 找出該客戶的所有訂單
+            // 找出該客戶的所有訂單（排除測試訂單；無效訂單保留顯示但不計入金額）
             const customerOrders = allOrders.filter(o => {
+                if (o.isTest) return false;
                 const u = o.userInfo || {};
                 return (u.email || u.buyerEmail || '').toLowerCase() === email.toLowerCase();
             });
-            
+
             // 計算客戶資料
-            const firstOrder = customerOrders.reduce(( earliest, o) => {
+            const firstOrder = customerOrders.reduce((earliest, o) => {
                 if (!earliest || (o.timestamp && o.timestamp < earliest.timestamp)) return o;
                 return earliest;
             }, null);
-            
-            const totalSpent = customerOrders.reduce((sum, o) => sum + (o.total || o.originalTotal || 0), 0);
+
+            // 總消費只計算有效（非無效）訂單
+            const totalSpent = customerOrders.reduce((sum, o) => {
+                if (o.isInvalid) return sum;
+                return sum + (o.total ?? o.originalTotal ?? 0);
+            }, 0);
             
             const u = customerOrders[0]?.userInfo || {};
             const name = u.name || u.buyerName || '未知';
