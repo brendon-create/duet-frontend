@@ -626,6 +626,18 @@
                     </table>
                 </div>
 
+                <!-- 分頁控制 -->
+                <div class="pagination" id="pagination">
+                    <button class="btn btn-secondary btn-sm" id="prevPage" onclick="changePage(-1)">上一頁</button>
+                    <span id="pageInfo">第 1 頁</span>
+                    <button class="btn btn-secondary btn-sm" id="nextPage" onclick="changePage(1)">下一頁</button>
+                    <select id="pageSize" onchange="changePageSize()" style="margin-left:10px">
+                        <option value="20">20 筆/頁</option>
+                        <option value="50">50 筆/頁</option>
+                        <option value="100">100 筆/頁</option>
+                    </select>
+                </div>
+
                 <!-- 客戶管理 -->
                 <div style="margin-top: 30px;">
                     <h3 style="margin-bottom: 16px; color: var(--text-primary);">客戶管理</h3>
@@ -676,19 +688,8 @@
                     </div>
                 </div>
 
-                <!-- 分頁控制 -->
-                <div class="pagination" id="pagination">
-                    <button class="btn btn-secondary btn-sm" id="prevPage" onclick="changePage(-1)">上一頁</button>
-                    <span id="pageInfo">第 1 頁</span>
-                    <button class="btn btn-secondary btn-sm" id="nextPage" onclick="changePage(1)">下一頁</button>
-                    <select id="pageSize" onchange="changePageSize()" style="margin-left:10px">
-                        <option value="20">20 筆/頁</option>
-                        <option value="50">50 筆/頁</option>
-                        <option value="100">100 筆/頁</option>
-                    </select>
-                </div>
             </div>
-            
+
             <!-- Users Tab -->
             <div id="usersTab" style="display: none;">
                 <div style="margin-bottom: 20px;">
