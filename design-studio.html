@@ -1672,17 +1672,22 @@
                     opt.style.color = '#555';
                     opt.text        = '✗ ' + opt.value;
                     const minSz = getMinAvailableSize(opt.value);
-                    opt.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                    opt.title = minSz
+                        ? window.t('font.tip.minSize').replace('{n}', minSz)
+                        : window.t('font.tip.unavailable');
                 } else if (label === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.text        = opt.value + ' (粗)';
-                    opt.title       = '極粗字體';
+                    opt.text        = opt.value + window.t('font.label.wide');
+                    opt.title       = window.t('font.tip.wide');
                 } else if (label === 'thin') {
                     opt.style.color = '#486880';
-                    opt.text        = opt.value + ' (細)';
-                    opt.title       = '極細字體';
+                    opt.text        = opt.value + window.t('font.label.thin');
+                    opt.title       = window.t('font.tip.thin');
                 }
             });
+            // Sync the <select> element's own title so hovering the closed dropdown shows the tooltip
+            const selectedOpt = Array.from(selectEl.options).find(o => o.value === selectEl.value);
+            selectEl.title = selectedOpt?.title || '';
         }
 
         // Update size <select> options based on both currently chosen fonts
@@ -1706,22 +1711,22 @@
                 if (l1 === 'unavailable' || l2 === 'unavailable') {
                     opt.disabled    = true;
                     opt.style.color = '#555';
-                    opt.title       = '已選字體不支援此尺寸';
+                    opt.title       = window.t('size.tip.unavailable');
                     opt.text        = '✗ ' + opt.text;
                 } else if (l1 === 'thin' && l2 === 'thin') {
                     opt.style.color = '#486880';
-                    opt.title       = '兩個極細字體在此尺寸無法製作';
-                    opt.text        = opt.text + ' (細×細)';
+                    opt.title       = window.t('size.tip.thinXthin');
+                    opt.text        = opt.text + window.t('size.label.thinXthin');
                 } else if (l1 === 'wide' && l2 === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.title       = '兩個極粗字體在此尺寸配戴舒適度可能不佳';
-                    opt.text        = opt.text + ' (粗×粗)';
+                    opt.title       = window.t('size.tip.wideXwide');
+                    opt.text        = opt.text + window.t('size.label.wideXwide');
                 } else if (l1 === 'thin' || l2 === 'thin') {
                     opt.style.color = '#486880';
-                    opt.title       = '含極細字體';
+                    opt.title       = window.t('size.tip.thin');
                 } else if (l1 === 'wide' || l2 === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.title       = '含極粗字體';
+                    opt.title       = window.t('size.tip.wide');
                 }
             });
         }
@@ -1733,15 +1738,15 @@
             const l2 = getFontConstraint(f2, sizeMm);
 
             if (l1 === 'unavailable' || l2 === 'unavailable') {
-                showConstraintOverlay('block', '已選字體不支援此尺寸');
+                showConstraintOverlay('block', window.t('constraint.block.unavailable'));
                 return 'block';
             }
             if (l1 === 'thin' && l2 === 'thin') {
-                showConstraintOverlay('block', '兩個字體都是極細字體，無法製作');
+                showConstraintOverlay('block', window.t('constraint.block.thinXthin'));
                 return 'block';
             }
             if (l1 === 'wide' && l2 === 'wide') {
-                showConstraintOverlay('warn', '兩個字體都是極粗字體，重量與造型可能會影響配戴舒適度，請審慎考慮。');
+                showConstraintOverlay('warn', window.t('constraint.warn.wideXwide'));
                 return 'warn';
             }
             hideConstraintOverlay();
@@ -2853,15 +2858,17 @@
                         option.disabled    = true;
                         option.style.color = '#555';
                         const minSz = getMinAvailableSize(font);
-                        option.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                        option.title = minSz
+                            ? window.t('font.tip.minSize').replace('{n}', minSz)
+                            : window.t('font.tip.unavailable');
                     } else if (cLabel === 'wide') {
-                        option.text        = font + ' (粗)';
+                        option.text        = font + window.t('font.label.wide');
                         option.style.color = '#8a6836';
-                        option.title       = '極粗字體';
+                        option.title       = window.t('font.tip.wide');
                     } else if (cLabel === 'thin') {
-                        option.text        = font + ' (細)';
+                        option.text        = font + window.t('font.label.thin');
                         option.style.color = '#486880';
-                        option.title       = '極細字體';
+                        option.title       = window.t('font.tip.thin');
                     } else {
                         option.text = font;
                     }
@@ -2887,7 +2894,10 @@
                 select.value = defaultFont;
                 btn.setAttribute('data-selected', defaultFont);
                 select.style.fontFamily = `"${defaultFont}", sans-serif`;
-                
+                // 設定初始 tooltip（讓收合狀態的 select hover 可顯示提示）
+                const defaultOpt = Array.from(select.options).find(o => o.value === defaultFont);
+                select.title = defaultOpt?.title || '';
+
                 // ✅ 立即同步到 hidden input
                 const hiddenInput = document.getElementById(target);
                 if (hiddenInput) {
@@ -2901,13 +2911,16 @@
                     btn.setAttribute('data-selected', selectedFont);
                     // 更新下拉選單本身的字體樣式
                     this.style.fontFamily = `"${selectedFont}", sans-serif`;
-                    
+                    // 同步 tooltip 到選中字體的規範提示
+                    const selOpt = Array.from(this.options).find(o => o.value === selectedFont);
+                    this.title = selOpt?.title || '';
+
                     // 同步到 hidden input
                     const hiddenInput = document.getElementById(target);
                     if (hiddenInput) {
                         hiddenInput.value = selectedFont;
                     }
-                    
+
                     // 更新尺寸選單規範，再生成模型
                     updateSizeConstraints();
                     generateModel();

@@ -142,6 +142,24 @@ window.translations = {
         'studio.promo.error.empty':    '⚠️ 請輸入優惠碼',
         'studio.promo.error.failed':   '❌ 驗證失敗，請稍後再試',
 
+        // ── 字體規範標籤 & 提示 ──
+        'font.label.thin':             ' (細)',
+        'font.label.wide':             ' (粗)',
+        'font.tip.thin':               '極細字體 — 兩個細字體無法搭配',
+        'font.tip.wide':               '極粗字體 — 兩個粗字體搭配可能影響配戴舒適度',
+        'font.tip.unavailable':        '此字體目前不可選用',
+        'font.tip.minSize':            '此字體最小尺寸為 {n}mm',
+        'size.label.thinXthin':        ' (細×細)',
+        'size.label.wideXwide':        ' (粗×粗)',
+        'size.tip.unavailable':        '已選字體不支援此尺寸',
+        'size.tip.thinXthin':          '兩個極細字體在此尺寸無法製作',
+        'size.tip.wideXwide':          '兩個極粗字體在此尺寸配戴舒適度可能不佳',
+        'size.tip.thin':               '含極細字體',
+        'size.tip.wide':               '含極粗字體',
+        'constraint.block.unavailable':'已選字體不支援此尺寸',
+        'constraint.block.thinXthin':  '兩個字體都是極細字體，無法製作',
+        'constraint.warn.wideXwide':   '兩個字體都是極粗字體，重量與造型可能會影響配戴舒適度，請審慎考慮。',
+
         // ── 購物車商品資訊 ──
         'cart.item.infont':      'in font',
         'cart.item.material':    '材質',
@@ -445,6 +463,24 @@ window.translations = {
         'studio.promo.applied':    'Applied',
         'studio.promo.error.empty':    '⚠️ Please enter a promo code',
         'studio.promo.error.failed':   '❌ Verification failed, please try again',
+
+        // ── Font Constraint Labels & Tips ──
+        'font.label.thin':             ' (Thin)',
+        'font.label.wide':             ' (Wide)',
+        'font.tip.thin':               'Ultra-thin font — two thin fonts cannot be paired',
+        'font.tip.wide':               'Ultra-wide font — pairing two wide fonts may affect wearing comfort',
+        'font.tip.unavailable':        'This font is unavailable at this size',
+        'font.tip.minSize':            'Minimum size for this font: {n}mm',
+        'size.label.thinXthin':        ' (T×T)',
+        'size.label.wideXwide':        ' (W×W)',
+        'size.tip.unavailable':        'Selected font not supported at this size',
+        'size.tip.thinXthin':          'Two ultra-thin fonts cannot be produced at this size',
+        'size.tip.wideXwide':          'Two ultra-wide fonts may affect wearing comfort at this size',
+        'size.tip.thin':               'Contains ultra-thin font',
+        'size.tip.wide':               'Contains ultra-wide font',
+        'constraint.block.unavailable':'Selected font not supported at this size',
+        'constraint.block.thinXthin':  'Both fonts are ultra-thin and cannot be produced together',
+        'constraint.warn.wideXwide':   'Both fonts are ultra-wide. The combined weight and shape may affect wearing comfort — please consider carefully.',
 
         // ── Cart Item Info ──
         'cart.item.infont':      'in font',
