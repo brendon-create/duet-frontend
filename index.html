@@ -3,7 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DUET — 為你們的故事,鑄造永恆的交織</title>
+    <title>客製字母墜飾 | 情侶項鍊線上訂製 — DUET by BCAG</title>
+    <meta name="description" content="DUET 讓你線上設計專屬情侶或紀念字母墜飾，即時 3D 預覽，925純銀 / 黃銅 / 18K金電鍍，NT$4,250起，台灣手工鑄造，7-14工作天到貨。">
+    <link rel="canonical" href="https://duet.brendonchen.com/">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DUET — 線上訂製情侶字母墜飾">
+    <meta property="og:description" content="設計你們專屬的字母交織墜飾。即時 3D 預覽，台灣手工鑄造，NT$4,250起。">
+    <meta property="og:image" content="https://duet.brendonchen.com/assets/images/og-cover.jpg">
+    <meta property="og:url" content="https://duet.brendonchen.com/">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:site_name" content="DUET by BCAG">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="DUET — 線上訂製情侶字母墜飾">
+    <meta name="twitter:description" content="設計你們專屬的字母交織墜飾。即時 3D 預覽，台灣手工鑄造，NT$4,250起。">
+    <meta name="twitter:image" content="https://duet.brendonchen.com/assets/images/og-cover.jpg">
     <!-- 環境設定（必須最優先載入） -->
     <script src="assets/js/config.js"></script>
     <script src="assets/js/translations.js"></script>
@@ -1129,6 +1143,38 @@
             font-weight: 400;
         }
     </style>
+    <!-- Schema.org 結構化資料 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DUET by BCAG",
+      "url": "https://duet.brendonchen.com",
+      "logo": "https://duet.brendonchen.com/assets/images/logo.png",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "areaServed": "TW",
+        "availableLanguage": "zh-TW"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "DUET 客製字母墜飾",
+      "description": "線上訂製兩個英文字母交織的 3D 鑄造墜飾，提供 925純銀、黃銅材質，可選 18K金電鍍。即時 3D 預覽，台灣手工鑄造。",
+      "brand": { "@type": "Brand", "name": "DUET by BCAG" },
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "4250",
+        "highPrice": "4850",
+        "priceCurrency": "TWD",
+        "availability": "https://schema.org/InStock"
+      }
+    }
+    </script>
 </head>
 <body>
     <!-- ===== 導航欄 ===== -->
@@ -1529,11 +1575,8 @@
         // ===== CTA 按鈕點擊事件 =====
         document.querySelectorAll('.cta-button, .cta-button-primary, .cta-button-light').forEach(btn => {
             btn.addEventListener('click', function() {
-                // 取得目前環境並跳转到設計工作室
                 const env = window.CURRENT_ENV || 'production';
-                const studioUrl = `design-studio.html?env=${env}`;
-                console.log('跳轉到:', studioUrl);
-                window.location.href = studioUrl;
+                window.location.href = `ai-consultant.html?env=${env}`;
             });
         });
 

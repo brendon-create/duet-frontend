@@ -33,7 +33,17 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>DUET by BCAG</title>
+    <title>線上設計字母墜飾 — 即時 3D 預覽 | DUET Design Studio</title>
+    <meta name="description" content="DUET 設計工作室 — 自選字母、字型、材質，即時 3D 旋轉預覽你的專屬墜飾。AI 顧問引導，完成設計後直接下單。">
+    <link rel="canonical" href="https://duet.brendonchen.com/design-studio">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DUET Design Studio — 線上設計你的字母墜飾">
+    <meta property="og:description" content="自選字母、字型、材質，即時 3D 旋轉預覽你的專屬客製墜飾。">
+    <meta property="og:image" content="https://duet.brendonchen.com/assets/images/og-cover.jpg">
+    <meta property="og:url" content="https://duet.brendonchen.com/design-studio">
+    <meta property="og:locale" content="zh_TW">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -668,8 +678,8 @@
             </div>
 
             <!-- 聲明區 -->
-            <div style="background:rgba(220,80,30,0.07);border:1px solid rgba(220,100,50,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
-                <div data-i18n="checkout.confirm.warning" style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
+            <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.18);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
+                <div data-i18n="checkout.confirm.warning" style="font-size:12px;font-weight:600;color:rgba(212,175,55,0.85);margin-bottom:10px;">📋 重要聲明</div>
                 <ul style="margin:0;padding-left:16px;color:rgba(255,255,255,0.65);font-size:13px;line-height:2.1;">
                     <li data-i18n="checkout.confirm.warning1">此為客製化商品，確認後無法修改設計</li>
                     <li data-i18n="checkout.confirm.warning2">實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
@@ -720,7 +730,7 @@
     <div id="cart-modal">
         <div class="cart-container">
             <div class="cart-header">
-                <h2>Shopping Cart</h2>
+                <h2 data-i18n="studio.cart.title">購物車</h2>
             </div>
             <div class="cart-items" id="cart-items"></div>
 
@@ -766,12 +776,12 @@
                 </div>
 
                 <div class="cart-total">
-                    <span>Total:</span>
+                    <span data-i18n="studio.cart.total">總計</span>
                     <span id="cart-total">NT$ 0</span>
                 </div>
                 <div class="cart-actions">
-                    <button class="btn-secondary" id="continue-shopping">Continue Shopping</button>
-                    <button class="btn-primary" id="checkout">Checkout</button>
+                    <button class="btn-secondary" id="continue-shopping" data-i18n="studio.cart.continue">繼續選購</button>
+                    <button class="btn-primary" id="checkout" data-i18n="studio.cart.checkout">結帳</button>
                 </div>
             </div>
         </div>
@@ -3437,12 +3447,12 @@
             updateTotalDisplay(originalTotal, promoDiscount, finalTotal, allPreciousMetal);
             const checkoutBtn = document.getElementById('checkout');
             if (hasPreciousMetal) {
-                checkoutBtn.textContent = '送出訂製需求';
+                checkoutBtn.textContent = window.t ? window.t('cart.inquiry') || '送出訂製需求' : '送出訂製需求';
                 checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
                 checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
                 checkoutBtn.style.color = '#d4af37';
             } else {
-                checkoutBtn.textContent = 'Checkout';
+                checkoutBtn.textContent = window.t ? window.t('studio.cart.checkout') || '結帳' : '結帳';
                 checkoutBtn.style.background = '';
                 checkoutBtn.style.borderColor = '';
                 checkoutBtn.style.color = '';
@@ -3776,25 +3786,28 @@
 
             const concepts = [];
 
-            // 逐一詢問字體原因並生成設計理念
+            // 逐一生成設計理念（字體原因已於付款前收集）
             for (let i = 0; i < combinations.length; i++) {
-                const fontReason = await askFontReason(combinations[i], i, combinations.length);
+                const c = combinations[i];
+                const key = `${c.letters.letter1}-${c.fonts.font1}-${c.letters.letter2}-${c.fonts.font2}`;
+                const pre = window._prePaymentFontReasons;
+                const fontReason = (pre && key in pre) ? pre[key] : await askFontReason(c, i, combinations.length);
 
                 if (fontReason) {
                     // 顯示設計理念生成提示
                     showDesignStoryGeneratingIndicator();
 
-                    const designStory = await generateDesignStory(combinations[i], fontReason);
+                    const designStory = await generateDesignStory(c, fontReason);
 
                     // 隱藏提示
                     hideDesignStoryGeneratingIndicator();
 
                     if (designStory) {
                         concepts.push({
-                            letters: combinations[i].letters,
-                            fonts: combinations[i].fonts,
-                            itemIds: combinations[i].itemIds,
-                            thumbnail: combinations[i].thumbnail,
+                            letters: c.letters,
+                            fonts: c.fonts,
+                            itemIds: c.itemIds,
+                            thumbnail: c.thumbnail,
                             designStory: designStory
                         });
                     }
@@ -4133,7 +4146,7 @@
         window.submitCustomInquiry = submitCustomInquiry;
 
         // 主結帳函數（根據測試模式決定流程）
-        function checkout() {
+        async function checkout() {
             posthog.capture('checkout_clicked');
             // 若含貴金屬訂製品，改走詢問表單流程
             if (cartItems.some(i => i.isPreciousMetal)) {
@@ -4152,22 +4165,31 @@
                 return;
             }
 
-            // 設計確認 → 再進入付款流程
-            showDesignConfirmation().then(() => {
-                const aiDataStr = localStorage.getItem('duet_ai_consultation');
-                const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
-                if (hasAIConsultation) {
-                    showCheckoutReminder();
-                } else {
-                    if (TESTING_MODE) {
-                        testModeCheckout();
-                    } else {
-                        processPayment();
-                    }
-                }
-            }).catch(() => {
-                // 用戶選擇返回修改，不做任何動作
-            });
+            // 設計確認
+            try {
+                await showDesignConfirmation();
+            } catch {
+                return; // 用戶選擇返回修改
+            }
+
+            // 付款前收集字體故事原因
+            await collectFontReasonsBeforePayment();
+
+            if (TESTING_MODE) {
+                testModeCheckout();
+            } else {
+                processPayment();
+            }
+        }
+
+        async function collectFontReasonsBeforePayment() {
+            const combinations = getUniqueDesignCombinations(cartItems);
+            window._prePaymentFontReasons = {};
+            for (let i = 0; i < combinations.length; i++) {
+                const c = combinations[i];
+                const key = `${c.letters.letter1}-${c.fonts.font1}-${c.letters.letter2}-${c.fonts.font2}`;
+                window._prePaymentFontReasons[key] = await askFontReason(c, i, combinations.length);
+            }
         }
 
         // ── 設計確認 Modal ──────────────────────────────────
