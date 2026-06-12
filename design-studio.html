@@ -3649,6 +3649,10 @@
 
                 console.log('📦 訂單資料:', { orderId: mockOrderId, items: itemsWithBBox, total: calculateCartTotal() });
 
+                // 取得 AI 諮詢資料（如果有的話）
+                const aiDataStr = localStorage.getItem('duet_ai_consultation');
+                const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
+
                 const response = await fetch(`${window.BACKEND_URL}/api/test-order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3656,8 +3660,9 @@
                         orderId: mockOrderId,
                         items: itemsWithBBox,
                         userInfo: mockUserInfo,
-                        total: originalTotal,           // 傳送原始金額
-                        promoCode: appliedPromoCode,    // 傳送優惠碼
+                        total: originalTotal,
+                        promoCode: appliedPromoCode,
+                        aiConsultation: aiData,
                         testMode: true
                     })
                 });
@@ -3677,7 +3682,8 @@
                     cartItems = [];
                     renderCart();
                     closeCart();
-                    showSuccessModal();
+                    // 走 payment_success 流程：讓後端資料驅動後續步驟（設計理念 / Option B）
+                    window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                     console.log('✅ 測試訂單完成！');
                 } else {
                     alert('❌ 測試失敗：' + (result.error || '未知錯誤'));
@@ -4375,10 +4381,10 @@
                                 window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
-                            // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
+                            // 沒有 AI consultation → 回到 design-studio 觸發 Option B 諮詢補做
                             showNotification('訂單已確認！感謝您的訂購', 'success');
                             setTimeout(() => {
-                                window.location.href = 'https://www.brendonchen.com';
+                                window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                             }, 2000);
                         }
                         return; // ✅ 重要：直接返回，不執行後面的代碼
