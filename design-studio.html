@@ -2735,6 +2735,12 @@
 
             document.getElementById('font-selector-modal').classList.add('active');
 
+            // 每次開啟時同步 checkedFonts → checkbox + card 視覺狀態
+            document.querySelectorAll('.font-list-item input[type="checkbox"]').forEach(cb => {
+                cb.checked = checkedFonts.has(cb.dataset.font);
+            });
+            updateFontDisplay();
+
             // 字體載入中指示器
             const fontLoadingEl = document.getElementById('font-loading-indicator');
             if (fontLoadingEl) {
