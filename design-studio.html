@@ -33,7 +33,17 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>DUET by BCAG</title>
+    <title>線上設計字母墜飾 — 即時 3D 預覽 | DUET Design Studio</title>
+    <meta name="description" content="DUET 設計工作室 — 自選字母、字型、材質，即時 3D 旋轉預覽你的專屬墜飾。AI 顧問引導，完成設計後直接下單。">
+    <link rel="canonical" href="https://duet.brendonchen.com/design-studio">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DUET Design Studio — 線上設計你的字母墜飾">
+    <meta property="og:description" content="自選字母、字型、材質，即時 3D 旋轉預覽你的專屬客製墜飾。">
+    <meta property="og:image" content="https://duet.brendonchen.com/assets/images/og-cover.jpg">
+    <meta property="og:url" content="https://duet.brendonchen.com/design-studio">
+    <meta property="og:locale" content="zh_TW">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Google Fonts: 中文鋼筆字體 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -668,8 +678,8 @@
             </div>
 
             <!-- 聲明區 -->
-            <div style="background:rgba(220,80,30,0.07);border:1px solid rgba(220,100,50,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
-                <div data-i18n="checkout.confirm.warning" style="font-size:12px;font-weight:600;color:rgba(255,140,90,0.9);margin-bottom:10px;">⚠️ 重要聲明</div>
+            <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.18);border-radius:14px;padding:18px 20px;margin-bottom:20px;">
+                <div data-i18n="checkout.confirm.warning" style="font-size:12px;font-weight:600;color:rgba(212,175,55,0.85);margin-bottom:10px;">📋 重要聲明</div>
                 <ul style="margin:0;padding-left:16px;color:rgba(255,255,255,0.65);font-size:13px;line-height:2.1;">
                     <li data-i18n="checkout.confirm.warning1">此為客製化商品，確認後無法修改設計</li>
                     <li data-i18n="checkout.confirm.warning2">實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
@@ -720,7 +730,7 @@
     <div id="cart-modal">
         <div class="cart-container">
             <div class="cart-header">
-                <h2>Shopping Cart</h2>
+                <h2 data-i18n="studio.cart.title">購物車</h2>
             </div>
             <div class="cart-items" id="cart-items"></div>
 
@@ -766,12 +776,12 @@
                 </div>
 
                 <div class="cart-total">
-                    <span>Total:</span>
+                    <span data-i18n="studio.cart.total">總計</span>
                     <span id="cart-total">NT$ 0</span>
                 </div>
                 <div class="cart-actions">
-                    <button class="btn-secondary" id="continue-shopping">Continue Shopping</button>
-                    <button class="btn-primary" id="checkout">Checkout</button>
+                    <button class="btn-secondary" id="continue-shopping" data-i18n="studio.cart.continue">繼續選購</button>
+                    <button class="btn-primary" id="checkout" data-i18n="studio.cart.checkout">結帳</button>
                 </div>
             </div>
         </div>
@@ -1218,31 +1228,32 @@
 
                         if (data.success && data.order && data.order.items) {
                             const order = data.order;
-                            
-                            // 檢查是否有 AI consultation
-                            if (!order.aiConsultation) {
-                                // 沒有 AI consultation，顯示感謝訊息後跳轉
-                                showNotification('訂單已確認！感謝您的訂購', 'success');
-                                setTimeout(() => {
-                                    window.location.href = 'https://www.brendonchen.com';
-                                }, 2000);
-                                return;
-                            }
-                            
-                            // 有 AI consultation，恢復購物車資料
+
+                            // 恢復購物車資料
                             window.cartItems = order.items;
                             window.lastOrderId = orderId;
-                            window.aiConsultationData = order.aiConsultation;  // ✅ 儲存 AI 諮詢資料
 
                             console.log('✅ 訂單資料已載入');
                             console.log('  - 商品數量:', order.items.length);
                             console.log('  - AI 諮詢:', order.aiConsultation ? '有' : '無');
 
-                            // 觸發設計理念收集
-                            if (typeof collectDesignStories === 'function') {
-                                collectDesignStories();
+                            if (order.aiConsultation) {
+                                // 有 AI consultation，直接進行設計理念收集
+                                window.aiConsultationData = order.aiConsultation;
+                                if (typeof collectDesignStories === 'function') {
+                                    collectDesignStories();
+                                } else {
+                                    console.error('❌ collectDesignStories 函數不存在');
+                                }
                             } else {
-                                console.error('❌ collectDesignStories 函數不存在');
+                                // 沒有 AI consultation → Option B：詢問是否補做諮詢對話
+                                if (typeof showPostPaymentConsultOptIn === 'function') {
+                                    showPostPaymentConsultOptIn(() => {
+                                        if (typeof collectDesignStories === 'function') collectDesignStories();
+                                    });
+                                } else {
+                                    if (typeof collectDesignStories === 'function') collectDesignStories();
+                                }
                             }
                         } else {
                             console.error('❌ 無法載入訂單資料');
@@ -1672,17 +1683,22 @@
                     opt.style.color = '#555';
                     opt.text        = '✗ ' + opt.value;
                     const minSz = getMinAvailableSize(opt.value);
-                    opt.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                    opt.title = minSz
+                        ? window.t('font.tip.minSize').replace('{n}', minSz)
+                        : window.t('font.tip.unavailable');
                 } else if (label === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.text        = opt.value + ' (粗)';
-                    opt.title       = '極粗字體';
+                    opt.text        = opt.value + window.t('font.label.wide');
+                    opt.title       = window.t('font.tip.wide');
                 } else if (label === 'thin') {
                     opt.style.color = '#486880';
-                    opt.text        = opt.value + ' (細)';
-                    opt.title       = '極細字體';
+                    opt.text        = opt.value + window.t('font.label.thin');
+                    opt.title       = window.t('font.tip.thin');
                 }
             });
+            // Sync the <select> element's own title so hovering the closed dropdown shows the tooltip
+            const selectedOpt = Array.from(selectEl.options).find(o => o.value === selectEl.value);
+            selectEl.title = selectedOpt?.title || '';
         }
 
         // Update size <select> options based on both currently chosen fonts
@@ -1706,22 +1722,22 @@
                 if (l1 === 'unavailable' || l2 === 'unavailable') {
                     opt.disabled    = true;
                     opt.style.color = '#555';
-                    opt.title       = '已選字體不支援此尺寸';
+                    opt.title       = window.t('size.tip.unavailable');
                     opt.text        = '✗ ' + opt.text;
                 } else if (l1 === 'thin' && l2 === 'thin') {
                     opt.style.color = '#486880';
-                    opt.title       = '兩個極細字體在此尺寸無法製作';
-                    opt.text        = opt.text + ' (細×細)';
+                    opt.title       = window.t('size.tip.thinXthin');
+                    opt.text        = opt.text + window.t('size.label.thinXthin');
                 } else if (l1 === 'wide' && l2 === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.title       = '兩個極粗字體在此尺寸配戴舒適度可能不佳';
-                    opt.text        = opt.text + ' (粗×粗)';
+                    opt.title       = window.t('size.tip.wideXwide');
+                    opt.text        = opt.text + window.t('size.label.wideXwide');
                 } else if (l1 === 'thin' || l2 === 'thin') {
                     opt.style.color = '#486880';
-                    opt.title       = '含極細字體';
+                    opt.title       = window.t('size.tip.thin');
                 } else if (l1 === 'wide' || l2 === 'wide') {
                     opt.style.color = '#8a6836';
-                    opt.title       = '含極粗字體';
+                    opt.title       = window.t('size.tip.wide');
                 }
             });
         }
@@ -1733,15 +1749,15 @@
             const l2 = getFontConstraint(f2, sizeMm);
 
             if (l1 === 'unavailable' || l2 === 'unavailable') {
-                showConstraintOverlay('block', '已選字體不支援此尺寸');
+                showConstraintOverlay('block', window.t('constraint.block.unavailable'));
                 return 'block';
             }
             if (l1 === 'thin' && l2 === 'thin') {
-                showConstraintOverlay('block', '兩個字體都是極細字體，無法製作');
+                showConstraintOverlay('block', window.t('constraint.block.thinXthin'));
                 return 'block';
             }
             if (l1 === 'wide' && l2 === 'wide') {
-                showConstraintOverlay('warn', '兩個字體都是極粗字體，重量與造型可能會影響配戴舒適度，請審慎考慮。');
+                showConstraintOverlay('warn', window.t('constraint.warn.wideXwide'));
                 return 'warn';
             }
             hideConstraintOverlay();
@@ -2593,13 +2609,12 @@
 
         // 字體選擇器（等待 fonts.json 載入完成後才初始化）
         async function initFontSelector() {
-            // 等待字體載入完成
+            // 等待 fonts.json 載入完成（通常 < 1 秒）
             if (typeof fontsLoadedPromise !== 'undefined') {
                 await fontsLoadedPromise;
             }
-
-            // 等待所有瀏覽器字體載入完成，確保字體選擇器正確渲染
-            await document.fonts.ready;
+            // 不等 document.fonts.ready — Google Fonts 批量載入可能耗時 1-2 分鐘；
+            // 字體清單先建立，字體預覽圖會在字體下載後自動更新。
 
             const listContainer = document.getElementById('font-list-container');
             const displayArea = document.getElementById('font-display-area');
@@ -2615,6 +2630,8 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.dataset.font = font;
+                // 反映 checkedFonts 現有狀態（AI 返回後或使用者重選時已填入）
+                checkbox.checked = checkedFonts.has(font);
 
                 const label = document.createElement('span');
                 label.textContent = font;
@@ -2853,41 +2870,51 @@
                         option.disabled    = true;
                         option.style.color = '#555';
                         const minSz = getMinAvailableSize(font);
-                        option.title = minSz ? `此字體最小尺寸為 ${minSz}mm` : '此字體目前不可選用';
+                        option.title = minSz
+                            ? window.t('font.tip.minSize').replace('{n}', minSz)
+                            : window.t('font.tip.unavailable');
                     } else if (cLabel === 'wide') {
-                        option.text        = font + ' (粗)';
+                        option.text        = font + window.t('font.label.wide');
                         option.style.color = '#8a6836';
-                        option.title       = '極粗字體';
+                        option.title       = window.t('font.tip.wide');
                     } else if (cLabel === 'thin') {
-                        option.text        = font + ' (細)';
+                        option.text        = font + window.t('font.label.thin');
                         option.style.color = '#486880';
-                        option.title       = '極細字體';
+                        option.title       = window.t('font.tip.thin');
                     } else {
                         option.text = font;
                     }
                     select.appendChild(option);
                 });
 
-                // 選擇預設字體：有新字體時各自對應 idx，否則用 AI 推薦或第一個
+                // 選擇預設字體
+                // 規則：
+                //   有 AI 推薦 → 優先用 AI 為各字母推薦的第一個（即使用者在諮詢中選定的字體）
+                //   使用者重選後新增字體（hasPreviousFonts=true）→ 新字體覆蓋 AI 推薦
+                //   無 AI 推薦 → 新字體優先，否則第一個
+                const hasPreviousFonts = window._previousSelectedFonts && window._previousSelectedFonts.size > 0;
                 let defaultFont;
-                if (newFonts.length > 0) {
-                    // font1 → newFonts[0]，font2 → newFonts[1] 或 newFonts[0]
+                if (newFonts.length > 0 && hasPreviousFonts) {
+                    // 使用者重選後明確新增的字體：font1 → newFonts[0]，font2 → newFonts[1]
                     defaultFont = newFonts[idx] || newFonts[0];
+                } else if (window.aiRecommendation) {
+                    // AI 推薦路徑（含從 AI 諮詢頁面返回的初次載入）
+                    const recommendedForThisLetter = target === 'font1'
+                        ? window.aiRecommendation.letter1
+                        : window.aiRecommendation.letter2;
+                    const firstRecommended = recommendedForThisLetter.find(f => selectedFonts.includes(f));
+                    defaultFont = firstRecommended || selectedFonts[0];
                 } else {
-                    defaultFont = selectedFonts[0];
-                    if (window.aiRecommendation) {
-                        const recommendedForThisLetter = target === 'font1'
-                            ? window.aiRecommendation.letter1
-                            : window.aiRecommendation.letter2;
-                        const firstRecommended = recommendedForThisLetter.find(f => selectedFonts.includes(f));
-                        if (firstRecommended) defaultFont = firstRecommended;
-                    }
+                    defaultFont = newFonts.length > 0 ? (newFonts[idx] || newFonts[0]) : selectedFonts[0];
                 }
 
                 select.value = defaultFont;
                 btn.setAttribute('data-selected', defaultFont);
                 select.style.fontFamily = `"${defaultFont}", sans-serif`;
-                
+                // 設定初始 tooltip（讓收合狀態的 select hover 可顯示提示）
+                const defaultOpt = Array.from(select.options).find(o => o.value === defaultFont);
+                select.title = defaultOpt?.title || '';
+
                 // ✅ 立即同步到 hidden input
                 const hiddenInput = document.getElementById(target);
                 if (hiddenInput) {
@@ -2901,13 +2928,16 @@
                     btn.setAttribute('data-selected', selectedFont);
                     // 更新下拉選單本身的字體樣式
                     this.style.fontFamily = `"${selectedFont}", sans-serif`;
-                    
+                    // 同步 tooltip 到選中字體的規範提示
+                    const selOpt = Array.from(this.options).find(o => o.value === selectedFont);
+                    this.title = selOpt?.title || '';
+
                     // 同步到 hidden input
                     const hiddenInput = document.getElementById(target);
                     if (hiddenInput) {
                         hiddenInput.value = selectedFont;
                     }
-                    
+
                     // 更新尺寸選單規範，再生成模型
                     updateSizeConstraints();
                     generateModel();
@@ -3424,12 +3454,12 @@
             updateTotalDisplay(originalTotal, promoDiscount, finalTotal, allPreciousMetal);
             const checkoutBtn = document.getElementById('checkout');
             if (hasPreciousMetal) {
-                checkoutBtn.textContent = '送出訂製需求';
+                checkoutBtn.textContent = window.t ? window.t('cart.inquiry') || '送出訂製需求' : '送出訂製需求';
                 checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
                 checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
                 checkoutBtn.style.color = '#d4af37';
             } else {
-                checkoutBtn.textContent = 'Checkout';
+                checkoutBtn.textContent = window.t ? window.t('studio.cart.checkout') || '結帳' : '結帳';
                 checkoutBtn.style.background = '';
                 checkoutBtn.style.borderColor = '';
                 checkoutBtn.style.color = '';
@@ -3625,6 +3655,10 @@
 
                 console.log('📦 訂單資料:', { orderId: mockOrderId, items: itemsWithBBox, total: calculateCartTotal() });
 
+                // 取得 AI 諮詢資料（如果有的話）
+                const aiDataStr = localStorage.getItem('duet_ai_consultation');
+                const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
+
                 const response = await fetch(`${window.BACKEND_URL}/api/test-order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3632,8 +3666,9 @@
                         orderId: mockOrderId,
                         items: itemsWithBBox,
                         userInfo: mockUserInfo,
-                        total: originalTotal,           // 傳送原始金額
-                        promoCode: appliedPromoCode,    // 傳送優惠碼
+                        total: originalTotal,
+                        promoCode: appliedPromoCode,
+                        aiConsultation: aiData,
                         testMode: true
                     })
                 });
@@ -3653,7 +3688,8 @@
                     cartItems = [];
                     renderCart();
                     closeCart();
-                    showSuccessModal();
+                    // 走 payment_success 流程：讓後端資料驅動後續步驟（設計理念 / Option B）
+                    window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                     console.log('✅ 測試訂單完成！');
                 } else {
                     alert('❌ 測試失敗：' + (result.error || '未知錯誤'));
@@ -3763,25 +3799,26 @@
 
             const concepts = [];
 
-            // 逐一詢問字體原因並生成設計理念
+            // 逐一詢問字體選擇原因並生成設計理念
             for (let i = 0; i < combinations.length; i++) {
-                const fontReason = await askFontReason(combinations[i], i, combinations.length);
+                const c = combinations[i];
+                const fontReason = await askFontReason(c, i, combinations.length);
 
                 if (fontReason) {
                     // 顯示設計理念生成提示
                     showDesignStoryGeneratingIndicator();
 
-                    const designStory = await generateDesignStory(combinations[i], fontReason);
+                    const designStory = await generateDesignStory(c, fontReason);
 
                     // 隱藏提示
                     hideDesignStoryGeneratingIndicator();
 
                     if (designStory) {
                         concepts.push({
-                            letters: combinations[i].letters,
-                            fonts: combinations[i].fonts,
-                            itemIds: combinations[i].itemIds,
-                            thumbnail: combinations[i].thumbnail,
+                            letters: c.letters,
+                            fonts: c.fonts,
+                            itemIds: c.itemIds,
+                            thumbnail: c.thumbnail,
                             designStory: designStory
                         });
                     }
@@ -4139,22 +4176,18 @@
                 return;
             }
 
-            // 設計確認 → 再進入付款流程
-            showDesignConfirmation().then(() => {
-                const aiDataStr = localStorage.getItem('duet_ai_consultation');
-                const hasAIConsultation = aiDataStr && aiDataStr !== 'null';
-                if (hasAIConsultation) {
-                    showCheckoutReminder();
-                } else {
-                    if (TESTING_MODE) {
-                        testModeCheckout();
+            // 設計確認
+            showDesignConfirmation()
+                .then(() => {
+                    const hasAiConsultation = !!localStorage.getItem('duet_ai_consultation');
+                    if (hasAiConsultation) {
+                        showCheckoutReminder();
                     } else {
-                        processPayment();
+                        if (TESTING_MODE) testModeCheckout();
+                        else processPayment();
                     }
-                }
-            }).catch(() => {
-                // 用戶選擇返回修改，不做任何動作
-            });
+                })
+                .catch(() => {}); // 用戶選擇返回修改
         }
 
         // ── 設計確認 Modal ──────────────────────────────────
@@ -4354,10 +4387,10 @@
                                 window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
-                            // 沒有 AI consultation：顯示感謝訊息後跳轉回首頁
+                            // 沒有 AI consultation → 回到 design-studio 觸發 Option B 諮詢補做
                             showNotification('訂單已確認！感謝您的訂購', 'success');
                             setTimeout(() => {
-                                window.location.href = 'https://www.brendonchen.com';
+                                window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                             }, 2000);
                         }
                         return; // ✅ 重要：直接返回，不執行後面的代碼
@@ -5518,9 +5551,24 @@
         </div>
     </div>
 
-    <!-- 語言初始化 -->
+    <!-- 語言初始化：patch applyLanguage 使切換語言後同步重刷字體規範標籤 -->
     <script>
-    if (typeof window.initLanguage === 'function') window.initLanguage();
+    (function() {
+        const _orig = window.applyLanguage;
+        window.applyLanguage = function(lang) {
+            _orig(lang);
+            // Re-apply font constraint labels/tooltips after language switch
+            const sizeEl = document.getElementById('size');
+            const sizeMm = sizeEl ? parseInt(sizeEl.value) : 12;
+            ['font1', 'font2'].forEach(function(target) {
+                const sel = document.getElementById(target + '-select');
+                if (sel && typeof applyConstraintsToFontSelect === 'function') {
+                    applyConstraintsToFontSelect(sel, sizeMm);
+                }
+            });
+        };
+        if (typeof window.initLanguage === 'function') window.initLanguage();
+    })();
     </script>
 
     <!-- 自訂提示（低調風格） -->
@@ -5654,6 +5702,269 @@
     })();
     </script>
 
+    <!-- ── Option B：付款後 AI 諮詢補做 Modal ─────────────────── -->
+    <div id="post-payment-consult-modal" style="
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.65);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        z-index: 99990;
+        justify-content: center;
+        align-items: center;
+    ">
+        <!-- 詢問意願畫面 -->
+        <div id="post-payment-optin-panel" style="
+            max-width: 480px; width: 90%;
+            background: rgba(20,20,20,0.92);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 24px;
+            padding: 40px 36px;
+            text-align: center;
+        ">
+            <div style="font-size: 40px; margin-bottom: 16px;">✨</div>
+            <h3 style="font-size: 22px; font-weight: 600; color: #fff; margin: 0 0 12px 0; letter-spacing: 0.5px;">為您的作品留下故事</h3>
+            <p style="font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; margin: 0 0 28px 0;">
+                只需幾分鐘的對話，我們就能為您的 DUET 作品<br>生成一份專屬設計理念。
+            </p>
+            <button id="post-payment-yes-btn" style="
+                width: 100%;
+                padding: 14px;
+                background: linear-gradient(135deg, #d4af37, #b8932a);
+                border: none; border-radius: 12px;
+                color: #000; font-size: 15px; font-weight: 600;
+                cursor: pointer; margin-bottom: 10px;
+            ">好的，開始對話</button>
+            <button id="post-payment-no-btn" style="
+                width: 100%;
+                padding: 14px;
+                background: transparent;
+                border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
+                color: rgba(255,255,255,0.55); font-size: 14px;
+                cursor: pointer;
+            ">略過，直接看結果</button>
+        </div>
+
+        <!-- 嵌入 AI 對話畫面 -->
+        <div id="post-payment-chat-panel" style="
+            display: none;
+            flex-direction: column;
+            max-width: 520px; width: 90%;
+            height: min(620px, 85vh);
+            background: rgba(15,15,15,0.95);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 24px;
+            overflow: hidden;
+        ">
+            <!-- 頂部 -->
+            <div style="
+                padding: 20px 24px 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.07);
+                flex-shrink: 0;
+            ">
+                <div style="font-size: 13px; color: #d4af37; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px;">AI 諮詢</div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.4);" id="post-payment-chat-progress">與 Duet 顧問對話中…</div>
+            </div>
+            <!-- 訊息區 -->
+            <div id="post-payment-chat-container" style="
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px 20px 0;
+                scroll-behavior: smooth;
+            "></div>
+            <!-- 輸入區 -->
+            <div style="
+                padding: 14px 16px;
+                border-top: 1px solid rgba(255,255,255,0.07);
+                display: flex; gap: 10px; align-items: flex-end;
+                flex-shrink: 0;
+            ">
+                <textarea id="post-payment-user-input" rows="1" placeholder="輸入訊息…" style="
+                    flex: 1;
+                    background: rgba(255,255,255,0.06);
+                    border: 1px solid rgba(255,255,255,0.12);
+                    border-radius: 10px;
+                    color: #fff; font-size: 14px;
+                    padding: 10px 14px;
+                    resize: none; outline: none;
+                    font-family: inherit;
+                    max-height: 100px;
+                "></textarea>
+                <button id="post-payment-send-btn" style="
+                    width: 40px; height: 40px;
+                    background: linear-gradient(135deg, #d4af37, #b8932a);
+                    border: none; border-radius: 10px;
+                    color: #000; font-size: 18px;
+                    cursor: pointer; flex-shrink: 0;
+                    display: flex; align-items: center; justify-content: center;
+                ">↑</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ── Option B：付款後 AI 諮詢補做 ────────────────────────────
+    function showPostPaymentConsultOptIn(onComplete) {
+        const modal = document.getElementById('post-payment-consult-modal');
+        if (!modal) { onComplete(); return; }
+
+        const lang = localStorage.getItem('duet_language') || 'zh';
+        if (lang === 'en') {
+            modal.querySelector('h3').textContent = 'Add a story to your piece';
+            modal.querySelector('p').innerHTML = 'A quick conversation is all it takes to create<br>a unique design story for your DUET.';
+            document.getElementById('post-payment-yes-btn').textContent = "Let's chat";
+            document.getElementById('post-payment-no-btn').textContent = 'Skip, see my result';
+        }
+
+        modal.style.display = 'flex';
+
+        document.getElementById('post-payment-yes-btn').addEventListener('click', function handler() {
+            this.removeEventListener('click', handler);
+            document.getElementById('post-payment-optin-panel').style.display = 'none';
+            document.getElementById('post-payment-chat-panel').style.display = 'flex';
+            _startPostPaymentChat(lang, function() {
+                modal.style.display = 'none';
+                onComplete();
+            });
+        });
+
+        document.getElementById('post-payment-no-btn').addEventListener('click', function handler() {
+            this.removeEventListener('click', handler);
+            modal.style.display = 'none';
+            onComplete();
+        });
+    }
+
+    function _startPostPaymentChat(lang, onComplete) {
+        const container = document.getElementById('post-payment-chat-container');
+        const input     = document.getElementById('post-payment-user-input');
+        const sendBtn   = document.getElementById('post-payment-send-btn');
+        const progress  = document.getElementById('post-payment-chat-progress');
+
+        let history    = [];
+        let isWaiting  = false;
+        let turnCount  = 0;
+        const maxTurns = 15;
+
+        const welcome = lang === 'en'
+            ? "Hello! I'd love to hear the story behind your DUET piece. Who will this be for?"
+            : '您好！很高興您願意分享 ✨ 這件作品是要送給誰的呢？';
+        _ppAddMessage('assistant', welcome);
+        history.push({ role: 'assistant', content: welcome });
+
+        async function send() {
+            const text = input.value.trim();
+            if (!text || isWaiting) return;
+
+            _ppAddMessage('user', text);
+            history.push({ role: 'user', content: text });
+            input.value = '';
+            input.style.height = 'auto';
+            isWaiting = true;
+            sendBtn.disabled = true;
+            turnCount++;
+
+            const typingId = _ppAddTyping();
+            progress.textContent = lang === 'en'
+                ? `Turn ${turnCount} / ${maxTurns}`
+                : `對話中 ${turnCount} / ${maxTurns}`;
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/ai-consultant`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, history, lang })
+                });
+                const data = await res.json();
+                _ppRemoveTyping(typingId);
+
+                if (data.completed) {
+                    localStorage.setItem('duet_ai_consultation', JSON.stringify({
+                        conversationHistory: history,
+                        summary: data.summary,
+                        isPostPayment: true
+                    }));
+                    const done = lang === 'en'
+                        ? '感謝您的分享！正在為您生成設計理念…'
+                        : '感謝您的分享！正在為您生成設計理念…';
+                    _ppAddMessage('assistant', done);
+                    progress.textContent = lang === 'en' ? 'Completed ✓' : '諮詢完成 ✓';
+                    setTimeout(onComplete, 1500);
+                } else {
+                    const reply = data.message || (lang === 'en' ? 'Please try again.' : '請再試一次。');
+                    _ppAddMessage('assistant', reply);
+                    history.push({ role: 'assistant', content: reply });
+                }
+            } catch (_) {
+                _ppRemoveTyping(typingId);
+                _ppAddMessage('assistant', lang === 'en' ? 'Connection error, please try again.' : '連線失敗，請再試一次。');
+            } finally {
+                isWaiting = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        sendBtn.addEventListener('click', send);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+        });
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    }
+
+    function _ppAddMessage(role, text) {
+        const container = document.getElementById('post-payment-chat-container');
+        const isUser = role === 'user';
+        const bubble = document.createElement('div');
+        bubble.style.cssText = `
+            display: flex;
+            justify-content: ${isUser ? 'flex-end' : 'flex-start'};
+            margin-bottom: 12px;
+        `;
+        bubble.innerHTML = `<div style="
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: ${isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px'};
+            background: ${isUser ? 'linear-gradient(135deg,#d4af37,#b8932a)' : 'rgba(255,255,255,0.08)'};
+            color: ${isUser ? '#000' : '#fff'};
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        ">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+        container.appendChild(bubble);
+        container.scrollTop = container.scrollHeight;
+        return bubble;
+    }
+
+    let _ppTypingCounter = 0;
+    function _ppAddTyping() {
+        const id = 'pp-typing-' + (++_ppTypingCounter);
+        const container = document.getElementById('post-payment-chat-container');
+        const el = document.createElement('div');
+        el.id = id;
+        el.style.cssText = 'display:flex;justify-content:flex-start;margin-bottom:12px;';
+        el.innerHTML = `<div style="
+            padding: 10px 16px;
+            border-radius: 16px 16px 16px 4px;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.5);
+            font-size: 20px;
+            letter-spacing: 4px;
+        ">•••</div>`;
+        container.appendChild(el);
+        container.scrollTop = container.scrollHeight;
+        return id;
+    }
+
+    function _ppRemoveTyping(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+    </script>
 
 </body>
 

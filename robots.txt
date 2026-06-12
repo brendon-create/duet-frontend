@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /distributor
+
+Sitemap: https://duet.brendonchen.com/sitemap.xml
