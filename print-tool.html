@@ -237,7 +237,7 @@ body {
 .text-panel {
     position: absolute;
     left: 96mm;    /* start at 90mm (left half) + 6mm padding */
-    right: 6mm;
+    right: 8mm;
     top: 8mm;
     bottom: 22mm;  /* leave room for signature */
     font-family: 'TW-Kai', serif;
@@ -255,7 +255,7 @@ body {
 /* ── 左半文字區（長文時從左起始，僅在 wide 模式顯示）── */
 .text-panel-left {
     position: absolute;
-    left: 6mm;
+    left: 8mm;
     right: 96mm;   /* 90mm fold - 6mm padding = stops at 84mm from left */
     top: 8mm;
     bottom: 6mm;
@@ -274,7 +274,7 @@ body {
 /* 簽名區：絕對定位，JS 控制顯示 */
 .card-sig {
     position: absolute;
-    right: 6mm;
+    right: 8mm;
     bottom: 8mm;
     text-align: right;
     display: none;  /* hidden by default, shown by JS */
@@ -978,11 +978,22 @@ function buildBatchCardInner(result, num) {
     let leftHTML = '', rightHTML = '', wide = false;
     if (paras.length === 0) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
-    } else if (paras.length >= 2 && story.trim().length > 170) {
+    } else if (paras.length >= 2 && story.trim().length > 130) {
         wide = true;
-        const mid = Math.ceil(paras.length / 2);
-        leftHTML = toHTML(paras.slice(0, mid));
-        rightHTML = toHTML(paras.slice(mid));
+        // 字元數智慧分頁：最小化溢出；溢出相同時偏好均衡使用率
+        const LEFT_CAP = 192, RIGHT_CAP = 136;
+        let bestSplit = 1, bestScore = -Infinity;
+        for (let i = 1; i < paras.length; i++) {
+            const leftLen = paras.slice(0, i).join('').length;
+            const rightLen = paras.slice(i).join('').length;
+            const overflow = Math.max(0, leftLen - LEFT_CAP) + Math.max(0, rightLen - RIGHT_CAP);
+            const score = overflow === 0
+                ? Math.min(leftLen / LEFT_CAP, rightLen / RIGHT_CAP)
+                : -overflow;
+            if (score > bestScore) { bestScore = score; bestSplit = i; }
+        }
+        leftHTML = toHTML(paras.slice(0, bestSplit));
+        rightHTML = toHTML(paras.slice(bestSplit));
     } else {
         rightHTML = toHTML(paras);
     }
