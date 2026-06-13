@@ -3387,21 +3387,29 @@
                 reviewOrders = data.orders || [];
                 const prevCount = data.previously_reviewed_count || 0;
                 statusEl.textContent = '';
+                const diffCount = reviewOrders.filter(o=>o.has_story_diff).length;
+                const testSkipCount = reviewOrders.filter(o=>o.is_test && !o.has_story_diff).length;
                 document.getElementById('reviewOrderSummary').textContent =
-                    `共 ${data.total} 筆，${reviewOrders.filter(o=>o.has_story_diff).length} 筆有設計理念差異` +
+                    `共 ${data.total} 筆，${diffCount} 筆有設計理念差異` +
+                    (testSkipCount > 0 ? `，${testSkipCount} 筆測試訂單（無差異）將自動排除` : '') +
                     (prevCount > 0 ? `，⚠️ ${prevCount} 筆曾被撈取過` : '');
                 // 渲染清單
                 if (reviewOrders.length === 0) {
                     document.getElementById('reviewOrderTable').innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:4px 0;">此區間無符合條件的訂單（需有 AI 諮詢對話）</div>';
                 } else {
-                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => `
-                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => {
+                        const willSkip = o.is_test && !o.has_story_diff;
+                        return `
+                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;${willSkip ? 'opacity:0.4;' : ''}">
                             <span style="color:var(--text-muted);min-width:100px;">${o.orderId}</span>
                             <span style="color:var(--text-light);min-width:40px;">${o.letters || '-'}</span>
+                            ${o.is_test ? '<span style="color:#f59e0b;font-size:10px;padding:1px 5px;border:1px solid #f59e0b;border-radius:4px;">測試</span>' : ''}
                             <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
+                            ${willSkip ? '<span style="color:#9ca3af;font-size:10px;">自動排除</span>' : ''}
                             ${o.previously_reviewed ? '<span style="color:#fbbf24;font-size:11px;">⚠️ 曾撈取</span>' : ''}
                             <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : ''}</span>
-                        </div>`).join('');
+                        </div>`;
+                    }).join('');
                 }
                 document.getElementById('reviewOrderList').style.display = 'block';
             } catch (e) {
