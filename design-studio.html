@@ -1131,17 +1131,18 @@
 
                     <!-- 影片播放區（初始隱藏） -->
                     <div id="vid-player-wrap" style="
-                        display:none;flex-direction:column;align-items:center;
-                        width:100%;padding:24px 24px 0;
+                        display:none;flex-direction:column;align-items:center;justify-content:center;
+                        width:100%;height:100%;padding:16px 20px;box-sizing:border-box;
                     ">
-                        <div id="vid-video-container" style="width:min(900px,90vw);">
+                        <!-- 影片寬度：以視窗高度為基準算出 16:9 最大寬度，再對比視窗寬度取小值 -->
+                        <div id="vid-video-container" style="width:min(calc((100vh - 80px) * 1.778), calc(100vw - 40px));max-width:100%;">
                             <!-- iframe 在使用者點擊後動態插入，確保瀏覽器允許 autoplay -->
-                            <div id="vid-iframe-slot" style="position:relative;width:100%;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden;"></div>
+                            <div id="vid-iframe-slot" style="position:relative;width:100%;padding-bottom:56.25%;background:#000;border-radius:8px;overflow:hidden;"></div>
                         </div>
                         <button id="vid-close-btn" style="
-                            margin-top:18px;background:transparent;
+                            margin-top:14px;background:transparent;flex-shrink:0;
                             color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.2);
-                            padding:10px 30px;border-radius:50px;font-size:13px;cursor:pointer;
+                            padding:8px 28px;border-radius:50px;font-size:13px;cursor:pointer;
                             font-family:'Cormorant Garamond',serif;letter-spacing:1px;
                         ">
                             ${isZh ? '關閉影片，繼續使用' : 'Close & Continue'}
@@ -1181,13 +1182,8 @@
             }
 
             function onFsChange() {
-                const container = document.getElementById('vid-video-container');
-                if (!container) return;
-                if (document.fullscreenElement || document.webkitFullscreenElement) {
-                    container.style.width = 'min(1400px, calc((100vh - 110px) * 1.778))';
-                } else {
-                    container.style.width = 'min(900px, 90vw)';
-                }
+                // 影片容器寬度由 CSS 自動計算（min(calc((100vh-80px)*1.778), calc(100vw-40px))）
+                // 全螢幕切換時瀏覽器重算 100vh，不需要 JS 介入
             }
 
             // 在使用者手勢內動態建立 iframe（必須在點擊同步執行，確保 autoplay 授權）
@@ -1203,9 +1199,9 @@
                 iframe.src = embedUrl;
                 slot.appendChild(iframe);
 
-                // 蓋住右下角 YouTube logo（父層 div 擋掉 iframe 內的點擊事件）
+                // 只蓋住右下角 YouTube logo 文字，不影響音量等控制項
                 const blocker = document.createElement('div');
-                blocker.style.cssText = 'position:absolute;bottom:0;right:0;width:100px;height:42px;z-index:2;cursor:default;';
+                blocker.style.cssText = 'position:absolute;bottom:4px;right:8px;width:72px;height:22px;z-index:2;cursor:default;';
                 slot.appendChild(blocker);
 
                 window.addEventListener('message', onYTMessage);
