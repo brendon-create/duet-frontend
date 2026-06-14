@@ -1203,6 +1203,11 @@
                 iframe.src = embedUrl;
                 slot.appendChild(iframe);
 
+                // 蓋住右下角 YouTube logo（父層 div 擋掉 iframe 內的點擊事件）
+                const blocker = document.createElement('div');
+                blocker.style.cssText = 'position:absolute;bottom:0;right:0;width:100px;height:42px;z-index:2;cursor:default;';
+                slot.appendChild(blocker);
+
                 window.addEventListener('message', onYTMessage);
                 document.addEventListener('fullscreenchange', onFsChange);
                 document.addEventListener('webkitfullscreenchange', onFsChange);
