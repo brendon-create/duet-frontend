@@ -1210,6 +1210,11 @@
                 titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
                 shield.appendChild(titleZone);
 
+                // 黑色不透明遮罩：精準蓋住左上角頻道 logo 與頻道名稱
+                const channelMask = document.createElement('div');
+                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:320px;height:58px;pointer-events:auto;cursor:default;background:#000;';
+                shield.appendChild(channelMask);
+
                 // 下方左側：分享 icon（放大確保完整覆蓋）
                 const shareZone = document.createElement('div');
                 shareZone.style.cssText = 'position:absolute;bottom:0;left:0;width:100px;height:70px;pointer-events:auto;cursor:not-allowed;background:rgba(0,0,0,0.001);';
