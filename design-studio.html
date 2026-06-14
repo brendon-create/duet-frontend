@@ -1179,6 +1179,13 @@
             const paymentFailed = urlParams.get('payment_failed') === 'true';
             const orderId = urlParams.get('order');
 
+            // Kiosk 模式：代理商門市帶入 ?mode=kiosk，清除前一位顧客的 session
+            if (urlParams.get('mode') === 'kiosk') {
+                ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
+                window.history.replaceState({}, document.title, window.location.pathname);
+                console.log('🏪 Kiosk 模式：已清除上一位顧客的設計 session');
+            }
+
             console.log('🔍 URL 參數檢測:', {
                 paymentSuccess,
                 paymentFailed,
@@ -1192,6 +1199,9 @@
 
                 // 清除 URL 參數（避免重複觸發）
                 window.history.replaceState({}, document.title, window.location.pathname);
+
+                // 清除上一次的設計 session，讓下次進來可以重新開始新流程
+                ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
 
                 // 設定標記：付款成功後進入設計理念流程
                 window.isPostPayment = true;
