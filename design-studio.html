@@ -1199,10 +1199,15 @@
                 iframe.src = embedUrl;
                 slot.appendChild(iframe);
 
-                // 只蓋住右下角 YouTube logo 文字，不影響音量等控制項
-                const blocker = document.createElement('div');
-                blocker.style.cssText = 'position:absolute;bottom:4px;right:8px;width:72px;height:22px;z-index:2;cursor:default;';
-                slot.appendChild(blocker);
+                // 上方標題列（影片標題 + 頻道名稱，懸停時出現，點擊會連到 YouTube）
+                const topBlocker = document.createElement('div');
+                topBlocker.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:60px;z-index:2;cursor:default;';
+                slot.appendChild(topBlocker);
+
+                // 右下角 YouTube logo（modestbranding=1 縮小但無法移除）
+                const bottomBlocker = document.createElement('div');
+                bottomBlocker.style.cssText = 'position:absolute;bottom:0;right:0;width:90px;height:38px;z-index:2;cursor:default;';
+                slot.appendChild(bottomBlocker);
 
                 window.addEventListener('message', onYTMessage);
                 document.addEventListener('fullscreenchange', onFsChange);
