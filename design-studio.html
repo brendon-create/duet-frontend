@@ -1042,6 +1042,15 @@
                                        font-family: 'Cormorant Garamond', serif;">
                             ${_aiLang === 'en' ? "No thanks, I'll choose letters and fonts myself" : '不需要，我想自己選擇字母與字體，直接開始'}
                         </button>
+                        ${localStorage.getItem('duet_video_prompt_shown') ? `
+                        <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
+                            <button onclick="rewatchTutorial()"
+                                    style="background:transparent;color:rgba(255,255,255,0.35);border:none;
+                                           font-size:12px;cursor:pointer;letter-spacing:0.5px;padding:4px 0;
+                                           font-family:'Cormorant Garamond',serif;text-decoration:underline;text-underline-offset:3px;">
+                                ${_aiLang === 'en' ? '▶  Re-watch the Tutorial' : '▶  重看「訂製介面操作介紹」影片'}
+                            </button>
+                        </div>` : ''}
                     </div>
                 </div>
                 <style>
@@ -1068,12 +1077,16 @@
         }
 
         // 顯示影片操作介紹 Modal（首次進入時，在 AI 介紹前顯示）
-        function showVideoIntroModal() {
+        // directPlay=true：跳過詢問畫面直接播放（從 AI modal「重看」按鈕呼叫，帶使用者手勢）
+        function showVideoIntroModal(directPlay) {
             const lang = localStorage.getItem('duet_language') || 'zh';
             const videoId = lang === 'en' ? 'G2fE5FlXa0E' : 'PqmIZ9scqTA';
             const isZh = lang !== 'en';
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&playsinline=1&enablejsapi=1`;
 
-            localStorage.setItem('duet_video_prompt_shown', 'true');
+            if (!directPlay) {
+                localStorage.setItem('duet_video_prompt_shown', 'true');
+            }
 
             const modal = document.createElement('div');
             modal.id = 'video-intro-modal';
@@ -1122,12 +1135,8 @@
                         width:100%;padding:24px 24px 0;
                     ">
                         <div id="vid-video-container" style="width:min(900px,90vw);">
-                            <div style="position:relative;width:100%;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden;">
-                                <iframe id="vid-iframe"
-                                    style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
-                                    allow="autoplay">
-                                </iframe>
-                            </div>
+                            <!-- iframe 在使用者點擊後動態插入，確保瀏覽器允許 autoplay -->
+                            <div id="vid-iframe-slot" style="position:relative;width:100%;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden;"></div>
                         </div>
                         <button id="vid-close-btn" style="
                             margin-top:18px;background:transparent;
@@ -1142,8 +1151,6 @@
             `;
             document.body.appendChild(modal);
 
-            let playerShowing = false;
-
             function dismissAndShowAI() {
                 window.removeEventListener('message', onYTMessage);
                 document.removeEventListener('fullscreenchange', onFsChange);
@@ -1157,7 +1164,6 @@
                 try {
                     const data = JSON.parse(e.data);
                     if (data.event === 'onStateChange' && data.info === 0) {
-                        // 影片播放完畢
                         const exit = document.exitFullscreen || document.webkitExitFullscreen;
                         if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
                             exit.call(document).then(() => setTimeout(dismissAndShowAI, 300)).catch(() => setTimeout(dismissAndShowAI, 300));
@@ -1169,7 +1175,6 @@
             }
 
             function onFsChange() {
-                // 離開全螢幕後縮回視窗模式
                 const container = document.getElementById('vid-video-container');
                 if (!container) return;
                 if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -1179,26 +1184,34 @@
                 }
             }
 
-            document.getElementById('vid-skip-btn').addEventListener('click', dismissAndShowAI);
-
-            document.getElementById('vid-watch-btn').addEventListener('click', function() {
+            // 在使用者手勢內動態建立 iframe（必須在點擊同步執行，確保 autoplay 授權）
+            // requestFullscreen 延遲 300ms（Chrome User Activation v2 的 5 秒窗口內仍有效）
+            function startPlayer() {
                 document.getElementById('vid-prompt').style.display = 'none';
-                const playerWrap = document.getElementById('vid-player-wrap');
-                playerWrap.style.display = 'flex';
-                playerShowing = true;
+                document.getElementById('vid-player-wrap').style.display = 'flex';
 
-                // 使用者點擊後才設 src，確保瀏覽器允許 autoplay
-                document.getElementById('vid-iframe').src =
-                    `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&playsinline=1&enablejsapi=1`;
+                const slot = document.getElementById('vid-iframe-slot');
+                const iframe = document.createElement('iframe');
+                iframe.allow = 'autoplay; picture-in-picture';
+                iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+                iframe.src = embedUrl;
+                slot.appendChild(iframe);
 
                 window.addEventListener('message', onYTMessage);
                 document.addEventListener('fullscreenchange', onFsChange);
                 document.addEventListener('webkitfullscreenchange', onFsChange);
 
-                const overlay = document.getElementById('vid-overlay');
-                const fs = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
-                if (fs) fs.call(overlay).catch(() => {});
-            });
+                setTimeout(function() {
+                    const overlay = document.getElementById('vid-overlay');
+                    if (overlay) {
+                        const fs = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+                        if (fs) fs.call(overlay).catch(() => {});
+                    }
+                }, 300);
+            }
+
+            document.getElementById('vid-skip-btn').addEventListener('click', dismissAndShowAI);
+            document.getElementById('vid-watch-btn').addEventListener('click', startPlayer);
 
             document.getElementById('vid-close-btn').addEventListener('click', function() {
                 const exit = document.exitFullscreen || document.webkitExitFullscreen;
@@ -1208,6 +1221,9 @@
                     dismissAndShowAI();
                 }
             });
+
+            // 直接播放模式（從 AI modal「重看」按鈕呼叫，使用者手勢已傳入）
+            if (directPlay) startPlayer();
         }
 
         // 動態決定 AI Consultant URL（正式站用 production URL，其他環境用相對路徑）
@@ -1226,6 +1242,11 @@
         window.skipAIConsultation = function () {
             localStorage.setItem('duet_skip_ai', 'true');
             document.getElementById('ai-intro-modal')?.remove();
+        }
+
+        window.rewatchTutorial = function () {
+            document.getElementById('ai-intro-modal')?.remove();
+            showVideoIntroModal(true);
         }
 
         window.openDesignConsultant = function () {
