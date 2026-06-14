@@ -4621,6 +4621,8 @@
                                 </div>
                             </div>
 
+                            <p id="email-confirm-hint" style="font-size:12px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:center;"></p>
+
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
@@ -4657,6 +4659,18 @@
                         }
                     });
                 });
+
+                // email 提示：即時顯示確認信寄送地址
+                const emailInput = document.getElementById('buyer-email');
+                const emailHint = document.getElementById('email-confirm-hint');
+                const updateEmailHint = () => {
+                    const v = emailInput.value.trim();
+                    const label = window.currentLang === 'en'
+                        ? 'Confirmation email will be sent to:'
+                        : '確認信將寄至：';
+                    emailHint.textContent = v ? `${label} ${v}` : '';
+                };
+                emailInput.addEventListener('input', updateEmailHint);
 
                 // 國家切換 → 更新郵遞區號格式提示與地址提示
                 const _POSTAL_HINTS = {
