@@ -1187,10 +1187,15 @@
             }
 
             // 在使用者手勢內動態建立 iframe（必須在點擊同步執行，確保 autoplay 授權）
-            // requestFullscreen 延遲 300ms（Chrome User Activation v2 的 5 秒窗口內仍有效）
             function startPlayer() {
                 document.getElementById('vid-prompt').style.display = 'none';
                 document.getElementById('vid-player-wrap').style.display = 'flex';
+
+                // 先 requestFullscreen（同步，在 user gesture 內）→ 隱藏瀏覽器網址列
+                // 再建 iframe（同步，仍在同一 gesture 脈絡）→ autoplay 也被允許
+                const fsTarget = document.documentElement;
+                const requestFs = fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen || fsTarget.mozRequestFullScreen;
+                if (requestFs) requestFs.call(fsTarget).catch(() => {});
 
                 const slot = document.getElementById('vid-iframe-slot');
                 const iframe = document.createElement('iframe');
@@ -1210,9 +1215,16 @@
                 titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
                 shield.appendChild(titleZone);
 
-                // 黑色不透明遮罩：精準蓋住左上角頻道 logo 與頻道名稱
+                // 黑色遮罩蓋住頻道 logo 與名稱，右緣與下緣用 mask-image 漸層淡出
                 const channelMask = document.createElement('div');
-                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:320px;height:58px;pointer-events:auto;cursor:default;background:#000;';
+                channelMask.style.cssText = [
+                    'position:absolute;top:0;left:0;width:340px;height:68px;',
+                    'pointer-events:auto;cursor:default;background:#000;',
+                    '-webkit-mask-image:linear-gradient(to right,black 55%,transparent 100%),linear-gradient(to bottom,black 50%,transparent 100%);',
+                    '-webkit-mask-composite:source-in;',
+                    'mask-image:linear-gradient(to right,black 55%,transparent 100%),linear-gradient(to bottom,black 50%,transparent 100%);',
+                    'mask-composite:intersect;'
+                ].join('');
                 shield.appendChild(channelMask);
 
                 // 下方左側：分享 icon（放大確保完整覆蓋）
@@ -1230,14 +1242,6 @@
                 window.addEventListener('message', onYTMessage);
                 document.addEventListener('fullscreenchange', onFsChange);
                 document.addEventListener('webkitfullscreenchange', onFsChange);
-
-                setTimeout(function() {
-                    const overlay = document.getElementById('vid-overlay');
-                    if (overlay) {
-                        const fs = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
-                        if (fs) fs.call(overlay).catch(() => {});
-                    }
-                }, 300);
             }
 
             document.getElementById('vid-skip-btn').addEventListener('click', dismissAndShowAI);
