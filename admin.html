@@ -3387,21 +3387,29 @@
                 reviewOrders = data.orders || [];
                 const prevCount = data.previously_reviewed_count || 0;
                 statusEl.textContent = '';
+                const diffCount = reviewOrders.filter(o=>o.has_story_diff).length;
+                const testSkipCount = reviewOrders.filter(o=>o.is_test && !o.has_story_diff).length;
                 document.getElementById('reviewOrderSummary').textContent =
-                    `共 ${data.total} 筆，${reviewOrders.filter(o=>o.has_story_diff).length} 筆有設計理念差異` +
+                    `共 ${data.total} 筆，${diffCount} 筆有設計理念差異` +
+                    (testSkipCount > 0 ? `，${testSkipCount} 筆測試訂單（無差異）將自動排除` : '') +
                     (prevCount > 0 ? `，⚠️ ${prevCount} 筆曾被撈取過` : '');
                 // 渲染清單
                 if (reviewOrders.length === 0) {
                     document.getElementById('reviewOrderTable').innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:4px 0;">此區間無符合條件的訂單（需有 AI 諮詢對話）</div>';
                 } else {
-                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => `
-                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+                    document.getElementById('reviewOrderTable').innerHTML = reviewOrders.map(o => {
+                        const willSkip = o.is_test && !o.has_story_diff;
+                        return `
+                        <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;${willSkip ? 'opacity:0.4;' : ''}">
                             <span style="color:var(--text-muted);min-width:100px;">${o.orderId}</span>
                             <span style="color:var(--text-light);min-width:40px;">${o.letters || '-'}</span>
+                            ${o.is_test ? '<span style="color:#f59e0b;font-size:10px;padding:1px 5px;border:1px solid #f59e0b;border-radius:4px;">測試</span>' : ''}
                             <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
+                            ${willSkip ? '<span style="color:#9ca3af;font-size:10px;">自動排除</span>' : ''}
                             ${o.previously_reviewed ? '<span style="color:#fbbf24;font-size:11px;">⚠️ 曾撈取</span>' : ''}
                             <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : ''}</span>
-                        </div>`).join('');
+                        </div>`;
+                    }).join('');
                 }
                 document.getElementById('reviewOrderList').style.display = 'block';
             } catch (e) {
@@ -3491,9 +3499,7 @@
                             <span style="font-size:11px;color:var(--text-muted);">${item.date_from || '?'} ~ ${item.date_to || '?'} · ${item.order_count || 0} 筆</span>
                             <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-TW') : ''}</span>
                         </div>
-                        <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}">
-                            ${(item.suggestion_text || '').slice(0, 200)}${(item.suggestion_text || '').length > 200 ? '…' : ''}
-                        </div>
+                        <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}"></div>
                         <button onclick="toggleSuggestionExpand(${item.id})" style="background:none;border:none;color:var(--primary);font-size:11px;cursor:pointer;margin-top:4px;padding:0;" id="sugg-expand-${item.id}">展開全文</button>
                         ${item.status === 'pending' ? `
                         <div style="display:flex;gap:6px;margin-top:8px;">
@@ -3501,6 +3507,11 @@
                             <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="resolveSuggestion(${item.id},'reject')">拒絕</button>
                         </div>` : ''}
                     </div>`).join('');
+                // 完整文字以 textContent 填入（避免 HTML 注入，並確保「展開全文」能顯示全文）
+                items.forEach(item => {
+                    const bodyEl = document.getElementById(`sugg-body-${item.id}`);
+                    if (bodyEl) bodyEl.textContent = item.suggestion_text || '';
+                });
             } catch(e) {
                 listEl.innerHTML = `<div style="color:#f87171;font-size:13px;">載入失敗：${e.message}</div>`;
             }
@@ -3643,8 +3654,9 @@
                         <td>${d.platform_fee}%</td>
                         <td>${statusBadge}</td>
                         <td>${dateStr}</td>
-                        <td>
+                        <td style="display:flex;gap:6px;">
                             <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="toggleDistributor('${d.region}', ${!d.is_active})">${toggleLabel}</button>
+                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="resetDistributorPassword('${d.region}')">重置密碼</button>
                         </td>
                     </tr>`;
                 }).join('');
@@ -3680,6 +3692,26 @@
                     alert(`代理商 ${body.region} 建立成功`);
                 } else {
                     alert(data.error || '建立失敗');
+                }
+            } catch(e) {
+                alert('網路錯誤');
+            }
+        }
+
+        async function resetDistributorPassword(region) {
+            const newPw = prompt(`請輸入代理商 ${region} 的新密碼：`);
+            if (!newPw) return;
+            if (newPw.length < 6) { alert('密碼至少需要 6 個字元'); return; }
+            try {
+                const res = await callApi(`/api/admin/distributors/${region}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ password: newPw })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`代理商 ${region} 密碼已重置`);
+                } else {
+                    alert(data.error || '重置失敗');
                 }
             } catch(e) {
                 alert('網路錯誤');

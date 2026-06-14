@@ -1179,6 +1179,13 @@
             const paymentFailed = urlParams.get('payment_failed') === 'true';
             const orderId = urlParams.get('order');
 
+            // Kiosk 模式：代理商門市帶入 ?mode=kiosk，清除前一位顧客的 session
+            if (urlParams.get('mode') === 'kiosk') {
+                ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
+                window.history.replaceState({}, document.title, window.location.pathname);
+                console.log('🏪 Kiosk 模式：已清除上一位顧客的設計 session');
+            }
+
             console.log('🔍 URL 參數檢測:', {
                 paymentSuccess,
                 paymentFailed,
@@ -1192,6 +1199,9 @@
 
                 // 清除 URL 參數（避免重複觸發）
                 window.history.replaceState({}, document.title, window.location.pathname);
+
+                // 清除上一次的設計 session，讓下次進來可以重新開始新流程
+                ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
 
                 // 設定標記：付款成功後進入設計理念流程
                 window.isPostPayment = true;
@@ -4621,6 +4631,8 @@
                                 </div>
                             </div>
 
+                            <p id="email-confirm-hint" style="font-size:12px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:center;"></p>
+
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
@@ -4657,6 +4669,18 @@
                         }
                     });
                 });
+
+                // email 提示：即時顯示確認信寄送地址
+                const emailInput = document.getElementById('buyer-email');
+                const emailHint = document.getElementById('email-confirm-hint');
+                const updateEmailHint = () => {
+                    const v = emailInput.value.trim();
+                    const label = window.currentLang === 'en'
+                        ? 'Confirmation email will be sent to:'
+                        : '確認信將寄至：';
+                    emailHint.textContent = v ? `${label} ${v}` : '';
+                };
+                emailInput.addEventListener('input', updateEmailHint);
 
                 // 國家切換 → 更新郵遞區號格式提示與地址提示
                 const _POSTAL_HINTS = {
@@ -5901,7 +5925,8 @@
                 } else {
                     const reply = data.message || (lang === 'en' ? 'Please try again.' : '請再試一次。');
                     _ppAddMessage('assistant', reply);
-                    history.push({ role: 'assistant', content: reply });
+                    // 從歷史記錄剝除 UI token，避免回傳給 AI 時造成混淆
+                    history.push({ role: 'assistant', content: reply.replace('[SHOW_LETTER_PICKER]', '').trim() });
                 }
             } catch (_) {
                 _ppRemoveTyping(typingId);
@@ -5925,6 +5950,17 @@
     function _ppAddMessage(role, text) {
         const container = document.getElementById('post-payment-chat-container');
         const isUser = role === 'user';
+
+        // 使用者送出訊息時，移除尚未使用的字母選擇器
+        if (isUser) {
+            const picker = document.getElementById('pp-letter-picker');
+            if (picker) picker.remove();
+        }
+
+        // 偵測字母選擇觸發 token（僅 AI 訊息）
+        const showPicker = !isUser && text.includes('[SHOW_LETTER_PICKER]');
+        const displayText = showPicker ? text.replace('[SHOW_LETTER_PICKER]', '').trim() : text;
+
         const bubble = document.createElement('div');
         bubble.style.cssText = `
             display: flex;
@@ -5940,8 +5976,11 @@
             font-size: 14px;
             line-height: 1.55;
             white-space: pre-wrap;
-        ">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+        ">${displayText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
         container.appendChild(bubble);
+
+        if (showPicker) _ppShowLetterPicker(container);
+
         container.scrollTop = container.scrollHeight;
         return bubble;
     }
@@ -5969,6 +6008,112 @@
     function _ppRemoveTyping(id) {
         const el = document.getElementById(id);
         if (el) el.remove();
+    }
+
+    function _ppShowLetterPicker(container) {
+        const existing = document.getElementById('pp-letter-picker');
+        if (existing) existing.remove();
+
+        const isEn = new URLSearchParams(window.location.search).get('lang') === 'en';
+        const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const lower = 'abcdefghijklmnopqrstuvwxyz'.split('');
+        const digits = '0123456789'.split('');
+
+        const buildOptions = () => {
+            let h = `<option value="">${isEn ? '— Select —' : '— 選擇 —'}</option>`;
+            h += `<optgroup label="${isEn ? 'Uppercase A–Z' : '大寫 A–Z'}">`;
+            upper.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+            h += `</optgroup><optgroup label="${isEn ? 'Lowercase a–z' : '小寫 a–z'}">`;
+            lower.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+            h += `</optgroup><optgroup label="${isEn ? 'Digits 0–9' : '數字 0–9'}">`;
+            digits.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+            h += `</optgroup>`;
+            return h;
+        };
+
+        const selStyle = `
+            width:100%;
+            background:rgba(0,0,0,0.5);
+            border:1px solid rgba(212,175,55,0.35);
+            border-radius:8px;
+            color:#fff;
+            padding:9px 36px 9px 12px;
+            font-size:16px;
+            font-family:inherit;
+            cursor:pointer;
+            outline:none;
+            appearance:none;
+            -webkit-appearance:none;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23d4af37' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;
+            background-position:right 12px center;
+        `;
+
+        const picker = document.createElement('div');
+        picker.id = 'pp-letter-picker';
+        picker.style.cssText = `
+            margin: 0 0 16px 0;
+            padding: 16px;
+            background: rgba(212,175,55,0.05);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 16px;
+        `;
+        picker.innerHTML = `
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:12px;">
+                ${isEn ? 'SELECT YOUR TWO LETTERS' : '選擇你的兩個字母'}
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:12px;">
+                <div style="flex:1;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:5px;">
+                        ${isEn ? 'FIRST' : '第一個'}
+                    </div>
+                    <select id="pp-letter1" style="${selStyle}">${buildOptions()}</select>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:5px;">
+                        ${isEn ? 'SECOND' : '第二個'}
+                    </div>
+                    <select id="pp-letter2" style="${selStyle}">${buildOptions()}</select>
+                </div>
+            </div>
+            <button id="pp-letter-confirm" style="
+                background:linear-gradient(135deg,#d4af37,#b8932a);
+                color:#000;
+                border:none;
+                border-radius:20px;
+                padding:9px 0;
+                font-size:14px;
+                font-weight:600;
+                cursor:pointer;
+                font-family:inherit;
+                width:100%;
+                letter-spacing:0.3px;
+            ">${isEn ? 'Confirm' : '確認選擇'}</button>
+        `;
+        container.appendChild(picker);
+        container.scrollTop = container.scrollHeight;
+
+        picker.querySelector('#pp-letter-confirm').addEventListener('click', _ppSubmitLetterPicker);
+    }
+
+    function _ppSubmitLetterPicker() {
+        const l1 = document.getElementById('pp-letter1')?.value;
+        const l2 = document.getElementById('pp-letter2')?.value;
+        if (!l1 || !l2) {
+            ['pp-letter1', 'pp-letter2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) {
+                    el.style.borderColor = 'rgba(255,80,80,0.7)';
+                    setTimeout(() => { el.style.borderColor = 'rgba(212,175,55,0.35)'; }, 1000);
+                }
+            });
+            return;
+        }
+        document.getElementById('pp-letter-picker')?.remove();
+        const isEn = new URLSearchParams(window.location.search).get('lang') === 'en';
+        const inp = document.getElementById('post-payment-user-input');
+        inp.value = isEn ? `Letter ${l1} and Letter ${l2}` : `字母 ${l1} 和字母 ${l2}`;
+        document.getElementById('post-payment-send-btn').click();
     }
     </script>
 

@@ -883,28 +883,35 @@
         // Add Message to Chat
         function addMessage(role, content) {
             const chatContainer = document.getElementById('chat-container');
+
+            // 使用者送出時移除尚未使用的字母選擇器
+            if (role === 'user') {
+                const existing = document.getElementById('letter-picker');
+                if (existing) existing.remove();
+            }
+
+            // 偵測字母選擇觸發 token（僅 AI 訊息）
+            const showPicker = role === 'assistant' && content.includes('[SHOW_LETTER_PICKER]');
+            const displayContent = showPicker ? content.replace('[SHOW_LETTER_PICKER]', '').trim() : content;
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
 
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
 
-            // 如果是 AI 訊息，使用打字機效果
             if (role === 'assistant') {
-                bubbleDiv.textContent = '';
+                bubbleDiv.textContent = displayContent;
                 messageDiv.appendChild(bubbleDiv);
                 chatContainer.appendChild(messageDiv);
-
-                // 直接顯示全部內容（移除打字機效果）
-                bubbleDiv.textContent = content;
             } else {
-                // 用戶訊息直接顯示
-                bubbleDiv.textContent = content;
+                bubbleDiv.textContent = displayContent;
                 messageDiv.appendChild(bubbleDiv);
                 chatContainer.appendChild(messageDiv);
             }
 
-            // Scroll to bottom
+            if (showPicker) showLetterPicker(chatContainer);
+
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
@@ -1012,9 +1019,10 @@
 
                     // Continue conversation
                     addMessage('assistant', message);
+                    // 剝除 UI token，避免傳回 AI 時造成混淆
                     conversationHistory.push({
                         role: 'assistant',
-                        content: message
+                        content: message.replace('[SHOW_LETTER_PICKER]', '').trim()
                     });
                     
                     // 儲存更新後的對話
@@ -1193,6 +1201,121 @@
                 : 'https://duet.brendonchen.com/design-studio.html?from=ai';
             posthog.capture('consultation_to_studio');
             window.top.location.href = target;
+        }
+
+        let _letterPickerShown = false;
+
+        function showLetterPicker(chatContainer) {
+            // 每次會話只顯示一次，避免 AI 在確認回應中重複觸發
+            if (_letterPickerShown) return;
+            _letterPickerShown = true;
+
+            const existing = document.getElementById('letter-picker');
+            if (existing) existing.remove();
+
+            const isEn = (localStorage.getItem('duet_language') || 'zh') === 'en';
+            const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const lower = 'abcdefghijklmnopqrstuvwxyz'.split('');
+            const digits = '0123456789'.split('');
+
+            const buildOptions = () => {
+                let h = `<option value="">${isEn ? '— Select —' : '— 選擇 —'}</option>`;
+                h += `<optgroup label="${isEn ? 'Uppercase A–Z' : '大寫 A–Z'}">`;
+                upper.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+                h += `</optgroup><optgroup label="${isEn ? 'Lowercase a–z' : '小寫 a–z'}">`;
+                lower.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+                h += `</optgroup><optgroup label="${isEn ? 'Digits 0–9' : '數字 0–9'}">`;
+                digits.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+                h += `</optgroup>`;
+                return h;
+            };
+
+            const selStyle = `
+                width:100%;
+                background:rgba(0,0,0,0.35);
+                border:1px solid rgba(212,175,55,0.4);
+                border-radius:10px;
+                color:#fff;
+                padding:10px 36px 10px 14px;
+                font-size:16px;
+                font-family:inherit;
+                cursor:pointer;
+                outline:none;
+                appearance:none;
+                -webkit-appearance:none;
+                background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23d4af37' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+                background-repeat:no-repeat;
+                background-position:right 12px center;
+            `;
+
+            const picker = document.createElement('div');
+            picker.id = 'letter-picker';
+            picker.className = 'message assistant';
+            picker.style.cssText = 'animation: messageSlideIn 0.3s ease-out;';
+            picker.innerHTML = `
+                <div style="
+                    display:inline-block;
+                    width:min(320px,90%);
+                    padding:18px;
+                    border-radius:20px;
+                    background:rgba(212,175,55,0.12);
+                    border:1px solid rgba(212,175,55,0.4);
+                    backdrop-filter:blur(10px);
+                    -webkit-backdrop-filter:blur(10px);
+                    box-shadow:0 4px 12px rgba(212,175,55,0.1);
+                ">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:1px;margin-bottom:14px;">
+                        ${isEn ? 'SELECT YOUR TWO LETTERS' : '選擇你的兩個字母'}
+                    </div>
+                    <div style="display:flex;gap:12px;margin-bottom:14px;">
+                        <div style="flex:1;">
+                            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">${isEn ? 'FIRST' : '第一個'}</div>
+                            <select id="lp-letter1" style="${selStyle}">${buildOptions()}</select>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">${isEn ? 'SECOND' : '第二個'}</div>
+                            <select id="lp-letter2" style="${selStyle}">${buildOptions()}</select>
+                        </div>
+                    </div>
+                    <button id="lp-confirm" style="
+                        background:linear-gradient(135deg,#d4af37,#b8932a);
+                        color:#000;
+                        border:none;
+                        border-radius:20px;
+                        padding:10px 0;
+                        font-size:14px;
+                        font-weight:600;
+                        cursor:pointer;
+                        font-family:inherit;
+                        width:100%;
+                        letter-spacing:0.3px;
+                    ">${isEn ? 'Confirm' : '確認選擇'}</button>
+                </div>
+            `;
+            chatContainer.appendChild(picker);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            picker.querySelector('#lp-confirm').addEventListener('click', submitLetterPicker);
+        }
+
+        function submitLetterPicker() {
+            const l1 = document.getElementById('lp-letter1')?.value;
+            const l2 = document.getElementById('lp-letter2')?.value;
+            if (!l1 || !l2) {
+                ['lp-letter1', 'lp-letter2'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && !el.value) {
+                        el.style.borderColor = 'rgba(255,80,80,0.7)';
+                        setTimeout(() => { el.style.borderColor = 'rgba(212,175,55,0.4)'; }, 1000);
+                    }
+                });
+                return;
+            }
+            document.getElementById('letter-picker')?.remove();
+            const isEn = (localStorage.getItem('duet_language') || 'zh') === 'en';
+            const inp = document.getElementById('user-input');
+            inp.value = isEn ? `Letter ${l1} and Letter ${l2}` : `字母 ${l1} 和字母 ${l2}`;
+            document.getElementById('send-btn').click();
         }
 
     </script>
