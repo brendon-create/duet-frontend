@@ -1203,7 +1203,13 @@
             window.top.location.href = target;
         }
 
+        let _letterPickerShown = false;
+
         function showLetterPicker(chatContainer) {
+            // 每次會話只顯示一次，避免 AI 在確認回應中重複觸發
+            if (_letterPickerShown) return;
+            _letterPickerShown = true;
+
             const existing = document.getElementById('letter-picker');
             if (existing) existing.remove();
 
