@@ -1205,14 +1205,14 @@
                 shield.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;';
 
                 // 上方左側：影片標題 + 頻道名稱（hover 出現，點擊連到 YouTube）
-                // 右側留 130px 給音量、CC、設定按鈕，讓使用者可以操作
+                // 右側留 190px 給音量、CC、設定按鈕，讓使用者可以操作
                 const titleZone = document.createElement('div');
-                titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 130px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
+                titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
                 shield.appendChild(titleZone);
 
-                // 下方左側：分享 icon（點擊後有連到 YouTube 的選項）
+                // 下方左側：分享 icon（放大確保完整覆蓋）
                 const shareZone = document.createElement('div');
-                shareZone.style.cssText = 'position:absolute;bottom:0;left:0;width:70px;height:56px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
+                shareZone.style.cssText = 'position:absolute;bottom:0;left:0;width:100px;height:70px;pointer-events:auto;cursor:not-allowed;background:rgba(0,0,0,0.001);';
                 shield.appendChild(shareZone);
 
                 // 下方右側：YouTube logo（modestbranding=1 縮小但無法移除）
