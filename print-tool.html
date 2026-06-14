@@ -737,6 +737,14 @@ body {
 <!-- 批次列印容器（螢幕隱藏，列印時顯示） -->
 <div id="batch-container"></div>
 
+<!-- 批次量測用隱形元素（與正式 card-inner 相同 CSS，供 DOM scrollHeight 量測） -->
+<div style="position:fixed;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;">
+    <div class="card-inner wide" id="measure-card">
+        <div class="text-panel-left" id="measure-left"></div>
+        <div class="text-panel" id="measure-right"></div>
+    </div>
+</div>
+
 <script>
 const storyInput = document.getElementById('story-input');
 const charCountEl = document.getElementById('char-count');
@@ -940,6 +948,9 @@ async function batchImport() {
         if (ok.length === 0) return;
     }
 
+    // 確保字體已載入後再進行 DOM 量測
+    await document.fonts.ready;
+
     // 建立批次列印 HTML（與單筆相同版面：上下各一張 bi-fold 卡）
     const container = document.getElementById('batch-container');
     container.innerHTML = '';
@@ -978,7 +989,7 @@ async function batchImport() {
     document.getElementById('batchPrintBar').style.display = 'flex';
 }
 
-/* 批次內頁卡片（與單筆 card-inner 相同版面） */
+/* 批次內頁卡片（與單筆 card-inner 相同版面，使用 DOM 量測決定分段位置） */
 function buildBatchCardInner(result, num) {
     if (!result) return '';
     const order = result.order;
@@ -987,31 +998,57 @@ function buildBatchCardInner(result, num) {
         item.designStory || item.design_story || '';
     const paras = story.trim() ? story.trim().split(/\n+/).filter(p => p.trim()) : [];
 
-    const toHTML = arr => arr.map(p =>
-        `<p>${p.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`
-    ).join('');
+    const toP = s => `<p>${s.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`;
 
     let leftHTML = '', rightHTML = '', wide = false;
+
     if (paras.length === 0) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
-    } else if (paras.length >= 2 && story.trim().length > 130) {
-        wide = true;
-        // 字元數智慧分頁：最小化溢出；溢出相同時偏好均衡使用率
-        const LEFT_CAP = 192, RIGHT_CAP = 136;
-        let bestSplit = 1, bestScore = -Infinity;
-        for (let i = 1; i < paras.length; i++) {
-            const leftLen = paras.slice(0, i).join('').length;
-            const rightLen = paras.slice(i).join('').length;
-            const overflow = Math.max(0, leftLen - LEFT_CAP) + Math.max(0, rightLen - RIGHT_CAP);
-            const score = overflow === 0
-                ? Math.min(leftLen / LEFT_CAP, rightLen / RIGHT_CAP)
-                : -overflow;
-            if (score > bestScore) { bestScore = score; bestSplit = i; }
-        }
-        leftHTML = toHTML(paras.slice(0, bestSplit));
-        rightHTML = toHTML(paras.slice(bestSplit));
     } else {
-        rightHTML = toHTML(paras);
+        const mRight = document.getElementById('measure-right');
+        const mLeft = document.getElementById('measure-left');
+        const allHTML = paras.map(toP).join('');
+
+        mRight.innerHTML = allHTML;
+
+        if (mRight.scrollHeight <= mRight.clientHeight + 2) {
+            rightHTML = allHTML;
+        } else {
+            wide = true;
+
+            // 量測左欄可放幾段（binary search）
+            let lo = 0, hi = paras.length;
+            while (lo < hi - 1) {
+                const mid = Math.floor((lo + hi) / 2);
+                mLeft.innerHTML = paras.slice(0, mid).map(toP).join('');
+                if (mLeft.scrollHeight <= mLeft.clientHeight + 2) lo = mid; else hi = mid;
+            }
+
+            let part1 = paras.slice(0, lo).map(toP).join('');
+            let part2 = paras.slice(lo).map(toP).join('');
+
+            // 若右欄仍溢出，嘗試把下一段的開頭句子移到左欄
+            mRight.innerHTML = part2;
+            if (mRight.scrollHeight > mRight.clientHeight + 2 && lo < paras.length) {
+                const nextPara = paras[lo];
+                const sentences = nextPara.split(/(?<=[。？！])/).filter(s => s.trim());
+                for (let k = 1; k < sentences.length; k++) {
+                    const leftPart = sentences.slice(0, k).join('');
+                    const rightPart = sentences.slice(k).join('');
+                    const tryHTML = part1 + toP(leftPart);
+                    mLeft.innerHTML = tryHTML;
+                    if (mLeft.scrollHeight <= mLeft.clientHeight + 2) {
+                        part1 = tryHTML;
+                        const remaining = (rightPart ? [rightPart] : []).concat(paras.slice(lo + 1));
+                        part2 = remaining.map(toP).join('');
+                        break;
+                    }
+                }
+            }
+
+            leftHTML = part1;
+            rightHTML = part2;
+        }
     }
 
     return `

@@ -22,7 +22,7 @@
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
         font-src 'self' https://fonts.gstatic.com https://raw.githubusercontent.com data:;
         img-src 'self' data: blob: https://*.supabase.co https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://raw.githubusercontent.com;
-        frame-src 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw;
+        frame-src 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://www.youtube.com https://www.youtube-nocookie.com;
         connect-src 'self' https://*.supabase.co https://*.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://us.i.posthog.com;
     ">
     
@@ -1042,6 +1042,15 @@
                                        font-family: 'Cormorant Garamond', serif;">
                             ${_aiLang === 'en' ? "No thanks, I'll choose letters and fonts myself" : '不需要，我想自己選擇字母與字體，直接開始'}
                         </button>
+                        ${localStorage.getItem('duet_video_prompt_shown') ? `
+                        <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
+                            <button onclick="rewatchTutorial()"
+                                    style="background:transparent;color:rgba(255,255,255,0.35);border:none;
+                                           font-size:12px;cursor:pointer;letter-spacing:0.5px;padding:4px 0;
+                                           font-family:'Cormorant Garamond',serif;text-decoration:underline;text-underline-offset:3px;">
+                                ${_aiLang === 'en' ? '▶  Re-watch the Tutorial' : '▶  重看「訂製介面操作介紹」影片'}
+                            </button>
+                        </div>` : ''}
                     </div>
                 </div>
                 <style>
@@ -1067,6 +1076,186 @@
             }
         }
 
+        // 顯示影片操作介紹 Modal（首次進入時，在 AI 介紹前顯示）
+        // directPlay=true：跳過詢問畫面直接播放（從 AI modal「重看」按鈕呼叫，帶使用者手勢）
+        function showVideoIntroModal(directPlay) {
+            const lang = localStorage.getItem('duet_language') || 'zh';
+            const videoId = lang === 'en' ? 'G2fE5FlXa0E' : 'PqmIZ9scqTA';
+            const isZh = lang !== 'en';
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&playsinline=1&enablejsapi=1`;
+
+            if (!directPlay) {
+                localStorage.setItem('duet_video_prompt_shown', 'true');
+            }
+
+            const modal = document.createElement('div');
+            modal.id = 'video-intro-modal';
+            modal.innerHTML = `
+                <div id="vid-overlay" style="
+                    position:fixed;top:0;left:0;width:100%;height:100%;
+                    background:rgba(0,0,0,0.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+                    display:flex;flex-direction:column;justify-content:center;align-items:center;
+                    z-index:10002;animation:fadeIn 0.4s ease-out;
+                ">
+                    <!-- 詢問是否觀看的提示面板 -->
+                    <div id="vid-prompt" style="
+                        background:rgba(26,26,26,0.92);border:1px solid rgba(212,175,55,0.3);
+                        border-radius:24px;padding:45px 55px;max-width:520px;width:90%;
+                        color:#fff;box-shadow:0 25px 50px rgba(0,0,0,0.5);
+                        text-align:center;font-family:'Cormorant Garamond',serif;
+                    ">
+                        <div style="font-size:32px;color:#d4af37;font-weight:400;letter-spacing:8px;margin-bottom:20px;font-family:'Cantata One',serif;">DUET</div>
+                        <h2 style="color:#d4af37;font-size:21px;font-weight:400;letter-spacing:2px;margin-bottom:18px;">
+                            ${isZh ? '第一次來到 DUET Design Studio？' : 'New to DUET Design Studio?'}
+                        </h2>
+                        <p style="color:#ccc;font-size:${isZh ? '14px' : '15px'};line-height:1.85;margin-bottom:32px;">
+                            ${isZh
+                                ? '建議先觀看 2 分鐘操作介紹，幫助您快速熟悉設計工具，<br>讓設計過程更加順暢。'
+                                : 'We recommend watching a 2-minute tutorial to get familiar with the design tools before you begin.'}
+                        </p>
+                        <button id="vid-watch-btn" style="
+                            width:100%;background:linear-gradient(135deg,#8E795E,#a89276);
+                            color:#fff;border:none;padding:15px 35px;border-radius:50px;
+                            font-size:15px;font-weight:500;cursor:pointer;margin-bottom:10px;
+                            letter-spacing:1px;font-family:'Cormorant Garamond',serif;
+                        ">
+                            ${isZh ? '▶  觀看操作介紹影片' : '▶  Watch the Tutorial'}
+                        </button>
+                        <button id="vid-skip-btn" style="
+                            width:100%;background:transparent;color:#888;border:none;
+                            padding:10px;font-size:13px;cursor:pointer;font-family:'Cormorant Garamond',serif;
+                        ">
+                            ${isZh ? '略過，直接開始探索' : "Skip, I'll explore on my own"}
+                        </button>
+                    </div>
+
+                    <!-- 影片播放區（初始隱藏） -->
+                    <div id="vid-player-wrap" style="
+                        display:none;flex-direction:column;align-items:center;justify-content:center;
+                        width:100%;height:100%;padding:16px 20px;box-sizing:border-box;
+                    ">
+                        <!-- 影片寬度：以視窗高度為基準算出 16:9 最大寬度，再對比視窗寬度取小值 -->
+                        <div id="vid-video-container" style="width:min(calc((100vh - 80px) * 1.778), calc(100vw - 40px));max-width:100%;">
+                            <!-- iframe 在使用者點擊後動態插入，確保瀏覽器允許 autoplay -->
+                            <div id="vid-iframe-slot" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;"></div>
+                        </div>
+                        <button id="vid-close-btn" style="
+                            margin-top:14px;background:transparent;flex-shrink:0;
+                            color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.2);
+                            padding:8px 28px;border-radius:50px;font-size:13px;cursor:pointer;
+                            font-family:'Cormorant Garamond',serif;letter-spacing:1px;
+                        ">
+                            ${isZh ? '關閉影片，繼續使用' : 'Close & Continue'}
+                        </button>
+                    </div>
+                </div>
+                <style>
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to   { opacity: 1; }
+                }
+                </style>
+            `;
+            document.body.appendChild(modal);
+
+            function dismissAndShowAI() {
+                window.removeEventListener('message', onYTMessage);
+                document.removeEventListener('fullscreenchange', onFsChange);
+                document.removeEventListener('webkitfullscreenchange', onFsChange);
+                modal.remove();
+                showAIIntroModal();
+            }
+
+            function onYTMessage(e) {
+                if (e.origin !== 'https://www.youtube.com') return;
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.event === 'onStateChange' && data.info === 0) {
+                        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                        if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
+                            exit.call(document).then(() => setTimeout(dismissAndShowAI, 300)).catch(() => setTimeout(dismissAndShowAI, 300));
+                        } else {
+                            setTimeout(dismissAndShowAI, 300);
+                        }
+                    }
+                } catch(err) {}
+            }
+
+            function onFsChange() {
+                // 影片容器寬度由 CSS 自動計算（min(calc((100vh-80px)*1.778), calc(100vw-40px))）
+                // 全螢幕切換時瀏覽器重算 100vh，不需要 JS 介入
+            }
+
+            // 在使用者手勢內動態建立 iframe（必須在點擊同步執行，確保 autoplay 授權）
+            function startPlayer() {
+                document.getElementById('vid-prompt').style.display = 'none';
+                document.getElementById('vid-player-wrap').style.display = 'flex';
+
+                // 先 requestFullscreen（同步，在 user gesture 內）→ 隱藏瀏覽器網址列
+                // 再建 iframe（同步，仍在同一 gesture 脈絡）→ autoplay 也被允許
+                const fsTarget = document.documentElement;
+                const requestFs = fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen || fsTarget.mozRequestFullScreen;
+                if (requestFs) requestFs.call(fsTarget).catch(() => {});
+
+                const slot = document.getElementById('vid-iframe-slot');
+                const iframe = document.createElement('iframe');
+                iframe.allow = 'autoplay; picture-in-picture';
+                iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+                iframe.src = embedUrl;
+                slot.appendChild(iframe);
+
+                // 「瑞士起司」遮罩：全覆蓋 pointer-events:none（點擊穿透給影片）
+                // 只在 YouTube 可點擊的兩個區域設 pointer-events:auto 攔截點擊
+                const shield = document.createElement('div');
+                shield.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;';
+
+                // 上方左側：影片標題 + 頻道名稱（hover 出現，點擊連到 YouTube）
+                // 右側留 190px 給音量、CC、設定按鈕，讓使用者可以操作
+                const titleZone = document.createElement('div');
+                titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
+                shield.appendChild(titleZone);
+
+                // 黑色遮罩蓋住頻道 logo 與名稱，右緣與下緣用 mask-image 漸層淡出
+                // 黑色遮罩：蓋住影片中錄到的瀏覽器網址列 + YouTube 頻道名稱
+                // 寬度到底 - 右側 190px（保留 YouTube 音量/CC/設定按鈕）
+                // 右緣漸層淡出，視覺自然
+                const channelMask = document.createElement('div');
+                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:12%;pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
+                shield.appendChild(channelMask);
+
+                // 下方左側：分享 icon（放大確保完整覆蓋）
+                const shareZone = document.createElement('div');
+                shareZone.style.cssText = 'position:absolute;bottom:0;left:0;width:100px;height:70px;pointer-events:auto;cursor:not-allowed;background:rgba(0,0,0,0.001);';
+                shield.appendChild(shareZone);
+
+                // 下方右側：YouTube logo（modestbranding=1 縮小但無法移除）
+                const logoZone = document.createElement('div');
+                logoZone.style.cssText = 'position:absolute;bottom:0;right:0;width:200px;height:56px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
+                shield.appendChild(logoZone);
+
+                slot.appendChild(shield);
+
+                window.addEventListener('message', onYTMessage);
+                document.addEventListener('fullscreenchange', onFsChange);
+                document.addEventListener('webkitfullscreenchange', onFsChange);
+            }
+
+            document.getElementById('vid-skip-btn').addEventListener('click', dismissAndShowAI);
+            document.getElementById('vid-watch-btn').addEventListener('click', startPlayer);
+
+            document.getElementById('vid-close-btn').addEventListener('click', function() {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
+                    exit.call(document).then(dismissAndShowAI).catch(dismissAndShowAI);
+                } else {
+                    dismissAndShowAI();
+                }
+            });
+
+            // 直接播放模式（從 AI modal「重看」按鈕呼叫，使用者手勢已傳入）
+            if (directPlay) startPlayer();
+        }
+
         // 動態決定 AI Consultant URL（正式站用 production URL，其他環境用相對路徑）
         function getAIConsultantUrl() {
             if (window.location.hostname === 'duet.brendonchen.com') {
@@ -1083,6 +1272,11 @@
         window.skipAIConsultation = function () {
             localStorage.setItem('duet_skip_ai', 'true');
             document.getElementById('ai-intro-modal')?.remove();
+        }
+
+        window.rewatchTutorial = function () {
+            document.getElementById('ai-intro-modal')?.remove();
+            showVideoIntroModal(true);
         }
 
         window.openDesignConsultant = function () {
@@ -1400,18 +1594,24 @@
                 // 等待主畫面完全載入（包括 3D 球體）後 2 秒才顯示
                 function showAIAfterDelay() {
                     setTimeout(() => {
-                        console.log('🔔 2 秒延遲結束，顯示 AI 介紹');
-                        showAIIntroModal();
+                        const videoShown = localStorage.getItem('duet_video_prompt_shown');
+                        if (!videoShown) {
+                            console.log('🎬 首次進入，先顯示影片介紹');
+                            showVideoIntroModal();
+                        } else {
+                            console.log('🔔 2 秒延遲結束，顯示 AI 介紹');
+                            showAIIntroModal();
+                        }
                     }, 2000);
                 }
 
                 // 檢查頁面是否已經載入完成
                 if (document.readyState === 'complete') {
-                    console.log('🔔 頁面已載入完成，2 秒後顯示 AI 介紹');
+                    console.log('🔔 頁面已載入完成，2 秒後顯示介紹');
                     showAIAfterDelay();
                 } else {
                     window.addEventListener('load', () => {
-                        console.log('🔔 頁面載入完成，2 秒後顯示 AI 介紹');
+                        console.log('🔔 頁面載入完成，2 秒後顯示介紹');
                         showAIAfterDelay();
                     });
                 }
