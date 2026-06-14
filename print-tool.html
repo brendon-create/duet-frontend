@@ -996,17 +996,27 @@ function buildBatchCardInner(result, num) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
     } else if (paras.length >= 2 && story.trim().length > 130) {
         wide = true;
-        // 字元數智慧分頁：最小化溢出；溢出相同時偏好均衡使用率
+        // 盡量填滿左欄（與單筆 DOM 二分法邏輯一致）：
+        // 在左右都不溢出的前提下，取最大的 i；若無法不溢出，取最小溢出的 i
         const LEFT_CAP = 192, RIGHT_CAP = 136;
-        let bestSplit = 1, bestScore = -Infinity;
+        let bestSplit = 1;
+        let foundValid = false;
         for (let i = 1; i < paras.length; i++) {
             const leftLen = paras.slice(0, i).join('').length;
             const rightLen = paras.slice(i).join('').length;
-            const overflow = Math.max(0, leftLen - LEFT_CAP) + Math.max(0, rightLen - RIGHT_CAP);
-            const score = overflow === 0
-                ? Math.min(leftLen / LEFT_CAP, rightLen / RIGHT_CAP)
-                : -overflow;
-            if (score > bestScore) { bestScore = score; bestSplit = i; }
+            if (leftLen <= LEFT_CAP && rightLen <= RIGHT_CAP) {
+                bestSplit = i;
+                foundValid = true;
+            }
+        }
+        if (!foundValid) {
+            let minOverflow = Infinity;
+            for (let i = 1; i < paras.length; i++) {
+                const leftLen = paras.slice(0, i).join('').length;
+                const rightLen = paras.slice(i).join('').length;
+                const overflow = Math.max(0, leftLen - LEFT_CAP) + Math.max(0, rightLen - RIGHT_CAP);
+                if (overflow < minOverflow) { minOverflow = overflow; bestSplit = i; }
+            }
         }
         leftHTML = toHTML(paras.slice(0, bestSplit));
         rightHTML = toHTML(paras.slice(bestSplit));
