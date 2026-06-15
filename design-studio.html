@@ -1084,7 +1084,9 @@
             const isZh = lang !== 'en';
             // playsinline=1 必須保留：iOS 移除後會顯示「Watch on YouTube」而非播放
             // fs=1 開啟 YouTube 全螢幕按鈕，讓手機用戶可手動全螢幕
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&playsinline=1&enablejsapi=1`;
+            // origin= 讓 YouTube enablejsapi postMessage 可靠送達（iOS 尤其需要）
+            const origin = encodeURIComponent(location.origin);
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&playsinline=1&enablejsapi=1&origin=${origin}`;
 
             if (!directPlay) {
                 localStorage.setItem('duet_video_prompt_shown', 'true');
@@ -1169,10 +1171,14 @@
             }
 
             function onYTMessage(e) {
-                if (e.origin !== 'https://www.youtube.com') return;
+                if (!e.origin.includes('youtube.com')) return;
                 try {
                     const data = JSON.parse(e.data);
-                    if (data.event === 'onStateChange' && data.info === 0) {
+                    // YouTube 送出兩種格式：onStateChange 或 infoDelivery（iOS 常見後者）
+                    const ended =
+                        (data.event === 'onStateChange' && data.info === 0) ||
+                        (data.event === 'infoDelivery' && data.info && data.info.playerState === 0);
+                    if (ended) {
                         const exit = document.exitFullscreen || document.webkitExitFullscreen;
                         if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
                             exit.call(document).then(() => setTimeout(dismissAndShowAI, 300)).catch(() => setTimeout(dismissAndShowAI, 300));
