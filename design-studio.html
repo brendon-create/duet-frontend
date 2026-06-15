@@ -18,7 +18,7 @@
     <!-- 🔒 Content Security Policy - 放行所有資源 -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self' https://*.supabase.co https://*.onrender.com;
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://us.i.posthog.com;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://us.i.posthog.com https://www.youtube.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
         font-src 'self' https://fonts.gstatic.com https://raw.githubusercontent.com data:;
         img-src 'self' data: blob: https://*.supabase.co https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://raw.githubusercontent.com;
@@ -49,7 +49,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Cantata+One&family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="design-studio.css">
 
@@ -1082,9 +1082,16 @@
             const lang = localStorage.getItem('duet_language') || 'zh';
             const videoId = lang === 'en' ? 'G2fE5FlXa0E' : 'PqmIZ9scqTA';
             const isZh = lang !== 'en';
-            // fs=1 開啟全螢幕按鈕（iOS 靠此進入原生全螢幕）
-            // 移除 playsinline=1：讓 iOS Safari 以原生全螢幕模式播放，隱藏瀏覽器 chrome
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1`;
+            const origin = encodeURIComponent(location.origin);
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&playsinline=1&enablejsapi=1&origin=${origin}`;
+
+            // 預先載入 YouTube IFrame API（使用者點擊前完成載入，確保 onStateChange 可靠觸發）
+            if (!document.getElementById('yt-iframe-api')) {
+                const s = document.createElement('script');
+                s.id = 'yt-iframe-api';
+                s.src = 'https://www.youtube.com/iframe_api';
+                document.head.appendChild(s);
+            }
 
             if (!directPlay) {
                 localStorage.setItem('duet_video_prompt_shown', 'true');
@@ -1168,18 +1175,28 @@
                 showAIIntroModal();
             }
 
+            // 共用：影片結束處理（防止 YT.Player 與 postMessage 雙重觸發）
+            let videoEndHandled = false;
+            function handleVideoEnd() {
+                if (videoEndHandled) return;
+                videoEndHandled = true;
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
+                    exit.call(document).then(() => setTimeout(dismissAndShowAI, 300)).catch(() => setTimeout(dismissAndShowAI, 300));
+                } else {
+                    setTimeout(dismissAndShowAI, 300);
+                }
+            }
+
+            // postMessage 備援（YT.Player 失敗時仍可偵測）
             function onYTMessage(e) {
-                if (e.origin !== 'https://www.youtube.com') return;
+                if (!e.origin.includes('youtube.com')) return;
                 try {
                     const data = JSON.parse(e.data);
-                    if (data.event === 'onStateChange' && data.info === 0) {
-                        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                        if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
-                            exit.call(document).then(() => setTimeout(dismissAndShowAI, 300)).catch(() => setTimeout(dismissAndShowAI, 300));
-                        } else {
-                            setTimeout(dismissAndShowAI, 300);
-                        }
-                    }
+                    const ended =
+                        (data.event === 'onStateChange' && data.info === 0) ||
+                        (data.event === 'infoDelivery' && data.info && data.info.playerState === 0);
+                    if (ended) handleVideoEnd();
                 } catch(err) {}
             }
 
@@ -1200,11 +1217,33 @@
                 if (requestFs) requestFs.call(fsTarget).catch(() => {});
 
                 const slot = document.getElementById('vid-iframe-slot');
+                const iframeId = 'yt-player-iframe';
                 const iframe = document.createElement('iframe');
+                iframe.id = iframeId;
                 iframe.allow = 'autoplay; picture-in-picture';
                 iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
                 iframe.src = embedUrl;
                 slot.appendChild(iframe);
+
+                // YT.Player 包裝既有 iframe → 可靠取得 onStateChange(0) 事件
+                function wrapWithYTPlayer() {
+                    new YT.Player(iframeId, {
+                        events: {
+                            onStateChange: function(e) {
+                                if (e.data === 0) handleVideoEnd();
+                            }
+                        }
+                    });
+                }
+                if (window.YT && window.YT.Player) {
+                    wrapWithYTPlayer();
+                } else {
+                    const prevCb = window.onYouTubeIframeAPIReady;
+                    window.onYouTubeIframeAPIReady = function() {
+                        if (typeof prevCb === 'function') prevCb();
+                        wrapWithYTPlayer();
+                    };
+                }
 
                 // 「瑞士起司」遮罩：全覆蓋 pointer-events:none（點擊穿透給影片）
                 // 只在 YouTube 可點擊的兩個區域設 pointer-events:auto 攔截點擊
@@ -1217,14 +1256,23 @@
                 titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
                 shield.appendChild(titleZone);
 
-                // 黑色遮罩蓋住頻道 logo 與名稱，右緣與下緣用 mask-image 漸層淡出
                 // 黑色遮罩：蓋住影片中錄到的瀏覽器網址列 + YouTube 頻道名稱
-                // 寬度到底 - 右側 190px（保留 YouTube 音量/CC/設定按鈕）
-                // 右緣漸層淡出，視覺自然
                 const channelMask = document.createElement('div');
-                // max(80px, 12%)：手機直式影片只有 ~190px 高，12% 僅 23px 不夠；min 80px 確保覆蓋頻道名稱區
-                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:max(80px,12%);pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
+                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:clamp(50px,14%,72px);pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
                 shield.appendChild(channelMask);
+
+                // DUET by BCAG logo：疊在黑色遮罩上，與 index.html 左上角相同字體
+                const vidLogo = document.createElement('div');
+                vidLogo.style.cssText = 'position:absolute;top:0;left:0;padding:10px 14px;display:flex;align-items:baseline;gap:7px;pointer-events:none;z-index:3;';
+                const duetSpan = document.createElement('span');
+                duetSpan.textContent = 'DUET';
+                duetSpan.style.cssText = 'font-size:18px;font-weight:600;letter-spacing:2px;font-family:\'Cantata One\',serif;color:#fff;';
+                const bcagSpan = document.createElement('span');
+                bcagSpan.textContent = 'by BCAG';
+                bcagSpan.style.cssText = 'font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.65);font-family:\'Libre Caslon Text\',serif;font-style:italic;';
+                vidLogo.appendChild(duetSpan);
+                vidLogo.appendChild(bcagSpan);
+                shield.appendChild(vidLogo);
 
                 // 下方左側：分享 icon（放大確保完整覆蓋）
                 const shareZone = document.createElement('div');
