@@ -49,7 +49,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Cantata+One&family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Caveat:wght@400;700&family=Noto+Serif+TC:wght@400;500;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="design-studio.css">
 
@@ -1223,14 +1223,23 @@
                 titleZone.style.cssText = 'position:absolute;top:0;left:0;width:calc(100% - 190px);height:60px;pointer-events:auto;cursor:default;background:rgba(0,0,0,0.001);';
                 shield.appendChild(titleZone);
 
-                // 黑色遮罩蓋住頻道 logo 與名稱，右緣與下緣用 mask-image 漸層淡出
                 // 黑色遮罩：蓋住影片中錄到的瀏覽器網址列 + YouTube 頻道名稱
-                // 寬度到底 - 右側 190px（保留 YouTube 音量/CC/設定按鈕）
-                // 右緣漸層淡出，視覺自然
                 const channelMask = document.createElement('div');
-                // clamp(50px, 14%, 72px)：手機 190px 高時 14%=27px 不夠，下限 50px；桌機上限 72px 避免過多
                 channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:clamp(50px,14%,72px);pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
                 shield.appendChild(channelMask);
+
+                // DUET by BCAG logo：疊在黑色遮罩上，與 index.html 左上角相同字體
+                const vidLogo = document.createElement('div');
+                vidLogo.style.cssText = 'position:absolute;top:0;left:0;padding:10px 14px;display:flex;align-items:baseline;gap:7px;pointer-events:none;z-index:3;';
+                const duetSpan = document.createElement('span');
+                duetSpan.textContent = 'DUET';
+                duetSpan.style.cssText = 'font-size:18px;font-weight:600;letter-spacing:2px;font-family:\'Cantata One\',serif;color:#fff;';
+                const bcagSpan = document.createElement('span');
+                bcagSpan.textContent = 'by BCAG';
+                bcagSpan.style.cssText = 'font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.65);font-family:\'Libre Caslon Text\',serif;font-style:italic;';
+                vidLogo.appendChild(duetSpan);
+                vidLogo.appendChild(bcagSpan);
+                shield.appendChild(vidLogo);
 
                 // 下方左側：分享 icon（放大確保完整覆蓋）
                 const shareZone = document.createElement('div');
