@@ -1119,7 +1119,7 @@
                         </h2>
                         <p style="color:#ccc;font-size:${isZh ? '14px' : '15px'};line-height:1.85;margin-bottom:32px;">
                             ${isZh
-                                ? '建議先觀看 2 分鐘操作介紹，幫助您快速熟悉設計工具，<br>讓設計過程更加順暢。'
+                                ? '建議先觀看兩分鐘操作介紹，幫助您快速熟悉設計工具，<br>讓設計過程更加順暢。'
                                 : 'We recommend watching a 2-minute tutorial to get familiar with the design tools before you begin.'}
                         </p>
                         <button id="vid-watch-btn" style="
@@ -1645,12 +1645,12 @@
                 // 等待主畫面完全載入（包括 3D 球體）後 2 秒才顯示
                 function showAIAfterDelay() {
                     setTimeout(() => {
+                        // ?intro=1：強制顯示影片（供分享給外部人員，略過 localStorage 判斷）
+                        const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
                         const videoShown = localStorage.getItem('duet_video_prompt_shown');
-                        if (!videoShown) {
-                            console.log('🎬 首次進入，先顯示影片介紹');
+                        if (forceIntro || !videoShown) {
                             showVideoIntroModal();
                         } else {
-                            console.log('🔔 2 秒延遲結束，顯示 AI 介紹');
                             showAIIntroModal();
                         }
                     }, 2000);
