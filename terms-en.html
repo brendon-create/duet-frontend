@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — DUET by BCAG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #FAF8F5;
+            color: #2C2A26;
+            line-height: 1.8;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 500;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 80px;
+            position: sticky;
+            top: 0;
+            background-color: #FAF8F5;
+            z-index: 100;
+            border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        .logo-subtitle {
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: #8B8680;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: #2C2A26;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #8B8680;
+        }
+
+        .terms-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 40px 160px;
+        }
+
+        .terms-header {
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(44, 42, 38, 0.1);
+        }
+
+        .terms-header h1 {
+            font-size: 48px;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .terms-header .last-update {
+            font-size: 14px;
+            color: #8B8680;
+        }
+
+        .terms-section {
+            margin-bottom: 48px;
+        }
+
+        .terms-section h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .terms-section h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            margin-top: 32px;
+            font-weight: 500;
+        }
+
+        .terms-section p {
+            font-size: 15px;
+            color: #5A5652;
+            margin-bottom: 16px;
+        }
+
+        .terms-section ul {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+
+        .terms-section ul li {
+            font-size: 15px;
+            color: #5A5652;
+            margin-bottom: 12px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .terms-section ul li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #8B8680;
+        }
+
+        footer {
+            background-color: #2C2A26;
+            color: #A39E97;
+            padding: 80px;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 60px;
+        }
+
+        .footer-brand h3 {
+            font-size: 18px;
+            color: #FAF8F5;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .footer-brand .subtitle {
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: #8B8680;
+            margin-bottom: 16px;
+        }
+
+        .footer-brand p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #8B8680;
+        }
+
+        .footer-section h4 {
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #FAF8F5;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 12px;
+        }
+
+        .footer-section ul li a {
+            color: #A39E97;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section ul li a:hover {
+            color: #FAF8F5;
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 60px auto 0;
+            border-top: 1px solid rgba(250, 248, 245, 0.1);
+            padding-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .footer-bottom p {
+            color: #8B8680;
+        }
+
+        .footer-socials {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-socials a {
+            color: #A39E97;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-socials a:hover {
+            color: #FAF8F5;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 16px 24px;
+            }
+
+            .terms-content {
+                padding: 60px 24px 120px;
+            }
+
+            .terms-header h1 {
+                font-size: 32px;
+            }
+
+            .terms-section h2 {
+                font-size: 24px;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo-container">
+            <div class="logo">DUET</div>
+            <div class="logo-subtitle">by BCAG</div>
+        </div>
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </nav>
+
+    <section class="terms-content">
+        <div class="terms-header">
+            <h1>Terms of Service</h1>
+            <p class="last-update">Last updated: June 15, 2026</p>
+        </div>
+
+        <div class="terms-section">
+            <p>Welcome to DUET by BCAG (hereinafter "DUET," "we," or "the Service"). By using our online jewelry design service, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service (hereinafter "the Terms"). If you do not agree to these Terms, please do not use our Service.</p>
+            <p>The Service is operated by Bao Lan Cheng International Co., Ltd. (Unified Business Number: 28350610).</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>1. Service Description</h2>
+            <p>DUET provides a personalized, semi-custom jewelry design service that allows customers to design interlocking pendants composed of two English letters through our online platform. Our services include:</p>
+            <ul>
+                <li>Personalized design consultation</li>
+                <li>Font selection and pairing suggestions</li>
+                <li>Real-time 3D preview</li>
+                <li>Jewelry production and delivery</li>
+                <li>Custom design concept card service</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>2. Eligibility</h2>
+            <p>You represent and warrant that:</p>
+            <ul>
+                <li>You are at least 18 years of age, or are using the Service with the consent of a parent or guardian</li>
+                <li>You have the legal right and capacity to enter into these Terms</li>
+                <li>You will not use the Service for any unlawful purpose</li>
+                <li>All information you provide is true, accurate, and complete</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>3. Account Registration and Security</h2>
+            <p>When using our Service:</p>
+            <ul>
+                <li>You may be required to provide true and complete personal information to complete the design consultation process</li>
+                <li>You are responsible for safeguarding your account credentials and must not share them with others</li>
+                <li>You agree to take full responsibility for all activities conducted under your account</li>
+                <li>If you discover any unauthorized use, please notify us immediately</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>4. Design and Intellectual Property</h2>
+            <h3>4.1 Your Design</h3>
+            <p>You acknowledge and agree that the custom jewelry designs created through our Service:</p>
+            <ul>
+                <li>Are intended solely for your personal use or as a gift to another person</li>
+                <li>The letter combinations and font selections themselves do not constitute exclusive intellectual property rights; you own the physical artwork itself</li>
+                <li>We are authorized to use the design information you provide in order to fulfill your order</li>
+            </ul>
+            <h3>4.2 Our Service</h3>
+            <p>The DUET website design, logo, graphics, user interface, consultation dialogue logic, and related technology are the property of DUET by BCAG (Bao Lan Cheng International Co., Ltd.) and are protected by intellectual property laws. You may not copy, modify, distribute, or use our intellectual property without our express written consent.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>5. Orders and Payment</h2>
+            <h3>5.1 Order Confirmation</h3>
+            <p>Once you complete your design and submit an order, we will send a confirmation email to the email address you provided. Please review your order details carefully upon receipt, including letter combination, font selection, material specifications, and other design elements.</p>
+            <h3>5.2 Payment Terms</h3>
+            <ul>
+                <li>All prices are listed in New Taiwan Dollars (NT$)</li>
+                <li>We currently accept the following payment method:<br>• Credit card (one-time payment)<br>(Processed entirely by ECPay; we do not store your credit card information directly)</li>
+                <li>Production will begin immediately upon successful payment</li>
+                <li>If using a discount code, please confirm the discount has been applied correctly before completing payment</li>
+            </ul>
+            <h3>5.3 Price Changes</h3>
+            <p>We reserve the right to adjust product prices at any time. Orders that have already been paid will not be affected by price changes.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>6. Shipping and Delivery</h2>
+            <ul>
+                <li><strong>Production Time:</strong> Approximately 7 business days after payment is received (excluding shipping time)</li>
+                <li><strong>Shipping Methods:</strong> Chunghwa Post domestic parcel; convenience store delivery (7-ELEVEN, FamilyMart)</li>
+                <li><strong>Shipping Fees:</strong> Free shipping on all items during the crowdfunding campaign period</li>
+                <li><strong>Offshore Islands:</strong> Delivery to offshore islands (Penghu, Kinmen, Matsu) is available</li>
+                <li><strong>Tracking:</strong> A tracking number will be provided once your order has been shipped</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>7. Returns and Exchanges</h2>
+            <h3>7.1 Cooling-Off Period (Right of Rescission)</h3>
+            <p>All jewelry pieces offered through this Service are custom-made goods produced according to each customer's individually specified letters, fonts, dimensions, and materials. Pursuant to Article 19, Paragraph 1 of the Consumer Protection Act (Taiwan) and Article 2, Item 5 of the <em>Regulations Governing the Reasonable Exceptions to the Right of Rescission in Distance Contracts</em> promulgated by the Executive Yuan under Article 19, Paragraph 3 of the same Act, this product constitutes a "customized delivery made at the consumer's request" and is therefore <strong>exempt from the 7-day right of rescission (cooling-off period)</strong>. Customers may revise their design an unlimited number of times before payment; completing payment constitutes final confirmation of the design. We strongly recommend reviewing the 3D preview carefully and confirming all design details before placing your order.</p>
+            <h3>7.2 Non-Returnable Circumstances</h3>
+            <p>The following circumstances are not eligible for return or exchange:</p>
+            <ul>
+                <li>Subjective dissatisfaction with the design itself (the 3D preview is the primary design reference; the finished product is produced accordingly)</li>
+                <li>Discrepancy between the product and personal imagination (due to the geometric intersection of two letters, craftspeople may make minor structural adjustments to sections that are too thin or sharp; this is part of the normal production process)</li>
+                <li>Claims submitted more than 30 days after receiving the product</li>
+                <li>Damage caused by the customer's own actions (e.g., dropping, impact, pulling, water exposure, contact with strong acids or alkalis)</li>
+                <li>Products that have been altered by a third party (e.g., ring resizing, soldering, re-plating)</li>
+                <li>Returns that do not include the original packaging, certificate, or other accessories</li>
+                <li>Changes in appearance due to normal wear and use</li>
+            </ul>
+            <h3>7.3 Production Defect Guarantee</h3>
+            <p>If the piece you receive has an apparent production defect (e.g., misaligned bail, deformed body, obvious surface flaw), we offer the following guarantee:</p>
+            <ul>
+                <li>If an issue is identified before production: we will proactively contact you and provide a resolution</li>
+                <li>If an apparent production defect is identified within 30 days of receiving the product: we will provide a free remake or full refund</li>
+            </ul>
+            <h3>7.4 Return and Exchange Process</h3>
+            <p>To request a return or exchange, please contact us at service@brendonchen.com with your order number and a description of the issue. We will respond within 24 hours with instructions on how to proceed.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>8. Custom Consultation Service Terms</h2>
+            <p>When using our custom design consultation service:</p>
+            <ul>
+                <li>You agree to provide true and accurate information in order to receive the best design recommendations</li>
+                <li>You understand that consultation suggestions are for reference only; all final design decisions are made by you</li>
+                <li>You agree not to use the consultation service for any illegal, inappropriate, or commercially abusive purposes</li>
+                <li>We reserve the right to adjust or optimize the consultation logic without prior notice</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>9. Limitation of Liability</h2>
+            <p>To the maximum extent permitted by law:</p>
+            <ul>
+                <li>The Service is provided on an "as is" and "as available" basis without any express or implied warranties</li>
+                <li>We do not warrant that the Service will be continuous, timely, secure, or error-free</li>
+                <li>We are not liable for service interruptions caused by force majeure events (e.g., natural disasters, war, government actions)</li>
+                <li>We are not liable for any indirect, incidental, special, or consequential damages arising from your use of the Service</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>10. Service Changes and Termination</h2>
+            <p>We reserve the right to:</p>
+            <ul>
+                <li>Modify, suspend, or terminate any part of the Service at any time</li>
+                <li>Update website content, features, or services without prior notice</li>
+                <li>Terminate or suspend your account and access rights if you violate these Terms</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>11. Governing Law and Jurisdiction</h2>
+            <p>These Terms are governed by and construed in accordance with the laws of the Republic of China (Taiwan). Any disputes arising from these Terms shall be subject to the exclusive jurisdiction of the courts of Taiwan.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>12. Amendments</h2>
+            <p>We may revise these Terms from time to time. Any material changes will be posted on this page with an updated "Last updated" date. We recommend reviewing these Terms periodically. Your continued use of the Service after any changes have been posted constitutes your acceptance of the revised Terms.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>13. Contact Us</h2>
+            <p>If you have any questions about these Terms of Service, please contact us through the following channels:</p>
+            <ul>
+                <li>Email: service@brendonchen.com</li>
+                <li>Instagram DM: @duet_by_bcag</li>
+                <li>Facebook Message: DUET by BCAG</li>
+            </ul>
+            <p>We will respond within 24 hours of receiving your inquiry.</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>DUET</h3>
+                <div class="subtitle">BY BCAG</div>
+                <p>Casting timeless intersections for your story. Where digital precision meets traditional craftsmanship to create one-of-a-kind jewelry.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Services</h4>
+                <ul>
+                    <li><a href="index.html">Start Designing</a></li>
+                    <li><a href="order-tracker.html">Order Tracking</a></li>
+                    <li><a href="#">Warranty</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Explore</h4>
+                <ul>
+                    <li><a href="index.html#story">Brand Story</a></li>
+                    <li><a href="index.html#process">Design Process</a></li>
+                    <li><a href="index.html#gallery">Gallery</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul>
+                    <li><a href="mailto:service@brendonchen.com">service@brendonchen.com</a></li>
+                    <li><a href="#">Instagram</a></li>
+                    <li><a href="#">Facebook</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 DUET by BCAG. All rights reserved.</p>
+            <div class="footer-socials">
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms-en.html">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
