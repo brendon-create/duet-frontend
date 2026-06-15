@@ -1082,9 +1082,9 @@
             const lang = localStorage.getItem('duet_language') || 'zh';
             const videoId = lang === 'en' ? 'G2fE5FlXa0E' : 'PqmIZ9scqTA';
             const isZh = lang !== 'en';
-            // fs=1 開啟全螢幕按鈕（iOS 靠此進入原生全螢幕）
-            // 移除 playsinline=1：讓 iOS Safari 以原生全螢幕模式播放，隱藏瀏覽器 chrome
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1`;
+            // playsinline=1 必須保留：iOS 移除後會顯示「Watch on YouTube」而非播放
+            // fs=1 開啟 YouTube 全螢幕按鈕，讓手機用戶可手動全螢幕
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&playsinline=1&enablejsapi=1`;
 
             if (!directPlay) {
                 localStorage.setItem('duet_video_prompt_shown', 'true');
@@ -1222,8 +1222,8 @@
                 // 寬度到底 - 右側 190px（保留 YouTube 音量/CC/設定按鈕）
                 // 右緣漸層淡出，視覺自然
                 const channelMask = document.createElement('div');
-                // max(80px, 12%)：手機直式影片只有 ~190px 高，12% 僅 23px 不夠；min 80px 確保覆蓋頻道名稱區
-                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:max(80px,12%);pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
+                // clamp(50px, 14%, 72px)：手機 190px 高時 14%=27px 不夠，下限 50px；桌機上限 72px 避免過多
+                channelMask.style.cssText = 'position:absolute;top:0;left:0;width:85%;height:clamp(50px,14%,72px);pointer-events:auto;cursor:default;background:linear-gradient(to right,#000 82%,rgba(0,0,0,0) 100%);';
                 shield.appendChild(channelMask);
 
                 // 下方左側：分享 icon（放大確保完整覆蓋）
