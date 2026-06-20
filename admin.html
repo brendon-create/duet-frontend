@@ -2127,7 +2127,7 @@
             
             // 取得設計理念（分辨原始 vs 最終）
             const finalStory = order.finalDesignStory || order.design_story || '';
-            const originalStory = items[0]?.designStory || '';
+            const originalStory = order.aiDesignStory || items[0]?.designStory || '';
             const designStory = finalStory;
 
             let content = `
