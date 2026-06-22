@@ -600,7 +600,7 @@
                         <option value="delete">刪除選取</option>
                     </select>
                     <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
-                    <button id="emailMfrBtn" class="btn btn-secondary" onclick="showEmailMfrModal()" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
+                    <button id="emailMfrBtn" class="btn btn-secondary" onclick="openStartProductionModal(selectedOrders)" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                     <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
@@ -1180,23 +1180,26 @@
         </div>
     </div>
 
-    <!-- 開始製作 Modal（選擇廠商）-->
+    <!-- 開始製作 / 發送給廠商 Modal -->
     <div class="modal-overlay" id="startProductionModal" style="z-index:1100;">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">開始製作</h2>
+                <h2 class="modal-title" id="startProductionModalTitle">委託廠商製作</h2>
                 <button class="modal-close" onclick="closeStartProductionModal()">&times;</button>
             </div>
             <div style="padding:8px 0;">
-                <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">選擇委託廠商後，系統將自動：<br>① 更新訂單狀態為「製作中」<br>② 寄送委託郵件（含 STL）給廠商<br>③ 寄送狀態通知給客戶</p>
+                <p id="startProductionModalDesc" style="color:var(--text-muted);font-size:13px;margin-bottom:16px;"></p>
                 <div class="form-group">
                     <label>委託廠商</label>
                     <select id="startProductionMfrSelect" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:14px;">
                         <option value="">不指定廠商（只更新狀態）</option>
                     </select>
                 </div>
-                <input type="hidden" id="startProductionOrderId">
-                <button class="btn btn-primary" onclick="confirmStartProduction()" style="width:100%;margin-top:8px;">確認開始製作</button>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>給廠商的訊息</label>
+                    <textarea id="startProductionMessage" rows="5" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;line-height:1.6;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="confirmStartProduction()" style="width:100%;margin-top:12px;">確認發送</button>
             </div>
         </div>
     </div>
@@ -3058,11 +3061,23 @@
             }
         }
 
-        // ==================== 開始製作 Modal ====================
+        // ==================== 開始製作 / 發送給廠商 Modal ====================
 
-        async function openStartProductionModal(orderId) {
-            document.getElementById('startProductionOrderId').value = orderId;
-            // 載入啟用中的廠商
+        let _startProductionOrderIds = []; // 支援單筆或多筆
+
+        const _DEFAULT_MFR_MESSAGE = '您好，感謝您與 DUET 合作！\n\n以下是本次製作委託，請依照規格製作，完成後煩請告知出貨資訊。\n\n如有任何疑問，歡迎隨時來信。謝謝！\n\nDUET 團隊';
+
+        async function openStartProductionModal(orderIdOrIds) {
+            _startProductionOrderIds = Array.isArray(orderIdOrIds) ? orderIdOrIds : [orderIdOrIds];
+            const isBatch = _startProductionOrderIds.length > 1;
+
+            document.getElementById('startProductionModalTitle').textContent = isBatch ? '發送委託給廠商' : '委託廠商製作';
+            document.getElementById('startProductionModalDesc').textContent = isBatch
+                ? `共 ${_startProductionOrderIds.length} 筆訂單，將各別寄送一封委託郵件（含 STL）。`
+                : '確認後將更新狀態為「製作中」，並寄送委託郵件（含 STL）給廠商及狀態通知給客戶。';
+
+            document.getElementById('startProductionMessage').value = _DEFAULT_MFR_MESSAGE;
+
             const sel = document.getElementById('startProductionMfrSelect');
             sel.innerHTML = '<option value="">不指定廠商（只更新狀態）</option>';
             try {
@@ -3087,33 +3102,34 @@
         }
 
         async function confirmStartProduction() {
-            const orderId = document.getElementById('startProductionOrderId').value;
-            const mfrId = document.getElementById('startProductionMfrSelect').value;
+            const mfrId   = document.getElementById('startProductionMfrSelect').value;
+            const message = document.getElementById('startProductionMessage').value.trim();
             const btn = event.target;
             btn.disabled = true;
-            btn.textContent = '處理中...';
+            btn.textContent = '發送中…';
+            let successCount = 0;
             try {
+                for (const orderId of _startProductionOrderIds) {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/start-production`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
-                    body: JSON.stringify({ manufacturer_id: mfrId ? parseInt(mfrId) : null })
+                    body: JSON.stringify({ manufacturer_id: mfrId ? parseInt(mfrId) : null, message })
                 });
                 const data = await res.json();
+                if (data.success) successCount++;
+                else alert(`❌ ${orderId} 發送失敗：${data.error || '未知錯誤'}`);
+                } // end for loop
                 closeStartProductionModal();
                 closeModal();
-                if (data.success) {
-                    const mfrMsg = data.manufacturer ? `\n委託廠商：${data.manufacturer}` : '';
-                    const emailMsg = data.manufacturer_email_sent ? '\n委託郵件已寄出' : (data.manufacturer ? '\n（委託郵件發送失敗，請手動聯絡廠商）' : '');
-                    alert(`✅ 訂單已更新為「製作中」${mfrMsg}${emailMsg}`);
+                if (successCount > 0) {
+                    alert(`✅ 已完成 ${successCount} 筆委託發送`);
                     loadOrders();
-                } else {
-                    alert('失敗：' + (data.error || '未知錯誤'));
                 }
             } catch (e) {
-                alert('網路錯誤');
+                alert('網路錯誤：' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '確認開始製作';
+                btn.textContent = '確認發送';
             }
         }
 
