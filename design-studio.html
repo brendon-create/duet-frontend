@@ -3650,8 +3650,8 @@
                         ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
                     chainBtn.innerHTML = chainOpt
-                        ? `<span style="font-size:16px;">⛓</span><span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
-                        : `<span style="font-size:16px;">⛓</span><span>選擇項鍊材質</span>`;
+                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
+                        : `<span>選擇項鍊材質</span>`;
                     chainBtn.addEventListener('click', () => {
                         showChainTypeModal().then(() => renderCart()).catch(() => {});
                     });
@@ -6140,7 +6140,7 @@
             max-width:560px;width:92%;max-height:85vh;overflow-y:auto;
             background:rgba(18,18,18,0.96);border:1px solid rgba(212,175,55,0.3);
             border-radius:20px;padding:32px 28px;">
-            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇配戴方式</h3>
+            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇項鍊材質</h3>
             <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鏈，此選擇將決定墜頭規格。</p>
             <div id="chain-type-modal-body"></div>
             <button id="chain-type-confirm-btn" disabled style="
@@ -6148,7 +6148,7 @@
                 background:linear-gradient(135deg,#d4af37,#b8932a);
                 border:none;border-radius:12px;color:#000;
                 font-size:15px;font-weight:600;cursor:not-allowed;opacity:0.4;">
-                確認，前往結帳
+                確認
             </button>
             <button id="chain-type-back-btn" style="
                 width:100%;padding:11px;margin-top:8px;
