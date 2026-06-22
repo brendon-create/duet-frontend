@@ -3067,6 +3067,17 @@
 
         const _DEFAULT_MFR_MESSAGE = '您好，感謝您與 DUET 合作！\n\n以下是本次製作委託，請依照規格製作，完成後煩請告知出貨資訊。\n\n如有任何疑問，歡迎隨時來信。謝謝！\n\nDUET 團隊';
 
+        const _MFR_MESSAGES = {
+            '美迪亞': '安哥您好，\n\n以下是本次製作委託，請依照規格製作，收到訂單後煩請告知預計完成日期。\n\n如有任何疑問，歡迎隨時來信。謝謝！\n\nDUET 團隊\nBrendon',
+        };
+
+        function _getMfrMessage(companyName) {
+            for (const [key, msg] of Object.entries(_MFR_MESSAGES)) {
+                if (companyName && companyName.includes(key)) return msg;
+            }
+            return _DEFAULT_MFR_MESSAGE;
+        }
+
         async function openStartProductionModal(orderIdOrIds) {
             _startProductionOrderIds = Array.isArray(orderIdOrIds) ? orderIdOrIds : [orderIdOrIds];
             const isBatch = _startProductionOrderIds.length > 1;
@@ -3076,10 +3087,12 @@
                 ? `共 ${_startProductionOrderIds.length} 筆訂單，將各別寄送一封委託郵件（含 STL）。`
                 : '確認後將更新狀態為「製作中」，並寄送委託郵件（含 STL）給廠商及狀態通知給客戶。';
 
-            document.getElementById('startProductionMessage').value = _DEFAULT_MFR_MESSAGE;
-
             const sel = document.getElementById('startProductionMfrSelect');
             sel.innerHTML = '<option value="">不指定廠商（只更新狀態）</option>';
+            sel.onchange = () => {
+                const name = sel.options[sel.selectedIndex]?.text || '';
+                document.getElementById('startProductionMessage').value = _getMfrMessage(name);
+            };
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, {
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
@@ -3092,8 +3105,18 @@
                         opt.textContent = `${m.company_name}${m.contact_person ? ' (' + m.contact_person + ')' : ''}`;
                         sel.appendChild(opt);
                     });
+                    // 若只有一家廠商，自動選取並套用專屬訊息
+                    const active = data.manufacturers.filter(m => m.is_active);
+                    if (active.length === 1) {
+                        sel.value = active[0].id;
+                        document.getElementById('startProductionMessage').value = _getMfrMessage(active[0].company_name);
+                    } else {
+                        document.getElementById('startProductionMessage').value = _DEFAULT_MFR_MESSAGE;
+                    }
                 }
-            } catch {}
+            } catch {
+                document.getElementById('startProductionMessage').value = _DEFAULT_MFR_MESSAGE;
+            }
             document.getElementById('startProductionModal').classList.add('active');
         }
 
