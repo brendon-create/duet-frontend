@@ -173,32 +173,6 @@
             </select>
         </div>
 
-        <div class="control-group">
-            <label>配戴方式 (Chain Type)</label>
-            <div id="chain-type-selector" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                <div class="chain-option" data-chain="black_rubber" onclick="selectChainType('black_rubber')" style="cursor:pointer;border:2px solid transparent;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);transition:border-color 0.2s;">
-                    <img src="assets/images/products/chain-black-rubber.jpg" alt="黑色橡膠繩" onerror="this.style.display='none';this.nextElementSibling.style.paddingTop='28px'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
-                    <div style="padding:6px 8px 8px;font-size:11px;color:rgba(255,255,255,0.75);text-align:center;line-height:1.4;">黑色橡膠繩<br><span style="font-size:10px;color:rgba(255,255,255,0.4);">Black Rubber Cord</span></div>
-                </div>
-                <div class="chain-option" data-chain="silver_chain" onclick="selectChainType('silver_chain')" style="cursor:pointer;border:2px solid transparent;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);transition:border-color 0.2s;">
-                    <img src="assets/images/products/chain-silver.jpg" alt="銀色不鏽鋼鏈" onerror="this.style.display='none';this.nextElementSibling.style.paddingTop='28px'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
-                    <div style="padding:6px 8px 8px;font-size:11px;color:rgba(255,255,255,0.75);text-align:center;line-height:1.4;">銀色不鏽鋼鏈<br><span style="font-size:10px;color:rgba(255,255,255,0.4);">Silver Chain</span></div>
-                </div>
-                <div class="chain-option" data-chain="gold_chain" onclick="selectChainType('gold_chain')" style="cursor:pointer;border:2px solid transparent;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);transition:border-color 0.2s;">
-                    <div style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:rgba(212,175,55,0.07);">
-                        <span style="font-size:28px;opacity:0.5;">🔗</span>
-                    </div>
-                    <div style="padding:6px 8px 8px;font-size:11px;color:rgba(255,255,255,0.75);text-align:center;line-height:1.4;">金色不鏽鋼鏈<br><span style="font-size:10px;color:rgba(255,255,255,0.4);">Gold Chain</span></div>
-                </div>
-                <div class="chain-option" data-chain="rosegold_chain" onclick="selectChainType('rosegold_chain')" style="cursor:pointer;border:2px solid transparent;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);transition:border-color 0.2s;">
-                    <div style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:rgba(210,140,110,0.07);">
-                        <span style="font-size:28px;opacity:0.5;">🔗</span>
-                    </div>
-                    <div style="padding:6px 8px 8px;font-size:11px;color:rgba(255,255,255,0.75);text-align:center;line-height:1.4;">玫瑰金不鏽鋼鏈<br><span style="font-size:10px;color:rgba(255,255,255,0.4);">Rose Gold Chain</span></div>
-                </div>
-            </div>
-        </div>
-
         <div class="divider"></div>
 
         <div class="section-title" data-i18n="studio.bail.title">墜頭位置</div>
@@ -3470,21 +3444,6 @@
             return views;
         }
 
-        // ── 項鏈選擇 ──────────────────────────────────────────────
-        let selectedChainType = 'silver_chain';
-
-        function selectChainType(type) {
-            selectedChainType = type;
-            document.querySelectorAll('.chain-option').forEach(el => {
-                el.style.borderColor = el.dataset.chain === type
-                    ? '#d4af37'
-                    : 'transparent';
-            });
-        }
-
-        // 頁面載入後預設選取銀色不鏽鋼鏈
-        document.addEventListener('DOMContentLoaded', () => selectChainType('silver_chain'));
-
         function addToCart() {
             if (!mainMesh) return;
 
@@ -3592,8 +3551,7 @@
                 cleanFragments: cleanFragmentsApplied,
                 // 🔧 儲存 Bail 款式（目前為 "default"，未來擴充用）
                 bailStyle: 'default',
-                // 配戴方式（項鏈類型）
-                chainType: selectedChainType,
+                chainType: null,
                 // 📸 儲存三視圖（用於 Email 附件）
                 threeViews: threeViews
             };
@@ -4466,6 +4424,67 @@
         // 暴露給 inline onclick 使用
         window.submitCustomInquiry = submitCustomInquiry;
 
+        // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
+        const CHAIN_OPTIONS = [
+            { value: 'black_rubber',   label: '黑色橡膠繩',   img: 'assets/images/products/chain-black-rubber.jpg' },
+            { value: 'silver_chain',   label: '銀色不鏽鋼鏈', img: 'assets/images/products/chain-silver.jpg' },
+            { value: 'gold_chain',     label: '金色不鏽鋼鏈', img: null },
+            { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: null },
+        ];
+
+        function showChainTypeModal() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('chain-type-modal');
+                const body  = document.getElementById('chain-type-modal-body');
+                const confirmBtn = document.getElementById('chain-type-confirm-btn');
+
+                // 為每件作品渲染選項（chainType 若已選則保留）
+                body.innerHTML = cartItems.map((item, idx) => `
+                    <div style="margin-bottom:28px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                            ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.12);">` : ''}
+                            <div style="font-size:14px;color:#fff;font-weight:600;">作品「${item.letter1}${item.letter2}」</div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                            ${CHAIN_OPTIONS.map(opt => `
+                                <div class="cart-chain-opt" data-item="${idx}" data-chain="${opt.value}"
+                                     onclick="selectCartChain(${idx},'${opt.value}')"
+                                     style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
+                                            border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
+                                    ${opt.img
+                                        ? `<img src="${opt.img}" alt="${opt.label}" onerror="this.style.display='none'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">`
+                                        : `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.4;">🔗</div>`}
+                                    <div style="padding:5px 4px 7px;font-size:10px;color:rgba(255,255,255,0.7);line-height:1.4;">${opt.label}</div>
+                                </div>`).join('')}
+                        </div>
+                    </div>`).join('');
+
+                function updateConfirmBtn() {
+                    const allSelected = cartItems.every(i => i.chainType);
+                    confirmBtn.disabled = !allSelected;
+                    confirmBtn.style.opacity = allSelected ? '1' : '0.4';
+                    confirmBtn.style.cursor  = allSelected ? 'pointer' : 'not-allowed';
+                }
+                updateConfirmBtn();
+
+                window._chainModalUpdateBtn = updateConfirmBtn;
+                modal.style.display = 'flex';
+
+                confirmBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    resolve();
+                };
+            });
+        }
+
+        function selectCartChain(itemIdx, chainValue) {
+            cartItems[itemIdx].chainType = chainValue;
+            document.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
+                el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
+            });
+            if (window._chainModalUpdateBtn) window._chainModalUpdateBtn();
+        }
+
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
             posthog.capture('checkout_clicked');
@@ -4486,18 +4505,25 @@
                 return;
             }
 
-            // 設計確認
-            showDesignConfirmation()
-                .then(() => {
-                    const hasAiConsultation = !!localStorage.getItem('duet_ai_consultation');
-                    if (hasAiConsultation) {
-                        showCheckoutReminder();
-                    } else {
-                        if (TESTING_MODE) testModeCheckout();
-                        else processPayment();
-                    }
-                })
-                .catch(() => {}); // 用戶選擇返回修改
+            // 項鏈款式尚未全選，強制選擇
+            const chainPromise = cartItems.some(i => !i.chainType)
+                ? showChainTypeModal()
+                : Promise.resolve();
+
+            chainPromise.then(() => {
+                // 設計確認
+                showDesignConfirmation()
+                    .then(() => {
+                        const hasAiConsultation = !!localStorage.getItem('duet_ai_consultation');
+                        if (hasAiConsultation) {
+                            showCheckoutReminder();
+                        } else {
+                            if (TESTING_MODE) testModeCheckout();
+                            else processPayment();
+                        }
+                    })
+                    .catch(() => {}); // 用戶選擇返回修改
+            });
         }
 
         // ── 設計確認 Modal ──────────────────────────────────
@@ -6025,6 +6051,29 @@
         }
     })();
     </script>
+
+    <!-- ── 項鏈款式選擇 Modal（結帳前強制）────────────────────── -->
+    <div id="chain-type-modal" style="
+        display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.7);backdrop-filter:blur(16px);
+        -webkit-backdrop-filter:blur(16px);z-index:99995;
+        justify-content:center;align-items:center;">
+        <div style="
+            max-width:560px;width:92%;max-height:85vh;overflow-y:auto;
+            background:rgba(18,18,18,0.96);border:1px solid rgba(212,175,55,0.3);
+            border-radius:20px;padding:32px 28px;">
+            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇配戴方式</h3>
+            <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鏈，此選擇將決定墜頭規格。</p>
+            <div id="chain-type-modal-body"></div>
+            <button id="chain-type-confirm-btn" disabled style="
+                width:100%;padding:14px;margin-top:8px;
+                background:linear-gradient(135deg,#d4af37,#b8932a);
+                border:none;border-radius:12px;color:#000;
+                font-size:15px;font-weight:600;cursor:not-allowed;opacity:0.4;">
+                確認，前往結帳
+            </button>
+        </div>
+    </div>
 
     <!-- ── Option B：付款後 AI 諮詢補做 Modal ─────────────────── -->
     <div id="post-payment-consult-modal" style="
