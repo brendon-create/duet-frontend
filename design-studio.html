@@ -3637,6 +3637,27 @@
                         ${window.t('cart.item.size.label')}: ${item.size}mm | ${window.t('cart.item.weight.label')}: ${item.weight}
                     </div>
                 `;
+                // 項鍊材質選擇按鈕
+                if (!item.isPreciousMetal) {
+                    const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
+                    const chainBtn = document.createElement('button');
+                    chainBtn.style.cssText = `
+                        display:inline-flex;align-items:center;gap:7px;margin-top:8px;
+                        padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;
+                        border:1px solid ${chainOpt ? 'rgba(212,175,55,0.5)' : 'rgba(212,175,55,0.7)'};
+                        background:${chainOpt ? 'rgba(212,175,55,0.1)' : 'rgba(212,175,55,0.08)'};
+                        color:${chainOpt ? '#d4af37' : 'rgba(212,175,55,0.85)'};
+                        ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
+                    `;
+                    chainBtn.innerHTML = chainOpt
+                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
+                        : `<span>選擇項鍊材質</span>`;
+                    chainBtn.addEventListener('click', () => {
+                        showChainTypeModal().then(() => renderCart()).catch(() => {});
+                    });
+                    infoDiv.appendChild(chainBtn);
+                }
+
                 div.appendChild(infoDiv);
 
                 const priceDiv = document.createElement('div');
@@ -4426,19 +4447,35 @@
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
         const CHAIN_OPTIONS = [
-            { value: 'black_rubber',   label: '黑色橡膠繩',   img: 'assets/images/products/chain-black-rubber.jpg' },
-            { value: 'silver_chain',   label: '銀色不鏽鋼鏈', img: 'assets/images/products/chain-silver.jpg' },
-            { value: 'gold_chain',     label: '金色不鏽鋼鏈', img: null },
-            { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: null },
+            { value: 'silver_chain',   label: '銀色不鏽鋼鏈',  img: 'assets/images/products/silver-chain.png' },
+            { value: 'gold_chain',     label: '金色不鏽鋼鏈',  img: 'assets/images/products/gold-chain.png' },
+            { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
+            { value: 'black_rubber',   label: '黑色橡膠繩',    img: 'assets/images/products/rubber-chain.png' },
         ];
 
-        function showChainTypeModal() {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('chain-type-modal');
-                const body  = document.getElementById('chain-type-modal-body');
-                const confirmBtn = document.getElementById('chain-type-confirm-btn');
+        function _defaultChainForItem(item) {
+            const plating = item.plating || 'none';
+            if (plating === 'rosegold18k') return 'rosegold_chain';
+            if (plating === 'gold18k')     return 'gold_chain';
+            if (plating === 'whitegold18k') return 'silver_chain';
+            // no plating: match base material colour
+            return item.material === 'brass' ? 'gold_chain' : 'silver_chain';
+        }
 
-                // 為每件作品渲染選項（chainType 若已選則保留）
+        function showChainTypeModal() {
+            return new Promise((resolve, reject) => {
+                const modal      = document.getElementById('chain-type-modal');
+                const body       = document.getElementById('chain-type-modal-body');
+                const confirmBtn = document.getElementById('chain-type-confirm-btn');
+                const backBtn    = document.getElementById('chain-type-back-btn');
+                const preview    = document.getElementById('chain-img-preview');
+
+                // 預設：根據作品材質自動選擇匹配的項鍊
+                cartItems.forEach(item => {
+                    if (!item.chainType) item.chainType = _defaultChainForItem(item);
+                });
+
+                // 為每件作品渲染選項
                 body.innerHTML = cartItems.map((item, idx) => `
                     <div style="margin-bottom:28px;">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -4448,16 +4485,59 @@
                         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                             ${CHAIN_OPTIONS.map(opt => `
                                 <div class="cart-chain-opt" data-item="${idx}" data-chain="${opt.value}"
-                                     onclick="selectCartChain(${idx},'${opt.value}')"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
                                             border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
-                                    ${opt.img
-                                        ? `<img src="${opt.img}" alt="${opt.label}" onerror="this.style.display='none'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">`
-                                        : `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.4;">🔗</div>`}
+                                    <img src="${opt.img}" alt="${opt.label}"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                                         style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
+                                    <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:22px;opacity:0.4;">🔗</div>
                                     <div style="padding:5px 4px 7px;font-size:10px;color:rgba(255,255,255,0.7);line-height:1.4;">${opt.label}</div>
                                 </div>`).join('')}
                         </div>
                     </div>`).join('');
+
+                // 點選卡片（event delegation，避免 onclick 無法存取 closure 內函式）
+                // 每次重新渲染 body 後重新綁定（先移除舊的）
+                if (body._chainClickHandler) body.removeEventListener('click', body._chainClickHandler);
+                body._chainClickHandler = e => {
+                    const card = e.target.closest('.cart-chain-opt');
+                    if (!card) return;
+                    const itemIdx   = parseInt(card.dataset.item);
+                    const chainValue = card.dataset.chain;
+                    cartItems[itemIdx].chainType = chainValue;
+                    body.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
+                        el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
+                    });
+                    updateConfirmBtn();
+                };
+                body.addEventListener('click', body._chainClickHandler);
+
+                // hover 放大預覽（只綁一次）
+                if (!window._chainHoverListenerAdded) {
+                    window._chainHoverListenerAdded = true;
+                    const previewImg = document.getElementById('chain-img-preview-img');
+                    body.addEventListener('mouseover', e => {
+                        const card = e.target.closest('.cart-chain-opt');
+                        if (!card) return;
+                        const img = card.querySelector('img');
+                        if (!img || img.style.display === 'none') return;
+                        previewImg.src = img.src;
+                        const pw = 320, ph = 240;
+                        const rect = card.getBoundingClientRect();
+                        let left = rect.left + rect.width / 2 - pw / 2;
+                        left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+                        let top = rect.top - ph - 16;
+                        if (top < 8) top = rect.bottom + 16;
+                        preview.style.left = left + 'px';
+                        preview.style.top  = top  + 'px';
+                        preview.style.display = 'block';
+                    });
+                    body.addEventListener('mouseout', e => {
+                        const card = e.target.closest('.cart-chain-opt');
+                        if (!card || card.contains(e.relatedTarget)) return;
+                        preview.style.display = 'none';
+                    });
+                }
 
                 function updateConfirmBtn() {
                     const allSelected = cartItems.every(i => i.chainType);
@@ -4467,22 +4547,19 @@
                 }
                 updateConfirmBtn();
 
-                window._chainModalUpdateBtn = updateConfirmBtn;
                 modal.style.display = 'flex';
 
                 confirmBtn.onclick = () => {
                     modal.style.display = 'none';
+                    preview.style.display = 'none';
                     resolve();
                 };
+                backBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    preview.style.display = 'none';
+                    reject();
+                };
             });
-        }
-
-        function selectCartChain(itemIdx, chainValue) {
-            cartItems[itemIdx].chainType = chainValue;
-            document.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
-                el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
-            });
-            if (window._chainModalUpdateBtn) window._chainModalUpdateBtn();
         }
 
         // 主結帳函數（根據測試模式決定流程）
@@ -4505,8 +4582,9 @@
                 return;
             }
 
-            // 項鏈款式尚未全選，強制選擇
-            const chainPromise = cartItems.some(i => !i.chainType)
+            // 若有作品尚未選擇項鍊，先強制補選（safety net）
+            const needsChain = cartItems.filter(i => !i.isPreciousMetal && !i.chainType);
+            const chainPromise = needsChain.length > 0
                 ? showChainTypeModal()
                 : Promise.resolve();
 
@@ -4523,7 +4601,7 @@
                         }
                     })
                     .catch(() => {}); // 用戶選擇返回修改
-            });
+            }).catch(() => {}); // 用戶點返回購物車
         }
 
         // ── 設計確認 Modal ──────────────────────────────────
@@ -6062,17 +6140,30 @@
             max-width:560px;width:92%;max-height:85vh;overflow-y:auto;
             background:rgba(18,18,18,0.96);border:1px solid rgba(212,175,55,0.3);
             border-radius:20px;padding:32px 28px;">
-            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇配戴方式</h3>
-            <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鏈，此選擇將決定墜頭規格。</p>
+            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇項鍊材質</h3>
+            <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鍊。</p>
             <div id="chain-type-modal-body"></div>
             <button id="chain-type-confirm-btn" disabled style="
                 width:100%;padding:14px;margin-top:8px;
                 background:linear-gradient(135deg,#d4af37,#b8932a);
                 border:none;border-radius:12px;color:#000;
                 font-size:15px;font-weight:600;cursor:not-allowed;opacity:0.4;">
-                確認，前往結帳
+                確認
+            </button>
+            <button id="chain-type-back-btn" style="
+                width:100%;padding:11px;margin-top:8px;
+                background:transparent;border:1px solid rgba(255,255,255,0.18);
+                border-radius:12px;color:rgba(255,255,255,0.6);
+                font-size:14px;cursor:pointer;">
+                ← 返回購物車
             </button>
         </div>
+    </div>
+
+    <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫） -->
+    <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
+         width:320px;height:240px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+        <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
     <!-- ── Option B：付款後 AI 諮詢補做 Modal ─────────────────── -->
