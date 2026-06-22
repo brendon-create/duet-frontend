@@ -4442,17 +4442,19 @@
         }
 
         function showChainTypeModal() {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('chain-type-modal');
-                const body  = document.getElementById('chain-type-modal-body');
+            return new Promise((resolve, reject) => {
+                const modal      = document.getElementById('chain-type-modal');
+                const body       = document.getElementById('chain-type-modal-body');
                 const confirmBtn = document.getElementById('chain-type-confirm-btn');
+                const backBtn    = document.getElementById('chain-type-back-btn');
+                const preview    = document.getElementById('chain-img-preview');
 
                 // 預設：根據作品材質自動選擇匹配的項鍊
                 cartItems.forEach(item => {
                     if (!item.chainType) item.chainType = _defaultChainForItem(item);
                 });
 
-                // 為每件作品渲染選項（chainType 若已選則保留）
+                // 為每件作品渲染選項
                 body.innerHTML = cartItems.map((item, idx) => `
                     <div style="margin-bottom:28px;">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -4462,7 +4464,6 @@
                         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                             ${CHAIN_OPTIONS.map(opt => `
                                 <div class="cart-chain-opt" data-item="${idx}" data-chain="${opt.value}"
-                                     onclick="selectCartChain(${idx},'${opt.value}')"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
                                             border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
                                     <img src="${opt.img}" alt="${opt.label}"
@@ -4474,10 +4475,25 @@
                         </div>
                     </div>`).join('');
 
+                // 點選卡片（event delegation，避免 onclick 無法存取 closure 內函式）
+                // 每次重新渲染 body 後重新綁定（先移除舊的）
+                if (body._chainClickHandler) body.removeEventListener('click', body._chainClickHandler);
+                body._chainClickHandler = e => {
+                    const card = e.target.closest('.cart-chain-opt');
+                    if (!card) return;
+                    const itemIdx   = parseInt(card.dataset.item);
+                    const chainValue = card.dataset.chain;
+                    cartItems[itemIdx].chainType = chainValue;
+                    body.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
+                        el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
+                    });
+                    updateConfirmBtn();
+                };
+                body.addEventListener('click', body._chainClickHandler);
+
                 // hover 放大預覽（只綁一次）
                 if (!window._chainHoverListenerAdded) {
                     window._chainHoverListenerAdded = true;
-                    const preview    = document.getElementById('chain-img-preview');
                     const previewImg = document.getElementById('chain-img-preview-img');
                     body.addEventListener('mouseover', e => {
                         const card = e.target.closest('.cart-chain-opt');
@@ -4485,11 +4501,11 @@
                         const img = card.querySelector('img');
                         if (!img || img.style.display === 'none') return;
                         previewImg.src = img.src;
-                        const pw = 240;
+                        const pw = 320, ph = 240;
                         const rect = card.getBoundingClientRect();
                         let left = rect.left + rect.width / 2 - pw / 2;
                         left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-                        let top = rect.top - pw - 16;
+                        let top = rect.top - ph - 16;
                         if (top < 8) top = rect.bottom + 16;
                         preview.style.left = left + 'px';
                         preview.style.top  = top  + 'px';
@@ -4498,7 +4514,7 @@
                     body.addEventListener('mouseout', e => {
                         const card = e.target.closest('.cart-chain-opt');
                         if (!card || card.contains(e.relatedTarget)) return;
-                        document.getElementById('chain-img-preview').style.display = 'none';
+                        preview.style.display = 'none';
                     });
                 }
 
@@ -4510,22 +4526,19 @@
                 }
                 updateConfirmBtn();
 
-                window._chainModalUpdateBtn = updateConfirmBtn;
                 modal.style.display = 'flex';
 
                 confirmBtn.onclick = () => {
                     modal.style.display = 'none';
+                    preview.style.display = 'none';
                     resolve();
                 };
+                backBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    preview.style.display = 'none';
+                    reject();
+                };
             });
-        }
-
-        function selectCartChain(itemIdx, chainValue) {
-            cartItems[itemIdx].chainType = chainValue;
-            document.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
-                el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
-            });
-            if (window._chainModalUpdateBtn) window._chainModalUpdateBtn();
         }
 
         // 主結帳函數（根據測試模式決定流程）
@@ -4548,12 +4561,8 @@
                 return;
             }
 
-            // 項鏈款式尚未全選，強制選擇
-            const chainPromise = cartItems.some(i => !i.chainType)
-                ? showChainTypeModal()
-                : Promise.resolve();
-
-            chainPromise.then(() => {
+            // 每次結帳都顯示項鍊確認 modal（讓用戶確認或更改預設）
+            showChainTypeModal().then(() => {
                 // 設計確認
                 showDesignConfirmation()
                     .then(() => {
@@ -4566,7 +4575,7 @@
                         }
                     })
                     .catch(() => {}); // 用戶選擇返回修改
-            });
+            }).catch(() => {}); // 用戶點返回購物車
         }
 
         // ── 設計確認 Modal ──────────────────────────────────
@@ -6115,12 +6124,19 @@
                 font-size:15px;font-weight:600;cursor:not-allowed;opacity:0.4;">
                 確認，前往結帳
             </button>
+            <button id="chain-type-back-btn" style="
+                width:100%;padding:11px;margin-top:8px;
+                background:transparent;border:1px solid rgba(255,255,255,0.18);
+                border-radius:12px;color:rgba(255,255,255,0.6);
+                font-size:14px;cursor:pointer;">
+                ← 返回購物車
+            </button>
         </div>
     </div>
 
-    <!-- 項鍊 hover 放大預覽（顯示中央 50% 範圍，等效 2x 特寫） -->
+    <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫） -->
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
-         width:240px;height:240px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+         width:320px;height:240px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
