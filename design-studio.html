@@ -3642,15 +3642,16 @@
                     const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
                     const chainBtn = document.createElement('button');
                     chainBtn.style.cssText = `
-                        display:inline-flex;align-items:center;gap:6px;margin-top:8px;
-                        padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;
-                        border:1px solid ${chainOpt ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.25)'};
-                        background:${chainOpt ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.05)'};
-                        color:${chainOpt ? '#d4af37' : 'rgba(255,255,255,0.55)'};
+                        display:inline-flex;align-items:center;gap:7px;margin-top:8px;
+                        padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;
+                        border:1px solid ${chainOpt ? 'rgba(212,175,55,0.5)' : 'rgba(212,175,55,0.7)'};
+                        background:${chainOpt ? 'rgba(212,175,55,0.1)' : 'rgba(212,175,55,0.08)'};
+                        color:${chainOpt ? '#d4af37' : 'rgba(212,175,55,0.85)'};
+                        ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
                     chainBtn.innerHTML = chainOpt
-                        ? `<span>⛓</span><span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
-                        : `<span>⛓</span><span>選擇項鍊材質</span>`;
+                        ? `<span style="font-size:16px;">⛓</span><span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
+                        : `<span style="font-size:16px;">⛓</span><span>選擇項鍊材質</span>`;
                     chainBtn.addEventListener('click', () => {
                         showChainTypeModal().then(() => renderCart()).catch(() => {});
                     });
