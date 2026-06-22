@@ -4426,10 +4426,10 @@
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
         const CHAIN_OPTIONS = [
-            { value: 'black_rubber',   label: '黑色橡膠繩',   img: 'assets/images/products/rubber-chain.png' },
-            { value: 'silver_chain',   label: '銀色不鏽鋼鏈', img: 'assets/images/products/silver-chain.png' },
-            { value: 'gold_chain',     label: '金色不鏽鋼鏈', img: 'assets/images/products/gold-chain.png' },
+            { value: 'silver_chain',   label: '銀色不鏽鋼鏈',  img: 'assets/images/products/silver-chain.png' },
+            { value: 'gold_chain',     label: '金色不鏽鋼鏈',  img: 'assets/images/products/gold-chain.png' },
             { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
+            { value: 'black_rubber',   label: '黑色橡膠繩',    img: 'assets/images/products/rubber-chain.png' },
         ];
 
         function showChainTypeModal() {
@@ -4459,6 +4459,34 @@
                                 </div>`).join('')}
                         </div>
                     </div>`).join('');
+
+                // hover 放大預覽（只綁一次）
+                if (!window._chainHoverListenerAdded) {
+                    window._chainHoverListenerAdded = true;
+                    const preview    = document.getElementById('chain-img-preview');
+                    const previewImg = document.getElementById('chain-img-preview-img');
+                    body.addEventListener('mouseover', e => {
+                        const card = e.target.closest('.cart-chain-opt');
+                        if (!card) return;
+                        const img = card.querySelector('img');
+                        if (!img || img.style.display === 'none') return;
+                        previewImg.src = img.src;
+                        const pw = 240;
+                        const rect = card.getBoundingClientRect();
+                        let left = rect.left + rect.width / 2 - pw / 2;
+                        left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+                        let top = rect.top - pw - 16;
+                        if (top < 8) top = rect.bottom + 16;
+                        preview.style.left = left + 'px';
+                        preview.style.top  = top  + 'px';
+                        preview.style.display = 'block';
+                    });
+                    body.addEventListener('mouseout', e => {
+                        const card = e.target.closest('.cart-chain-opt');
+                        if (!card || card.contains(e.relatedTarget)) return;
+                        document.getElementById('chain-img-preview').style.display = 'none';
+                    });
+                }
 
                 function updateConfirmBtn() {
                     const allSelected = cartItems.every(i => i.chainType);
@@ -6074,6 +6102,12 @@
                 確認，前往結帳
             </button>
         </div>
+    </div>
+
+    <!-- 項鍊 hover 放大預覽 -->
+    <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
+         border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+        <img id="chain-img-preview-img" style="width:240px;height:240px;object-fit:cover;display:block;">
     </div>
 
     <!-- ── Option B：付款後 AI 諮詢補做 Modal ─────────────────── -->
