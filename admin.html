@@ -3297,6 +3297,26 @@
             const today = new Date().toLocaleDateString('zh-TW');
             document.getElementById('emailMfrBody').value =
                 `您好，\n\n感謝您與 DUET 合作。以下是本次製作委託，共 ${selectedOrders.length} 筆訂單，詳細規格請參閱附件 Excel 檔案。\n\n請依照規格製作並於完成後告知出貨資訊。如有疑問歡迎來信。\n\n謝謝！\nDUET 團隊\n${today}`;
+
+            // 動態組信件主旨
+            function anonName(name) {
+                if (!name) return '客戶';
+                if (name.length >= 3) return name.slice(0, -2) + '＊' + name.slice(-1);
+                if (name.length === 2) return name[0] + '＊';
+                return name;
+            }
+            const subjectOrders = selectedOrders.map(id => {
+                const o = (allOrders || []).find(x => x.orderId === id);
+                if (!o) return id;
+                const letters = (o.items || []).map(i => (i.letter1 || '') + (i.letter2 || '')).join('、');
+                const fonts   = (o.items || []).map(i => `${i.font1 || '?'}/${i.font2 || '?'}`).join('、');
+                const name    = anonName(o.userInfo?.buyerName || o.userInfo?.name || '');
+                return `${id}｜${letters}｜${fonts}｜${name}`;
+            });
+            document.getElementById('emailMfrSubject').value =
+                selectedOrders.length === 1
+                    ? `【DUET】製作委託 - ${subjectOrders[0]}`
+                    : `【DUET】製作委託 - ${selectedOrders.length} 筆訂單（${selectedOrders.join('、')}）`;
             // 訂單預覽清單
             const preview = selectedOrders.map(id => {
                 const order = (allOrders || []).find(o => o.orderId === id);
