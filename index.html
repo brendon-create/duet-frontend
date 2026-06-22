@@ -643,15 +643,24 @@
         .product-photos-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: 460px 360px;
             gap: 16px;
         }
 
         .product-photo-item img {
             width: 100%;
-            height: 420px;
+            height: 100%;
             object-fit: cover;
             object-position: center;
             display: block;
+        }
+
+        .product-photo-item {
+            overflow: hidden;
+        }
+
+        .product-photo-item.span-2 {
+            grid-column: span 2;
         }
 
         @media (max-width: 768px) {
@@ -660,7 +669,12 @@
             }
             .product-photos-grid {
                 grid-template-columns: 1fr;
+                grid-template-rows: unset;
                 gap: 12px;
+            }
+            .product-photo-item,
+            .product-photo-item.span-2 {
+                grid-column: unset;
             }
             .product-photo-item img {
                 height: 300px;
@@ -1386,14 +1400,17 @@
     <!-- ===== 作品實拍區塊 ===== -->
     <section class="product-photos-section">
         <div class="product-photos-grid">
+            <div class="product-photo-item span-2">
+                <img src="assets/images/products/DUET_AB_RB_WC_B6.PNG_3material.png" alt="DUET 三種材質系列">
+            </div>
+            <div class="product-photo-item">
+                <img src="assets/images/products/rubber-chain.png" alt="DUET 橡膠繩款式">
+            </div>
             <div class="product-photo-item">
                 <img src="assets/images/products/DUET_AB_01.PNG" alt="DUET 作品實拍">
             </div>
-            <div class="product-photo-item">
+            <div class="product-photo-item span-2">
                 <img src="assets/images/products/DUET_AB_02.PNG" alt="DUET 作品包裝">
-            </div>
-            <div class="product-photo-item">
-                <img src="assets/images/products/DUET_AB_RB_WC_B6.PNG" alt="DUET 系列作品">
             </div>
         </div>
     </section>
