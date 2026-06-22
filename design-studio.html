@@ -3637,6 +3637,26 @@
                         ${window.t('cart.item.size.label')}: ${item.size}mm | ${window.t('cart.item.weight.label')}: ${item.weight}
                     </div>
                 `;
+                // 項鍊材質選擇按鈕
+                if (!item.isPreciousMetal) {
+                    const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
+                    const chainBtn = document.createElement('button');
+                    chainBtn.style.cssText = `
+                        display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+                        padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;
+                        border:1px solid ${chainOpt ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.25)'};
+                        background:${chainOpt ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.05)'};
+                        color:${chainOpt ? '#d4af37' : 'rgba(255,255,255,0.55)'};
+                    `;
+                    chainBtn.innerHTML = chainOpt
+                        ? `<span>⛓</span><span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
+                        : `<span>⛓</span><span>選擇項鍊材質</span>`;
+                    chainBtn.addEventListener('click', () => {
+                        showChainTypeModal().then(() => renderCart()).catch(() => {});
+                    });
+                    infoDiv.appendChild(chainBtn);
+                }
+
                 div.appendChild(infoDiv);
 
                 const priceDiv = document.createElement('div');
@@ -4561,8 +4581,13 @@
                 return;
             }
 
-            // 每次結帳都顯示項鍊確認 modal（讓用戶確認或更改預設）
-            showChainTypeModal().then(() => {
+            // 若有作品尚未選擇項鍊，先強制補選（safety net）
+            const needsChain = cartItems.filter(i => !i.isPreciousMetal && !i.chainType);
+            const chainPromise = needsChain.length > 0
+                ? showChainTypeModal()
+                : Promise.resolve();
+
+            chainPromise.then(() => {
                 // 設計確認
                 showDesignConfirmation()
                     .then(() => {
