@@ -6006,9 +6006,12 @@
             text-align: center;
         ">
             <div style="font-size: 40px; margin-bottom: 16px;">✨</div>
-            <h3 style="font-size: 22px; font-weight: 600; color: #fff; margin: 0 0 12px 0; letter-spacing: 0.5px;">為您的作品留下故事</h3>
-            <p style="font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; margin: 0 0 28px 0;">
-                只需幾分鐘的對話，我們就能為您的 DUET 作品<br>生成一份專屬設計理念。
+            <h3 style="font-size: 22px; font-weight: 600; color: #fff; margin: 0 0 12px 0; letter-spacing: 0.5px;">為作品寫下專屬設計理念</h3>
+            <p style="font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.8; margin: 0 0 8px 0;">
+                只需幾分鐘，AI 將根據您的回答，為這件 DUET 撰寫一份有溫度的設計理念——收錄在專屬卡片上，陪伴作品一起交到對方手中。
+            </p>
+            <p style="font-size: 13px; color: rgba(212,175,55,0.85); line-height: 1.6; margin: 0 0 24px 0;">
+                建議完成諮詢，讓設計理念更完整、更有意義。
             </p>
             <button id="post-payment-yes-btn" style="
                 width: 100%;
@@ -6017,15 +6020,15 @@
                 border: none; border-radius: 12px;
                 color: #000; font-size: 15px; font-weight: 600;
                 cursor: pointer; margin-bottom: 10px;
-            ">好的，開始對話</button>
+            ">開始諮詢（推薦）</button>
             <button id="post-payment-no-btn" style="
                 width: 100%;
                 padding: 14px;
                 background: transparent;
                 border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
-                color: rgba(255,255,255,0.55); font-size: 14px;
+                color: rgba(255,255,255,0.4); font-size: 13px;
                 cursor: pointer;
-            ">略過，直接看結果</button>
+            ">略過，使用簡易版設計理念</button>
         </div>
 
         <!-- 嵌入 AI 對話畫面 -->
@@ -6093,10 +6096,11 @@
 
         const lang = localStorage.getItem('duet_language') || 'zh';
         if (lang === 'en') {
-            modal.querySelector('h3').textContent = 'Add a story to your piece';
-            modal.querySelector('p').innerHTML = 'A quick conversation is all it takes to create<br>a unique design story for your DUET.';
-            document.getElementById('post-payment-yes-btn').textContent = "Let's chat";
-            document.getElementById('post-payment-no-btn').textContent = 'Skip, see my result';
+            modal.querySelector('h3').textContent = 'Write a design story for your piece';
+            modal.querySelectorAll('p')[0].innerHTML = 'A short conversation gives our AI the context it needs to write a meaningful design story for your DUET — included on the card delivered with your piece.';
+            modal.querySelectorAll('p')[1].innerHTML = 'We recommend completing the consultation for a richer, more personal result.';
+            document.getElementById('post-payment-yes-btn').textContent = 'Start consultation (recommended)';
+            document.getElementById('post-payment-no-btn').textContent = 'Skip, use a simple version';
         }
 
         modal.style.display = 'flex';
