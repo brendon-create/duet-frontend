@@ -643,15 +643,14 @@
         .product-photos-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: 320px 260px;
             gap: 16px;
+            max-width: 860px;
+            margin: 0 auto;
         }
 
         .product-photo-item img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
+            height: auto;
             display: block;
         }
 
@@ -669,15 +668,12 @@
             }
             .product-photos-grid {
                 grid-template-columns: 1fr;
-                grid-template-rows: unset;
                 gap: 12px;
+                max-width: 100%;
             }
             .product-photo-item,
             .product-photo-item.span-2 {
                 grid-column: unset;
-            }
-            .product-photo-item img {
-                height: 300px;
             }
         }
 
