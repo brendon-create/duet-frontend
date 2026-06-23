@@ -648,14 +648,17 @@
             margin: 0 auto;
         }
 
-        .product-photo-item img {
-            width: 100%;
-            height: auto;
-            display: block;
+        .product-photo-item {
+            aspect-ratio: 4 / 3;
+            overflow: hidden;
         }
 
-        .product-photo-item {
-            overflow: hidden;
+        .product-photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
         }
 
         .product-photo-item.span-2 {
@@ -674,6 +677,7 @@
             .product-photo-item,
             .product-photo-item.span-2 {
                 grid-column: unset;
+                aspect-ratio: 4 / 3;
             }
         }
 
