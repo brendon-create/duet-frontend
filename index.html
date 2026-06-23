@@ -642,13 +642,18 @@
 
         .product-photos-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 16px;
+        }
+
+        .product-photo-item {
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
         }
 
         .product-photo-item img {
             width: 100%;
-            height: 420px;
+            height: 100%;
             object-fit: cover;
             object-position: center;
             display: block;
@@ -659,11 +664,8 @@
                 padding: 0 24px 80px;
             }
             .product-photos-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            .product-photo-item img {
-                height: 300px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
             }
         }
 
@@ -1387,13 +1389,16 @@
     <section class="product-photos-section">
         <div class="product-photos-grid">
             <div class="product-photo-item">
-                <img src="assets/images/products/DUET_AB_01.PNG" alt="DUET 作品實拍">
-            </div>
-            <div class="product-photo-item">
                 <img src="assets/images/products/DUET_AB_02.PNG" alt="DUET 作品包裝">
             </div>
             <div class="product-photo-item">
-                <img src="assets/images/products/DUET_AB_RB_WC_B6.PNG" alt="DUET 系列作品">
+                <img src="assets/images/products/DUET_AB_01.PNG" alt="DUET 作品實拍">
+            </div>
+            <div class="product-photo-item">
+                <img src="assets/images/products/rubber-chain.png" alt="DUET 橡膠繩款式">
+            </div>
+            <div class="product-photo-item">
+                <img src="assets/images/products/DUET_AB_RB_WC_B6.PNG_3material.png" alt="DUET 三種材質系列">
             </div>
         </div>
     </section>
