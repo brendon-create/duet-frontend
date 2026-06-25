@@ -506,7 +506,7 @@
                 <button class="tab" onclick="switchTab('users')" data-i18n="admin.tab.users">員工管理</button>
                 <button class="tab" onclick="switchTab('promos')" data-i18n="admin.tab.promos">優惠券管理</button>
                 <button class="tab" onclick="switchTab('redeem')" data-i18n="admin.tab.redeem">兌換碼管理</button>
-                <button class="tab" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋</button>
+                <button class="tab" id="feedbackTab_btn" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋<span id="feedbackUnreadBadge" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:10px;vertical-align:middle;"></span></button>
                 <button class="tab" onclick="switchTab('system')" data-i18n="admin.tab.system">系統監控</button>
                 <button class="tab" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
                 <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
@@ -1396,13 +1396,16 @@
             document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
             if (typeof window.initLanguage === 'function') window.initLanguage();
             loadOrders();
-            
+            refreshFeedbackUnreadBadge();
+
             // 自動每小時刷新訂單
             setInterval(() => {
                 if (document.getElementById('ordersTab').style.display !== 'none') {
                     loadOrders();
                 }
             }, 3600000);
+            // 每 5 分鐘刷新未讀回饋 badge
+            setInterval(refreshFeedbackUnreadBadge, 300000);
         }
         
         // Tabs
@@ -2747,13 +2750,37 @@
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     renderFeedback(data.feedback || []);
+                    // 標記已讀並清除 badge
+                    fetch(`${window.BACKEND_URL}/api/admin/feedback/mark-read`, {
+                        method: 'POST',
+                        headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    });
+                    const badge = document.getElementById('feedbackUnreadBadge');
+                    if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
                 }
             } catch (err) {
                 document.getElementById('feedbackTableBody').innerHTML = '<tr><td colspan="5" class="loading">載入失敗</td></tr>';
             }
+        }
+
+        async function refreshFeedbackUnreadBadge() {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/unread-count`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                const badge = document.getElementById('feedbackUnreadBadge');
+                if (!badge) return;
+                if (data.success && data.count > 0) {
+                    badge.textContent = data.count;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {}
         }
         
         function renderFeedback(feedbackList) {
