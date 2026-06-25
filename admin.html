@@ -839,12 +839,13 @@
                                 <th>訂單編號</th>
                                 <th>評分</th>
                                 <th>回饋內容</th>
-                                <th> Email</th>
+                                <th>Email</th>
                                 <th>提交時間</th>
+                                <th>回覆</th>
                             </tr>
                         </thead>
                         <tbody id="feedbackTableBody">
-                            <tr><td colspan="5" class="loading">載入中...</td></tr>
+                            <tr><td colspan="6" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2766,6 +2767,153 @@
             }
         }
 
+        // ==================== 回覆回饋 ====================
+        let _frm = {};  // 目前開啟的 feedback 資料
+
+        const INCENTIVE_CHIPS = {
+            high: [
+                { label: '🎁 推薦優惠碼', text: '\n\n特別感謝您的好評！為了讓您的親友也能體驗 DUET，我們準備了一組推薦優惠碼，歡迎分享給身邊的人：\n\n【優惠碼】___________\n首次訂購享 NT$300 折抵。' },
+                { label: '📖 分享製作故事', text: '\n\n您的作品背後有一段美好的故事，很榮幸能夠參與。如果您願意，我們很希望在品牌社群中分享您的設計理念（完全匿名），讓更多人感受到客製化珠寶的溫度。' },
+            ],
+            low: [
+                { label: '🙏 致歉 + 折扣', text: '\n\n非常感謝您的反饋，我們誠摯地為這次的體驗致歉。為了彌補您的不滿，我們提供一組專屬折扣碼：\n\n【折扣碼】___________\n下次訂購享 NT$300 折抵，希望有機會再次為您服務。' },
+                { label: '🔧 補救方案', text: '\n\n針對您提到的問題，我們希望能夠提供補救方案。請告知您方便的時間，我們將安排專人與您聯繫，協商最適合的解決方式。' },
+            ],
+        };
+
+        function openReplyModal(f, viewMode) {
+            _frm = f;
+            const modal = document.getElementById('feedbackReplyModal');
+            modal.style.display = 'flex';
+            document.getElementById('frm-title').textContent = viewMode ? '回覆紀錄' : '回覆顧客回饋';
+            document.getElementById('frm-stars').textContent = '★'.repeat(f.rating||0) + '☆'.repeat(5-(f.rating||0));
+            document.getElementById('frm-order').textContent = f.order_id || '';
+            document.getElementById('frm-email').textContent = f.customer_email || '';
+            document.getElementById('frm-comment').textContent = f.comment || '';
+
+            if (viewMode && f.reply_content) {
+                document.getElementById('frm-replied-section').style.display = 'block';
+                document.getElementById('frm-edit-section').style.display = 'none';
+                document.getElementById('frm-replied-content').textContent = f.reply_content;
+                const meta = f.replied_at ? `${new Date(f.replied_at).toLocaleString('zh-TW')} · ${f.reply_sent_by||''}` : '';
+                document.getElementById('frm-replied-meta').textContent = meta;
+            } else {
+                document.getElementById('frm-replied-section').style.display = 'none';
+                document.getElementById('frm-edit-section').style.display = 'block';
+                // 預設底稿
+                const rating = f.rating || 0;
+                const greeting = `親愛的顧客您好，\n\n感謝您購買 DUET 客製珠寶，並且撥冗填寫回饋！`;
+                const closing = `\n\n如有任何問題，隨時歡迎來信。\n\nDUET 客製珠寶 敬上`;
+                document.getElementById('frm-reply-text').value = greeting + closing;
+                // 優惠 chips
+                const chipsDiv = document.getElementById('frm-chips');
+                chipsDiv.innerHTML = '';
+                const chips = rating >= 4 ? INCENTIVE_CHIPS.high : INCENTIVE_CHIPS.low;
+                chips.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary';
+                    btn.style.cssText = 'font-size:12px;padding:5px 12px;';
+                    btn.textContent = c.label;
+                    btn.dataset.active = '0';
+                    btn.onclick = () => {
+                        if (btn.dataset.active === '0') {
+                            document.getElementById('frm-reply-text').value += c.text;
+                            btn.dataset.active = '1';
+                            btn.style.borderColor = '#d4af37';
+                            btn.style.color = '#d4af37';
+                        } else {
+                            document.getElementById('frm-reply-text').value =
+                                document.getElementById('frm-reply-text').value.replace(c.text, '');
+                            btn.dataset.active = '0';
+                            btn.style.borderColor = '';
+                            btn.style.color = '';
+                        }
+                    };
+                    chipsDiv.appendChild(btn);
+                });
+            }
+            // 載入範本
+            loadFeedbackTemplates();
+        }
+
+        function closeFeedbackReplyModal() {
+            document.getElementById('feedbackReplyModal').style.display = 'none';
+        }
+
+        async function loadFeedbackTemplates() {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/templates`, {
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                const sel = document.getElementById('frm-template-select');
+                sel.innerHTML = '<option value="">── 套用範本 ──</option>';
+                (data.templates || []).forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.name;
+                    opt.dataset.content = t.content;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {}
+        }
+
+        function applyFeedbackTemplate() {
+            const sel = document.getElementById('frm-template-select');
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.content) {
+                document.getElementById('frm-reply-text').value = opt.dataset.content;
+            }
+        }
+
+        async function saveFeedbackTemplate() {
+            const content = document.getElementById('frm-reply-text').value.trim();
+            if (!content) return alert('請先輸入回覆內容');
+            const name = prompt('請輸入範本名稱：');
+            if (!name) return;
+            await fetch(`${window.BACKEND_URL}/api/admin/feedback/templates`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                body: JSON.stringify({ name, content })
+            });
+            loadFeedbackTemplates();
+        }
+
+        async function sendFeedbackReply() {
+            const content = document.getElementById('frm-reply-text').value.trim();
+            if (!content) return alert('請輸入回覆內容');
+            if (!_frm.customer_email) return alert('此回饋沒有顧客 Email，無法發送');
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '發送中…';
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/${_frm.id}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({
+                        reply_content: content,
+                        customer_email: _frm.customer_email,
+                        order_id: _frm.order_id,
+                        rating: _frm.rating,
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeFeedbackReplyModal();
+                    loadFeedback();
+                } else {
+                    alert(data.error || '發送失敗');
+                }
+            } catch (e) {
+                alert('網路錯誤，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '送出回覆';
+            }
+        }
+
         async function refreshFeedbackUnreadBadge() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/unread-count`, {
@@ -2803,21 +2951,25 @@
             
             // 渲染表格
             if (feedbackList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">尚無回饋資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">尚無回饋資料</td></tr>';
                 return;
             }
             
             tbody.innerHTML = feedbackList.map(f => `
                 <tr>
                     <td>${f.order_id || '-'}</td>
-                    <td>
-                        <span style="color: #d4af37;">
-                            ${'★'.repeat(f.rating || 0)}
-                        </span>
-                    </td>
-                    <td>${f.comment || '-'}</td>
+                    <td><span style="color:#d4af37;">${'★'.repeat(f.rating||0)}</span></td>
+                    <td style="max-width:220px;white-space:pre-wrap;">${f.comment || '-'}</td>
                     <td>${f.customer_email || '-'}</td>
                     <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
+                    <td>
+                        ${f.replied_at
+                            ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#4ade80;border-color:#4ade80;"
+                                onclick='openReplyModal(${JSON.stringify(f)}, true)'>✓ 已回覆</button>`
+                            : `<button class="btn btn-primary" style="font-size:12px;padding:4px 10px;"
+                                onclick='openReplyModal(${JSON.stringify(f)}, false)'>回覆</button>`
+                        }
+                    </td>
                 </tr>
             `).join('');
         }
@@ -3822,6 +3974,53 @@
             }
         }
     </script>
+
+    <!-- 回覆顧客回饋 Modal -->
+    <div id="feedbackReplyModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:600px;max-height:90vh;overflow-y:auto;position:relative;">
+            <h3 id="frm-title" style="color:var(--text-primary);margin:0 0 16px 0;">回覆顧客回饋</h3>
+
+            <!-- 顧客資訊 -->
+            <div style="background:#111;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;color:#aaa;">
+                <span id="frm-stars" style="color:#d4af37;font-size:16px;letter-spacing:2px;"></span>
+                <span id="frm-order" style="margin-left:12px;"></span>
+                <span id="frm-email" style="margin-left:12px;opacity:0.7;"></span>
+                <div id="frm-comment" style="margin-top:8px;color:#ccc;white-space:pre-wrap;"></div>
+            </div>
+
+            <!-- 已回覆內容（view mode）-->
+            <div id="frm-replied-section" style="display:none;">
+                <div style="font-size:12px;color:#888;margin-bottom:6px;">我們的回覆</div>
+                <div id="frm-replied-content" style="background:#0f2a1a;border:1px solid #2a5a3a;border-radius:8px;padding:14px;font-size:14px;color:#ccc;white-space:pre-wrap;"></div>
+                <div id="frm-replied-meta" style="font-size:12px;color:#666;margin-top:6px;"></div>
+                <button class="btn btn-secondary" style="margin-top:14px;font-size:13px;" onclick="document.getElementById('frm-edit-section').style.display='block';document.getElementById('frm-replied-section').style.display='none';">重新回覆</button>
+            </div>
+
+            <!-- 編輯區（edit mode）-->
+            <div id="frm-edit-section">
+                <!-- 優惠 chip -->
+                <div id="frm-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+
+                <!-- 範本選擇 -->
+                <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+                    <select id="frm-template-select" style="flex:1;background:#222;border:1px solid #444;color:#ccc;border-radius:8px;padding:8px 10px;font-size:13px;">
+                        <option value="">── 套用範本 ──</option>
+                    </select>
+                    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;white-space:nowrap;" onclick="applyFeedbackTemplate()">套用</button>
+                    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;white-space:nowrap;" onclick="saveFeedbackTemplate()">存為範本</button>
+                </div>
+
+                <!-- 回覆文字 -->
+                <textarea id="frm-reply-text" rows="9" placeholder="在此輸入回覆內容…"
+                    style="width:100%;box-sizing:border-box;background:#111;border:1px solid #444;color:#ddd;border-radius:8px;padding:12px;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
+
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+                    <button class="btn btn-secondary" onclick="closeFeedbackReplyModal()">取消</button>
+                    <button class="btn btn-primary" onclick="sendFeedbackReply()">送出回覆</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 發送給廠商 Modal -->
     <div id="emailMfrModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
