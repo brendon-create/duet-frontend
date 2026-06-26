@@ -2114,7 +2114,17 @@
                     headers: { 'X-Admin-Key': ADMIN_API_KEY }
                 });
                 const data = await response.json();
-                if (data.success) showOrderModal(data.order);
+                if (data.success) {
+                    let storyRevision = null;
+                    try {
+                        const revRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/story-revision`, {
+                            headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                        });
+                        const revData = await revRes.json();
+                        if (revData.success) storyRevision = revData.revision;
+                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
+                    showOrderModal(data.order, storyRevision);
+                }
             } catch (err) { 
                 orderDetailContent.innerHTML = `
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #ef4444;">
@@ -2126,7 +2136,7 @@
             }
         }
         
-        function showOrderModal(order) {
+        function showOrderModal(order, storyRevision) {
             const u = order.userInfo || {};
             const items = order.items || [];
             const status = statusMap[order.status] || { text: order.status, class: '' };
@@ -2165,7 +2175,7 @@
                     </div>` : ''}
                 </div>`;
             
-            // 如果有設計理念，顯示在基本資訊下方
+            // 如果有設計理念，顯示在基本資訊下方（含修改功能）
             if (designStory || originalStory) {
                 const hasDiff = originalStory && finalStory && originalStory !== finalStory;
                 const diffHtml = hasDiff ? `
@@ -2175,14 +2185,54 @@
                             <p style="line-height:1.8;font-size:13px;color:var(--text-muted);white-space:pre-wrap;margin:0;">${originalStory}</p>
                         </div>
                     </div>` : '';
+
+                // 後台修改紀錄區塊
+                let revisionHtml = '';
+                if (storyRevision && storyRevision.revised) {
+                    const reqAt = storyRevision.requested_at ? new Date(storyRevision.requested_at).toLocaleString('zh-TW') : '';
+                    const confAt = storyRevision.confirmed_at ? new Date(storyRevision.confirmed_at).toLocaleString('zh-TW') : null;
+                    const confIp = storyRevision.confirmed_ip || '';
+                    revisionHtml = `
+                    <div style="margin-top:14px;padding:14px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">📋 後台修改紀錄</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                            <div>
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">原版本</div>
+                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${(storyRevision.original||'').replace(/</g,'&lt;')}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:rgba(212,175,55,0.8);margin-bottom:4px;">修改版本</div>
+                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${(storyRevision.revised||'').replace(/</g,'&lt;')}</div>
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-muted);">發送確認信：${reqAt}</div>
+                        ${confAt
+                            ? `<div style="font-size:12px;color:#86efac;margin-top:4px;">✅ 顧客已確認：${confAt}（IP: ${confIp}）</div>`
+                            : `<div style="font-size:12px;color:#fbbf24;margin-top:4px;">⏳ 等待顧客確認中</div>`
+                        }
+                    </div>`;
+                }
+
                 content += `
                 <div class="detail-section">
-                    <h3>設計理念${hasDiff ? ' <span style="font-size:12px;font-weight:400;color:var(--text-muted);">（顧客有修改）</span>' : ''}</h3>
-                    <div style="background:rgba(212,175,55,0.1);padding:16px;border-radius:8px;border-left:3px solid var(--primary);">
+                    <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                        <span>設計理念${hasDiff ? ' <span style="font-size:12px;font-weight:400;color:var(--text-muted);">（顧客有修改）</span>' : ''}</span>
+                        <button onclick="toggleStoryEdit('${order.orderId}')" id="storyEditBtn-${order.orderId}" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;">編輯理念</button>
+                    </h3>
+                    <div id="storyViewBlock-${order.orderId}" style="background:rgba(212,175,55,0.1);padding:16px;border-radius:8px;border-left:3px solid var(--primary);">
                         <div style="font-size:11px;color:rgba(212,175,55,0.7);letter-spacing:1px;margin-bottom:8px;">${hasDiff ? '最終確認版本' : '設計理念'}</div>
-                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;margin:0;">${designStory || originalStory}</p>
+                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;margin:0;">${(designStory || originalStory).replace(/</g,'&lt;')}</p>
+                    </div>
+                    <div id="storyEditBlock-${order.orderId}" style="display:none;margin-top:10px;">
+                        <textarea id="storyEditArea-${order.orderId}" style="width:100%;min-height:120px;padding:12px;border-radius:8px;border:1px solid rgba(212,175,55,0.4);background:rgba(255,255,255,0.06);color:var(--text-light);font-size:14px;line-height:1.7;resize:vertical;font-family:inherit;">${(designStory || originalStory).replace(/</g,'&lt;')}</textarea>
+                        <div style="display:flex;gap:8px;margin-top:8px;">
+                            <button onclick="submitStoryRevision('${order.orderId}')" style="flex:1;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">確認修改並寄送確認信</button>
+                            <button onclick="toggleStoryEdit('${order.orderId}')" style="padding:10px 16px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--text-muted);border-radius:8px;cursor:pointer;font-size:14px;">取消</button>
+                        </div>
+                        <div id="storyRevisionMsg-${order.orderId}" style="font-size:13px;margin-top:8px;"></div>
                     </div>
                     ${diffHtml}
+                    ${revisionHtml}
                 </div>`;
             }
 
@@ -2296,6 +2346,45 @@
             loadOrderLogs(order.orderId);
         }
         
+        function toggleStoryEdit(orderId) {
+            const editBlock = document.getElementById(`storyEditBlock-${orderId}`);
+            const viewBlock = document.getElementById(`storyViewBlock-${orderId}`);
+            const btn = document.getElementById(`storyEditBtn-${orderId}`);
+            const isEditing = editBlock.style.display !== 'none';
+            editBlock.style.display = isEditing ? 'none' : 'block';
+            viewBlock.style.display = isEditing ? 'block' : 'none';
+            btn.textContent = isEditing ? '編輯理念' : '取消';
+        }
+
+        async function submitStoryRevision(orderId) {
+            const textarea = document.getElementById(`storyEditArea-${orderId}`);
+            const msgEl = document.getElementById(`storyRevisionMsg-${orderId}`);
+            const revised = textarea.value.trim();
+            if (!revised) { msgEl.style.color = '#ef4444'; msgEl.textContent = '修改內容不能為空'; return; }
+
+            msgEl.style.color = 'var(--text-muted)';
+            msgEl.textContent = '寄送中...';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/revise-story`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    body: JSON.stringify({ revised })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.style.color = '#86efac';
+                    msgEl.textContent = '✅ 確認信已寄送，等待顧客確認';
+                    setTimeout(() => viewOrder(orderId), 1500);
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = data.error || '發送失敗';
+                }
+            } catch (e) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '網路錯誤';
+            }
+        }
+
         async function loadOrderLogs(orderId) {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/logs`, {
