@@ -2773,7 +2773,7 @@
         const INCENTIVE_CHIPS = {
             high: [
                 { label: '🎁 推薦優惠碼', text: '\n\n特別感謝您的好評！為了讓您的親友也能體驗 DUET，我們準備了一組推薦優惠碼，歡迎分享給身邊的人：\n\n【優惠碼】___________\n首次訂購享 NT$300 折抵。' },
-                { label: '📖 分享製作故事', text: '\n\n您的作品背後有一段美好的故事，很榮幸能夠參與。如果您願意，我們很希望在品牌社群中分享您的設計理念（完全匿名），讓更多人感受到客製化珠寶的溫度。' },
+                { label: '📖 分享製作故事', consent: true },
             ],
             low: [
                 { label: '🙏 致歉 + 折扣', text: '\n\n非常感謝您的反饋，我們誠摯地為這次的體驗致歉。為了彌補您的不滿，我們提供一組專屬折扣碼：\n\n【折扣碼】___________\n下次訂購享 NT$300 折抵，希望有機會再次為您服務。' },
@@ -2815,20 +2815,31 @@
                     btn.style.cssText = 'font-size:12px;padding:5px 12px;';
                     btn.textContent = c.label;
                     btn.dataset.active = '0';
-                    btn.onclick = () => {
-                        if (btn.dataset.active === '0') {
-                            document.getElementById('frm-reply-text').value += c.text;
-                            btn.dataset.active = '1';
-                            btn.style.borderColor = '#d4af37';
-                            btn.style.color = '#d4af37';
-                        } else {
-                            document.getElementById('frm-reply-text').value =
-                                document.getElementById('frm-reply-text').value.replace(c.text, '');
-                            btn.dataset.active = '0';
-                            btn.style.borderColor = '';
-                            btn.style.color = '';
-                        }
-                    };
+                    if (c.consent) {
+                        btn.dataset.consent = '1';
+                        btn.title = '勾選後信件將附上「我同意匿名分享」按鈕，顧客一鍵同意';
+                        btn.onclick = () => {
+                            const on = btn.dataset.active === '0';
+                            btn.dataset.active = on ? '1' : '0';
+                            btn.style.borderColor = on ? '#d4af37' : '';
+                            btn.style.color = on ? '#d4af37' : '';
+                        };
+                    } else {
+                        btn.onclick = () => {
+                            if (btn.dataset.active === '0') {
+                                document.getElementById('frm-reply-text').value += c.text;
+                                btn.dataset.active = '1';
+                                btn.style.borderColor = '#d4af37';
+                                btn.style.color = '#d4af37';
+                            } else {
+                                document.getElementById('frm-reply-text').value =
+                                    document.getElementById('frm-reply-text').value.replace(c.text, '');
+                                btn.dataset.active = '0';
+                                btn.style.borderColor = '';
+                                btn.style.color = '';
+                            }
+                        };
+                    }
                     chipsDiv.appendChild(btn);
                 });
             }
@@ -2897,6 +2908,8 @@
                         customer_email: _frm.customer_email,
                         order_id: _frm.order_id,
                         rating: _frm.rating,
+                        include_share_consent: !![...document.querySelectorAll('#frm-chips button[data-consent="1"]')]
+                            .find(b => b.dataset.active === '1'),
                     })
                 });
                 const data = await res.json();
