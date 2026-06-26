@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET — 確認設計理念</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', 'Microsoft JhengHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 560px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            padding: 44px 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .header h1 {
+            color: #d4af37;
+            font-size: 36px;
+            font-weight: 600;
+            letter-spacing: 4px;
+        }
+        .header p {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+            letter-spacing: 2px;
+        }
+
+        .order-badge {
+            background: #f9f9f9;
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+            text-align: center;
+        }
+        .order-badge label {
+            font-size: 12px;
+            color: #aaa;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .order-badge span {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .label-original { color: #aaa; }
+        .label-revised  { color: #d4af37; }
+
+        .story-box {
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+        .story-box-original {
+            background: #f5f5f5;
+            border-left: 3px solid #ddd;
+            color: #999;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #f0f0f0;
+            margin: 4px 0 20px 0;
+        }
+
+        .intro-text {
+            font-size: 15px;
+            color: #444;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 14px 16px;
+            border: 1.5px solid #e8d98a;
+            border-radius: 10px;
+            font-family: 'Outfit', 'Microsoft JhengHei', Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.8;
+            resize: vertical;
+            background: #fffbf0;
+            transition: border-color 0.2s;
+            margin-bottom: 6px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #bbb;
+            margin-bottom: 24px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 17px;
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212,175,55,0.3);
+        }
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 成功畫面 */
+        .success-view {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+        .success-view .icon { font-size: 52px; margin-bottom: 16px; }
+        .success-view h2 { color: #333; font-size: 22px; margin-bottom: 10px; font-weight: 600; }
+        .success-view p { color: #888; font-size: 15px; line-height: 1.7; }
+        .back-link {
+            display: inline-block;
+            margin-top: 28px;
+            color: #d4af37;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        /* 錯誤畫面 */
+        .error-view {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+        .error-view .icon { font-size: 48px; margin-bottom: 16px; }
+        .error-view p { color: #888; font-size: 15px; line-height: 1.7; }
+
+        /* 載入中 */
+        .loading-view {
+            text-align: center;
+            padding: 40px 0;
+            color: #bbb;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #eee;
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>DUET</h1>
+        <p>BCAG JEWELRY</p>
+    </div>
+
+    <!-- 載入中 -->
+    <div id="viewLoading">
+        <div class="loading-view">
+            <div class="spinner"></div>
+            <div>載入中...</div>
+        </div>
+    </div>
+
+    <!-- 主要編輯確認區 -->
+    <div id="viewMain" style="display:none;">
+        <div class="order-badge">
+            <label>訂單編號</label>
+            <span id="orderIdDisplay">—</span>
+        </div>
+
+        <p class="intro-text">
+            我們已針對您的設計理念進行了修改。<br>
+            請確認以下內容，或直接在框中編輯後再送出。
+        </p>
+
+        <div class="section-label label-original">原始版本</div>
+        <div class="story-box story-box-original" id="originalText"></div>
+
+        <hr class="divider">
+
+        <div class="section-label label-revised">修改後版本（可編輯）</div>
+        <textarea id="revisedTextarea" placeholder="請確認或修改上方內容..."></textarea>
+        <p class="hint">如內容正確，直接按「確認送出」即可；若有需要調整，請直接在上方框中修改。</p>
+
+        <button class="btn-submit" id="submitBtn" onclick="submitConfirm()">確認送出</button>
+    </div>
+
+    <!-- 已確認畫面 -->
+    <div id="viewAlreadyConfirmed" style="display:none;">
+        <div class="success-view">
+            <div class="icon">✅</div>
+            <h2>您已確認過了</h2>
+            <p>此設計理念已完成確認，感謝您！<br>若有疑問請直接回覆確認信聯繫我們。</p>
+            <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+        </div>
+    </div>
+
+    <!-- 送出成功畫面 -->
+    <div id="viewSuccess" style="display:none;">
+        <div class="success-view">
+            <div class="icon">✨</div>
+            <h2>確認完成，謝謝！</h2>
+            <p>我們已收到您確認的設計理念，<br>將依此版本用心製作您的作品。</p>
+            <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+        </div>
+    </div>
+
+    <!-- 連結失效畫面 -->
+    <div id="viewError" style="display:none;">
+        <div class="error-view">
+            <div class="icon">🔗</div>
+            <p>此連結已失效或不存在。<br>如有疑問請聯繫我們。</p>
+            <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || '';
+    const BACKEND = 'https://duet-backend-wlw8.onrender.com';
+
+    function showView(id) {
+        ['viewLoading','viewMain','viewAlreadyConfirmed','viewSuccess','viewError']
+            .forEach(v => document.getElementById(v).style.display = v === id ? 'block' : 'none');
+    }
+
+    async function loadData() {
+        if (!token) { showView('viewError'); return; }
+        try {
+            const res = await fetch(`${BACKEND}/api/consent/story-data/${token}`);
+            const data = await res.json();
+            if (!data.success) { showView('viewError'); return; }
+            if (data.already_confirmed) { showView('viewAlreadyConfirmed'); return; }
+
+            document.getElementById('orderIdDisplay').textContent = data.order_id || '—';
+            document.getElementById('originalText').textContent = data.original || '（無原始版本）';
+            document.getElementById('revisedTextarea').value = data.revised || '';
+            showView('viewMain');
+        } catch (e) {
+            showView('viewError');
+        }
+    }
+
+    async function submitConfirm() {
+        const btn = document.getElementById('submitBtn');
+        const finalText = document.getElementById('revisedTextarea').value.trim();
+        if (!finalText) { alert('內容不能為空'); return; }
+
+        btn.disabled = true;
+        btn.textContent = '送出中...';
+        try {
+            const res = await fetch(`${BACKEND}/api/consent/confirm-story/${token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ final_text: finalText })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showView('viewSuccess');
+            } else {
+                alert(data.error || '送出失敗，請稍後再試');
+                btn.disabled = false;
+                btn.textContent = '確認送出';
+            }
+        } catch (e) {
+            alert('網路錯誤，請稍後再試');
+            btn.disabled = false;
+            btn.textContent = '確認送出';
+        }
+    }
+
+    loadData();
+</script>
+</body>
+</html>

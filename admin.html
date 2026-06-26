@@ -2210,6 +2210,9 @@
                             ? `<div style="font-size:12px;color:#86efac;margin-top:4px;">✅ 顧客已確認：${confAt}（IP: ${confIp}）</div>`
                             : `<div style="font-size:12px;color:#fbbf24;margin-top:4px;">⏳ 等待顧客確認中</div>`
                         }
+                        <div style="margin-top:10px;">
+                            <button onclick="revertStoryRevision('${order.orderId}')" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid rgba(239,68,68,0.5);background:transparent;color:#ef4444;cursor:pointer;">恢復原版</button>
+                        </div>
                     </div>`;
                 }
 
@@ -2354,6 +2357,25 @@
             editBlock.style.display = isEditing ? 'none' : 'block';
             viewBlock.style.display = isEditing ? 'block' : 'none';
             btn.textContent = isEditing ? '編輯理念' : '取消';
+        }
+
+        async function revertStoryRevision(orderId) {
+            if (!confirm('確定要恢復為下單時的原始版本嗎？此動作會清除目前的修改紀錄。')) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/revert-story`, {
+                    method: 'POST',
+                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('已恢復為原版，重新載入訂單中...');
+                    viewOrder(orderId);
+                } else {
+                    alert(data.error || '恢復失敗');
+                }
+            } catch (e) {
+                alert('網路錯誤');
+            }
         }
 
         async function submitStoryRevision(orderId) {
