@@ -1570,82 +1570,155 @@
         checkPaymentStatusImmediate();
         // ========== 付款成功檢測結束 ==========
 
+        function showResumeModal(aiData, wasSkipped, onContinue, onRestart) {
+            const lang = localStorage.getItem('duet_language') || 'zh';
+            const isZh = lang !== 'en';
+
+            const infoLines = [];
+            if (aiData && aiData.selectedLetters) {
+                const l1 = aiData.selectedLetters.letter1 || '?';
+                const l2 = aiData.selectedLetters.letter2 || '?';
+                infoLines.push(isZh ? `字母：${l1} & ${l2}` : `Letters: ${l1} & ${l2}`);
+            }
+            if (aiData && aiData.recommendedFonts) {
+                infoLines.push(isZh ? '已儲存 AI 字體推薦' : 'AI font recommendations saved');
+            } else if (wasSkipped) {
+                infoLines.push(isZh ? '跳過 AI 諮詢，直接設計' : 'Skipped AI consultation');
+            }
+
+            const modal = document.createElement('div');
+            modal.id = 'resume-session-modal';
+            modal.style.cssText = `
+                position:fixed;top:0;left:0;width:100%;height:100%;
+                background:rgba(0,0,0,0.75);backdrop-filter:blur(16px);
+                -webkit-backdrop-filter:blur(16px);z-index:99990;
+                display:flex;align-items:center;justify-content:center;`;
+
+            modal.innerHTML = `
+                <div style="max-width:440px;width:92%;background:rgba(18,18,18,0.97);
+                    border:1px solid rgba(212,175,55,0.3);border-radius:20px;
+                    padding:32px 28px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:12px;">📋</div>
+                    <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 8px 0;">
+                        ${isZh ? '有未完成的訂製流程' : 'Unfinished Design Session'}
+                    </h3>
+                    <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 20px 0;">
+                        ${isZh ? '偵測到上次尚未完成的設計紀錄' : 'We found your previous design in progress'}
+                    </p>
+                    ${infoLines.length ? `
+                    <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);
+                        border-radius:12px;padding:14px 16px;margin:0 0 24px 0;text-align:left;">
+                        ${infoLines.map(l => `<div style="font-size:13px;color:rgba(255,255,255,0.75);margin:3px 0;">• ${l}</div>`).join('')}
+                    </div>` : ''}
+                    <button id="resume-continue-btn" style="
+                        width:100%;padding:14px;margin-bottom:10px;
+                        background:linear-gradient(135deg,#d4af37,#b8932a);
+                        border:none;border-radius:12px;color:#000;
+                        font-size:15px;font-weight:600;cursor:pointer;">
+                        ${isZh ? '繼續完成訂製' : 'Continue Where I Left Off'}
+                    </button>
+                    <button id="resume-restart-btn" style="
+                        width:100%;padding:12px;
+                        background:transparent;border:1px solid rgba(255,255,255,0.18);
+                        border-radius:12px;color:rgba(255,255,255,0.6);
+                        font-size:14px;cursor:pointer;">
+                        ${isZh ? '重新開始' : 'Start Fresh'}
+                    </button>
+                </div>`;
+
+            document.body.appendChild(modal);
+
+            modal.querySelector('#resume-continue-btn').addEventListener('click', () => {
+                modal.remove();
+                onContinue();
+            });
+            modal.querySelector('#resume-restart-btn').addEventListener('click', () => {
+                modal.remove();
+                onRestart();
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', function () {
-            // 如果是付款成功後，不執行這段（會由 collectDesignStories 接手）
             if (window.isPostPayment) {
                 console.log('ℹ️ 付款成功流程，跳過 AI 推薦載入');
                 return;
             }
 
             const aiDataStr = localStorage.getItem('duet_ai_consultation');
+            const skipAI = localStorage.getItem('duet_skip_ai');
             posthog.capture('studio_entered', { with_ai_data: !!aiDataStr });
 
-            if (aiDataStr) {
+            function restoreAISession() {
+                if (!aiDataStr) return;
                 const aiData = JSON.parse(aiDataStr);
                 window.hasAIRecommendation = true;
                 window.aiRecommendation = aiData.recommendedFonts;
                 window.aiConversation = aiData.conversationHistory;
                 window.aiLetters = aiData.selectedLetters;
-
                 console.log('✅ 載入 AI 推薦資料:', aiData);
-
-                // 自動填入字母並套用 AI 選定字體
                 setTimeout(() => {
                     const letter1Select = document.getElementById('letter1');
                     const letter2Select = document.getElementById('letter2');
-
                     if (aiData.selectedLetters) {
                         letter1Select.value = aiData.selectedLetters.letter1;
                         letter2Select.value = aiData.selectedLetters.letter2;
                         console.log('✅ 已填入字母:', aiData.selectedLetters);
                     }
-
-                    // AI Consultant 返回流程：
-                    // 1. 全部 6 個推薦字體加入 checkedFonts
-                    // 2. 以使用者選定的字體為預設（排到 aiRecommendation 第一位）
-                    // 3. 呼叫 confirmFontSelection() 建立下拉選單並觸發第一個 render
-                    // 4. 重開字體選擇視窗讓使用者確認
                     if (aiData.recommendedFonts) {
                         const sel1 = aiData.selectedFont1;
                         const sel2 = aiData.selectedFont2;
-
-                        // 將使用者選定字體排到推薦清單最前面，確保 confirmFontSelection 以其為預設
                         const l1Fonts = sel1
                             ? [sel1, ...aiData.recommendedFonts.letter1.filter(f => f !== sel1)]
                             : aiData.recommendedFonts.letter1;
                         const l2Fonts = sel2
                             ? [sel2, ...aiData.recommendedFonts.letter2.filter(f => f !== sel2)]
                             : aiData.recommendedFonts.letter2;
-
                         [...new Set([...l1Fonts, ...l2Fonts])].forEach(font => checkedFonts.add(font));
-                        // 同步 checkbox DOM 狀態：避免「第一次點擊方向相反」的問題
                         document.querySelectorAll('.font-list-item input[type="checkbox"]').forEach(cb => {
                             cb.checked = checkedFonts.has(cb.dataset.font);
                         });
                         window.aiRecommendation = { letter1: l1Fonts, letter2: l2Fonts };
-
-                        // 設定 char-input（confirmFontSelection 需要讀取字母）
                         const charInput = document.getElementById('char-input');
                         if (charInput) charInput.value = (document.getElementById('letter1').value || '') + (document.getElementById('letter2').value || '');
-
-                        // 建立下拉選單 + 觸發 generateModel()，直接展示作品
                         confirmFontSelection();
-
-                        // 第一個作品渲染需要 3-4 秒，渲染完再顯示背景切換提示
                         setTimeout(() => window.showBgHint?.(), 4000);
-
-                        // 10 秒後出現低調提示，引導使用者探索更多字體
                         setTimeout(() => showFontHint(), 10000);
                     }
                 }, 1000);
             }
 
-            const skipAI = localStorage.getItem('duet_skip_ai');
-            if (!skipAI && !aiDataStr) {
-                // 等待主畫面完全載入（包括 3D 球體）後 2 秒才顯示
+            function showIntroFlow() {
+                setTimeout(() => {
+                    const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
+                    const videoShown = localStorage.getItem('duet_video_prompt_shown');
+                    if (forceIntro || !videoShown) {
+                        showVideoIntroModal();
+                    } else {
+                        showAIIntroModal();
+                    }
+                }, 2000);
+            }
+
+            if (aiDataStr || skipAI) {
+                function doShowResumeModal() {
+                    showResumeModal(
+                        aiDataStr ? JSON.parse(aiDataStr) : null,
+                        !!skipAI,
+                        () => restoreAISession(),
+                        () => {
+                            ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
+                            showIntroFlow();
+                        }
+                    );
+                }
+                if (document.readyState === 'complete') {
+                    setTimeout(doShowResumeModal, 1000);
+                } else {
+                    window.addEventListener('load', () => setTimeout(doShowResumeModal, 1000));
+                }
+            } else {
                 function showAIAfterDelay() {
                     setTimeout(() => {
-                        // ?intro=1：強制顯示影片（供分享給外部人員，略過 localStorage 判斷）
                         const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
                         const videoShown = localStorage.getItem('duet_video_prompt_shown');
                         if (forceIntro || !videoShown) {
@@ -1655,8 +1728,6 @@
                         }
                     }, 2000);
                 }
-
-                // 檢查頁面是否已經載入完成
                 if (document.readyState === 'complete') {
                     console.log('🔔 頁面已載入完成，2 秒後顯示介紹');
                     showAIAfterDelay();
