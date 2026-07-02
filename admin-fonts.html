@@ -263,7 +263,10 @@
 </div>
 
 <script>
-const ADMIN_API_KEY = 'beacreator27v5Tx8WHd2';
+// Admin session token（由 /api/admin/login 登入取得；舊 X-Admin-Key 機制已移除）
+function adminAuthHeader() {
+    return 'Bearer ' + (localStorage.getItem('adminToken') || '');
+}
 const SIZES = [8, 10, 12, 15, 18];
 const CYCLE = ['ok', 'unavailable', 'wide', 'thin'];
 const LABEL_META = {
@@ -301,6 +304,7 @@ async function handleLogin(e) {
         if (data.success) {
             currentUser = data.user;
             localStorage.setItem('adminUser', JSON.stringify(currentUser));
+            if (data.token) localStorage.setItem('adminToken', data.token);
             showMainApp();
         } else {
             errEl.textContent = data.error || '登入失敗';
@@ -336,7 +340,7 @@ async function initPage() {
         const [fontRes, constraintRes] = await Promise.all([
             fetch('./fonts.json'),
             fetch(`${window.BACKEND_URL}/api/admin/font-constraints`, {
-                headers: { 'X-Admin-Key': ADMIN_API_KEY, 'X-Admin-User': currentUser.username }
+                headers: { 'Authorization': adminAuthHeader(), 'X-Admin-User': currentUser.username }
             })
         ]);
 
@@ -479,7 +483,7 @@ async function saveChanges() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Admin-Key':  ADMIN_API_KEY,
+                'Authorization': adminAuthHeader(),
                 'X-Admin-User': currentUser.username
             },
             body: JSON.stringify({ changes })

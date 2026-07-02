@@ -1300,18 +1300,17 @@
         // 直接使用全域變數 window.BACKEND_URL（已在 config.js 設定）
         // 注意：不要用 const 重新定義
         
-        // 管理員 API 金鑰（請填入您在 Render.com 設定的值）
-        const ADMIN_API_KEY = 'beacreator27v5Tx8WHd2';
-        
-        // 統一 API 呼叫函式（優先使用 session token，向後相容 API Key）
+        // Admin session token（由 /api/admin/login 登入取得；舊 X-Admin-Key 機制已移除）
+        function adminAuthHeader() {
+            return 'Bearer ' + (localStorage.getItem('adminToken') || '');
+        }
+
+        // 統一 API 呼叫函式（使用 session token）
         async function callApi(endpoint, options = {}) {
-            const token = localStorage.getItem('adminToken');
-            const defaultHeaders = { 'Content-Type': 'application/json' };
-            if (token) {
-                defaultHeaders['Authorization'] = `Bearer ${token}`;
-            } else {
-                defaultHeaders['X-Admin-Key'] = ADMIN_API_KEY;
-            }
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+                'Authorization': adminAuthHeader()
+            };
             const response = await fetch(`${window.BACKEND_URL}${endpoint}`, {
                 ...options,
                 headers: { ...defaultHeaders, ...options.headers }
@@ -1452,7 +1451,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/test-email/${status}`, {
                     method: 'POST',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1474,7 +1473,7 @@
         async function loadMemoryStats() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/memory-stats?limit=50`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
                 
@@ -1512,7 +1511,7 @@
         async function loadOrders() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/orders`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
                 
@@ -1876,7 +1875,7 @@
                     for (const orderId of selectedOrders) {
                         await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}`, {
                             method: 'DELETE',
-                            headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                            headers: { 'Authorization': adminAuthHeader() }
                         });
                     }
                     alert('刪除完成');
@@ -1887,7 +1886,7 @@
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
-                                'X-Admin-Key': ADMIN_API_KEY
+                                'Authorization': adminAuthHeader()
                             },
                             body: JSON.stringify({ 
                                 is_test: action === 'test' ? 1 : 0,
@@ -1911,7 +1910,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/migrate-to-db`, {
                     method: 'POST',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1933,7 +1932,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY
+                        'Authorization': adminAuthHeader()
                     },
                     body: JSON.stringify({ 
                         is_test: tagType === 'test' ? (value ? 1 : 0) : (allOrders.find(o => o.orderId === orderId)?.isTest || 0),
@@ -2111,14 +2110,14 @@
             
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
                 if (data.success) {
                     let storyRevision = null;
                     try {
                         const revRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/story-revision`, {
-                            headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                            headers: { 'Authorization': adminAuthHeader() }
                         });
                         const revData = await revRes.json();
                         if (revData.success) storyRevision = revData.revision;
@@ -2364,7 +2363,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/revert-story`, {
                     method: 'POST',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -2389,7 +2388,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/revise-story`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ revised })
                 });
                 const data = await res.json();
@@ -2410,7 +2409,7 @@
         async function loadOrderLogs(orderId) {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/logs`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success && data.logs.length) {
@@ -2444,7 +2443,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY,
+                        'Authorization': adminAuthHeader(),
                         'X-Admin-User': currentUser.username
                     },
                     body: JSON.stringify({ status: newStatus, trackingNumber: tracking, logistics })
@@ -2473,7 +2472,7 @@
         async function loadUsers() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/users`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -2507,7 +2506,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY
+                        'Authorization': adminAuthHeader()
                     },
                     body: JSON.stringify({ username, name, password })
                 });
@@ -2527,7 +2526,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/users/${userId}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -2543,7 +2542,7 @@
         async function loadPromoCodes() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
                 
@@ -2560,7 +2559,7 @@
         async function loadPromoStats() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/stats`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
                 
@@ -2629,7 +2628,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY
+                        'Authorization': adminAuthHeader()
                     },
                     body: JSON.stringify(promoData)
                 });
@@ -2652,7 +2651,7 @@
                     method: 'PUT',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Admin-Key': ADMIN_API_KEY
+                        'Authorization': adminAuthHeader()
                     },
                     body: JSON.stringify({ active: active })
                 });
@@ -2670,7 +2669,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -2753,7 +2752,7 @@
             document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="6" class="loading">載入中...</td></tr>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
@@ -2819,7 +2818,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/bulk`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ codes, promo_type, value, batch_name, valid_until })
                 });
                 const data = await res.json();
@@ -2838,7 +2837,7 @@
             try {
                 await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ active: !currentActive })
                 });
                 loadRedeemCodes();
@@ -2850,7 +2849,7 @@
             try {
                 await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/${code}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 loadRedeemCodes();
             } catch (e) { alert('刪除失敗'); }
@@ -2860,7 +2859,7 @@
         async function loadFeedback() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/feedback`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
 
@@ -2869,7 +2868,7 @@
                     // 標記已讀並清除 badge
                     fetch(`${window.BACKEND_URL}/api/admin/feedback/mark-read`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                        headers: { 'Authorization': adminAuthHeader() }
                     });
                     const badge = document.getElementById('feedbackUnreadBadge');
                     if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
@@ -2966,7 +2965,7 @@
         async function loadFeedbackTemplates() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/templates`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 const sel = document.getElementById('frm-template-select');
@@ -2996,7 +2995,7 @@
             if (!name) return;
             await fetch(`${window.BACKEND_URL}/api/admin/feedback/templates`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                 body: JSON.stringify({ name, content })
             });
             loadFeedbackTemplates();
@@ -3014,7 +3013,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/${_frm.id}/reply`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({
                         reply_content: content,
                         customer_email: _frm.customer_email,
@@ -3042,7 +3041,7 @@
         async function refreshFeedbackUnreadBadge() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/feedback/unread-count`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 const badge = document.getElementById('feedbackUnreadBadge');
@@ -3175,7 +3174,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/gallery/upload`, {
                     method: 'POST',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Authorization': adminAuthHeader() },
                     body: formData
                 });
                 const data = await res.json();
@@ -3217,7 +3216,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/gallery`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -3243,7 +3242,7 @@
             tbody.innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
@@ -3343,7 +3342,7 @@
                     : `${window.BACKEND_URL}/api/admin/manufacturers`;
                 const res = await fetch(url, {
                     method: id ? 'PUT' : 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -3363,7 +3362,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers/${id}`, {
                     method: 'DELETE',
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) loadManufacturers();
@@ -3407,7 +3406,7 @@
             };
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -3447,7 +3446,7 @@
                 for (const orderId of _startProductionOrderIds) {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/start-production`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ manufacturer_id: mfrId ? parseInt(mfrId) : null, message })
                 });
                 const data = await res.json();
@@ -3595,11 +3594,11 @@
             }
             // 全部：不加任何篩選參數
 
-            const url = `${API_BASE}/api/admin/export-consultations?${params.toString()}`;
+            const url = `${window.BACKEND_URL}/api/admin/export-consultations?${params.toString()}`;
             try {
                 const resp = await fetch(url, {
                     headers: {
-                        'X-Admin-Key': localStorage.getItem('adminKey') || '',
+                        'Authorization': adminAuthHeader(),
                         'X-Admin-User': localStorage.getItem('adminUser') || 'admin'
                     }
                 });
@@ -3631,7 +3630,7 @@
             sel.innerHTML = '<option value="">載入廠商中…</option>';
             document.getElementById('emailMfrModal').style.display = 'flex';
             try {
-                const mfrRes = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, { headers: { 'X-Admin-Key': ADMIN_API_KEY } });
+                const mfrRes = await fetch(`${window.BACKEND_URL}/api/admin/manufacturers`, { headers: { 'Authorization': adminAuthHeader() } });
                 const mfrData = await mfrRes.json();
                 const mfrs = (mfrData.manufacturers || []).filter(m => m.is_active);
                 sel.innerHTML = '<option value="">請選擇廠商...</option>';
@@ -3693,7 +3692,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/orders/email-manufacturer`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ order_ids: selectedOrders, manufacturer_id: parseInt(mfrId), subject, body })
                 });
                 const data = await res.json();
@@ -3751,7 +3750,7 @@
             document.getElementById('reviewOrderList').style.display = 'none';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/preview?from=${from}&to=${to}`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
@@ -3803,7 +3802,7 @@
                 const to = document.getElementById('reviewDateTo').value;
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/ai-review/run`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ date_from: from, date_to: to, order_ids: reviewOrders.map(o => o.orderId) })
                 });
                 const data = await res.json();
@@ -3828,7 +3827,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${latestSuggestionId}/resolve`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ action })
                 });
                 const data = await res.json();
@@ -3852,7 +3851,7 @@
             listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">載入中…</div>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions`, {
-                    headers: { 'X-Admin-Key': ADMIN_API_KEY }
+                    headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
@@ -3908,7 +3907,7 @@
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/prompt-suggestions/${id}/resolve`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_API_KEY },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
                     body: JSON.stringify({ action })
                 });
                 const data = await res.json();
