@@ -1699,13 +1699,19 @@
                 }, 2000);
             }
 
-            if (aiDataStr || skipAI) {
+            const _SESSION_KEY = 'duet_session_active';
+            const _hasUnfinished = aiDataStr || skipAI;
+            const _isActiveSession = sessionStorage.getItem(_SESSION_KEY);
+
+            if (_hasUnfinished && !_isActiveSession) {
+                // 非連續流程的返回（關閉 tab 後重新進入）→ 詢問是否繼續
                 function doShowResumeModal() {
                     showResumeModal(
                         aiDataStr ? JSON.parse(aiDataStr) : null,
                         !!skipAI,
-                        () => restoreAISession(),
+                        () => { sessionStorage.setItem(_SESSION_KEY, '1'); restoreAISession(); },
                         () => {
+                            sessionStorage.setItem(_SESSION_KEY, '1');
                             ['duet_ai_consultation', 'duet_skip_ai', 'duet_design_concepts', 'duet_return_url'].forEach(k => localStorage.removeItem(k));
                             showIntroFlow();
                         }
@@ -1717,25 +1723,31 @@
                     window.addEventListener('load', () => setTimeout(doShowResumeModal, 1000));
                 }
             } else {
-                function showAIAfterDelay() {
-                    setTimeout(() => {
-                        const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
-                        const videoShown = localStorage.getItem('duet_video_prompt_shown');
-                        if (forceIntro || !videoShown) {
-                            showVideoIntroModal();
-                        } else {
-                            showAIIntroModal();
-                        }
-                    }, 2000);
-                }
-                if (document.readyState === 'complete') {
-                    console.log('🔔 頁面已載入完成，2 秒後顯示介紹');
-                    showAIAfterDelay();
-                } else {
-                    window.addEventListener('load', () => {
-                        console.log('🔔 頁面載入完成，2 秒後顯示介紹');
+                // 同一 tab 的連續流程（諮詢→回到工作台）或全新進入 → 直接執行
+                sessionStorage.setItem(_SESSION_KEY, '1');
+                if (aiDataStr) {
+                    restoreAISession();
+                } else if (!skipAI) {
+                    function showAIAfterDelay() {
+                        setTimeout(() => {
+                            const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
+                            const videoShown = localStorage.getItem('duet_video_prompt_shown');
+                            if (forceIntro || !videoShown) {
+                                showVideoIntroModal();
+                            } else {
+                                showAIIntroModal();
+                            }
+                        }, 2000);
+                    }
+                    if (document.readyState === 'complete') {
+                        console.log('🔔 頁面已載入完成，2 秒後顯示介紹');
                         showAIAfterDelay();
-                    });
+                    } else {
+                        window.addEventListener('load', () => {
+                            console.log('🔔 頁面載入完成，2 秒後顯示介紹');
+                            showAIAfterDelay();
+                        });
+                    }
                 }
             }
         });
