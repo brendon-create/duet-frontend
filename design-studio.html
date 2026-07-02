@@ -4175,6 +4175,7 @@
             for (let i = 0; i < combinations.length; i++) {
                 const c = combinations[i];
                 const fontReason = await askFontReason(c, i, combinations.length);
+                window.lastFontReason = fontReason || '';
 
                 if (fontReason) {
                     // 顯示設計理念生成提示
@@ -5697,6 +5698,7 @@
                         body: JSON.stringify({
                             designStory: editedStory,
                             aiDesignStory: window.aiOriginalDesignStory || '',
+                            fontReason: window.lastFontReason || '',
                             sendEmail: true  // ✅ 觸發發送確認郵件
                         })
                     })
