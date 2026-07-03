@@ -1217,33 +1217,25 @@
         }
 
         // ── HDR 環境圖（非同步動態 import，連不上也不中斷生成）────
+        // 與 design-studio 的 js/3d-scene.js 相同做法：直接指定 equirect 貼圖為環境圖，
+        // 不經過 PMREMGenerator（其 texImage3D 呼叫在 Safari 會觸發 WebGL 錯誤，
+        // 導致渲染狀態損壞、吊墜消失只剩背景；design-studio 從未用過 PMREMGenerator 所以沒這問題）
         function loadHDR() {
-            // Safari 的 PMREMGenerator 在轉換 HDR 環境貼圖時會觸發
-            // texImage3D FLIP_Y/PREMULTIPLY_ALPHA 錯誤，導致 WebGL 渲染狀態損壞（吊墜整個消失，只剩背景）
-            // 因此 Safari 略過 HDR，只用既有的方向光/環境光（保底光源，已在 setupScene() 設定）
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            if (isSafari) {
-                console.warn('⚠️ Safari 偵測到，略過 HDR 環境貼圖（PMREMGenerator 相容性問題），使用純燈光模式');
-                return;
-            }
-
             const urls = [
                 'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
                 'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
             ];
             import('three/addons/loaders/RGBELoader.js')
                 .then(({ RGBELoader }) => {
-                    const pmrem  = new THREE.PMREMGenerator(renderer);
                     const loader = new RGBELoader();
                     let idx = 0;
                     function tryNext() {
-                        if (idx >= urls.length) { pmrem.dispose(); return; }
+                        if (idx >= urls.length) return;
                         const url = urls[idx++];
                         loader.load(url,
                             (tex) => {
-                                scene.environment = pmrem.fromEquirectangular(tex).texture;
-                                tex.dispose();
-                                pmrem.dispose();
+                                tex.mapping = THREE.EquirectangularReflectionMapping;
+                                scene.environment = tex;
                                 console.log('✅ HDR 載入成功');
                             },
                             undefined,
