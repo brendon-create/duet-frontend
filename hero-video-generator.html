@@ -551,6 +551,15 @@
             </div>
 
             <div class="field-group">
+                <div class="field-label">輸出格式</div>
+                <select id="output-format">
+                    <option value="webm">WebM（網頁 Hero 推薦）</option>
+                    <option value="mp4">MP4（社群上傳 / 通用）</option>
+                </select>
+                <div class="field-sublabel">MP4 需 Chrome 130+ 或 Safari；其他瀏覽器自動回退 WebM</div>
+            </div>
+
+            <div class="field-group">
                 <div class="field-label">旋轉模式</div>
                 <select id="rotation-mode">
                     <option value="carousel">輪播（每組旋轉 90°）</option>
@@ -658,6 +667,42 @@
                     <option value="whitegold18k">18K 白K金</option>
                     <option value="rosegold18k">18K 玫瑰金</option>
                 </select>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">Bail 位置調整</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">X 軸（左右）</div>
+                        <div class="range-row">
+                            <input type="range" id="bail-x" min="-10" max="10" step="0.1" value="0">
+                            <span class="range-value" id="bail-x-value">0.0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">Y 軸（前後）</div>
+                        <div class="range-row">
+                            <input type="range" id="bail-y" min="-10" max="10" step="0.1" value="0">
+                            <span class="range-value" id="bail-y-value">0.0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">Z 軸（上下）</div>
+                        <div class="range-row">
+                            <input type="range" id="bail-z" min="-10" max="10" step="0.1" value="0">
+                            <span class="range-value" id="bail-z-value">0.0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;">旋轉角度</div>
+                        <div class="range-row">
+                            <input type="range" id="bail-rotation" min="0" max="90" step="1" value="0">
+                            <span class="range-value" id="bail-rotation-value">0°</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="field-sublabel" style="margin-top:4px;">調整墜頭相對於字母本體的位置，適合頭部不對稱的字母（如 J）</div>
+                <button class="add-letter-btn" id="preview-bail-btn" type="button" style="margin-top:8px;">🔍 預覽 Bail 位置（前兩個字母）</button>
             </div>
 
             <div class="divider"></div>
@@ -815,6 +860,8 @@
         let isGenerating = false;
         let resultBlob = null;
         let customBgUrl = null; // 使用者上傳的背景圖片 URL
+        let previewGroup = null;   // Bail 位置預覽用的單一吊墜
+        let previewAnimId = null;  // 預覽緩慢自轉的 requestAnimationFrame id
 
         // ── UI 元素 ───────────────────────────────────────────────
         const canvas          = document.getElementById('preview-canvas');
@@ -844,6 +891,16 @@
         document.getElementById('vertical-offset').addEventListener('input', (e) => {
             document.getElementById('voffset-value').textContent = e.target.value;
         });
+        // Bail 位置滑桿：即時更新數值標籤 + 若預覽已建立則同步更新畫面
+        ['bail-x', 'bail-y', 'bail-z', 'bail-rotation'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const isRot = id === 'bail-rotation';
+                document.getElementById(id + '-value').textContent =
+                    parseFloat(e.target.value).toFixed(isRot ? 0 : 1) + (isRot ? '°' : '');
+                updateBailOffsetLive();
+            });
+        });
+
         document.getElementById('horizontal-offset').addEventListener('input', (e) => {
             document.getElementById('hoffset-value').textContent = e.target.value;
         });
@@ -959,18 +1016,23 @@
             if (!isGenerating) runGenerate();
         });
 
+        document.getElementById('preview-bail-btn').addEventListener('click', () => {
+            if (!isGenerating) buildBailPreview();
+        });
+
         dlBtn.addEventListener('click', () => {
             if (!resultBlob) return;
             const url = URL.createObjectURL(resultBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'hero-product.webm';
+            a.download = resultBlob.type.includes('mp4') ? 'hero-product.mp4' : 'hero-product.webm';
             a.click();
             setTimeout(() => URL.revokeObjectURL(url), 5000);
         });
 
         // ── 主生成流程 ────────────────────────────────────────────
         async function runGenerate() {
+            stopPreview();
             isGenerating = true;
             genBtn.disabled = true;
             dlBtn.disabled = true;
@@ -1044,6 +1106,14 @@
                 const blob = await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode);
                 resultBlob = blob;
 
+                // 依實際輸出格式更新按鈕文字與提示
+                const isMp4Out   = blob.type.includes('mp4');
+                const ext        = isMp4Out ? 'mp4' : 'webm';
+                const fileName   = `hero-product.${ext}`;
+                dlBtn.textContent = `⬇ 下載 ${fileName}`;
+                const hintEl = document.querySelector('.result-hint code');
+                if (hintEl) hintEl.textContent = `frontend/assets/videos/${fileName}`;
+
                 // 顯示結果
                 const url = URL.createObjectURL(blob);
                 resVideo.src = url;
@@ -1051,7 +1121,7 @@
                 resVideo.classList.add('visible');
                 resPlaceholder.style.display = 'none';
                 dlBtn.disabled = false;
-                statusText.textContent = `完成！影片時長 ${(secPerPair * pairs.length).toFixed(1)}s，${W}×${H}`;
+                statusText.textContent = `完成！影片時長 ${(secPerPair * pairs.length).toFixed(1)}s，${W}×${H}（${ext.toUpperCase()}）`;
 
             } catch (err) {
                 console.error('生成失敗:', err);
@@ -1062,6 +1132,69 @@
                 isGenerating = false;
                 genBtn.disabled = false;
             }
+        }
+
+        // ── Bail 位置預覽（取前兩個字母建單一吊墜，緩慢自轉方便檢視）──
+        async function buildBailPreview() {
+            stopPreview();
+
+            const rows = letterList.querySelectorAll('.letter-row');
+            if (rows.length < 2) { alert('請輸入至少 2 個字母'); return; }
+            const letterA = rows[0].querySelector('.letter-char-input').value.trim();
+            const fontA   = rows[0].querySelector('.letter-font-select').value;
+            const letterB = rows[1].querySelector('.letter-char-input').value.trim();
+            const fontB   = rows[1].querySelector('.letter-font-select').value;
+            if (!/^[a-zA-Z0-9]$/.test(letterA) || !/^[a-zA-Z0-9]$/.test(letterB)) {
+                alert('前兩個字母尚未輸入完整');
+                return;
+            }
+
+            const preBtn = document.getElementById('preview-bail-btn');
+            preBtn.disabled = true;
+            preBtn.textContent = '預覽建立中...';
+
+            try {
+                const bgColor      = bgColorPicker.value;
+                const isTransparent = transparentCheck.checked;
+                const resolution   = document.getElementById('resolution').value;
+                const [W, H]       = resolution.split('x').map(Number);
+                const tiltDeg      = parseInt(document.getElementById('camera-tilt').value);
+                const pendantMM    = parseInt(document.getElementById('pendant-size').value);
+                const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
+                const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
+                const plating      = document.getElementById('plating').value;
+
+                canvas.width  = W;
+                canvas.height = H;
+                updateCanvasWrapperBg();
+
+                await setupScene(bgColor, W, H, tiltDeg, isTransparent);
+                await initFontMeta();
+
+                previewGroup = await buildPendant(fontA, letterA, fontB, letterB, pendantMM, 0, plating);
+                previewGroup.position.z = vertOffset;
+                previewGroup.position.x = horizOffset;
+                scene.add(previewGroup);
+
+                previewTick();
+            } finally {
+                preBtn.disabled = false;
+                preBtn.textContent = '🔍 預覽 Bail 位置（前兩個字母）';
+            }
+        }
+
+        // 預覽期間緩慢自轉，方便從各角度檢視 Bail 對位
+        function previewTick() {
+            if (!previewGroup) return;
+            previewGroup.rotation.z -= 0.008;
+            renderFrame();
+            previewAnimId = requestAnimationFrame(previewTick);
+        }
+
+        function stopPreview() {
+            if (previewAnimId) { cancelAnimationFrame(previewAnimId); previewAnimId = null; }
+            if (previewGroup && scene) scene.remove(previewGroup);
+            previewGroup = null;
         }
 
         // ── 工作室漸層背景（模擬布景深度）──────────────────────────
@@ -1265,11 +1398,14 @@
             result.material = silverMat;
 
             // Ring（圓環）
+            // bailOffset：使用者透過「Bail 位置調整」滑桿設定的相對偏移（與 design-studio 的 ring-bail.js 邏輯一致）
+            const bailOffset = getBailOffset();
             const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64);
             ringGeo.rotateX(Math.PI / 2);
             const ringMesh = new THREE.Mesh(ringGeo, silverMat.clone());
             const ringZ    = modelTopZ + 1.3; // 1.3 = innerRadius + tubeRadius
-            ringMesh.position.set(0, 0, ringZ);
+            ringMesh.position.set(bailOffset.x, bailOffset.y, ringZ + bailOffset.z);
+            ringMesh.rotation.z = bailOffset.rotRad;
 
             // Pendant group
             // letterWrapper 有一個反向的初始旋轉，讓字母永遠正面對鏡頭
@@ -1282,15 +1418,47 @@
             const group = new THREE.Group();
             group.add(letterWrapper);
             group.add(ringMesh);
+            group.userData.ringMesh  = ringMesh;
+            group.userData.modelTopZ = modelTopZ;
 
             // 等待 Bail STL
-            await loadBail(group, ringMesh, modelTopZ, silverMat);
+            await loadBail(group, ringMesh, modelTopZ, silverMat, bailOffset);
 
             return group;
         }
 
+        // ── Bail 位置調整（讀取滑桿數值）──────────────────────────
+        function getBailOffset() {
+            return {
+                x: parseFloat(document.getElementById('bail-x').value),
+                y: parseFloat(document.getElementById('bail-y').value),
+                z: parseFloat(document.getElementById('bail-z').value),
+                rotRad: parseFloat(document.getElementById('bail-rotation').value) * Math.PI / 180
+            };
+        }
+
+        // 預覽建立後，滑桿拖動時直接重新定位 Ring/Bail mesh（不重算幾何體，反應即時）
+        function updateBailOffsetLive() {
+            if (!previewGroup) return;
+            const ringMesh  = previewGroup.userData.ringMesh;
+            const bailMesh  = previewGroup.userData.bailMesh;
+            const modelTopZ = previewGroup.userData.modelTopZ;
+            if (!ringMesh) return;
+
+            const { x, y, z, rotRad } = getBailOffset();
+            const ringZ = modelTopZ + 1.3;
+            ringMesh.position.set(x, y, ringZ + z);
+            ringMesh.rotation.z = rotRad;
+
+            if (bailMesh) {
+                const bailH = bailMesh.userData.bailH || 0;
+                bailMesh.position.set(ringMesh.position.x, ringMesh.position.y, modelTopZ + z + 1.2 + bailH / 2);
+                bailMesh.rotation.z = ringMesh.rotation.z;
+            }
+        }
+
         // ── 載入 Bail STL（墜扣）────────────────────────────────
-        function loadBail(group, ringMesh, modelTopZ, material) {
+        function loadBail(group, ringMesh, modelTopZ, material, bailOffset = { z: 0, rotRad: 0 }) {
             return new Promise((resolve) => {
                 const loader = new STLLoader();
                 loader.load(
@@ -1318,9 +1486,12 @@
                         bailMesh.position.set(
                             ringMesh.position.x,
                             ringMesh.position.y,
-                            modelTopZ + 1.2 + bailH / 2
+                            modelTopZ + bailOffset.z + 1.2 + bailH / 2
                         );
+                        bailMesh.rotation.z = ringMesh.rotation.z;
+                        bailMesh.userData.bailH = bailH; // 供 updateBailOffsetLive() 即時重新定位使用
                         group.add(bailMesh);
+                        group.userData.bailMesh = bailMesh;
                         resolve();
                     },
                     undefined,
@@ -1338,14 +1509,20 @@
                 const pairFr    = Math.max(Math.round(FPS * secPerPair), fadeFr * 2 + 5);
                 const totalFr   = groups.length * pairFr;
 
-                // 選擇最佳 mimeType
-                const mimeTypes = [
-                    'video/webm;codecs=vp9',
-                    'video/webm;codecs=vp8',
-                    'video/webm',
-                    'video/mp4'
-                ];
-                const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+                // 選擇 mimeType（依使用者選擇的輸出格式）
+                const formatEl  = document.getElementById('output-format');
+                const wantMp4   = formatEl && formatEl.value === 'mp4';
+                let mimeType;
+                if (wantMp4) {
+                    const mp4Types = ['video/mp4;codecs=avc1', 'video/mp4;codecs=h264', 'video/mp4'];
+                    mimeType = mp4Types.find(m => MediaRecorder.isTypeSupported(m));
+                    if (!mimeType) {
+                        alert('此瀏覽器不支援直接輸出 MP4，已自動切換為 WebM。\n建議使用 Chrome 130+ 或 Safari。');
+                        mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+                    }
+                } else {
+                    mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+                }
 
                 const stream   = canvas.captureStream(FPS);
                 const bitrateEl = document.getElementById('bitrate');
