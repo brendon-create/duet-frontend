@@ -1218,6 +1218,15 @@
 
         // ── HDR 環境圖（非同步動態 import，連不上也不中斷生成）────
         function loadHDR() {
+            // Safari 的 PMREMGenerator 在轉換 HDR 環境貼圖時會觸發
+            // texImage3D FLIP_Y/PREMULTIPLY_ALPHA 錯誤，導致 WebGL 渲染狀態損壞（吊墜整個消失，只剩背景）
+            // 因此 Safari 略過 HDR，只用既有的方向光/環境光（保底光源，已在 setupScene() 設定）
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            if (isSafari) {
+                console.warn('⚠️ Safari 偵測到，略過 HDR 環境貼圖（PMREMGenerator 相容性問題），使用純燈光模式');
+                return;
+            }
+
             const urls = [
                 'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
                 'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
