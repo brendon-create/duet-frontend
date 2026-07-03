@@ -19,3 +19,6 @@ frontend backup/
 # Font library selector (private tool) - renamed to root FontLabV2.html
 font-preprocessor.js
 font-preprocessor_old.js
+
+# Large binary assets - not suitable for GitHub Pages
+*.exr
