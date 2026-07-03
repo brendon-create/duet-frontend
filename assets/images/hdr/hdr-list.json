@@ -1,0 +1,20 @@
+{
+    "hdrs": [
+        { "file": "studio_kontrast_04_4kc.hdr", "label": "對比攝影棚 4K（預設）" },
+        { "file": "studio_kontrast_04_4k.hdr",  "label": "對比攝影棚 4K（原始）" },
+        { "file": "duet_studio.hdr",             "label": "Duet 攝影棚" },
+        { "file": "duet_studio1.hdr",            "label": "Duet 攝影棚 1" },
+        { "file": "duet_studio2.hdr",            "label": "Duet 攝影棚 2" },
+        { "file": "duet_studio3.hdr",            "label": "Duet 攝影棚 3" },
+        { "file": "duet_studio5.hdr",            "label": "Duet 攝影棚 5" },
+        { "file": "Jewelry_studio_c.hdr",        "label": "珠寶攝影棚 C" },
+        { "file": "jewelry_box.hdr",             "label": "珠寶盒" },
+        { "file": "jewelry_box_2.hdr",           "label": "珠寶盒 2" },
+        { "file": "jewelry_box_3.hdr",           "label": "珠寶盒 3" },
+        { "file": "jewelry_box_r.hdr",           "label": "珠寶盒 R" },
+        { "file": "jewelry_box_r2.hdr",          "label": "珠寶盒 R2" },
+        { "file": "story_studio_02_4k.hdr",      "label": "故事攝影棚 4K" },
+        { "file": "studio_small_03_1k.hdr",      "label": "小型攝影棚 03" },
+        { "file": "studio_small_08_1k.hdr",      "label": "小型攝影棚 08" }
+    ]
+}

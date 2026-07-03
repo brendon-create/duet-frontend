@@ -660,6 +660,12 @@
             </div>
 
             <div class="field-group">
+                <div class="field-label">環境貼圖（HDR 反光）</div>
+                <select id="hdr-select"></select>
+                <div class="field-sublabel" style="margin-top:4px;">要新增選項：把 .hdr 檔案放進 assets/images/hdr/，並在 hdr-list.json 加一行</div>
+            </div>
+
+            <div class="field-group">
                 <div class="field-label">電鍍效果</div>
                 <select id="plating">
                     <option value="none">無（925 銀）</option>
@@ -832,6 +838,24 @@
                 }
             });
 
+        // 從 assets/images/hdr/hdr-list.json 載入可選的 HDR 環境貼圖清單
+        // 要新增選項：把 .hdr 檔案放進 assets/images/hdr/，並在該 json 加一行 { file, label }
+        fetch('assets/images/hdr/hdr-list.json')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                const hdrs = data.hdrs || [];
+                const sel  = document.getElementById('hdr-select');
+                sel.innerHTML = hdrs.map(function(h) {
+                    return '<option value="' + h.file + '"' +
+                        (h.file === DEFAULT_HDR_FILE ? ' selected' : '') + '>' + h.label + '</option>';
+                }).join('');
+            })
+            .catch(function() {
+                // 清單載入失敗時，至少保留目前預設的一個選項
+                const sel = document.getElementById('hdr-select');
+                sel.innerHTML = '<option value="' + DEFAULT_HDR_FILE + '">對比攝影棚 4K（預設）</option>';
+            });
+
         document.getElementById('add-letter-btn').addEventListener('click', function() {
             addLetterRow('', '');
             var inputs = letterList.querySelectorAll('.letter-char-input');
@@ -887,6 +911,10 @@
         });
         document.getElementById('light-intensity').addEventListener('input', (e) => {
             document.getElementById('light-intensity-value').textContent = parseFloat(e.target.value).toFixed(2) + '×';
+        });
+        document.getElementById('hdr-select').addEventListener('change', (e) => {
+            // 若場景已建立（預覽中或生成中），直接換上新的環境貼圖，不必重建整個場景
+            if (scene) loadHDR(e.target.value);
         });
         document.getElementById('vertical-offset').addEventListener('input', (e) => {
             document.getElementById('voffset-value').textContent = e.target.value;
@@ -1220,10 +1248,13 @@
         // 與 design-studio 的 js/3d-scene.js 相同做法：直接指定 equirect 貼圖為環境圖，
         // 不經過 PMREMGenerator（其 texImage3D 呼叫在 Safari 會觸發 WebGL 錯誤，
         // 導致渲染狀態損壞、吊墜消失只剩背景；design-studio 從未用過 PMREMGenerator 所以沒這問題）
-        function loadHDR() {
+        const DEFAULT_HDR_FILE = 'studio_kontrast_04_4kc.hdr';
+
+        function loadHDR(fileName) {
+            const file = fileName || document.getElementById('hdr-select')?.value || DEFAULT_HDR_FILE;
             const urls = [
-                'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/studio_kontrast_04_4kc.hdr',
-                'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/studio_kontrast_04_4kc.hdr'
+                `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/${file}`,
+                `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/${file}`
             ];
             import('three/addons/loaders/RGBELoader.js')
                 .then(({ RGBELoader }) => {
