@@ -614,15 +614,24 @@
                         </div>
                         <div class="field-sublabel">往右 = 亮暗差距更大</div>
                     </div>
+                    <div>
+                        <div class="field-sublabel" style="margin-bottom:3px;" id="bg-pan-label">背景位移</div>
+                        <div class="range-row">
+                            <input type="range" id="bg-pan" min="0" max="100" step="1" value="50">
+                            <span class="range-value" id="bg-pan-value">50%</span>
+                        </div>
+                        <div class="field-sublabel">圖片會自動以完整覆蓋畫面的方式縮放（不變形），超出的方向可在此位移瀏覽範圍</div>
+                    </div>
                 </div>
             </div>
 
             <div class="field-group">
-                <div class="field-label">相機俯角</div>
+                <div class="field-label">相機俯仰角</div>
                 <div class="range-row">
-                    <input type="range" id="camera-tilt" min="0" max="40" step="5" value="0">
+                    <input type="range" id="camera-tilt" min="-40" max="40" step="5" value="0">
                     <span class="range-value" id="tilt-value">0°</span>
                 </div>
+                <div class="field-sublabel">正值 = 俯角（由上往下看）；負值 = 仰角（由下往上看）</div>
             </div>
 
             <div class="field-group">
@@ -987,6 +996,38 @@
         document.getElementById('bg-contrast').addEventListener('input', (e) => {
             document.getElementById('bg-contrast-value').textContent = parseFloat(e.target.value).toFixed(2);
         });
+        document.getElementById('bg-pan').addEventListener('input', (e) => {
+            document.getElementById('bg-pan-value').textContent = e.target.value + '%';
+            // 已有背景貼圖時直接重新定位，不必重跑曝光/對比的逐像素運算
+            if (bgTexture) applyBgCover(bgTexture, canvas.width, canvas.height, parseFloat(e.target.value));
+        });
+
+        // 讓背景貼圖以「完整覆蓋畫面、不變形」的方式顯示（等同 CSS background-size: cover）：
+        // 比較圖片與畫面的長寬比，以較不足的那一軸滿版，另一軸則會超出，可用 panPercent 位移瀏覽範圍
+        function applyBgCover(tex, W, H, panPercent) {
+            if (!tex || !tex.image) return;
+            const imgW = tex.image.width, imgH = tex.image.height;
+            if (!imgW || !imgH) return;
+            const imgAspect = imgW / imgH, canvasAspect = W / H;
+            const pan = Math.max(0, Math.min(100, panPercent)) / 100;
+
+            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+            const panLabel = document.getElementById('bg-pan-label');
+            if (imgAspect > canvasAspect) {
+                // 圖片相對較「寬」→ 以高度滿版，左右方向超出可位移
+                const repeatX = canvasAspect / imgAspect;
+                tex.repeat.set(repeatX, 1);
+                tex.offset.set((1 - repeatX) * pan, 0);
+                if (panLabel) panLabel.textContent = '背景位移（左右）';
+            } else {
+                // 圖片相對較「窄／高」→ 以寬度滿版，上下方向超出可位移
+                const repeatY = imgAspect / canvasAspect;
+                tex.repeat.set(1, repeatY);
+                tex.offset.set(0, (1 - repeatY) * pan);
+                if (panLabel) panLabel.textContent = '背景位移（上下）';
+            }
+            tex.needsUpdate = true;
+        }
 
         // 以 Canvas 2D 對背景圖做曝光（gamma 冪次曲線）+ 對比調整
         // gamma 曲線：壓暗但保留亮暗比例，不像 multiply 那樣壓縮對比
@@ -1305,6 +1346,8 @@
                 const adjusted  = await loadAdjustedBgTexture(customBgUrl, exposure, contrast);
                 if (adjusted) {
                     bgTexture = adjusted;
+                    const panPercent = parseFloat(document.getElementById('bg-pan').value) || 50;
+                    applyBgCover(bgTexture, W, H, panPercent); // 依畫面比例自動滿版，避免變形
                     scene.background = null; // 改由 renderFrame() 手動繪製
                 }
                 // 載入失敗時保持漸層（scene.background 已設好）
@@ -1572,8 +1615,6 @@
                 recorder.onerror = (e) => reject(e.error);
                 recorder.start(100); // 每 100ms emit 一個 chunk
 
-                let frame = 0;
-
                 // 初始化：放入第一個 group
                 // carousel 模式：第一幀從透明開始淡入
                 // full360 模式：直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
@@ -1582,22 +1623,34 @@
                 scene.add(pendantGroup);
                 setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
 
+                // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
+                // 原本以呼叫次數為準時，實際錄製時長會受螢幕更新率影響（例如 75Hz 螢幕會讓
+                // 10 秒的設定值在約 4 秒真實時間內跑完，導致輸出影片時長/轉速與設定不符）。
+                const totalDurationSec = totalFr / FPS;
+                const startTime        = performance.now();
+                let lastPairIdx        = 0;
+                let lastProgressMs     = 0;
+
                 function tick() {
-                    if (frame >= totalFr) {
+                    const elapsedSec = (performance.now() - startTime) / 1000;
+
+                    if (elapsedSec >= totalDurationSec) {
                         renderFrame();
                         recorder.stop();
                         return;
                     }
 
-                    const pairIdx  = Math.floor(frame / pairFr);
-                    const pairFrm  = frame % pairFr;
+                    const frame    = elapsedSec * FPS; // 浮點「邏輯幀」位置，依實際時間換算
+                    const pairIdx  = Math.min(Math.floor(frame / pairFr), groups.length - 1);
+                    const pairFrm  = frame - pairIdx * pairFr;
                     const t        = pairFrm / pairFr; // 0 → 1（用於淡入淡出計算）
 
                     // 切換 group
-                    if (pairFrm === 0) {
+                    if (pairIdx !== lastPairIdx) {
                         if (pendantGroup) scene.remove(pendantGroup);
                         pendantGroup = groups[pairIdx];
                         scene.add(pendantGroup);
+                        lastPairIdx = pairIdx;
                     }
 
                     // 旋轉：
@@ -1638,13 +1691,12 @@
 
                     renderFrame();
 
-                    frame++;
-                    // 進度更新
-                    if (frame % 10 === 0) {
-                        showProgress(true,
-                            `錄製中... ${Math.round((frame / totalFr) * 100)}%`,
-                            frame / totalFr
-                        );
+                    // 進度更新（節流至約每 100ms 一次，避免頻繁操作 DOM）
+                    const nowMs = performance.now();
+                    if (nowMs - lastProgressMs > 100) {
+                        lastProgressMs = nowMs;
+                        const progress = elapsedSec / totalDurationSec;
+                        showProgress(true, `錄製中... ${Math.round(progress * 100)}%`, progress);
                     }
 
                     animFrameId = requestAnimationFrame(tick);
