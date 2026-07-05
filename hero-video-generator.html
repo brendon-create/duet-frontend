@@ -111,7 +111,7 @@
 
         #app {
             display: grid;
-            grid-template-columns: 280px 1fr 280px;
+            grid-template-columns: 280px minmax(0, 1fr) 280px;
             flex: 1;
             overflow: hidden;
         }
@@ -325,6 +325,7 @@
             padding: 24px;
             background: #0A0A09;
             position: relative;
+            min-width: 0;
         }
 
         #canvas-wrapper {
