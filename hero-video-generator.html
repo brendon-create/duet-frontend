@@ -921,6 +921,7 @@
         });
         document.getElementById('light-intensity').addEventListener('input', (e) => {
             document.getElementById('light-intensity-value').textContent = parseFloat(e.target.value).toFixed(2) + '×';
+            updateLightIntensityLive();
         });
         document.getElementById('hdr-select').addEventListener('change', (e) => {
             // 若場景已建立（預覽中或生成中），直接換上新的環境貼圖，不必重建整個場景
@@ -1374,18 +1375,26 @@
             renderer.outputColorSpace    = THREE.SRGBColorSpace;
 
             // 燈光（HDR 載入前的保底光源；HDR 到位後會疊加）
+            // 注意：材質是全金屬（metalness:1, roughness:0），HDR 環境貼圖到位後
+            // 畫面亮度主要由 envMapIntensity 決定，這裡的燈光只占極小比重——
+            // 「打光強度」滑桿因此同時調整這幾顆燈與 buildPendant() 的 envMapIntensity（見下方）
             const lightMult = parseFloat(document.getElementById('light-intensity')?.value || '1.0');
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8 * lightMult));
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8 * lightMult);
+            ambientLight.userData.baseIntensity = 0.8;
+            scene.add(ambientLight);
 
             const key = new THREE.DirectionalLight(0xFFF5E8, 2.8 * lightMult);
+            key.userData.baseIntensity = 2.8;
             key.position.set(20, -15, 30);
             scene.add(key);
 
             const fill = new THREE.DirectionalLight(0xE8F0FF, 0.8 * lightMult);
+            fill.userData.baseIntensity = 0.8;
             fill.position.set(-20, 15, 10);
             scene.add(fill);
 
             const rim = new THREE.DirectionalLight(0xffffff, 0.5 * lightMult);
+            rim.userData.baseIntensity = 0.5;
             rim.position.set(0, 30, -10);
             scene.add(rim);
 
@@ -1401,6 +1410,7 @@
             whitegold18k: 0xE5E5E5,
             rosegold18k:  0xC9A386
         };
+        const BASE_ENV_MAP_INTENSITY = 1.2; // 全金屬材質下，畫面亮度主要由此值決定（見「打光強度」滑桿）
 
         async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0, plating = 'none') {
             // 生成幾何體
@@ -1465,11 +1475,13 @@
             const modelTopZ = result.geometry.boundingBox.max.z;
 
             // 材質：依電鍍選項決定顏色，與 materials.js 數值一致
+            // envMapIntensity 隨「打光強度」滑桿縮放——全金屬材質下這才是實際主導亮度的參數
+            const lightMult = parseFloat(document.getElementById('light-intensity')?.value || '1.0');
             const silverMat = new THREE.MeshStandardMaterial({
                 color:     PLATING_COLORS[plating] ?? PLATING_COLORS.none,
                 metalness: 1.0,
                 roughness: 0.0,
-                envMapIntensity: 1.2
+                envMapIntensity: BASE_ENV_MAP_INTENSITY * lightMult
             });
             result.material = silverMat;
 
@@ -1530,6 +1542,29 @@
                 const bailH = bailMesh.userData.bailH || 0;
                 bailMesh.position.set(ringMesh.position.x, ringMesh.position.y, modelTopZ + z + 1.2 + bailH / 2);
                 bailMesh.rotation.z = ringMesh.rotation.z;
+            }
+        }
+
+        // 場景已建立時（預覽中或生成中），滑桿拖動直接調整既有燈光與材質的 envMapIntensity，
+        // 不必重建場景。全金屬材質下 envMapIntensity 才是主導可見亮度的參數，燈光本身影響很小。
+        function updateLightIntensityLive() {
+            const mult = parseFloat(document.getElementById('light-intensity').value) || 1.0;
+
+            if (scene) {
+                scene.traverse((obj) => {
+                    if (obj.isLight && obj.userData.baseIntensity !== undefined) {
+                        obj.intensity = obj.userData.baseIntensity * mult;
+                    }
+                });
+            }
+
+            if (previewGroup) {
+                previewGroup.traverse((child) => {
+                    if (child.isMesh && child.material && 'envMapIntensity' in child.material) {
+                        child.material.envMapIntensity = BASE_ENV_MAP_INTENSITY * mult;
+                        child.material.needsUpdate = true;
+                    }
+                });
             }
         }
 
