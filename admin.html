@@ -509,6 +509,7 @@
                 <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
                 <button class="tab" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
                 <button class="tab" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
+                <button class="tab" onclick="switchTab('quoteStats')">💰 製造成本統計</button>
                 <button class="tab" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
                 <button class="tab" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
                 <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
@@ -994,6 +995,52 @@
         </div>
     </div>
 
+    <!-- 製造成本統計 Tab -->
+    <div id="quoteStatsTab" style="display:none; padding:24px;">
+        <h2 style="color:#c9a96e; margin-bottom:8px;">製造成本統計</h2>
+        <p style="color:#999; margin-bottom:24px; font-size:14px;">統計每筆訂單詳情中填寫的「製造廠商報價」，用於預估成本與觀察哪些字母組合／字型的製作成本較高。報價需先在訂單詳情內逐項填寫。</p>
+
+        <div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">已記錄報價品項數</div>
+                <div id="qsStatCount" style="color:#c9a96e; font-size:24px; font-weight:600;">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">平均報價</div>
+                <div id="qsStatAvg" style="color:#60a5fa; font-size:24px; font-weight:600;">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:16px 24px; min-width:140px;">
+                <div style="color:#999; font-size:12px; margin-bottom:4px;">最低 / 最高</div>
+                <div id="qsStatRange" style="color:#34d399; font-size:24px; font-weight:600;">—</div>
+            </div>
+        </div>
+
+        <div id="qsEmptyState" style="display:none; color:#999; font-size:14px; padding:20px 0;">尚無任何報價紀錄，請先到訂單詳情內填寫「製造廠商報價」。</div>
+
+        <div id="qsContent" style="display:none;">
+            <h3 style="color:#c9a96e; font-size:15px; margin:24px 0 12px;">1. 價位分布（每個作品的報價落點）</h3>
+            <div id="qsDistribution" style="display:flex; flex-direction:column; gap:6px;"></div>
+
+            <h3 style="color:#c9a96e; font-size:15px; margin:28px 0 12px;">2. 字母組合 vs 平均報價（依平均報價由高到低）</h3>
+            <p style="color:#777; font-size:12px; margin:-6px 0 10px;">樣本數 &lt; 3 的組合僅供參考，容易受單一極端報價影響。</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>字母組合</th><th>樣本數</th><th>平均報價</th></tr></thead>
+                    <tbody id="qsComboTableBody"></tbody>
+                </table>
+            </div>
+
+            <h3 style="color:#c9a96e; font-size:15px; margin:28px 0 12px;">3. 字型 vs 平均報價（依平均報價由高到低）</h3>
+            <p style="color:#777; font-size:12px; margin:-6px 0 10px;">樣本數 &lt; 3 的字型僅供參考，容易受單一極端報價影響。</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>字型</th><th>樣本數</th><th>平均報價</th></tr></thead>
+                    <tbody id="qsFontTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 代理商訂單 Tab -->
     <div id="distributorOrdersTab" style="display:none; padding:24px;">
         <h2 style="color:#c9a96e; margin-bottom:8px;">代理商訂單</h2>
@@ -1172,6 +1219,12 @@
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                         <input type="checkbox" id="mfrIsActive" checked style="width:16px;height:16px;">
                         <span>啟用（可選為委託廠商）</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="mfrIsInternalTest" style="width:16px;height:16px;">
+                        <span>內部測試信箱（寄送委託信不計入廠商/報價統計）</span>
                     </label>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;">儲存</button>
@@ -1411,7 +1464,7 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
 
-            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers', 'distributorOrders', 'distributorAccounts'];
+            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers', 'quoteStats', 'distributorOrders', 'distributorAccounts'];
             allTabs.forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -1434,6 +1487,7 @@
             if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
             if (tab === 'manufacturers') loadManufacturers();
+            if (tab === 'quoteStats') loadManufacturingQuoteStats();
             if (tab === 'distributorOrders') loadDistributorOrders();
             if (tab === 'distributorAccounts') loadDistributors();
         }
@@ -2304,9 +2358,16 @@
                 </div>
                 <div class="detail-section">
                     <h3>訂單內容</h3>
-                    ${items.map(item => `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
+                    ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${order.manufacturer_name}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
+                    ${items.map((item, idx) => `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
                         <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish}</div>
+                        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                            <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
+                            <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
+                            <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
+                            <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
+                        </div>
                     </div>`).join('')}
                     <div class="detail-row"><span class="detail-label">總金額</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${(order.total||0).toLocaleString()}</span></div>
                 </div>
@@ -2344,7 +2405,41 @@
             // Load logs
             loadOrderLogs(order.orderId);
         }
-        
+
+        async function saveItemQuote(orderId, itemIndex) {
+            const input = document.getElementById(`mfrQuote-${orderId}-${itemIndex}`);
+            const msgEl = document.getElementById(`mfrQuoteMsg-${orderId}-${itemIndex}`);
+            const raw = input.value.trim();
+            const quote = raw === '' ? null : Number(raw);
+            if (raw !== '' && (isNaN(quote) || quote < 0)) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '報價需為正數';
+                return;
+            }
+            msgEl.style.color = 'var(--text-muted)';
+            msgEl.textContent = '儲存中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/item/${itemIndex}/quote`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ quote })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.style.color = '#86efac';
+                    msgEl.textContent = '✅ 已儲存';
+                    const order = (allOrders || []).find(o => o.orderId === orderId);
+                    if (order && order.items && order.items[itemIndex]) order.items[itemIndex].manufacturerQuote = quote;
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = data.error || '儲存失敗';
+                }
+            } catch (e) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '網路錯誤';
+            }
+        }
+
         function toggleStoryEdit(orderId) {
             const editBlock = document.getElementById(`storyEditBlock-${orderId}`);
             const viewBlock = document.getElementById(`storyViewBlock-${orderId}`);
@@ -3258,7 +3353,7 @@
             }
             tbody.innerHTML = allManufacturers.map(m => `
                 <tr>
-                    <td><strong>${m.company_name}</strong></td>
+                    <td><strong>${m.company_name}</strong>${m.is_internal_test ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試信箱</span>' : ''}</td>
                     <td>${m.process || '-'}</td>
                     <td>${m.contact_person || '-'}</td>
                     <td>${m.phone || '-'}</td>
@@ -3283,6 +3378,7 @@
             document.getElementById('mfrPhone').value = '';
             document.getElementById('mfrAddress').value = '';
             document.getElementById('mfrIsActive').checked = true;
+            document.getElementById('mfrIsInternalTest').checked = false;
             document.getElementById('manufacturerFormModal').classList.add('active');
         }
 
@@ -3306,6 +3402,7 @@
             document.getElementById('mfrAccountHolder').value = m.account_holder || '';
             document.getElementById('mfrAccountNumber').value = m.account_number || '';
             document.getElementById('mfrIsActive').checked = !!m.is_active;
+            document.getElementById('mfrIsInternalTest').checked = !!m.is_internal_test;
             document.getElementById('manufacturerFormModal').classList.add('active');
         }
 
@@ -3331,7 +3428,8 @@
                 branch_code: document.getElementById('mfrBranchCode').value.trim() || null,
                 account_holder: document.getElementById('mfrAccountHolder').value.trim() || null,
                 account_number: document.getElementById('mfrAccountNumber').value.trim() || null,
-                is_active: document.getElementById('mfrIsActive').checked
+                is_active: document.getElementById('mfrIsActive').checked,
+                is_internal_test: document.getElementById('mfrIsInternalTest').checked
             };
             try {
                 const url = id
@@ -3367,6 +3465,58 @@
             } catch (e) {
                 alert('網路錯誤');
             }
+        }
+
+        // ==================== 製造成本統計 ====================
+
+        async function loadManufacturingQuoteStats() {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/manufacturing-quote-stats`, {
+                    headers: { 'Authorization': adminAuthHeader() }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                renderManufacturingQuoteStats(data.stats);
+            } catch (e) {
+                document.getElementById('qsEmptyState').style.display = 'block';
+                document.getElementById('qsEmptyState').textContent = '載入失敗：' + e.message;
+                document.getElementById('qsContent').style.display = 'none';
+            }
+        }
+
+        function renderManufacturingQuoteStats(stats) {
+            document.getElementById('qsStatCount').textContent = stats.total_items_with_quote;
+            document.getElementById('qsStatAvg').textContent = stats.total_items_with_quote ? `NT$ ${stats.avg_quote}` : '—';
+            document.getElementById('qsStatRange').textContent = stats.total_items_with_quote ? `NT$ ${stats.min_quote} / ${stats.max_quote}` : '—';
+
+            if (!stats.total_items_with_quote) {
+                document.getElementById('qsEmptyState').style.display = 'block';
+                document.getElementById('qsContent').style.display = 'none';
+                return;
+            }
+            document.getElementById('qsEmptyState').style.display = 'none';
+            document.getElementById('qsContent').style.display = 'block';
+
+            const maxBucketCount = Math.max(...stats.price_distribution.map(b => b.count), 1);
+            document.getElementById('qsDistribution').innerHTML = stats.price_distribution.map(b => `
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:100px; font-size:13px; color:var(--text-muted);">NT$ ${b.bucket}</div>
+                    <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
+                        <div style="width:${(b.count / maxBucketCount * 100).toFixed(0)}%; background:#c9a96e; height:18px;"></div>
+                    </div>
+                    <div style="width:36px; font-size:13px; color:var(--text-light); text-align:right;">${b.count}</div>
+                </div>`).join('');
+
+            const rowHtml = (row) => `
+                <tr${row.count < 3 ? ' style="opacity:0.6;"' : ''}>
+                    <td>${row.key}</td>
+                    <td>${row.count}${row.count < 3 ? ' ⚠️' : ''}</td>
+                    <td>NT$ ${row.avg_quote}</td>
+                </tr>`;
+            document.getElementById('qsComboTableBody').innerHTML =
+                stats.letter_combo_stats.length ? stats.letter_combo_stats.map(rowHtml).join('') : '<tr><td colspan="3" class="empty-state">尚無資料</td></tr>';
+            document.getElementById('qsFontTableBody').innerHTML =
+                stats.font_stats.length ? stats.font_stats.map(rowHtml).join('') : '<tr><td colspan="3" class="empty-state">尚無資料</td></tr>';
         }
 
         // ==================== 開始製作 / 發送給廠商 Modal ====================
