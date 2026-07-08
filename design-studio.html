@@ -735,8 +735,8 @@
             <div class="cart-items" id="cart-items"></div>
 
             <div class="cart-footer">
-                <!-- 優惠碼區塊 -->
-                <div
+                <!-- 優惠碼區塊（兌換碼結帳模式改用每件商品各自的兌換碼輸入欄位，此區塊隱藏） -->
+                <div id="promo-code-section"
                     style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
                     <label data-i18n="studio.promo.title"
                         style="display: block; margin-bottom: 10px; font-weight: bold; color: #d4af37; font-size: 14px;">
@@ -3554,9 +3554,10 @@
                 return;
             }
 
-            // ✅ 限制購物車最多 3 個物件
-            if (cartItems.length >= 3) {
-                showToast('購物車最多只能加入 3 個商品，如需訂購更多請分批結帳');
+            // ✅ 限制購物車件數（兌換碼結帳模式下每件都需獨立兌換碼，上限為 2 件）
+            const maxCartItems = window.CHECKOUT_MODE === 'redemption' ? 2 : 3;
+            if (cartItems.length >= maxCartItems) {
+                showToast(`購物車最多只能加入 ${maxCartItems} 個商品，如需訂購更多請分批結帳`);
                 return;
             }
             
@@ -3694,6 +3695,8 @@
 
         function renderCart() {
             const container = document.getElementById('cart-items');
+            const promoSection = document.getElementById('promo-code-section');
+            if (promoSection) promoSection.style.display = (window.CHECKOUT_MODE === 'redemption') ? 'none' : '';
 
             if (cartItems.length === 0) {
                 container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">Your cart is empty</div>';
@@ -3785,6 +3788,7 @@
                     const value = parseInt(e.target.value) || 1;
                     if (value > 0) {
                         cartItems[index].quantity = value;
+                        cartItems[index].redeemCodeValid = false; // 數量變動需重新驗證兌換碼
                         renderCart();
                     }
                 });
@@ -3797,6 +3801,7 @@
                 upBtn.textContent = '▲';
                 upBtn.onclick = () => {
                     cartItems[index].quantity++;
+                    cartItems[index].redeemCodeValid = false;
                     renderCart();
                 };
 
@@ -3806,6 +3811,7 @@
                 downBtn.onclick = () => {
                     if (cartItems[index].quantity > 1) {
                         cartItems[index].quantity--;
+                        cartItems[index].redeemCodeValid = false;
                         renderCart();
                     }
                 };
@@ -3826,7 +3832,33 @@
                 };
                 div.appendChild(deleteBtn);
 
-                container.appendChild(div);
+                // 兌換碼結帳模式：每件商品下方各自的兌換碼輸入欄位
+                if (window.CHECKOUT_MODE === 'redemption' && !item.isPreciousMetal) {
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.appendChild(div);
+
+                    const redeemDiv = document.createElement('div');
+                    const isValid = !!item.redeemCodeValid;
+                    redeemDiv.style.cssText = 'margin: 6px 0 14px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);';
+                    redeemDiv.innerHTML = `
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" id="redeem-code-input-${index}" placeholder="輸入此件作品的兌換碼" maxlength="20"
+                                value="${item.redeemCode || ''}"
+                                style="flex:1; min-width:0; padding:8px 10px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:white; border-radius:5px; font-size:13px; text-transform:uppercase;">
+                            <button type="button" id="redeem-code-btn-${index}" class="glass" style="flex-shrink:0; padding:8px 12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; cursor:pointer; font-size:13px;">驗證</button>
+                        </div>
+                        <div id="redeem-code-status-${index}" style="margin-top:6px; font-size:12px; ${isValid ? 'color:#4ade80;' : 'color:rgba(255,255,255,0.5);'}">${isValid ? '✅ 已驗證，此件作品可兌換' : ''}</div>
+                    `;
+                    itemWrapper.appendChild(redeemDiv);
+                    container.appendChild(itemWrapper);
+
+                    redeemDiv.querySelector(`#redeem-code-btn-${index}`).addEventListener('click', () => validateItemRedeemCode(index));
+                    redeemDiv.querySelector(`#redeem-code-input-${index}`).addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); validateItemRedeemCode(index); }
+                    });
+                } else {
+                    container.appendChild(div);
+                }
                 if (!item.isPreciousMetal) total += item.price * item.quantity;
             });
 
@@ -4019,6 +4051,48 @@
 
         function calculateCartTotal() {
             return originalTotal - promoDiscount;
+        }
+
+        // 兌換碼結帳模式：驗證單一購物車項目的兌換碼
+        async function validateItemRedeemCode(index) {
+            const input = document.getElementById(`redeem-code-input-${index}`);
+            const status = document.getElementById(`redeem-code-status-${index}`);
+            const code = input.value.trim().toUpperCase();
+            const item = cartItems[index];
+
+            if (!code) {
+                status.style.color = '#f87171';
+                status.textContent = '請輸入兌換碼';
+                return;
+            }
+
+            status.style.color = 'rgba(255,255,255,0.6)';
+            status.textContent = '驗證中...';
+
+            try {
+                const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ promoCode: code, total: item.price * item.quantity })
+                });
+                const result = await response.json();
+
+                if (result.success && result.valid && result.finalTotal <= 0) {
+                    item.redeemCode = code;
+                    item.redeemCodeValid = true;
+                    status.style.color = '#4ade80';
+                    status.textContent = '✅ 已驗證，此件作品可兌換';
+                } else {
+                    item.redeemCodeValid = false;
+                    status.style.color = '#f87171';
+                    status.textContent = result.valid === false ? (result.error || '兌換碼無效')
+                        : (result.error || '此兌換碼金額不足以完全折抵這件作品，請確認是否選錯兌換碼');
+                }
+            } catch (e) {
+                item.redeemCodeValid = false;
+                status.style.color = '#f87171';
+                status.textContent = '驗證失敗，請稍後再試';
+            }
         }
 
         async function testModeCheckout() {
@@ -4684,6 +4758,19 @@
                 alert(window.CHECKOUT_CLOSED_MESSAGE || '嘖嘖募資 7 月 20 起跑，敬請期待。');
                 return;
             }
+
+            // 兌換碼結帳模式：購物車內每一件作品都必須先驗證通過兌換碼
+            if (window.CHECKOUT_MODE === 'redemption') {
+                if (cartItems.some(i => i.isPreciousMetal)) {
+                    alert('嘖嘖兌換碼結帳期間暫不支援貴金屬客製訂單。');
+                    return;
+                }
+                if (cartItems.length === 0 || cartItems.some(i => !i.redeemCodeValid)) {
+                    alert('請先為購物車中每一件作品輸入並驗證兌換碼，才能完成結帳。');
+                    return;
+                }
+            }
+
             posthog.capture('checkout_clicked');
             // 若含貴金屬訂製品，改走詢問表單流程
             if (cartItems.some(i => i.isPreciousMetal)) {

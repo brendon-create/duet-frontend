@@ -791,6 +791,10 @@
                     </div>
                     <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">兌換碼（每行一個）</label>
                     <textarea id="redeemCodesInput" rows="6" placeholder="DUET-ABC123&#10;DUET-DEF456&#10;DUET-GHI789" style="width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); font-family: monospace; font-size: 13px; resize: vertical;"></textarea>
+                    <label style="display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                        <input type="checkbox" id="redeemPaired">
+                        雙人方案配對（每兩行視為一對，共用配對標籤，方便日後查詢是否兩組都已兌換）
+                    </label>
                     <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
                         <button class="btn btn-primary" onclick="bulkCreateRedeemCodes()">匯入</button>
                         <span id="redeemImportStatus" style="font-size: 13px; color: var(--text-muted);"></span>
@@ -2956,6 +2960,7 @@
             const value = parseFloat(document.getElementById('redeemDiscountValue').value);
             const batch_name = document.getElementById('redeemBatchName').value;
             const valid_until = document.getElementById('redeemValidUntil').value || null;
+            const paired = document.getElementById('redeemPaired').checked;
             const statusEl = document.getElementById('redeemImportStatus');
 
             if (!codes.trim()) { statusEl.textContent = '請貼入兌換碼'; return; }
@@ -2965,7 +2970,7 @@
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/bulk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
-                    body: JSON.stringify({ codes, promo_type, value, batch_name, valid_until })
+                    body: JSON.stringify({ codes, promo_type, value, batch_name, valid_until, paired })
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
