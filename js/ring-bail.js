@@ -98,7 +98,7 @@ export function createBail() {
     if (!window.mainMesh) return;
 
     const myBailId = ++bailLoadId;
-    const bailUrl = `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/models/bail.stl`;
+    const bailUrl = `assets/models/bail.stl`;
     console.log('🔽 載入 Bail STL:', bailUrl);
 
     const loader = new STLLoader();

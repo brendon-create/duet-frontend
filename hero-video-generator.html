@@ -1293,13 +1293,29 @@
         // 導致渲染狀態損壞、吊墜消失只剩背景；design-studio 從未用過 PMREMGenerator 所以沒這問題）
         const DEFAULT_HDR_FILE = 'studio_kontrast_04_4kc.hdr';
 
+        // 動態 import 模組偶爾會因 CDN 暫時性問題失敗（單次請求沒有內建重試），
+        // 加上短暫延遲重試，避免偶發網路波動就整個放棄 HDR、退回純燈光模式。
+        // 瀏覽器會快取失敗的 import() 結果，同一個 specifier 重試會直接拿到快取的失敗、
+        // 不會真的重新發送網路請求——因此每次重試都加上不同的查詢字串繞過快取
+        function importWithRetry(specifier, retriesLeft = 2, delayMs = 700) {
+            return import(specifier).catch((err) => {
+                if (retriesLeft <= 0) throw err;
+                return new Promise((resolve) => setTimeout(resolve, delayMs))
+                    .then(() => {
+                        const sep = specifier.includes('?') ? '&' : '?';
+                        const bustSpecifier = specifier + sep + '_retry=' + Date.now();
+                        return importWithRetry(bustSpecifier, retriesLeft - 1, delayMs);
+                    });
+            });
+        }
+
         function loadHDR(fileName) {
             const file = fileName || document.getElementById('hdr-select')?.value || DEFAULT_HDR_FILE;
             const urls = [
                 `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/${file}`,
                 `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/${file}`
             ];
-            import('three/addons/loaders/RGBELoader.js')
+            importWithRetry('three/addons/loaders/RGBELoader.js')
                 .then(({ RGBELoader }) => {
                     const loader = new RGBELoader();
                     let idx = 0;
@@ -1318,7 +1334,7 @@
                     }
                     tryNext();
                 })
-                .catch(() => console.warn('⚠️ RGBELoader 無法載入，使用純燈光模式'));
+                .catch(() => console.warn('⚠️ RGBELoader 模組載入失敗（已重試），使用純燈光模式'));
         }
 
         // ── 場景設定 ──────────────────────────────────────────────
