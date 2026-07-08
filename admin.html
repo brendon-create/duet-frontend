@@ -747,6 +747,24 @@
             
             <!-- Redeem Codes Tab -->
             <div id="redeemTab" style="display: none;">
+                <!-- 結帳模式切換 -->
+                <div class="detail-section" style="margin-bottom: 20px; border: 1px solid var(--border);">
+                    <h3 style="margin-bottom: 12px;">🔀 結帳模式（嘖嘖募資期間切換）</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                        <select id="checkoutModeSelect" style="padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                            <option value="open">open：正常綠界結帳</option>
+                            <option value="closed">closed：暫停結帳（顯示公告）</option>
+                            <option value="redemption">redemption：兌換碼結帳</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="applyCheckoutMode()">套用</button>
+                        <span id="checkoutModeStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">closed 模式公告文字</label>
+                        <input id="checkoutClosedMessage" type="text" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                    </div>
+                </div>
+
                 <!-- 匯入區 -->
                 <div class="detail-section" style="margin-bottom: 20px;">
                     <h3 style="margin-bottom: 16px;">📥 CSV 批次匯入兌換碼</h3>
@@ -1482,7 +1500,7 @@
 
             if (tab === 'users') loadUsers();
             if (tab === 'promos') loadPromoCodes();
-            if (tab === 'redeem') loadRedeemCodes();
+            if (tab === 'redeem') { loadRedeemCodes(); loadCheckoutMode(); }
             if (tab === 'feedback') loadFeedback();
             if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
@@ -2837,6 +2855,42 @@
             document.getElementById('customerDetailModal').classList.remove('active');
         }
         
+        // ========== 結帳模式切換 ==========
+        async function loadCheckoutMode() {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/checkout-mode`, {
+                    headers: { 'Authorization': adminAuthHeader() }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                document.getElementById('checkoutModeSelect').value = data.checkoutMode;
+                document.getElementById('checkoutClosedMessage').value = data.message;
+            } catch (e) {
+                document.getElementById('checkoutModeStatus').textContent = '載入失敗：' + e.message;
+            }
+        }
+
+        async function applyCheckoutMode() {
+            const mode = document.getElementById('checkoutModeSelect').value;
+            const message = document.getElementById('checkoutClosedMessage').value;
+            const statusEl = document.getElementById('checkoutModeStatus');
+            statusEl.textContent = '套用中...';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/checkout-mode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ mode, message })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                statusEl.style.color = '#4ade80';
+                statusEl.textContent = `已切換為 ${data.checkoutMode}`;
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '套用失敗：' + e.message;
+            }
+        }
+
         // ========== 兌換碼管理 ==========
         let _redeemCodes = [];
 

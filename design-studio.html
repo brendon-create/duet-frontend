@@ -1765,6 +1765,24 @@
 
         console.log('🔧 後端 URL:', BACKEND_URL);
 
+        // === 結帳模式（嘖嘖募資期間切換用：open 正常 / closed 暫停結帳 / redemption 兌換碼結帳） ===
+        window.CHECKOUT_MODE = 'open';
+        window.CHECKOUT_CLOSED_MESSAGE = '嘖嘖募資 7 月 20 起跑，敬請期待。';
+        (async function fetchCheckoutConfig() {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/checkout-config`);
+                const data = await res.json();
+                if (data.success) {
+                    window.CHECKOUT_MODE = data.checkoutMode || 'open';
+                    window.CHECKOUT_CLOSED_MESSAGE = data.message || window.CHECKOUT_CLOSED_MESSAGE;
+                    console.log('🔧 結帳模式:', window.CHECKOUT_MODE);
+                    if (typeof renderCart === 'function') renderCart();
+                }
+            } catch (e) {
+                console.warn('⚠️ 取得結帳模式失敗，預設為正常結帳', e);
+            }
+        })();
+
         // === 測試後端連接（加入重試機制） ===
         async function testBackendConnection() {
             const MAX_RETRIES = 3;
@@ -3825,12 +3843,26 @@
             // 更新顯示
             updateTotalDisplay(originalTotal, promoDiscount, finalTotal, allPreciousMetal);
             const checkoutBtn = document.getElementById('checkout');
-            if (hasPreciousMetal) {
+            if (window.CHECKOUT_MODE === 'closed') {
+                checkoutBtn.textContent = window.CHECKOUT_CLOSED_MESSAGE || '嘖嘖募資 7 月 20 起跑，敬請期待。';
+                checkoutBtn.disabled = true;
+                checkoutBtn.style.background = '';
+                checkoutBtn.style.borderColor = '';
+                checkoutBtn.style.color = '';
+                checkoutBtn.style.opacity = '0.6';
+                checkoutBtn.style.cursor = 'not-allowed';
+            } else if (hasPreciousMetal) {
+                checkoutBtn.disabled = false;
+                checkoutBtn.style.opacity = '';
+                checkoutBtn.style.cursor = '';
                 checkoutBtn.textContent = window.t ? window.t('cart.inquiry') || '送出訂製需求' : '送出訂製需求';
                 checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
                 checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
                 checkoutBtn.style.color = '#d4af37';
             } else {
+                checkoutBtn.disabled = false;
+                checkoutBtn.style.opacity = '';
+                checkoutBtn.style.cursor = '';
                 checkoutBtn.textContent = window.t ? window.t('studio.cart.checkout') || '結帳' : '結帳';
                 checkoutBtn.style.background = '';
                 checkoutBtn.style.borderColor = '';
@@ -4648,6 +4680,10 @@
 
         // 主結帳函數（根據測試模式決定流程）
         function checkout() {
+            if (window.CHECKOUT_MODE === 'closed') {
+                alert(window.CHECKOUT_CLOSED_MESSAGE || '嘖嘖募資 7 月 20 起跑，敬請期待。');
+                return;
+            }
             posthog.capture('checkout_clicked');
             // 若含貴金屬訂製品，改走詢問表單流程
             if (cartItems.some(i => i.isPreciousMetal)) {
