@@ -1777,6 +1777,12 @@
                     window.CHECKOUT_CLOSED_MESSAGE = data.message || window.CHECKOUT_CLOSED_MESSAGE;
                     console.log('🔧 結帳模式:', window.CHECKOUT_MODE);
                     if (typeof renderCart === 'function') renderCart();
+
+                    // 兌換碼結帳期間不支援貴金屬客製，直接移除該材質選項
+                    if (window.CHECKOUT_MODE === 'redemption') {
+                        const preciousOption = document.querySelector('#material option[value="precious_metal"]');
+                        if (preciousOption) preciousOption.remove();
+                    }
                 }
             } catch (e) {
                 console.warn('⚠️ 取得結帳模式失敗，預設為正常結帳', e);
