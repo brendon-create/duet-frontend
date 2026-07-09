@@ -1385,6 +1385,37 @@
             return 'Bearer ' + (localStorage.getItem('adminToken') || '');
         }
 
+        // Session 過期自動登出：攔截所有帶 admin Bearer token 的請求，收到 401 時清 token 並導回登入畫面
+        // （後台多處會同時併發呼叫多支 API，用 sessionExpiredHandled 避免重複跳出提示/重複處理）
+        (function () {
+            const originalFetch = window.fetch.bind(window);
+            let sessionExpiredHandled = false;
+
+            window.fetch = async function (input, init) {
+                const response = await originalFetch(input, init);
+
+                try {
+                    const url = typeof input === 'string' ? input : (input && input.url) || '';
+                    const authHeader = (init && init.headers && (init.headers['Authorization'] || init.headers['authorization'])) || '';
+                    const isAdminBearerCall = authHeader.startsWith('Bearer ') && localStorage.getItem('adminToken');
+
+                    if (response.status === 401 && isAdminBearerCall && !url.includes('/api/admin/logout') && !sessionExpiredHandled) {
+                        sessionExpiredHandled = true;
+                        localStorage.removeItem('adminUser');
+                        localStorage.removeItem('adminToken');
+                        currentUser = null;
+                        const loginScreen = document.getElementById('loginScreen');
+                        const mainApp = document.getElementById('mainApp');
+                        if (loginScreen) loginScreen.style.display = 'flex';
+                        if (mainApp) mainApp.style.display = 'none';
+                        alert('登入已過期，請重新登入');
+                    }
+                } catch (e) { /* 不影響原本的 fetch 回傳 */ }
+
+                return response;
+            };
+        })();
+
         // 統一 API 呼叫函式（使用 session token）
         async function callApi(endpoint, options = {}) {
             const defaultHeaders = {
