@@ -4060,6 +4060,26 @@
         }
 
         // 兌換碼結帳模式：驗證單一購物車項目的兌換碼
+        // 兌換碼格式快速檢查（ZECDUET + 13 位數字，最後一位為 Luhn 檢查碼），純前端計算，不用打 API
+        function isValidRedeemCodeFormat(code) {
+            const m = /^ZECDUET(\d{13})$/.exec(code);
+            if (!m) return false;
+            const digits = m[1];
+            const payload = digits.slice(0, 12);
+            const checkDigit = parseInt(digits[12], 10);
+            let total = 0;
+            const reversed = payload.split('').reverse();
+            for (let i = 0; i < reversed.length; i++) {
+                let d = parseInt(reversed[i], 10);
+                if (i % 2 === 0) {
+                    d *= 2;
+                    if (d > 9) d -= 9;
+                }
+                total += d;
+            }
+            return ((10 - (total % 10)) % 10) === checkDigit;
+        }
+
         async function validateItemRedeemCode(index) {
             const input = document.getElementById(`redeem-code-input-${index}`);
             const status = document.getElementById(`redeem-code-status-${index}`);
@@ -4069,6 +4089,13 @@
             if (!code) {
                 status.style.color = '#f87171';
                 status.textContent = '請輸入兌換碼';
+                return;
+            }
+
+            if (!isValidRedeemCodeFormat(code)) {
+                item.redeemCodeValid = false;
+                status.style.color = '#f87171';
+                status.textContent = '兌換碼格式不正確，請確認輸入是否正確';
                 return;
             }
 
