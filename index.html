@@ -1179,6 +1179,9 @@
     </script>
 </head>
 <body>
+    <!-- ===== 嘖嘖募資橫幅（結帳模式為 closed/redemption 時顯示，open 時自動隱藏） ===== -->
+    <div id="zeczec-banner-container" style="display:none; background:#2C2A26; color:#F1E4C3; text-align:center; padding:10px 20px; font-size:14px; letter-spacing:0.5px;"></div>
+
     <!-- ===== 導航欄 ===== -->
     <nav>
         <div class="logo-container">
@@ -1643,6 +1646,33 @@
                 if (items.length === 0) return;
                 grid.innerHTML = '';
                 items.forEach(el => grid.appendChild(el));
+            })
+            .catch(() => {});
+    })();
+    </script>
+
+    <!-- 嘖嘖募資橫幅：讀取結帳模式，closed/redemption 時顯示 -->
+    <script>
+    (function () {
+        fetch((window.BACKEND_URL || '') + '/api/checkout-config')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || data.checkoutMode === 'open') return;
+                const container = document.getElementById('zeczec-banner-container');
+                if (!container || !data.zeczecBannerText) return;
+
+                if (data.zeczecBannerLink) {
+                    const link = document.createElement('a');
+                    link.href = data.zeczecBannerLink;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.style.cssText = 'color:inherit; text-decoration:none;';
+                    link.textContent = data.zeczecBannerText + ' →';
+                    container.appendChild(link);
+                } else {
+                    container.textContent = data.zeczecBannerText;
+                }
+                container.style.display = 'block';
             })
             .catch(() => {});
     })();
