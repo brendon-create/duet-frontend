@@ -733,6 +733,9 @@
             <div class="cart-header">
                 <h2 data-i18n="studio.cart.title">購物車</h2>
             </div>
+            <div id="cart-redemption-notice" style="display:none; margin: 0 0 14px; padding: 10px 14px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); border-radius: 8px; color: #d4af37; font-size: 13px;">
+                嘖嘖募資期間，僅開放持有兌換碼者訂製作品
+            </div>
             <div class="cart-items" id="cart-items"></div>
 
             <div class="cart-footer">
@@ -3704,6 +3707,8 @@
             const container = document.getElementById('cart-items');
             const promoSection = document.getElementById('promo-code-section');
             if (promoSection) promoSection.style.display = (window.CHECKOUT_MODE === 'redemption') ? 'none' : '';
+            const redemptionNotice = document.getElementById('cart-redemption-notice');
+            if (redemptionNotice) redemptionNotice.style.display = (window.CHECKOUT_MODE === 'redemption') ? 'block' : 'none';
 
             if (cartItems.length === 0) {
                 container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">Your cart is empty</div>';
