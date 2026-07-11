@@ -4065,9 +4065,9 @@
         }
 
         // 兌換碼結帳模式：驗證單一購物車項目的兌換碼
-        // 兌換碼格式快速檢查（ZECDUET + 13 位數字，最後一位為 Luhn 檢查碼），純前端計算，不用打 API
+        // 兌換碼格式快速檢查（ZECDUET=嘖嘖 或 DUETVIP=內部VIP，+ 13 位數字，最後一位為 Luhn 檢查碼），純前端計算，不用打 API
         function isValidRedeemCodeFormat(code) {
-            const m = /^ZECDUET(\d{13})$/.exec(code);
+            const m = /^(?:ZECDUET|DUETVIP)(\d{13})$/.exec(code);
             if (!m) return false;
             const digits = m[1];
             const payload = digits.slice(0, 12);
