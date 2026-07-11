@@ -10,7 +10,8 @@
         !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
         posthog.init('phc_ouDRrx6CU24mFEBcGk5HV4tgGPV8dySaJ7Y4Fot8Qm2k', {
             api_host: 'https://us.i.posthog.com',
-            person_profiles: 'identified_only'
+            person_profiles: 'identified_only',
+            persistence: 'localStorage'
         });
     </script>
     <meta charset="UTF-8">
@@ -3772,10 +3773,13 @@
 
                 const priceDiv = document.createElement('div');
                 priceDiv.className = 'cart-item-price';
+                const itemRedeemed = window.CHECKOUT_MODE === 'redemption' && item.redeemCodeValid;
                 if (item.isPreciousMetal) {
                     priceDiv.textContent = window.t('cart.item.price.pending');
                     priceDiv.style.color = '#d4af37';
                     priceDiv.style.fontSize = '13px';
+                } else if (itemRedeemed) {
+                    priceDiv.innerHTML = `<span style="text-decoration:line-through; opacity:0.5; font-size:12px;">NT$ ${(item.price * item.quantity).toLocaleString()}</span><br><span style="color:#4ade80;">NT$ 0（已兌換）</span>`;
                 } else {
                     priceDiv.textContent = `NT$ ${(item.price * item.quantity).toLocaleString()}`;
                 }
@@ -3865,7 +3869,8 @@
                 } else {
                     container.appendChild(div);
                 }
-                if (!item.isPreciousMetal) total += item.price * item.quantity;
+                const isRedeemedItem = window.CHECKOUT_MODE === 'redemption' && item.redeemCodeValid;
+                if (!item.isPreciousMetal && !isRedeemedItem) total += item.price * item.quantity;
             });
 
             // 儲存原始總金額
@@ -4102,6 +4107,7 @@
             status.style.color = 'rgba(255,255,255,0.6)';
             status.textContent = '驗證中...';
 
+            let errorMessage = '驗證失敗，請稍後再試';
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
                     method: 'POST',
@@ -4113,18 +4119,23 @@
                 if (result.success && result.valid && result.finalTotal <= 0) {
                     item.redeemCode = code;
                     item.redeemCodeValid = true;
-                    status.style.color = '#4ade80';
-                    status.textContent = '✅ 已驗證，此件作品可兌換';
                 } else {
                     item.redeemCodeValid = false;
-                    status.style.color = '#f87171';
-                    status.textContent = result.valid === false ? (result.error || '兌換碼無效')
+                    errorMessage = result.valid === false ? (result.error || '兌換碼無效')
                         : (result.error || '此兌換碼金額不足以完全折抵這件作品，請確認是否選錯兌換碼');
                 }
             } catch (e) {
                 item.redeemCodeValid = false;
-                status.style.color = '#f87171';
-                status.textContent = '驗證失敗，請稍後再試';
+            }
+
+            // 重新渲染購物車，讓已兌換項目的金額顯示為 0、總計同步更新
+            renderCart();
+
+            // renderCart() 會重建 DOM，重新取得驗證訊息元素後顯示結果
+            const newStatus = document.getElementById(`redeem-code-status-${index}`);
+            if (newStatus && !item.redeemCodeValid) {
+                newStatus.style.color = '#f87171';
+                newStatus.textContent = errorMessage;
             }
         }
 
