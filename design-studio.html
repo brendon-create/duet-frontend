@@ -5313,7 +5313,7 @@
                                 </div>
                             </div>
 
-                            <p id="email-confirm-hint" style="font-size:12px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:center;"></p>
+                            <p id="email-confirm-hint" style="font-size:15px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:right;"></p>
 
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
@@ -5410,6 +5410,32 @@
                     }
                 };
 
+                // 若先前結帳失敗過，重新開表單時自動帶回原本已填的資料，避免使用者重填
+                if (window._lastUserInfoFormValues) {
+                    const cached = window._lastUserInfoFormValues;
+                    document.getElementById('buyer-name').value = cached.buyerName || '';
+                    document.getElementById('buyer-email').value = cached.buyerEmail || '';
+                    document.getElementById('buyer-phone').value = cached.buyerPhone || '';
+                    document.getElementById('recipient-name').value = cached.recipientName || '';
+                    document.getElementById('recipient-phone').value = cached.recipientPhone || '';
+                    document.getElementById('shipping-country').value = cached.shippingCountry || 'TW';
+                    window.updatePostalHint(document.getElementById('shipping-country').value);
+                    document.getElementById('postal-code').value = cached.postalCode || '';
+                    document.getElementById('shipping-address').value = cached.shippingAddress || '';
+                    document.getElementById('order-note').value = cached.note || '';
+                    if (cached.invoiceType === 'company') {
+                        document.querySelector('input[name="invoice-type"][value="company"]').checked = true;
+                        window.toggleInvoiceFields(true);
+                        document.getElementById('company-tax-id').value = cached.companyTaxId || '';
+                        document.getElementById('company-name').value = cached.companyName || '';
+                    }
+                    if (cached.sameAsBuyer) {
+                        document.getElementById('same-as-buyer').checked = true;
+                        window.toggleRecipientFields(true);
+                    }
+                    updateEmailHint();
+                }
+
                 // 處理表單提交
                 document.getElementById('user-info-form').addEventListener('submit', (e) => {
                     e.preventDefault();
@@ -5445,6 +5471,9 @@
                         phone: document.getElementById('recipient-phone').value.trim(),
                         address: document.getElementById('shipping-address').value.trim()
                     };
+
+                    // 快取表單內容（僅存於記憶體，不落地）：若結帳失敗需重開表單，可自動帶回避免重填
+                    window._lastUserInfoFormValues = { ...userInfo, sameAsBuyer: document.getElementById('same-as-buyer').checked };
 
                     // ✅ 不移除 modal，改成隱藏表單並顯示 loading
                     modal.querySelector('.modal-content').style.display = 'none';
