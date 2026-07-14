@@ -3575,8 +3575,8 @@
                 return;
             }
 
-            // ✅ 限制購物車件數（兌換碼結帳模式下每件都需獨立兌換碼，上限為 2 件）
-            const maxCartItems = window.CHECKOUT_MODE === 'redemption' ? 2 : 3;
+            // ✅ 限制購物車件數（避免表單誤觸/意外大量下單的安全上限）
+            const maxCartItems = 10;
             if (cartItems.length >= maxCartItems) {
                 showToast(`購物車最多只能加入 ${maxCartItems} 個商品，如需訂購更多請分批結帳`);
                 return;

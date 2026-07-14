@@ -1376,7 +1376,7 @@
                     <label>有效期至</label>
                     <input type="date" id="promoValidUntil">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="promoUsageLimitGroup">
                     <label>使用次數限制 (留空表示無限制)</label>
                     <input type="number" id="promoUsageLimit" min="1">
                 </div>
@@ -2796,6 +2796,7 @@
             document.getElementById('promoCodeGroup').style.display = isRedeemItem ? 'none' : '';
             document.getElementById('promoValueGroup').style.display = isRedeemItem ? 'none' : '';
             document.getElementById('promoMinAmountGroup').style.display = isRedeemItem ? 'none' : '';
+            document.getElementById('promoUsageLimitGroup').style.display = isRedeemItem ? 'none' : '';
             codeInput.required = !isRedeemItem;
             document.getElementById('promoValue').required = !isRedeemItem;
         }
