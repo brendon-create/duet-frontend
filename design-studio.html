@@ -5122,28 +5122,28 @@
                             </div>
                         </div>
                         ` : ''}
-                        <form id="user-info-form">
+                        <form id="user-info-form" autocomplete="off">
                             <!-- 購買人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                                 <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.buyerInfo')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.buyerName')} *</label>
-                                    <input type="text" id="buyer-name" required
+                                    <input type="text" id="buyer-name" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.email')} *</label>
-                                    <input type="email" id="buyer-email" required
+                                    <input type="email" id="buyer-email" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.phone')} *</label>
-                                    <input type="tel" id="buyer-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                    <input type="tel" id="buyer-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}" autocomplete="off"
                                            placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5165,14 +5165,14 @@
                                     </div>
 
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientName')} *</label>
-                                    <input type="text" id="recipient-name" required
+                                    <input type="text" id="recipient-name" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientPhone')} *</label>
-                                    <input type="tel" id="recipient-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                    <input type="tel" id="recipient-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}" autocomplete="off"
                                            placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5199,7 +5199,7 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.postalCode')}</label>
-                                    <input type="text" id="postal-code"
+                                    <input type="text" id="postal-code" autocomplete="off"
                                            placeholder="例：100 / 100-0001"
                                            style="width: 160px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5207,7 +5207,7 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.fullAddress')} *</label>
-                                    <textarea id="shipping-address" required rows="3"
+                                    <textarea id="shipping-address" required rows="3" autocomplete="off"
                                               placeholder="${window.t('order.form.addressHint')}"
                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                      background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
@@ -5240,7 +5240,7 @@
                                 <div id="company-invoice-fields" style="display: none;">
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.taxId')} *</label>
-                                        <input type="text" id="company-tax-id" pattern="[0-9]{8}"
+                                        <input type="text" id="company-tax-id" pattern="[0-9]{8}" autocomplete="off"
                                                placeholder="${window.t('order.form.taxIdHint')}"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5248,7 +5248,7 @@
 
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.companyName')} *</label>
-                                        <input type="text" id="company-name"
+                                        <input type="text" id="company-name" autocomplete="off"
                                                placeholder="${window.t('order.form.companyNameHint')}"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
