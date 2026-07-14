@@ -3510,6 +3510,17 @@
             updateVolumeWeight();
         }
 
+        // 點擊已有作品的版本視窗：與主畫面作品互換位置
+        function swapSlot(slotIndex) {
+            if (!savedVersions[slotIndex]) return;
+            const incoming = savedVersions[slotIndex];   // 版本視窗原本的作品
+            saveToSlot(slotIndex);                        // 把主畫面目前作品存入該版本（含縮圖重繪）
+            const outgoing = savedVersions[slotIndex];
+            savedVersions[slotIndex] = incoming;
+            loadFromSlot(slotIndex);                       // 把版本視窗原本的作品叫回主畫面
+            savedVersions[slotIndex] = outgoing;           // 版本視窗保留「主畫面原本的作品」
+        }
+
         // 購物車
         // 📸 生成三視圖（正視、側視、俯視）- 使用獨立 off-screen renderer，不移動主相機
         function captureThreeViews() {
@@ -3564,8 +3575,8 @@
                 return;
             }
 
-            // ✅ 限制購物車件數（兌換碼結帳模式下每件都需獨立兌換碼，上限為 2 件）
-            const maxCartItems = window.CHECKOUT_MODE === 'redemption' ? 2 : 3;
+            // ✅ 限制購物車件數（避免表單誤觸/意外大量下單的安全上限）
+            const maxCartItems = 10;
             if (cartItems.length >= maxCartItems) {
                 showToast(`購物車最多只能加入 ${maxCartItems} 個商品，如需訂購更多請分批結帳`);
                 return;
@@ -4106,6 +4117,15 @@
                 item.redeemCodeValid = false;
                 status.style.color = '#f87171';
                 status.textContent = '兌換碼格式不正確，請確認輸入是否正確';
+                return;
+            }
+
+            // 同一筆訂單不能重複用同一組碼：購物車內先本地攔截，不用等結帳才發現
+            const duplicateIndex = cartItems.findIndex((other, i) => i !== index && other.redeemCodeValid && other.redeemCode === code);
+            if (duplicateIndex !== -1) {
+                item.redeemCodeValid = false;
+                status.style.color = '#f87171';
+                status.textContent = `此兌換碼已用於作品 ${duplicateIndex + 1}，請使用不同的兌換碼`;
                 return;
             }
 
@@ -5086,6 +5106,10 @@
                     displayPaymentForm(result.paymentFormHTML);
                 } else {
                     console.error('❌ 結帳失敗:', result.error);
+                    if (window.userInfoModal) {
+                        window.userInfoModal.remove();
+                        window.userInfoModal = null;
+                    }
                     alert('❌ 結帳失敗：' + result.error);
                 }
 
@@ -5095,6 +5119,10 @@
                     message: error.message,
                     stack: error.stack
                 });
+                if (window.userInfoModal) {
+                    window.userInfoModal.remove();
+                    window.userInfoModal = null;
+                }
                 alert('❌ 支付過程發生錯誤：' + error.message);
             }
         }
@@ -5122,28 +5150,28 @@
                             </div>
                         </div>
                         ` : ''}
-                        <form id="user-info-form">
+                        <form id="user-info-form" autocomplete="off">
                             <!-- 購買人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                                 <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.buyerInfo')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.buyerName')} *</label>
-                                    <input type="text" id="buyer-name" required
+                                    <input type="text" id="buyer-name" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.email')} *</label>
-                                    <input type="email" id="buyer-email" required
+                                    <input type="email" id="buyer-email" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.phone')} *</label>
-                                    <input type="tel" id="buyer-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                    <input type="tel" id="buyer-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}" autocomplete="off"
                                            placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5165,14 +5193,14 @@
                                     </div>
 
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientName')} *</label>
-                                    <input type="text" id="recipient-name" required
+                                    <input type="text" id="recipient-name" required autocomplete="off"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.recipientPhone')} *</label>
-                                    <input type="tel" id="recipient-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}"
+                                    <input type="tel" id="recipient-phone" required pattern="[\+\d][\d\s\-\(\)]{6,19}" autocomplete="off"
                                            placeholder="0912345678 / +81-90-1234-5678"
                                            style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5199,7 +5227,7 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.postalCode')}</label>
-                                    <input type="text" id="postal-code"
+                                    <input type="text" id="postal-code" autocomplete="off"
                                            placeholder="例：100 / 100-0001"
                                            style="width: 160px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                   background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5207,7 +5235,7 @@
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.fullAddress')} *</label>
-                                    <textarea id="shipping-address" required rows="3"
+                                    <textarea id="shipping-address" required rows="3" autocomplete="off"
                                               placeholder="${window.t('order.form.addressHint')}"
                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                      background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
@@ -5240,7 +5268,7 @@
                                 <div id="company-invoice-fields" style="display: none;">
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.taxId')} *</label>
-                                        <input type="text" id="company-tax-id" pattern="[0-9]{8}"
+                                        <input type="text" id="company-tax-id" pattern="[0-9]{8}" autocomplete="off"
                                                placeholder="${window.t('order.form.taxIdHint')}"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5248,7 +5276,7 @@
 
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.companyName')} *</label>
-                                        <input type="text" id="company-name"
+                                        <input type="text" id="company-name" autocomplete="off"
                                                placeholder="${window.t('order.form.companyNameHint')}"
                                                style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                       background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
@@ -5285,7 +5313,7 @@
                                 </div>
                             </div>
 
-                            <p id="email-confirm-hint" style="font-size:12px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:center;"></p>
+                            <p id="email-confirm-hint" style="font-size:15px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:right;"></p>
 
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
@@ -5382,6 +5410,32 @@
                     }
                 };
 
+                // 若先前結帳失敗過，重新開表單時自動帶回原本已填的資料，避免使用者重填
+                if (window._lastUserInfoFormValues) {
+                    const cached = window._lastUserInfoFormValues;
+                    document.getElementById('buyer-name').value = cached.buyerName || '';
+                    document.getElementById('buyer-email').value = cached.buyerEmail || '';
+                    document.getElementById('buyer-phone').value = cached.buyerPhone || '';
+                    document.getElementById('recipient-name').value = cached.recipientName || '';
+                    document.getElementById('recipient-phone').value = cached.recipientPhone || '';
+                    document.getElementById('shipping-country').value = cached.shippingCountry || 'TW';
+                    window.updatePostalHint(document.getElementById('shipping-country').value);
+                    document.getElementById('postal-code').value = cached.postalCode || '';
+                    document.getElementById('shipping-address').value = cached.shippingAddress || '';
+                    document.getElementById('order-note').value = cached.note || '';
+                    if (cached.invoiceType === 'company') {
+                        document.querySelector('input[name="invoice-type"][value="company"]').checked = true;
+                        window.toggleInvoiceFields(true);
+                        document.getElementById('company-tax-id').value = cached.companyTaxId || '';
+                        document.getElementById('company-name').value = cached.companyName || '';
+                    }
+                    if (cached.sameAsBuyer) {
+                        document.getElementById('same-as-buyer').checked = true;
+                        window.toggleRecipientFields(true);
+                    }
+                    updateEmailHint();
+                }
+
                 // 處理表單提交
                 document.getElementById('user-info-form').addEventListener('submit', (e) => {
                     e.preventDefault();
@@ -5417,6 +5471,9 @@
                         phone: document.getElementById('recipient-phone').value.trim(),
                         address: document.getElementById('shipping-address').value.trim()
                     };
+
+                    // 快取表單內容（僅存於記憶體，不落地）：若結帳失敗需重開表單，可自動帶回避免重填
+                    window._lastUserInfoFormValues = { ...userInfo, sameAsBuyer: document.getElementById('same-as-buyer').checked };
 
                     // ✅ 不移除 modal，改成隱藏表單並顯示 loading
                     modal.querySelector('.modal-content').style.display = 'none';
@@ -5802,12 +5859,12 @@
             document.getElementById('save-slot-1').addEventListener('click', () => saveToSlot(0));
             document.getElementById('save-slot-2').addEventListener('click', () => saveToSlot(1));
 
-            // Slot 點擊召回
+            // Slot 點擊：已有作品則與主畫面互換，空的則直接存入
             document.querySelector('[data-slot="1"]').addEventListener('click', () => {
-                if (savedVersions[0]) loadFromSlot(0);
+                if (savedVersions[0]) swapSlot(0); else saveToSlot(0);
             });
             document.querySelector('[data-slot="2"]').addEventListener('click', () => {
-                if (savedVersions[1]) loadFromSlot(1);
+                if (savedVersions[1]) swapSlot(1); else saveToSlot(1);
             });
             document.getElementById('addToCartBtn').addEventListener('click', (e) => {
                 // 如果點擊的是 View Cart 區域，只打開購物車

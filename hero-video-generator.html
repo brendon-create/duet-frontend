@@ -6,6 +6,8 @@
     <title>Hero Video Generator — DUET</title>
     <!-- ClipperLib：UMD 格式，必須在 importmap 之前載入，geometry-engine.js 透過 window.ClipperLib 存取 -->
     <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+    <!-- gif.js：GIF 輸出用（UMD 格式），透過 window.GIF 存取。gif.worker.js 由 GIF_WORKER_URL 指定 -->
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
 
     <script type="importmap">
     {
@@ -401,7 +403,8 @@
             font-weight: 400;
         }
 
-        #result-video {
+        #result-video,
+        #result-image {
             width: 100%;
             border-radius: 4px;
             background: #1A1916;
@@ -409,7 +412,8 @@
             display: none;
         }
 
-        #result-video.visible { display: block; }
+        #result-video.visible,
+        #result-image.visible { display: block; }
 
         #result-placeholder {
             flex: 1;
@@ -528,6 +532,7 @@
                         <option value="1920x600">1920 × 600（寬幅 Banner 16:5）</option>
                         <option value="1280x480">1280 × 480（中型 Banner）</option>
                         <option value="1920x1080" selected>1920 × 1080（16:9 全幅）</option>
+                        <option value="1200x675">1200 × 675（嘖嘖募資頁面 16:9）</option>
                     </optgroup>
                     <optgroup label="── 直式（社群媒體）──">
                         <option value="800x1000">800 × 1000（通用直式）</option>
@@ -556,8 +561,10 @@
                 <select id="output-format">
                     <option value="webm">WebM（網頁 Hero 推薦）</option>
                     <option value="mp4">MP4（社群上傳 / 通用）</option>
+                    <option value="gif">GIF（嘖嘖募資頁面等圖片位嵌入）</option>
                 </select>
                 <div class="field-sublabel">MP4 需 Chrome 130+ 或 Safari；其他瀏覽器自動回退 WebM</div>
+                <div class="field-sublabel">GIF 僅 256 色，金屬漸層反光會有色階；檔案較大、編碼較慢，時長建議控制在較短範圍</div>
             </div>
 
             <div class="field-group">
@@ -743,6 +750,7 @@
             <h2>生成結果</h2>
             <div id="result-placeholder">完成生成後<br>影片預覽將顯示在此</div>
             <video id="result-video" controls loop muted playsinline></video>
+            <img id="result-image" alt="GIF 預覽">
             <button id="download-btn" disabled>⬇ 下載 hero-product.webm</button>
             <div class="result-hint">
                 下載後將檔案放入：<br>
@@ -896,6 +904,7 @@
         let customBgUrl = null; // 使用者上傳的背景圖片 URL
         let previewGroup = null;   // Bail 位置預覽用的單一吊墜
         let previewAnimId = null;  // 預覽緩慢自轉的 requestAnimationFrame id
+        let hdrReadyPromise = null; // HDR 是否已就緒（成功或已放棄皆視為完成），錄製前可等待，避免拍到未上 HDR 的黑暗畫面
 
         // ── UI 元素 ───────────────────────────────────────────────
         const canvas          = document.getElementById('preview-canvas');
@@ -903,6 +912,7 @@
         const genBtn          = document.getElementById('generate-btn');
         const dlBtn           = document.getElementById('download-btn');
         const resVideo        = document.getElementById('result-video');
+        const resImage        = document.getElementById('result-image');
         const resPlaceholder  = document.getElementById('result-placeholder');
         const statusText      = document.getElementById('status-text');
         const progressOverlay = document.getElementById('progress-overlay');
@@ -1096,7 +1106,8 @@
             const url = URL.createObjectURL(resultBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = resultBlob.type.includes('mp4') ? 'hero-product.mp4' : 'hero-product.webm';
+            a.download = resultBlob.type.includes('gif') ? 'hero-product.gif'
+                : resultBlob.type.includes('mp4') ? 'hero-product.mp4' : 'hero-product.webm';
             a.click();
             setTimeout(() => URL.revokeObjectURL(url), 5000);
         });
@@ -1130,6 +1141,7 @@
                 const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
                 const rotationMode = document.getElementById('rotation-mode').value;
                 const plating      = document.getElementById('plating').value;
+                const outputFormat = document.getElementById('output-format').value;
 
                 // 調整 canvas 尺寸
                 canvas.width  = W;
@@ -1170,26 +1182,36 @@
                     groups.push(group);
                 }
 
-                showProgress(true, '開始錄製影片...', 1);
-                statusText.textContent = '錄製中，請稍候...';
+                showProgress(true, outputFormat === 'gif' ? '開始產生 GIF...' : '開始錄製影片...', 1);
+                statusText.textContent = outputFormat === 'gif' ? '產生 GIF 中，請稍候（比錄影慢，尤其是編碼階段）...' : '錄製中，請稍候...';
 
-                // 錄製動畫
-                const blob = await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode);
+                // 錄製動畫（GIF 走獨立的逐幀編碼路徑，不經過 MediaRecorder）
+                const blob = outputFormat === 'gif'
+                    ? await recordAnimationGif(groups, secPerPair, vertOffset, horizOffset, rotationMode)
+                    : await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode);
                 resultBlob = blob;
 
                 // 依實際輸出格式更新按鈕文字與提示
+                const isGifOut   = blob.type.includes('gif');
                 const isMp4Out   = blob.type.includes('mp4');
-                const ext        = isMp4Out ? 'mp4' : 'webm';
+                const ext        = isGifOut ? 'gif' : (isMp4Out ? 'mp4' : 'webm');
                 const fileName   = `hero-product.${ext}`;
                 dlBtn.textContent = `⬇ 下載 ${fileName}`;
                 const hintEl = document.querySelector('.result-hint code');
                 if (hintEl) hintEl.textContent = `frontend/assets/videos/${fileName}`;
 
-                // 顯示結果
+                // 顯示結果（GIF 用 <img>，影片用 <video>，兩者互斥顯示）
                 const url = URL.createObjectURL(blob);
-                resVideo.src = url;
-                resVideo.load();
-                resVideo.classList.add('visible');
+                if (isGifOut) {
+                    resVideo.classList.remove('visible');
+                    resImage.src = url;
+                    resImage.classList.add('visible');
+                } else {
+                    resImage.classList.remove('visible');
+                    resVideo.src = url;
+                    resVideo.load();
+                    resVideo.classList.add('visible');
+                }
                 resPlaceholder.style.display = 'none';
                 dlBtn.disabled = false;
                 statusText.textContent = `完成！影片時長 ${(secPerPair * pairs.length).toFixed(1)}s，${W}×${H}（${ext.toUpperCase()}）`;
@@ -1293,6 +1315,15 @@
         // 導致渲染狀態損壞、吊墜消失只剩背景；design-studio 從未用過 PMREMGenerator 所以沒這問題）
         const DEFAULT_HDR_FILE = 'studio_kontrast_04_4kc.hdr';
 
+        // 幫任意 Promise 加上時間上限，逾時就直接 resolve（不 reject），用於錄製前
+        // 等待 HDR 就緒——網路真的卡住時也不會讓錄製流程無限期卡著
+        function withTimeout(promise, ms) {
+            return Promise.race([
+                promise,
+                new Promise((resolve) => setTimeout(resolve, ms))
+            ]);
+        }
+
         // 動態 import 模組偶爾會因 CDN 暫時性問題失敗（單次請求沒有內建重試），
         // 加上短暫延遲重試，避免偶發網路波動就整個放棄 HDR、退回純燈光模式。
         // 瀏覽器會快取失敗的 import() 結果，同一個 specifier 重試會直接拿到快取的失敗、
@@ -1309,30 +1340,36 @@
             });
         }
 
+        // 回傳一個永遠會 resolve 的 Promise（成功或已放棄皆算完成，不 reject），
+        // 讓錄製流程可以選擇性等待 HDR 就緒，避免拍到 HDR 還沒上、材質全黑的畫面
+        // （GIF 的逐幀擷取是同步跑完不花真實時間，最容易搶在 HDR 網路請求完成前就結束）
         function loadHDR(fileName) {
             const file = fileName || document.getElementById('hdr-select')?.value || DEFAULT_HDR_FILE;
             const urls = [
                 `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/${file}`,
                 `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/${file}`
             ];
-            importWithRetry('three/addons/loaders/RGBELoader.js')
+            return importWithRetry('three/addons/loaders/RGBELoader.js')
                 .then(({ RGBELoader }) => {
                     const loader = new RGBELoader();
                     let idx = 0;
-                    function tryNext() {
-                        if (idx >= urls.length) return;
-                        const url = urls[idx++];
-                        loader.load(url,
-                            (tex) => {
-                                tex.mapping = THREE.EquirectangularReflectionMapping;
-                                scene.environment = tex;
-                                console.log('✅ HDR 載入成功');
-                            },
-                            undefined,
-                            () => { console.warn('⚠️ HDR 失敗，嘗試備援...'); tryNext(); }
-                        );
-                    }
-                    tryNext();
+                    return new Promise((resolve) => {
+                        function tryNext() {
+                            if (idx >= urls.length) { resolve(); return; }
+                            const url = urls[idx++];
+                            loader.load(url,
+                                (tex) => {
+                                    tex.mapping = THREE.EquirectangularReflectionMapping;
+                                    scene.environment = tex;
+                                    console.log('✅ HDR 載入成功');
+                                    resolve();
+                                },
+                                undefined,
+                                () => { console.warn('⚠️ HDR 失敗，嘗試備援...'); tryNext(); }
+                            );
+                        }
+                        tryNext();
+                    });
                 })
                 .catch(() => console.warn('⚠️ RGBELoader 模組載入失敗（已重試），使用純燈光模式'));
         }
@@ -1414,8 +1451,9 @@
             rim.position.set(0, 30, -10);
             scene.add(rim);
 
-            // 非同步載入 HDR（幾何計算期間同步進行，渲染時已就緒）
-            loadHDR();
+            // 非同步載入 HDR（幾何計算期間同步進行，渲染時已就緒）；
+            // Promise 存起來供錄製流程選擇性等待（見 loadHDR() 註解）
+            hdrReadyPromise = loadHDR();
         }
 
         // ── 建立一組吊墜（主體 + Ring + Bail）────────────────────
@@ -1627,8 +1665,58 @@
             });
         }
 
+        // ── 依幀狀態更新 pendantGroup（旋轉/位置/透明度/切換 group）──
+        // 供 recordAnimation()（影片）與 recordAnimationGif()（GIF）共用，避免兩份邏輯各自維護、彼此漂移
+        function applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset) {
+            if (pendantGroup !== groups[pairIdx]) {
+                if (pendantGroup) scene.remove(pendantGroup);
+                pendantGroup = groups[pairIdx];
+                scene.add(pendantGroup);
+            }
+
+            const t = pairFrm / pairFr; // 0 → 1（用於淡入淡出計算）
+
+            // 旋轉：
+            //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
+            //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
+            //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於旋轉 360° = 0°，
+            //   使影片頭尾旋轉角度完全相同，browser loop 無縫
+            const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
+            if (mode === 'full360') {
+                const t360 = pairFrm / Math.max(pairFr - 1, 1);
+                pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t360 * Math.PI * 2) - horizCorrAngle;
+            } else {
+                pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
+            }
+            pendantGroup.position.z = vertOffset;
+            pendantGroup.position.x = horizOffset;
+
+            // 透明度：
+            // carousel：影片開頭淡入、組間淡出淡入（最後一組不淡出）
+            // full360：組間才淡出淡入（第一組直接全亮，確保 loop 無縫）
+            const isLastPair = pairIdx >= groups.length - 1;
+            let opacity = 1.0;
+            if (mode === 'carousel') {
+                if (pairFrm < fadeFr) {
+                    opacity = pairFrm / fadeFr;
+                } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                    opacity = (pairFr - pairFrm) / fadeFr;
+                }
+            } else {
+                if (pairFrm < fadeFr && pairIdx > 0) {
+                    opacity = pairFrm / fadeFr;
+                } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                    opacity = (pairFr - pairFrm) / fadeFr;
+                }
+            }
+            setGroupOpacity(pendantGroup, opacity);
+        }
+
         // ── 錄製動畫 ─────────────────────────────────────────────
-        function recordAnimation(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel') {
+        async function recordAnimation(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel') {
+            // 開始錄製前先等 HDR 就緒（最多等 6 秒），避免影片開頭幾幀材質全黑
+            await withTimeout(hdrReadyPromise, 6000);
+
             return new Promise((resolve, reject) => {
                 const FPS       = 30;
                 const FADE_SEC  = 0.2; // 0.2 秒過場淡入淡出
@@ -1680,7 +1768,6 @@
                 // 10 秒的設定值在約 4 秒真實時間內跑完，導致輸出影片時長/轉速與設定不符）。
                 const totalDurationSec = totalFr / FPS;
                 const startTime        = performance.now();
-                let lastPairIdx        = 0;
                 let lastProgressMs     = 0;
 
                 function tick() {
@@ -1695,52 +1782,8 @@
                     const frame    = elapsedSec * FPS; // 浮點「邏輯幀」位置，依實際時間換算
                     const pairIdx  = Math.min(Math.floor(frame / pairFr), groups.length - 1);
                     const pairFrm  = frame - pairIdx * pairFr;
-                    const t        = pairFrm / pairFr; // 0 → 1（用於淡入淡出計算）
 
-                    // 切換 group
-                    if (pairIdx !== lastPairIdx) {
-                        if (pendantGroup) scene.remove(pendantGroup);
-                        pendantGroup = groups[pairIdx];
-                        scene.add(pendantGroup);
-                        lastPairIdx = pairIdx;
-                    }
-
-                    // 旋轉：
-                    //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
-                    //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
-                    //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於旋轉 360° = 0°，
-                    //   使影片頭尾旋轉角度完全相同，browser loop 無縫
-                    const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
-                    if (mode === 'full360') {
-                        const t360 = pairFrm / Math.max(pairFr - 1, 1);
-                        pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t360 * Math.PI * 2) - horizCorrAngle;
-                    } else {
-                        pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
-                    }
-                    pendantGroup.position.z  = vertOffset;
-                    pendantGroup.position.x  = horizOffset;
-
-                    // 透明度：
-                    // carousel：影片開頭淡入、組間淡出淡入（最後一組不淡出）
-                    // full360：組間才淡出淡入（第一組直接全亮，確保 loop 無縫）
-                    const isLastPair = pairIdx >= groups.length - 1;
-                    let opacity = 1.0;
-                    if (mode === 'carousel') {
-                        if (pairFrm < fadeFr) {
-                            opacity = pairFrm / fadeFr;
-                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                            opacity = (pairFr - pairFrm) / fadeFr;
-                        }
-                    } else {
-                        // full360：只在多組切換之間過場，第一組開頭不淡入
-                        if (pairFrm < fadeFr && pairIdx > 0) {
-                            opacity = pairFrm / fadeFr;
-                        } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                            opacity = (pairFr - pairFrm) / fadeFr;
-                        }
-                    }
-                    setGroupOpacity(pendantGroup, opacity);
-
+                    applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
                     renderFrame();
 
                     // 進度更新（節流至約每 100ms 一次，避免頻繁操作 DOM）
@@ -1755,6 +1798,88 @@
                 }
 
                 animFrameId = requestAnimationFrame(tick);
+            });
+        }
+
+        // gif.js 內部用 new Worker(workerScript) 建立編碼執行緒，但瀏覽器不允許跨網域建立 Worker
+        // （會丟 SecurityError）。解法：先把 worker 程式碼 fetch 下來，包成本機 Blob URL 再交給
+        // gif.js——Blob URL 視為同源，不受此限制。只需抓取一次，快取供後續多次生成使用
+        let gifWorkerBlobUrlPromise = null;
+        function getGifWorkerBlobUrl() {
+            if (!gifWorkerBlobUrlPromise) {
+                gifWorkerBlobUrlPromise = fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
+                    .then((r) => r.text())
+                    .then((code) => URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
+            }
+            return gifWorkerBlobUrlPromise;
+        }
+
+        // ── 錄製 GIF ─────────────────────────────────────────────
+        // 用 gif.js 逐幀編碼，不透過 MediaRecorder/captureStream，因此不需要跟真實時間同步——
+        // 依序算出每一幀狀態即可，不受畫面更新率影響，也比錄影更快。
+        // GIF 沒有幀間壓縮，檔案大小隨幀數線性成長，用較低幀率（12fps）控制檔案大小
+        async function recordAnimationGif(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel') {
+            // GIF 的逐幀擷取是同步跑完、幾乎不花真實時間，最容易搶在 HDR 網路請求完成前就結束，
+            // 拍出全黑材質的畫面——開始前先等 HDR 就緒（最多等 6 秒）
+            await withTimeout(hdrReadyPromise, 6000);
+            const workerScriptUrl = await getGifWorkerBlobUrl();
+
+            return new Promise((resolve, reject) => {
+                const GIF_FPS  = 12;
+                const FADE_SEC = 0.2;
+                const fadeFr   = Math.round(GIF_FPS * FADE_SEC);
+                const pairFr   = Math.max(Math.round(GIF_FPS * secPerPair), fadeFr * 2 + 5);
+                const totalFr  = groups.length * pairFr;
+
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: canvas.width,
+                    height: canvas.height,
+                    workerScript: workerScriptUrl
+                });
+
+                gif.on('finished', (blob) => resolve(blob));
+                gif.on('abort', () => reject(new Error('GIF 編碼中止')));
+
+                // 初始化：放入第一個 group
+                // carousel 模式：第一幀從透明開始淡入；full360 模式：直接全亮
+                if (pendantGroup) scene.remove(pendantGroup);
+                pendantGroup = groups[0];
+                scene.add(pendantGroup);
+                setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
+
+                let frameIdx = 0;
+
+                function renderNextFrame() {
+                    if (frameIdx >= totalFr) {
+                        showProgress(true, '正在編碼 GIF（此步驟較慢，請耐心等候）...', 0.5);
+                        gif.render();
+                        return;
+                    }
+
+                    const pairIdx = Math.min(Math.floor(frameIdx / pairFr), groups.length - 1);
+                    const pairFrm = frameIdx - pairIdx * pairFr;
+
+                    applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                    renderFrame();
+                    gif.addFrame(canvas, { copy: true, delay: 1000 / GIF_FPS });
+
+                    frameIdx++;
+                    if (frameIdx % 5 === 0) {
+                        const progress = frameIdx / totalFr;
+                        showProgress(true, `計算影格中... ${Math.round(progress * 100)}%`, progress * 0.5);
+                    }
+
+                    // 用 rAF 讓瀏覽器有機會回應/重繪，避免長時間同步阻塞（非用於時間同步）
+                    requestAnimationFrame(renderNextFrame);
+                }
+
+                gif.on('progress', (p) => {
+                    showProgress(true, `編碼 GIF 中... ${Math.round(p * 100)}%`, 0.5 + p * 0.5);
+                });
+
+                renderNextFrame();
             });
         }
 
