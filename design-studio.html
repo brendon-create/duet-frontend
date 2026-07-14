@@ -4120,6 +4120,15 @@
                 return;
             }
 
+            // 同一筆訂單不能重複用同一組碼：購物車內先本地攔截，不用等結帳才發現
+            const duplicateIndex = cartItems.findIndex((other, i) => i !== index && other.redeemCodeValid && other.redeemCode === code);
+            if (duplicateIndex !== -1) {
+                item.redeemCodeValid = false;
+                status.style.color = '#f87171';
+                status.textContent = `此兌換碼已用於作品 ${duplicateIndex + 1}，請使用不同的兌換碼`;
+                return;
+            }
+
             status.style.color = 'rgba(255,255,255,0.6)';
             status.textContent = '驗證中...';
 
@@ -5097,6 +5106,10 @@
                     displayPaymentForm(result.paymentFormHTML);
                 } else {
                     console.error('❌ 結帳失敗:', result.error);
+                    if (window.userInfoModal) {
+                        window.userInfoModal.remove();
+                        window.userInfoModal = null;
+                    }
                     alert('❌ 結帳失敗：' + result.error);
                 }
 
@@ -5106,6 +5119,10 @@
                     message: error.message,
                     stack: error.stack
                 });
+                if (window.userInfoModal) {
+                    window.userInfoModal.remove();
+                    window.userInfoModal = null;
+                }
                 alert('❌ 支付過程發生錯誤：' + error.message);
             }
         }
