@@ -3510,6 +3510,17 @@
             updateVolumeWeight();
         }
 
+        // 點擊已有作品的版本視窗：與主畫面作品互換位置
+        function swapSlot(slotIndex) {
+            if (!savedVersions[slotIndex]) return;
+            const incoming = savedVersions[slotIndex];   // 版本視窗原本的作品
+            saveToSlot(slotIndex);                        // 把主畫面目前作品存入該版本（含縮圖重繪）
+            const outgoing = savedVersions[slotIndex];
+            savedVersions[slotIndex] = incoming;
+            loadFromSlot(slotIndex);                       // 把版本視窗原本的作品叫回主畫面
+            savedVersions[slotIndex] = outgoing;           // 版本視窗保留「主畫面原本的作品」
+        }
+
         // 購物車
         // 📸 生成三視圖（正視、側視、俯視）- 使用獨立 off-screen renderer，不移動主相機
         function captureThreeViews() {
@@ -5802,12 +5813,12 @@
             document.getElementById('save-slot-1').addEventListener('click', () => saveToSlot(0));
             document.getElementById('save-slot-2').addEventListener('click', () => saveToSlot(1));
 
-            // Slot 點擊召回
+            // Slot 點擊：已有作品則與主畫面互換，空的則直接存入
             document.querySelector('[data-slot="1"]').addEventListener('click', () => {
-                if (savedVersions[0]) loadFromSlot(0);
+                if (savedVersions[0]) swapSlot(0); else saveToSlot(0);
             });
             document.querySelector('[data-slot="2"]').addEventListener('click', () => {
-                if (savedVersions[1]) loadFromSlot(1);
+                if (savedVersions[1]) swapSlot(1); else saveToSlot(1);
             });
             document.getElementById('addToCartBtn').addEventListener('click', (e) => {
                 // 如果點擊的是 View Cart 區域，只打開購物車
