@@ -3925,7 +3925,7 @@
                 checkoutBtn.disabled = false;
                 checkoutBtn.style.opacity = '';
                 checkoutBtn.style.cursor = '';
-                checkoutBtn.textContent = window.t ? window.t('cart.redemption.submit') || '送出訂單' : '送出訂單';
+                checkoutBtn.textContent = window.t ? window.t('cart.redemption.submit') || '繼續' : '繼續';
                 checkoutBtn.style.background = '';
                 checkoutBtn.style.borderColor = '';
                 checkoutBtn.style.color = '';
@@ -4972,7 +4972,7 @@
                 const totalEl    = document.getElementById('design-confirm-total');
 
                 confirmBtn.textContent = window.CHECKOUT_MODE === 'redemption'
-                    ? (window.t ? window.t('checkout.confirm.proceedRedemption') || '確認送出訂單' : '確認送出訂單')
+                    ? (window.t ? window.t('checkout.confirm.proceedRedemption') || '繼續' : '繼續')
                     : (window.t ? window.t('checkout.confirm.proceed') || '確認，前往付款' : '確認，前往付款');
 
                 // 重置勾選狀態

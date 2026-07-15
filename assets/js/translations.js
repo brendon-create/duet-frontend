@@ -161,7 +161,7 @@ window.translations = {
         'cart.redeem.insufficient':    '此兌換碼金額不足以完全折抵這件作品，請確認是否選錯兌換碼',
         'checkout.redemption.preciousMetalBlocked': '嘖嘖兌換碼結帳期間暫不支援貴金屬客製訂單。',
         'checkout.redemption.needAllVerified':      '請先為購物車中每一件作品輸入並驗證兌換碼，才能完成結帳。',
-        'cart.redemption.submit':      '送出訂單',
+        'cart.redemption.submit':      '繼續',
         'order.form.continueRedemption': '送出訂單',
 
         // ── 項鍊材質選擇 ──
@@ -314,7 +314,7 @@ window.translations = {
         'checkout.confirm.checkbox':   '我已確認以上設計，並了解客製化商品不適用七天鑑賞期',
         'checkout.confirm.cancel':     '返回修改',
         'checkout.confirm.proceed':    '確認，前往付款',
-        'checkout.confirm.proceedRedemption': '確認送出訂單',
+        'checkout.confirm.proceedRedemption': '繼續',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  '驗證中...',
@@ -530,7 +530,7 @@ window.translations = {
         'cart.redeem.insufficient':    "This code doesn't fully cover this item's price — please check you're using the right code",
         'checkout.redemption.preciousMetalBlocked': "Custom precious-metal orders aren't supported during the Zeczec redemption checkout period.",
         'checkout.redemption.needAllVerified':      'Please enter and verify a redemption code for every item in your cart before checking out.',
-        'cart.redemption.submit':      'Submit Order',
+        'cart.redemption.submit':      'Continue',
         'order.form.continueRedemption': 'Submit Order',
 
         // ── Chain Selection ──
@@ -683,7 +683,7 @@ window.translations = {
         'checkout.confirm.checkbox':   'I have reviewed the design details and understand that custom items are not eligible for the 7-day cooling off period',
         'checkout.confirm.cancel':     'Go Back',
         'checkout.confirm.proceed':    'Confirm & Proceed to Payment',
-        'checkout.confirm.proceedRedemption': 'Confirm & Submit Order',
+        'checkout.confirm.proceedRedemption': 'Continue',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  'Validating...',
