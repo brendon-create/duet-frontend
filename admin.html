@@ -801,12 +801,13 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
                         <div>
                             <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">折扣方式</label>
-                            <select id="redeemDiscountType" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                            <select id="redeemDiscountType" onchange="onRedeemDiscountTypeChange()" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
                                 <option value="fixed">固定金額（NT$）</option>
                                 <option value="percentage">百分比折扣（%）</option>
+                                <option value="redeem_item">兌換一件作品（完全折抵）</option>
                             </select>
                         </div>
-                        <div>
+                        <div id="redeemDiscountValueGroup">
                             <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">折扣數值（嘖嘖兌換碼一律以電鍍K金版原價 4850 計，可覆蓋不電鍍的較低價選項）</label>
                             <input id="redeemDiscountValue" type="number" value="4850" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
                         </div>
@@ -3066,6 +3067,11 @@
                 statusEl.style.color = '#ef4444';
                 statusEl.textContent = '產生失敗：' + e.message;
             }
+        }
+
+        function onRedeemDiscountTypeChange() {
+            const isRedeemItem = document.getElementById('redeemDiscountType').value === 'redeem_item';
+            document.getElementById('redeemDiscountValueGroup').style.display = isRedeemItem ? 'none' : '';
         }
 
         async function bulkCreateRedeemCodes() {
