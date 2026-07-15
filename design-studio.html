@@ -170,7 +170,6 @@
                 <option value="10">10 mm</option>
                 <option value="12" selected>12 mm</option>
                 <option value="15">15 mm</option>
-                <option value="18">18 mm</option>
             </select>
         </div>
 
@@ -2022,7 +2021,7 @@
             return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
         }
 
-        const ALL_SIZES = [8, 10, 12, 15, 18];
+        const ALL_SIZES = [8, 10, 12, 15];
 
         function getMinAvailableSize(fontName) {
             for (const sz of ALL_SIZES) {

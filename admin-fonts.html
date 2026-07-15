@@ -249,11 +249,10 @@
                         <th>10 mm</th>
                         <th>12 mm</th>
                         <th>15 mm</th>
-                        <th>18 mm</th>
                     </tr>
                 </thead>
                 <tbody id="fontTableBody">
-                    <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">載入中...</td></tr>
+                    <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">載入中...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -267,7 +266,7 @@
 function adminAuthHeader() {
     return 'Bearer ' + (localStorage.getItem('adminToken') || '');
 }
-const SIZES = [8, 10, 12, 15, 18];
+const SIZES = [8, 10, 12, 15];
 const CYCLE = ['ok', 'unavailable', 'wide', 'thin'];
 const LABEL_META = {
     ok:          { cls: 'ok',   sym: '✓', tip: null },
@@ -360,7 +359,7 @@ async function initPage() {
 
     } catch (err) {
         document.getElementById('fontTableBody').innerHTML =
-            `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--no-fg)">載入失敗：${err.message}</td></tr>`;
+            `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--no-fg)">載入失敗：${err.message}</td></tr>`;
     }
 }
 
