@@ -147,6 +147,45 @@ window.translations = {
         'studio.promo.error.empty':    '⚠️ 請輸入優惠碼',
         'studio.promo.error.failed':   '❌ 驗證失敗，請稍後再試',
 
+        // ── 兌換碼結帳（嘖嘖募資）──
+        'cart.redemption.notice':      '嘖嘖募資期間，僅開放持有兌換碼者訂製作品',
+        'cart.redeem.placeholder':     '輸入此件作品的兌換碼',
+        'cart.redeem.verifyBtn':       '驗證',
+        'cart.redeem.verified':        '✅ 已驗證，此件作品可兌換',
+        'cart.redeem.errorEmpty':      '請輸入兌換碼',
+        'cart.redeem.errorFormat':     '兌換碼格式不正確，請確認輸入是否正確',
+        'cart.redeem.errorDuplicate':  '此兌換碼已用於作品 {n}，請使用不同的兌換碼',
+        'cart.redeem.verifying':       '驗證中...',
+        'cart.redeem.errorGeneric':    '驗證失敗，請稍後再試',
+        'cart.redeem.invalid':         '兌換碼無效',
+        'cart.redeem.insufficient':    '此兌換碼金額不足以完全折抵這件作品，請確認是否選錯兌換碼',
+        'checkout.redemption.preciousMetalBlocked': '嘖嘖兌換碼結帳期間暫不支援貴金屬客製訂單。',
+        'checkout.redemption.needAllVerified':      '請先為購物車中每一件作品輸入並驗證兌換碼，才能完成結帳。',
+        'cart.redemption.submit':      '繼續',
+        'order.form.continueRedemption': '送出訂單',
+
+        // ── 項鍊材質選擇 ──
+        'cart.chain.select':        '選擇項鍊材質',
+        'cart.chain.change':        '／ 更換',
+        'chain.option.silver':      '銀色不鏽鋼鏈',
+        'chain.option.gold':        '金色不鏽鋼鏈',
+        'chain.option.rosegold':    '玫瑰金不鏽鋼鏈',
+        'chain.option.rubber':      '黑色橡膠繩',
+        'chain.note.adjustable':    '45–50cm 活動式，可自行調整',
+        'chain.note.selectable':    '45或50公分可選',
+        'chain.modal.title':        '選擇項鍊材質',
+        'chain.modal.subtitle':     '請為每件作品選擇要搭配的項鍊。',
+        'chain.modal.itemLabel':    '作品「{letters}」',
+        'chain.modal.lengthHint':   'ⓘ 不鏽鋼鏈長度如何調整？',
+        'chain.modal.lengthLabel':  '選擇長度',
+        'chain.modal.confirm':      '確認',
+        'chain.modal.back':         '← 返回購物車',
+
+        // ── 背景切換器 & 重選字體 ──
+        'studio.reselect.fonts':    '＋ 重選字體',
+        'studio.bg.hint':           '可切換背景 ↘',
+        'studio.bg.label':          '切換背景',
+
         // ── 字體規範標籤 & 提示 ──
         'font.label.thin':             ' (細)',
         'font.label.wide':             ' (粗)',
@@ -222,6 +261,8 @@ window.translations = {
         // ── 訂單處理中 ──
         'order.processing':         '正在處理訂單...',
         'order.processing.desc':    '請稍候，即將跳轉至付款頁面',
+        'order.processing.redemption':      '訂單資料傳送中...',
+        'order.processing.redemption.desc': '請稍候',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            '作品',
@@ -273,6 +314,7 @@ window.translations = {
         'checkout.confirm.checkbox':   '我已確認以上設計，並了解客製化商品不適用七天鑑賞期',
         'checkout.confirm.cancel':     '返回修改',
         'checkout.confirm.proceed':    '確認，前往付款',
+        'checkout.confirm.proceedRedemption': '確認',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  '驗證中...',
@@ -474,6 +516,45 @@ window.translations = {
         'studio.promo.error.empty':    '⚠️ Please enter a promo code',
         'studio.promo.error.failed':   '❌ Verification failed, please try again',
 
+        // ── Redemption Checkout (Zeczec Campaign) ──
+        'cart.redemption.notice':      'During the Zeczec campaign, only customers holding a redemption code can order custom pieces',
+        'cart.redeem.placeholder':     'Enter the redemption code for this piece',
+        'cart.redeem.verifyBtn':       'Verify',
+        'cart.redeem.verified':        '✅ Verified — this piece is redeemable',
+        'cart.redeem.errorEmpty':      'Please enter a redemption code',
+        'cart.redeem.errorFormat':     'Invalid code format — please check your entry',
+        'cart.redeem.errorDuplicate':  'This code is already used for item {n} — please use a different code',
+        'cart.redeem.verifying':       'Verifying...',
+        'cart.redeem.errorGeneric':    'Verification failed — please try again later',
+        'cart.redeem.invalid':         'Invalid redemption code',
+        'cart.redeem.insufficient':    "This code doesn't fully cover this item's price — please check you're using the right code",
+        'checkout.redemption.preciousMetalBlocked': "Custom precious-metal orders aren't supported during the Zeczec redemption checkout period.",
+        'checkout.redemption.needAllVerified':      'Please enter and verify a redemption code for every item in your cart before checking out.',
+        'cart.redemption.submit':      'Continue',
+        'order.form.continueRedemption': 'Submit Order',
+
+        // ── Chain Selection ──
+        'cart.chain.select':        'Select Chain',
+        'cart.chain.change':        '/ Change',
+        'chain.option.silver':      'Silver-Tone Stainless Steel Chain',
+        'chain.option.gold':        'Gold-Tone Stainless Steel Chain',
+        'chain.option.rosegold':    'Rose Gold-Tone Stainless Steel Chain',
+        'chain.option.rubber':      'Black Rubber Cord',
+        'chain.note.adjustable':    '45–50cm adjustable',
+        'chain.note.selectable':    '45cm or 50cm available',
+        'chain.modal.title':        'Select Chain Material',
+        'chain.modal.subtitle':     'Please choose a chain for each piece.',
+        'chain.modal.itemLabel':    'Piece "{letters}"',
+        'chain.modal.lengthHint':   'ⓘ How to adjust the stainless steel chain length?',
+        'chain.modal.lengthLabel':  'Select Length',
+        'chain.modal.confirm':      'Confirm',
+        'chain.modal.back':         '← Back to Cart',
+
+        // ── Background Switcher & Reselect Fonts ──
+        'studio.reselect.fonts':    '+ Reselect Fonts',
+        'studio.bg.hint':           'Switch background ↘',
+        'studio.bg.label':          'Switch Background',
+
         // ── Font Constraint Labels & Tips ──
         'font.label.thin':             ' (Thin)',
         'font.label.wide':             ' (Wide)',
@@ -549,6 +630,8 @@ window.translations = {
         // ── 訂單處理中 ──
         'order.processing':         'Processing order...',
         'order.processing.desc':    'Please wait, redirecting to payment page...',
+        'order.processing.redemption':      'Submitting order...',
+        'order.processing.redemption.desc': 'Please wait',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            'Item',
@@ -600,6 +683,7 @@ window.translations = {
         'checkout.confirm.checkbox':   'I have reviewed the design details and understand that custom items are not eligible for the 7-day cooling off period',
         'checkout.confirm.cancel':     'Go Back',
         'checkout.confirm.proceed':    'Confirm & Proceed to Payment',
+        'checkout.confirm.proceedRedemption': 'Confirm',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  'Validating...',

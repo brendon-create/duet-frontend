@@ -167,10 +167,9 @@
             <label data-i18n="studio.size">作品尺寸高度（Height）</label>
             <select id="size">
                 <option value="8">8 mm</option>
-                <option value="10">10 mm</option>
-                <option value="12" selected>12 mm</option>
+                <option value="10" selected>10 mm</option>
+                <option value="12">12 mm</option>
                 <option value="15">15 mm</option>
-                <option value="18">18 mm</option>
             </select>
         </div>
 
@@ -733,7 +732,7 @@
             <div class="cart-header">
                 <h2 data-i18n="studio.cart.title">購物車</h2>
             </div>
-            <div id="cart-redemption-notice" style="display:none; margin: 0 0 14px; padding: 10px 14px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); border-radius: 8px; color: #d4af37; font-size: 13px;">
+            <div id="cart-redemption-notice" data-i18n="cart.redemption.notice" style="display:none; margin: 0 0 14px; padding: 10px 14px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); border-radius: 8px; color: #d4af37; font-size: 13px;">
                 嘖嘖募資期間，僅開放持有兌換碼者訂製作品
             </div>
             <div class="cart-items" id="cart-items"></div>
@@ -2022,7 +2021,7 @@
             return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
         }
 
-        const ALL_SIZES = [8, 10, 12, 15, 18];
+        const ALL_SIZES = [8, 10, 12, 15];
 
         function getMinAvailableSize(fontName) {
             for (const sz of ALL_SIZES) {
@@ -3675,6 +3674,7 @@
                 // 🔧 儲存 Bail 款式（目前為 "default"，未來擴充用）
                 bailStyle: 'default',
                 chainType: null,
+                chainLength: null,
                 // 📸 儲存三視圖（用於 Email 附件）
                 threeViews: threeViews
             };
@@ -3776,9 +3776,12 @@
                         color:${chainOpt ? '#d4af37' : 'rgba(212,175,55,0.85)'};
                         ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
+                    const chainLabel = chainOpt && chainOpt.needsLength && item.chainLength
+                        ? `${chainOpt.label}・${item.chainLength}`
+                        : (chainOpt ? chainOpt.label : '');
                     chainBtn.innerHTML = chainOpt
-                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">／ 更換</span>`
-                        : `<span>選擇項鍊材質</span>`;
+                        ? `<span>${chainLabel}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
+                        : `<span>${window.t('cart.chain.select')}</span>`;
                     chainBtn.addEventListener('click', () => {
                         showChainTypeModal().then(() => renderCart()).catch(() => {});
                     });
@@ -3868,12 +3871,12 @@
                     redeemDiv.style.cssText = 'margin: 6px 0 14px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);';
                     redeemDiv.innerHTML = `
                         <div style="display:flex; gap:8px; align-items:center; width:100%;">
-                            <input type="text" id="redeem-code-input-${index}" placeholder="輸入此件作品的兌換碼" maxlength="20"
+                            <input type="text" id="redeem-code-input-${index}" placeholder="${window.t('cart.redeem.placeholder')}" maxlength="20"
                                 value="${item.redeemCode || ''}"
                                 style="flex:1; min-width:0; box-sizing:border-box; padding:12px 14px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:white; border-radius:6px; font-size:15px; text-transform:uppercase;">
-                            <button type="button" id="redeem-code-btn-${index}" class="glass" style="flex-shrink:0; box-sizing:border-box; width:90px; padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; cursor:pointer; font-size:14px;">驗證</button>
+                            <button type="button" id="redeem-code-btn-${index}" class="glass" style="flex-shrink:0; box-sizing:border-box; width:90px; padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; cursor:pointer; font-size:14px;">${window.t('cart.redeem.verifyBtn')}</button>
                         </div>
-                        <div id="redeem-code-status-${index}" style="margin-top:6px; font-size:12px; ${isValid ? 'color:#4ade80;' : 'color:rgba(255,255,255,0.5);'}">${isValid ? '✅ 已驗證，此件作品可兌換' : ''}</div>
+                        <div id="redeem-code-status-${index}" style="margin-top:6px; font-size:12px; ${isValid ? 'color:#4ade80;' : 'color:rgba(255,255,255,0.5);'}">${isValid ? window.t('cart.redeem.verified') : ''}</div>
                     `;
                     itemWrapper.appendChild(redeemDiv);
                     container.appendChild(itemWrapper);
@@ -3918,6 +3921,14 @@
                 checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
                 checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
                 checkoutBtn.style.color = '#d4af37';
+            } else if (window.CHECKOUT_MODE === 'redemption') {
+                checkoutBtn.disabled = false;
+                checkoutBtn.style.opacity = '';
+                checkoutBtn.style.cursor = '';
+                checkoutBtn.textContent = window.t ? window.t('cart.redemption.submit') || '繼續' : '繼續';
+                checkoutBtn.style.background = '';
+                checkoutBtn.style.borderColor = '';
+                checkoutBtn.style.color = '';
             } else {
                 checkoutBtn.disabled = false;
                 checkoutBtn.style.opacity = '';
@@ -4109,14 +4120,14 @@
 
             if (!code) {
                 status.style.color = '#f87171';
-                status.textContent = '請輸入兌換碼';
+                status.textContent = window.t('cart.redeem.errorEmpty');
                 return;
             }
 
             if (!isValidRedeemCodeFormat(code)) {
                 item.redeemCodeValid = false;
                 status.style.color = '#f87171';
-                status.textContent = '兌換碼格式不正確，請確認輸入是否正確';
+                status.textContent = window.t('cart.redeem.errorFormat');
                 return;
             }
 
@@ -4125,14 +4136,14 @@
             if (duplicateIndex !== -1) {
                 item.redeemCodeValid = false;
                 status.style.color = '#f87171';
-                status.textContent = `此兌換碼已用於作品 ${duplicateIndex + 1}，請使用不同的兌換碼`;
+                status.textContent = window.t('cart.redeem.errorDuplicate').replace('{n}', duplicateIndex + 1);
                 return;
             }
 
             status.style.color = 'rgba(255,255,255,0.6)';
-            status.textContent = '驗證中...';
+            status.textContent = window.t('cart.redeem.verifying');
 
-            let errorMessage = '驗證失敗，請稍後再試';
+            let errorMessage = window.t('cart.redeem.errorGeneric');
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
                     method: 'POST',
@@ -4146,8 +4157,8 @@
                     item.redeemCodeValid = true;
                 } else {
                     item.redeemCodeValid = false;
-                    errorMessage = result.valid === false ? (result.error || '兌換碼無效')
-                        : (result.error || '此兌換碼金額不足以完全折抵這件作品，請確認是否選錯兌換碼');
+                    errorMessage = result.valid === false ? (result.error || window.t('cart.redeem.invalid'))
+                        : (result.error || window.t('cart.redeem.insufficient'));
                 }
             } catch (e) {
                 item.redeemCodeValid = false;
@@ -4706,11 +4717,12 @@
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
         const CHAIN_OPTIONS = [
-            { value: 'silver_chain',   label: '銀色不鏽鋼鏈',  img: 'assets/images/products/silver-chain.png' },
-            { value: 'gold_chain',     label: '金色不鏽鋼鏈',  img: 'assets/images/products/gold-chain.png' },
-            { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
-            { value: 'black_rubber',   label: '黑色橡膠繩',    img: 'assets/images/products/rubber-chain.png' },
+            { value: 'silver_chain',   label: window.t('chain.option.silver'),   img: 'assets/images/products/silver-chain.png', note: window.t('chain.note.adjustable') },
+            { value: 'gold_chain',     label: window.t('chain.option.gold'),     img: 'assets/images/products/gold-chain.png', note: window.t('chain.note.adjustable') },
+            { value: 'rosegold_chain', label: window.t('chain.option.rosegold'), img: 'assets/images/products/rosegold-chain.png', note: window.t('chain.note.adjustable') },
+            { value: 'black_rubber',   label: window.t('chain.option.rubber'),   img: 'assets/images/products/rubber-chain.png', note: window.t('chain.note.selectable'), needsLength: true },
         ];
+        const CHAIN_LENGTH_OPTIONS = ['45cm', '50cm'];
 
         function _defaultChainForItem(item) {
             const plating = item.plating || 'none';
@@ -4739,19 +4751,39 @@
                     <div style="margin-bottom:28px;">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                             ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.12);">` : ''}
-                            <div style="font-size:14px;color:#fff;font-weight:600;">作品「${item.letter1}${item.letter2}」</div>
+                            <div style="font-size:14px;color:#fff;font-weight:600;">${window.t('chain.modal.itemLabel').replace('{letters}', `${item.letter1}${item.letter2}`)}</div>
                         </div>
-                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">
                             ${CHAIN_OPTIONS.map(opt => `
                                 <div class="cart-chain-opt" data-item="${idx}" data-chain="${opt.value}"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
-                                            border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
+                                            border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
                                     <img src="${opt.img}" alt="${opt.label}"
                                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                                          style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
-                                    <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:22px;opacity:0.4;">🔗</div>
-                                    <div style="padding:5px 4px 7px;font-size:10px;color:rgba(255,255,255,0.7);line-height:1.4;">${opt.label}</div>
+                                    <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:40px;opacity:0.4;">🔗</div>
+                                    <div style="padding:12px 10px 16px;font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4;">
+                                        ${opt.label}
+                                        ${opt.note ? `<br><span style="font-size:13px;color:rgba(212,175,55,0.75);">${opt.note}</span>` : ''}
+                                        ${opt.needsLength ? `
+                                            <div class="cart-chain-length-row" data-item="${idx}"
+                                                 style="display:${item.chainType==='black_rubber' ? 'flex' : 'none'};gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+                                                <span style="font-size:13px;color:rgba(255,255,255,0.5);">${window.t('chain.modal.lengthLabel')}</span>
+                                                ${CHAIN_LENGTH_OPTIONS.map(len => `
+                                                    <div class="cart-chain-length-opt" data-item="${idx}" data-length="${len}"
+                                                         style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:13px;
+                                                                border:1.5px solid ${item.chainLength===len ? '#d4af37' : 'rgba(255,255,255,0.2)'};
+                                                                color:${item.chainLength===len ? '#d4af37' : 'rgba(255,255,255,0.7)'};
+                                                                background:${item.chainLength===len ? 'rgba(212,175,55,0.1)' : 'transparent'};">
+                                                        ${len}
+                                                    </div>`).join('')}
+                                            </div>` : ''}
+                                    </div>
                                 </div>`).join('')}
+                        </div>
+                        <div class="chain-adjust-hint" data-item="${idx}"
+                             style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.5);cursor:help;display:inline-flex;align-items:center;gap:4px;">
+                            ${window.t('chain.modal.lengthHint')}
                         </div>
                     </div>`).join('');
 
@@ -4759,14 +4791,33 @@
                 // 每次重新渲染 body 後重新綁定（先移除舊的）
                 if (body._chainClickHandler) body.removeEventListener('click', body._chainClickHandler);
                 body._chainClickHandler = e => {
+                    const lengthOpt = e.target.closest('.cart-chain-length-opt');
+                    if (lengthOpt) {
+                        const itemIdx    = parseInt(lengthOpt.dataset.item);
+                        const lengthValue = lengthOpt.dataset.length;
+                        cartItems[itemIdx].chainLength = lengthValue;
+                        body.querySelectorAll(`.cart-chain-length-opt[data-item="${itemIdx}"]`).forEach(el => {
+                            const selected = el.dataset.length === lengthValue;
+                            el.style.borderColor = selected ? '#d4af37' : 'rgba(255,255,255,0.2)';
+                            el.style.color       = selected ? '#d4af37' : 'rgba(255,255,255,0.7)';
+                            el.style.background  = selected ? 'rgba(212,175,55,0.1)' : 'transparent';
+                        });
+                        updateConfirmBtn();
+                        return;
+                    }
+
                     const card = e.target.closest('.cart-chain-opt');
                     if (!card) return;
                     const itemIdx   = parseInt(card.dataset.item);
                     const chainValue = card.dataset.chain;
                     cartItems[itemIdx].chainType = chainValue;
+                    const opt = CHAIN_OPTIONS.find(o => o.value === chainValue);
+                    if (!opt.needsLength) cartItems[itemIdx].chainLength = null;
                     body.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
                         el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
                     });
+                    const lengthRow = body.querySelector(`.cart-chain-length-row[data-item="${itemIdx}"]`);
+                    if (lengthRow) lengthRow.style.display = opt.needsLength ? 'flex' : 'none';
                     updateConfirmBtn();
                 };
                 body.addEventListener('click', body._chainClickHandler);
@@ -4776,30 +4827,50 @@
                     window._chainHoverListenerAdded = true;
                     const previewImg = document.getElementById('chain-img-preview-img');
                     body.addEventListener('mouseover', e => {
-                        const card = e.target.closest('.cart-chain-opt');
-                        if (!card) return;
-                        const img = card.querySelector('img');
-                        if (!img || img.style.display === 'none') return;
-                        previewImg.src = img.src;
-                        const pw = 320, ph = 240;
-                        const rect = card.getBoundingClientRect();
-                        let left = rect.left + rect.width / 2 - pw / 2;
+                        const hint = e.target.closest('.chain-adjust-hint');
+                        const card = hint ? null : e.target.closest('.cart-chain-opt');
+                        if (!hint && !card) return;
+
+                        const pw = 640, ph = 480;
+                        let left, top;
+
+                        if (hint) {
+                            previewImg.onerror = () => { preview.style.display = 'none'; };
+                            previewImg.src = 'assets/images/products/chain-adjust-detail.jpg';
+                            const rect = hint.getBoundingClientRect();
+                            left = rect.left + rect.width / 2 - pw / 2;
+                            top  = rect.top + rect.height / 2 - ph / 2;
+                        } else {
+                            const img = card.querySelector('img');
+                            if (!img || img.style.display === 'none') return;
+                            previewImg.onerror = null;
+                            previewImg.src = img.src;
+                            // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱與（橡膠繩專屬的）長度選項
+                            const imgRect = img.getBoundingClientRect();
+                            left = imgRect.left + imgRect.width / 2 - pw / 2;
+                            top  = imgRect.bottom - ph;
+                        }
+
+                        // 限制在畫面內，避免超出邊界看不到
                         left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-                        let top = rect.top - ph - 16;
-                        if (top < 8) top = rect.bottom + 16;
+                        top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
                         preview.style.left = left + 'px';
                         preview.style.top  = top  + 'px';
                         preview.style.display = 'block';
                     });
                     body.addEventListener('mouseout', e => {
-                        const card = e.target.closest('.cart-chain-opt');
-                        if (!card || card.contains(e.relatedTarget)) return;
+                        const target = e.target.closest('.cart-chain-opt, .chain-adjust-hint');
+                        if (!target || target.contains(e.relatedTarget)) return;
                         preview.style.display = 'none';
                     });
                 }
 
                 function updateConfirmBtn() {
-                    const allSelected = cartItems.every(i => i.chainType);
+                    const allSelected = cartItems.every(i => {
+                        if (!i.chainType) return false;
+                        const opt = CHAIN_OPTIONS.find(o => o.value === i.chainType);
+                        return !opt.needsLength || !!i.chainLength;
+                    });
                     confirmBtn.disabled = !allSelected;
                     confirmBtn.style.opacity = allSelected ? '1' : '0.4';
                     confirmBtn.style.cursor  = allSelected ? 'pointer' : 'not-allowed';
@@ -4831,11 +4902,11 @@
             // 兌換碼結帳模式：購物車內每一件作品都必須先驗證通過兌換碼
             if (window.CHECKOUT_MODE === 'redemption') {
                 if (cartItems.some(i => i.isPreciousMetal)) {
-                    alert('嘖嘖兌換碼結帳期間暫不支援貴金屬客製訂單。');
+                    alert(window.t('checkout.redemption.preciousMetalBlocked'));
                     return;
                 }
                 if (cartItems.length === 0 || cartItems.some(i => !i.redeemCodeValid)) {
-                    alert('請先為購物車中每一件作品輸入並驗證兌換碼，才能完成結帳。');
+                    alert(window.t('checkout.redemption.needAllVerified'));
                     return;
                 }
             }
@@ -4858,8 +4929,13 @@
                 return;
             }
 
-            // 若有作品尚未選擇項鍊，先強制補選（safety net）
-            const needsChain = cartItems.filter(i => !i.isPreciousMetal && !i.chainType);
+            // 若有作品尚未選擇項鍊（或選了橡膠繩但未選長度），先強制補選（safety net）
+            const needsChain = cartItems.filter(i => {
+                if (i.isPreciousMetal) return false;
+                if (!i.chainType) return true;
+                const opt = CHAIN_OPTIONS.find(o => o.value === i.chainType);
+                return opt.needsLength && !i.chainLength;
+            });
             const chainPromise = needsChain.length > 0
                 ? showChainTypeModal()
                 : Promise.resolve();
@@ -4894,6 +4970,10 @@
                 const confirmBtn = document.getElementById('design-confirm-btn');
                 const cancelBtn  = document.getElementById('design-confirm-cancel-btn');
                 const totalEl    = document.getElementById('design-confirm-total');
+
+                confirmBtn.textContent = window.CHECKOUT_MODE === 'redemption'
+                    ? (window.t ? window.t('checkout.confirm.proceedRedemption') || '確認' : '確認')
+                    : (window.t ? window.t('checkout.confirm.proceed') || '確認，前往付款' : '確認，前往付款');
 
                 // 重置勾選狀態
                 checkbox.checked = false;
@@ -5321,7 +5401,7 @@
                                     ${window.t('order.form.cancel')}
                                 </button>
                                 <button type="submit" class="btn" style="flex: 1;">
-                                    ${window.t('order.form.continue')}
+                                    ${window.CHECKOUT_MODE === 'redemption' ? window.t('order.form.continueRedemption') : window.t('order.form.continue')}
                                 </button>
                             </div>
                         </form>
@@ -5488,10 +5568,11 @@
                         text-align: center;
                         color: rgba(255,255,255,0.9);
                     `;
+                    const isRedemption = window.CHECKOUT_MODE === 'redemption';
                     loadingDiv.innerHTML = `
                         <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
-                        <div style="font-size: 16px; font-weight: 500;">${window.t('order.processing')}</div>
-                        <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">${window.t('order.processing.desc')}</div>
+                        <div style="font-size: 16px; font-weight: 500;">${isRedemption ? window.t('order.processing.redemption') : window.t('order.processing')}</div>
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 10px;">${isRedemption ? window.t('order.processing.redemption.desc') : window.t('order.processing.desc')}</div>
                     `;
                     modal.appendChild(loadingDiv);
                     
@@ -6322,9 +6403,9 @@
     </div>
 
     <!-- 背景切換器 -->
-    <div id="bg-switcher-hint">可切換背景 ↘</div>
+    <div id="bg-switcher-hint" data-i18n="studio.bg.hint">可切換背景 ↘</div>
     <div id="bg-switcher">
-        <span class="bg-switcher-label">切換背景</span>
+        <span class="bg-switcher-label" data-i18n="studio.bg.label">切換背景</span>
         <div class="bg-switcher-dots">
             <button class="bg-dot active" data-bg="Toscana" title="Toscana"></button>
             <div class="bg-dot-line"></div>
@@ -6451,20 +6532,20 @@
         -webkit-backdrop-filter:blur(16px);z-index:99995;
         justify-content:center;align-items:center;">
         <div style="
-            max-width:560px;width:92%;max-height:85vh;overflow-y:auto;
+            max-width:1400px;width:96%;max-height:90vh;overflow-y:auto;
             background:rgba(18,18,18,0.96);border:1px solid rgba(212,175,55,0.3);
-            border-radius:20px;padding:32px 28px;">
-            <h3 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇項鍊材質</h3>
-            <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鍊。</p>
+            border-radius:20px;padding:36px 40px;">
+            <h3 data-i18n="chain.modal.title" style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇項鍊材質</h3>
+            <p data-i18n="chain.modal.subtitle" style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鍊。</p>
             <div id="chain-type-modal-body"></div>
-            <button id="chain-type-confirm-btn" disabled style="
+            <button id="chain-type-confirm-btn" data-i18n="chain.modal.confirm" disabled style="
                 width:100%;padding:14px;margin-top:8px;
                 background:linear-gradient(135deg,#d4af37,#b8932a);
                 border:none;border-radius:12px;color:#000;
                 font-size:15px;font-weight:600;cursor:not-allowed;opacity:0.4;">
                 確認
             </button>
-            <button id="chain-type-back-btn" style="
+            <button id="chain-type-back-btn" data-i18n="chain.modal.back" style="
                 width:100%;padding:11px;margin-top:8px;
                 background:transparent;border:1px solid rgba(255,255,255,0.18);
                 border-radius:12px;color:rgba(255,255,255,0.6);
@@ -6474,9 +6555,9 @@
         </div>
     </div>
 
-    <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫） -->
+    <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫；置中疊在卡片正前方） -->
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
-         width:320px;height:240px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+         width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
