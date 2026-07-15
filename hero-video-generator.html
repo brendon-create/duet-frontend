@@ -1691,23 +1691,13 @@
             pendantGroup.position.z = vertOffset;
             pendantGroup.position.x = horizOffset;
 
-            // 透明度：
-            // carousel：影片開頭淡入、組間淡出淡入（最後一組不淡出）
-            // full360：組間才淡出淡入（第一組直接全亮，確保 loop 無縫）
+            // 透明度：組間淡出淡入（第一組不淡入、最後一組不淡出），確保影片頭尾都是全亮，loop 無縫
             const isLastPair = pairIdx >= groups.length - 1;
             let opacity = 1.0;
-            if (mode === 'carousel') {
-                if (pairFrm < fadeFr) {
-                    opacity = pairFrm / fadeFr;
-                } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                    opacity = (pairFr - pairFrm) / fadeFr;
-                }
-            } else {
-                if (pairFrm < fadeFr && pairIdx > 0) {
-                    opacity = pairFrm / fadeFr;
-                } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
-                    opacity = (pairFr - pairFrm) / fadeFr;
-                }
+            if (pairFrm < fadeFr && pairIdx > 0) {
+                opacity = pairFrm / fadeFr;
+            } else if (!isLastPair && pairFrm >= pairFr - fadeFr) {
+                opacity = (pairFr - pairFrm) / fadeFr;
             }
             setGroupOpacity(pendantGroup, opacity);
         }
@@ -1755,13 +1745,11 @@
                 recorder.onerror = (e) => reject(e.error);
                 recorder.start(100); // 每 100ms emit 一個 chunk
 
-                // 初始化：放入第一個 group
-                // carousel 模式：第一幀從透明開始淡入
-                // full360 模式：直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
+                // 初始化：放入第一個 group，直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
                 if (pendantGroup) scene.remove(pendantGroup);
                 pendantGroup = groups[0];
                 scene.add(pendantGroup);
-                setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
+                setGroupOpacity(pendantGroup, 1);
 
                 // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
                 // 原本以呼叫次數為準時，實際錄製時長會受螢幕更新率影響（例如 75Hz 螢幕會讓
@@ -1842,12 +1830,11 @@
                 gif.on('finished', (blob) => resolve(blob));
                 gif.on('abort', () => reject(new Error('GIF 編碼中止')));
 
-                // 初始化：放入第一個 group
-                // carousel 模式：第一幀從透明開始淡入；full360 模式：直接全亮
+                // 初始化：放入第一個 group，直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
                 if (pendantGroup) scene.remove(pendantGroup);
                 pendantGroup = groups[0];
                 scene.add(pendantGroup);
-                setGroupOpacity(pendantGroup, mode === 'full360' ? 1 : 0);
+                setGroupOpacity(pendantGroup, 1);
 
                 let frameIdx = 0;
 
