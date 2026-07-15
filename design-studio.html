@@ -4824,22 +4824,27 @@
                         const card = hint ? null : e.target.closest('.cart-chain-opt');
                         if (!hint && !card) return;
 
+                        const pw = 640, ph = 480;
+                        let left, top;
+
                         if (hint) {
                             previewImg.onerror = () => { preview.style.display = 'none'; };
                             previewImg.src = 'assets/images/products/chain-adjust-detail.jpg';
+                            const rect = hint.getBoundingClientRect();
+                            left = rect.left + rect.width / 2 - pw / 2;
+                            top  = rect.top + rect.height / 2 - ph / 2;
                         } else {
                             const img = card.querySelector('img');
                             if (!img || img.style.display === 'none') return;
                             previewImg.onerror = null;
                             previewImg.src = img.src;
+                            // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱與（橡膠繩專屬的）長度選項
+                            const imgRect = img.getBoundingClientRect();
+                            left = imgRect.left + imgRect.width / 2 - pw / 2;
+                            top  = imgRect.bottom - ph;
                         }
 
-                        const target = hint || card;
-                        const pw = 640, ph = 480;
-                        const rect = target.getBoundingClientRect();
-                        // 置中疊在選項卡片正前方（z-index 較高、pointer-events:none），並限制在畫面內，避免超出邊界看不到
-                        let left = rect.left + rect.width / 2 - pw / 2;
-                        let top  = rect.top + rect.height / 2 - ph / 2;
+                        // 限制在畫面內，避免超出邊界看不到
                         left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
                         top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
                         preview.style.left = left + 'px';
