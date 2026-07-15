@@ -1729,64 +1729,77 @@
                     mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
                 }
 
-                // 先把第一幀（pairIdx=0, t=0）畫到 canvas 上，確定畫面正確後才開始錄製。
-                // 若讓 captureStream/MediaRecorder 先啟動、animation tick 晚一拍才更新畫面，
-                // 會把 canvas 上「還沒更新的舊畫面」（例如上一次生成殘留的角度）錄成多餘的第一格，
-                // 造成 loop 時看起來像多跳了一格。
+                // 先把第一幀（pairIdx=0, t=0）畫到 canvas 上，並且連續多畫兩次（雙 requestAnimationFrame）
+                // 才真正建立 captureStream/啟動錄製。
+                // 原因：canvas.captureStream() 對 WebGL canvas 存在約 1 幀左右的內部緩衝延遲，
+                // 只 render 一次無法保證它抓到的「第一格」就是這次 render 的畫面——很可能還是
+                // 更早之前殘留在緩衝區的舊畫面（例如上一次生成或預覽時的旋轉角度）。實測發現
+                // 若只 render 一次，輸出影片會出現「先跳到已經轉了一點的角度、下一格才修正回正面」
+                // 的現象。多等兩次繪製，讓瀏覽器把緩衝區完全沖乾淨，才能確保錄到的第一格真的是正面。
                 applyPendantFrameState(groups, 0, 0, pairFr, fadeFr, mode, vertOffset, horizOffset);
                 renderFrame();
 
-                const stream   = canvas.captureStream(FPS);
-                const bitrateEl = document.getElementById('bitrate');
-                const videoBitsPerSecond = bitrateEl ? parseInt(bitrateEl.value, 10) : 10_000_000;
-                const recorder = new MediaRecorder(stream, {
-                    mimeType,
-                    videoBitsPerSecond
-                });
-                const chunks   = [];
-
-                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-                recorder.onstop = () => {
-                    resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
-                };
-                recorder.onerror = (e) => reject(e.error);
-                recorder.start(100); // 每 100ms emit 一個 chunk
-
-                // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
-                // 原本以呼叫次數為準時，實際錄製時長會受螢幕更新率影響（例如 75Hz 螢幕會讓
-                // 10 秒的設定值在約 4 秒真實時間內跑完，導致輸出影片時長/轉速與設定不符）。
-                const totalDurationSec = totalFr / FPS;
-                const startTime        = performance.now();
-                let lastProgressMs     = 0;
-
-                function tick() {
-                    const elapsedSec = (performance.now() - startTime) / 1000;
-
-                    if (elapsedSec >= totalDurationSec) {
-                        renderFrame();
-                        recorder.stop();
-                        return;
-                    }
-
-                    const frame    = elapsedSec * FPS; // 浮點「邏輯幀」位置，依實際時間換算
-                    const pairIdx  = Math.min(Math.floor(frame / pairFr), groups.length - 1);
-                    const pairFrm  = frame - pairIdx * pairFr;
-
-                    applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                requestAnimationFrame(() => {
                     renderFrame();
+                    requestAnimationFrame(() => {
+                        renderFrame();
+                        startRecording();
+                    });
+                });
 
-                    // 進度更新（節流至約每 100ms 一次，避免頻繁操作 DOM）
-                    const nowMs = performance.now();
-                    if (nowMs - lastProgressMs > 100) {
-                        lastProgressMs = nowMs;
-                        const progress = elapsedSec / totalDurationSec;
-                        showProgress(true, `錄製中... ${Math.round(progress * 100)}%`, progress);
+                function startRecording() {
+                    const stream   = canvas.captureStream(FPS);
+                    const bitrateEl = document.getElementById('bitrate');
+                    const videoBitsPerSecond = bitrateEl ? parseInt(bitrateEl.value, 10) : 10_000_000;
+                    const recorder = new MediaRecorder(stream, {
+                        mimeType,
+                        videoBitsPerSecond
+                    });
+                    const chunks   = [];
+
+                    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                    recorder.onstop = () => {
+                        resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
+                    };
+                    recorder.onerror = (e) => reject(e.error);
+                    recorder.start(100); // 每 100ms emit 一個 chunk
+
+                    // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
+                    // 原本以呼叫次數為準時，實際錄製時長會受螢幕更新率影響（例如 75Hz 螢幕會讓
+                    // 10 秒的設定值在約 4 秒真實時間內跑完，導致輸出影片時長/轉速與設定不符）。
+                    const totalDurationSec = totalFr / FPS;
+                    const startTime        = performance.now();
+                    let lastProgressMs     = 0;
+
+                    function tick() {
+                        const elapsedSec = (performance.now() - startTime) / 1000;
+
+                        if (elapsedSec >= totalDurationSec) {
+                            renderFrame();
+                            recorder.stop();
+                            return;
+                        }
+
+                        const frame    = elapsedSec * FPS; // 浮點「邏輯幀」位置，依實際時間換算
+                        const pairIdx  = Math.min(Math.floor(frame / pairFr), groups.length - 1);
+                        const pairFrm  = frame - pairIdx * pairFr;
+
+                        applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                        renderFrame();
+
+                        // 進度更新（節流至約每 100ms 一次，避免頻繁操作 DOM）
+                        const nowMs = performance.now();
+                        if (nowMs - lastProgressMs > 100) {
+                            lastProgressMs = nowMs;
+                            const progress = elapsedSec / totalDurationSec;
+                            showProgress(true, `錄製中... ${Math.round(progress * 100)}%`, progress);
+                        }
+
+                        animFrameId = requestAnimationFrame(tick);
                     }
 
                     animFrameId = requestAnimationFrame(tick);
                 }
-
-                animFrameId = requestAnimationFrame(tick);
             });
         }
 
