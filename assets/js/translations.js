@@ -162,7 +162,7 @@ window.translations = {
         'checkout.redemption.preciousMetalBlocked': '嘖嘖兌換碼結帳期間暫不支援貴金屬客製訂單。',
         'checkout.redemption.needAllVerified':      '請先為購物車中每一件作品輸入並驗證兌換碼，才能完成結帳。',
         'cart.redemption.submit':      '送出訂單',
-        'order.form.continueRedemption': '繼續',
+        'order.form.continueRedemption': '送出訂單',
 
         // ── 項鍊材質選擇 ──
         'cart.chain.select':        '選擇項鍊材質',
@@ -261,6 +261,8 @@ window.translations = {
         // ── 訂單處理中 ──
         'order.processing':         '正在處理訂單...',
         'order.processing.desc':    '請稍候，即將跳轉至付款頁面',
+        'order.processing.redemption':      '訂單資料傳送中...',
+        'order.processing.redemption.desc': '請稍候',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            '作品',
@@ -529,7 +531,7 @@ window.translations = {
         'checkout.redemption.preciousMetalBlocked': "Custom precious-metal orders aren't supported during the Zeczec redemption checkout period.",
         'checkout.redemption.needAllVerified':      'Please enter and verify a redemption code for every item in your cart before checking out.',
         'cart.redemption.submit':      'Submit Order',
-        'order.form.continueRedemption': 'Continue',
+        'order.form.continueRedemption': 'Submit Order',
 
         // ── Chain Selection ──
         'cart.chain.select':        'Select Chain',
@@ -628,6 +630,8 @@ window.translations = {
         // ── 訂單處理中 ──
         'order.processing':         'Processing order...',
         'order.processing.desc':    'Please wait, redirecting to payment page...',
+        'order.processing.redemption':      'Submitting order...',
+        'order.processing.redemption.desc': 'Please wait',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            'Item',
