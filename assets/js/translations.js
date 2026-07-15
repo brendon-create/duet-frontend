@@ -314,7 +314,7 @@ window.translations = {
         'checkout.confirm.checkbox':   '我已確認以上設計，並了解客製化商品不適用七天鑑賞期',
         'checkout.confirm.cancel':     '返回修改',
         'checkout.confirm.proceed':    '確認，前往付款',
-        'checkout.confirm.proceedRedemption': '繼續',
+        'checkout.confirm.proceedRedemption': '確認',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  '驗證中...',
@@ -683,7 +683,7 @@ window.translations = {
         'checkout.confirm.checkbox':   'I have reviewed the design details and understand that custom items are not eligible for the 7-day cooling off period',
         'checkout.confirm.cancel':     'Go Back',
         'checkout.confirm.proceed':    'Confirm & Proceed to Payment',
-        'checkout.confirm.proceedRedemption': 'Continue',
+        'checkout.confirm.proceedRedemption': 'Confirm',
 
         // ── 優惠碼 ──
         'studio.promo.validating':  'Validating...',
