@@ -1729,6 +1729,13 @@
                     mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
                 }
 
+                // 先把第一幀（pairIdx=0, t=0）畫到 canvas 上，確定畫面正確後才開始錄製。
+                // 若讓 captureStream/MediaRecorder 先啟動、animation tick 晚一拍才更新畫面，
+                // 會把 canvas 上「還沒更新的舊畫面」（例如上一次生成殘留的角度）錄成多餘的第一格，
+                // 造成 loop 時看起來像多跳了一格。
+                applyPendantFrameState(groups, 0, 0, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                renderFrame();
+
                 const stream   = canvas.captureStream(FPS);
                 const bitrateEl = document.getElementById('bitrate');
                 const videoBitsPerSecond = bitrateEl ? parseInt(bitrateEl.value, 10) : 10_000_000;
@@ -1744,12 +1751,6 @@
                 };
                 recorder.onerror = (e) => reject(e.error);
                 recorder.start(100); // 每 100ms emit 一個 chunk
-
-                // 初始化：放入第一個 group，直接全亮（影片頭尾同角度同亮度，loop 才真正無縫）
-                if (pendantGroup) scene.remove(pendantGroup);
-                pendantGroup = groups[0];
-                scene.add(pendantGroup);
-                setGroupOpacity(pendantGroup, 1);
 
                 // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
                 // 原本以呼叫次數為準時，實際錄製時長會受螢幕更新率影響（例如 75Hz 螢幕會讓
