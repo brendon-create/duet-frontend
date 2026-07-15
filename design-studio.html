@@ -3922,6 +3922,14 @@
                 checkoutBtn.style.background = 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.12))';
                 checkoutBtn.style.borderColor = 'rgba(212,175,55,0.5)';
                 checkoutBtn.style.color = '#d4af37';
+            } else if (window.CHECKOUT_MODE === 'redemption') {
+                checkoutBtn.disabled = false;
+                checkoutBtn.style.opacity = '';
+                checkoutBtn.style.cursor = '';
+                checkoutBtn.textContent = window.t ? window.t('cart.redemption.submit') || '送出訂單' : '送出訂單';
+                checkoutBtn.style.background = '';
+                checkoutBtn.style.borderColor = '';
+                checkoutBtn.style.color = '';
             } else {
                 checkoutBtn.disabled = false;
                 checkoutBtn.style.opacity = '';
@@ -5394,7 +5402,7 @@
                                     ${window.t('order.form.cancel')}
                                 </button>
                                 <button type="submit" class="btn" style="flex: 1;">
-                                    ${window.t('order.form.continue')}
+                                    ${window.CHECKOUT_MODE === 'redemption' ? window.t('order.form.continueRedemption') : window.t('order.form.continue')}
                                 </button>
                             </div>
                         </form>
