@@ -134,7 +134,7 @@
             font-size: 10px;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #6B6760;
+            color: #E8E4DF;
         }
 
         .field-sublabel {
@@ -576,6 +576,25 @@
                 <div class="field-sublabel" id="rotation-mode-hint">多組字母依序出場，適合 Hero Banner</div>
             </div>
 
+            <div class="field-group" id="angle-range-group" style="display:none;">
+                <div class="field-label">起迄角度（第一個字母正面 = 0°）</div>
+                <div class="range-row">
+                    <input type="range" id="start-angle" min="-180" max="180" step="1" value="0">
+                    <span class="range-value" id="start-angle-value">0°</span>
+                </div>
+                <div class="field-sublabel">起始角度</div>
+                <div class="range-row" style="margin-top:6px;">
+                    <input type="range" id="end-angle" min="-180" max="180" step="1" value="0">
+                    <span class="range-value" id="end-angle-value">0°</span>
+                </div>
+                <div class="field-sublabel">結束角度（正值＝順時針、負值＝逆時針；起迄角度相同＝轉完整一圈）</div>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px;">
+                    <input type="checkbox" id="ping-pong" style="accent-color:#C9A96E;width:14px;height:14px;">
+                    <span class="field-sublabel">來回擺動（從起始角度轉到結束角度，再反向轉回起始角度）</span>
+                </label>
+                <div class="field-sublabel">來回擺動模式下頭尾角度必然相同，適合小角度緩慢擺動且需要無縫循環的情境</div>
+            </div>
+
             <div class="field-group">
                 <div class="field-label">背景顏色</div>
                 <div class="color-row">
@@ -954,9 +973,17 @@
             document.getElementById('hoffset-value').textContent = e.target.value;
         });
         document.getElementById('rotation-mode').addEventListener('change', (e) => {
-            document.getElementById('rotation-mode-hint').textContent = e.target.value === 'full360'
+            const isFull360 = e.target.value === 'full360';
+            document.getElementById('rotation-mode-hint').textContent = isFull360
                 ? '每組字母旋轉完整一圈，可看到正反面，適合 Gallery 縮圖'
                 : '多組字母依序出場，各旋轉 90° 後換下一組，適合 Hero Banner';
+            document.getElementById('angle-range-group').style.display = isFull360 ? 'flex' : 'none';
+        });
+        document.getElementById('start-angle').addEventListener('input', (e) => {
+            document.getElementById('start-angle-value').textContent = e.target.value + '°';
+        });
+        document.getElementById('end-angle').addEventListener('input', (e) => {
+            document.getElementById('end-angle-value').textContent = e.target.value + '°';
         });
 
         // 顏色選取器 ↔ 文字框同步
@@ -1140,6 +1167,9 @@
                 const vertOffset   = parseFloat(document.getElementById('vertical-offset').value);
                 const horizOffset  = parseFloat(document.getElementById('horizontal-offset').value);
                 const rotationMode = document.getElementById('rotation-mode').value;
+                const startAngle   = parseFloat(document.getElementById('start-angle').value);
+                const endAngle     = parseFloat(document.getElementById('end-angle').value);
+                const pingPong     = document.getElementById('ping-pong').checked;
                 const plating      = document.getElementById('plating').value;
                 const outputFormat = document.getElementById('output-format').value;
 
@@ -1187,8 +1217,8 @@
 
                 // 錄製動畫（GIF 走獨立的逐幀編碼路徑，不經過 MediaRecorder）
                 const blob = outputFormat === 'gif'
-                    ? await recordAnimationGif(groups, secPerPair, vertOffset, horizOffset, rotationMode)
-                    : await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode);
+                    ? await recordAnimationGif(groups, secPerPair, vertOffset, horizOffset, rotationMode, startAngle, endAngle, pingPong)
+                    : await recordAnimation(groups, secPerPair, vertOffset, horizOffset, rotationMode, startAngle, endAngle, pingPong);
                 resultBlob = blob;
 
                 // 依實際輸出格式更新按鈕文字與提示
@@ -1667,7 +1697,7 @@
 
         // ── 依幀狀態更新 pendantGroup（旋轉/位置/透明度/切換 group）──
         // 供 recordAnimation()（影片）與 recordAnimationGif()（GIF）共用，避免兩份邏輯各自維護、彼此漂移
-        function applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset) {
+        function applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset, startAngleDeg = 0, endAngleDeg = 0, pingPong = false) {
             if (pendantGroup !== groups[pairIdx]) {
                 if (pendantGroup) scene.remove(pendantGroup);
                 pendantGroup = groups[pairIdx];
@@ -1678,13 +1708,19 @@
 
             // 旋轉：
             //   carousel：每組旋轉 90°，多組連續接力（適合 Hero Banner 輪播）
-            //   full360：每組從正面旋轉完整一圈回到正面（適合 Gallery 單組展示）
-            //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於旋轉 360° = 0°，
-            //   使影片頭尾旋轉角度完全相同，browser loop 無縫
+            //   full360：每組從正面（0°）依「起迄角度」旋轉。起迄角度相同 = 轉完整一圈；
+            //   正值角度差 = 順時針，負值 = 逆時針（直接對應使用者輸入的數字，不做環繞捷徑計算）。
+            //   來回擺動（pingPong）：前半段 startAngleDeg→endAngleDeg，後半段反向轉回 startAngleDeg，
+            //   讓頭尾角度必然相同，即使只轉一個小角度也能無縫 loop。
+            //   full360 用 pairFr-1 當分母，讓最後一幀 t=1 恰好等於終點角度，browser loop 無縫
             const horizCorrAngle = Math.atan2(horizOffset, Math.abs(camera.position.y));
             if (mode === 'full360') {
-                const t360 = pairFrm / Math.max(pairFr - 1, 1);
-                pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + t360 * Math.PI * 2) - horizCorrAngle;
+                const t360    = pairFrm / Math.max(pairFr - 1, 1);
+                let sweepDeg  = endAngleDeg - startAngleDeg;
+                if (sweepDeg === 0) sweepDeg = 360; // 起迄角度相同 = 轉完整一圈
+                const localT   = pingPong ? (t360 < 0.5 ? t360 * 2 : (1 - t360) * 2) : t360;
+                const angleDeg = startAngleDeg + localT * sweepDeg;
+                pendantGroup.rotation.z = -(pairIdx * Math.PI / 2 + angleDeg * Math.PI / 180) - horizCorrAngle;
             } else {
                 pendantGroup.rotation.z = -(pairIdx + t) * Math.PI / 2 - horizCorrAngle;
             }
@@ -1703,7 +1739,7 @@
         }
 
         // ── 錄製動畫 ─────────────────────────────────────────────
-        async function recordAnimation(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel') {
+        async function recordAnimation(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel', startAngleDeg = 0, endAngleDeg = 0, pingPong = false) {
             // 開始錄製前先等 HDR 就緒（最多等 6 秒），避免影片開頭幾幀材質全黑
             await withTimeout(hdrReadyPromise, 6000);
 
@@ -1736,7 +1772,7 @@
                 // 更早之前殘留在緩衝區的舊畫面（例如上一次生成或預覽時的旋轉角度）。實測發現
                 // 若只 render 一次，輸出影片會出現「先跳到已經轉了一點的角度、下一格才修正回正面」
                 // 的現象。多等兩次繪製，讓瀏覽器把緩衝區完全沖乾淨，才能確保錄到的第一格真的是正面。
-                applyPendantFrameState(groups, 0, 0, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                applyPendantFrameState(groups, 0, 0, pairFr, fadeFr, mode, vertOffset, horizOffset, startAngleDeg, endAngleDeg, pingPong);
                 renderFrame();
 
                 requestAnimationFrame(() => {
@@ -1784,7 +1820,7 @@
                         const pairIdx  = Math.min(Math.floor(frame / pairFr), groups.length - 1);
                         const pairFrm  = frame - pairIdx * pairFr;
 
-                        applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                        applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset, startAngleDeg, endAngleDeg, pingPong);
                         renderFrame();
 
                         // 進度更新（節流至約每 100ms 一次，避免頻繁操作 DOM）
@@ -1820,7 +1856,7 @@
         // 用 gif.js 逐幀編碼，不透過 MediaRecorder/captureStream，因此不需要跟真實時間同步——
         // 依序算出每一幀狀態即可，不受畫面更新率影響，也比錄影更快。
         // GIF 沒有幀間壓縮，檔案大小隨幀數線性成長，用較低幀率（12fps）控制檔案大小
-        async function recordAnimationGif(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel') {
+        async function recordAnimationGif(groups, secPerPair, vertOffset = 0, horizOffset = 0, mode = 'carousel', startAngleDeg = 0, endAngleDeg = 0, pingPong = false) {
             // GIF 的逐幀擷取是同步跑完、幾乎不花真實時間，最容易搶在 HDR 網路請求完成前就結束，
             // 拍出全黑材質的畫面——開始前先等 HDR 就緒（最多等 6 秒）
             await withTimeout(hdrReadyPromise, 6000);
@@ -1862,7 +1898,7 @@
                     const pairIdx = Math.min(Math.floor(frameIdx / pairFr), groups.length - 1);
                     const pairFrm = frameIdx - pairIdx * pairFr;
 
-                    applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset);
+                    applyPendantFrameState(groups, pairIdx, pairFrm, pairFr, fadeFr, mode, vertOffset, horizOffset, startAngleDeg, endAngleDeg, pingPong);
                     renderFrame();
                     gif.addFrame(canvas, { copy: true, delay: 1000 / GIF_FPS });
 
