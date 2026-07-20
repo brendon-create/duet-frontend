@@ -731,9 +731,12 @@
         <div class="cart-container">
             <div class="cart-header">
                 <h2 data-i18n="studio.cart.title">購物車</h2>
-            </div>
-            <div id="cart-redemption-notice" data-i18n="cart.redemption.notice" style="display:none; margin: 0 0 14px; padding: 10px 14px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); border-radius: 8px; color: #d4af37; font-size: 13px;">
-                嘖嘖募資期間，僅開放持有兌換碼者訂製作品
+                <div id="cart-redemption-notice" style="display:none; max-width: 420px; padding: 10px 14px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.35); border-radius: 8px; color: #d4af37; font-size: 13px;">
+                    <div data-i18n="cart.redemption.notice">嘖嘖募資期間，僅開放持有兌換碼者訂製作品</div>
+                    <a href="https://www.zeczec.com/projects/duet-by-bcag?r=6adf2d374f" target="_blank" rel="noopener noreferrer" data-i18n="cart.redemption.zeczecCta" style="display:inline-block; margin-top:8px; padding:7px 14px; background:#d4af37; color:#1a1a1a; font-weight:600; border-radius:6px; text-decoration:none; font-size:13px;">
+                        前往嘖嘖募資支持專案，取得兌換碼 →
+                    </a>
+                </div>
             </div>
             <div class="cart-items" id="cart-items"></div>
 
@@ -1769,14 +1772,16 @@
         console.log('🔧 後端 URL:', BACKEND_URL);
 
         // === 結帳模式（嘖嘖募資期間切換用：open 正常 / closed 暫停結帳 / redemption 兌換碼結帳） ===
-        window.CHECKOUT_MODE = 'open';
+        // 安全預設：抓取設定完成前、或抓取失敗時，一律當作 closed（暫停結帳），
+        // 絕不能預設 open，否則後端冷啟動或網路不穩時會誤把正常結帳畫面曝光給嘖嘖募資期間的訪客
+        window.CHECKOUT_MODE = 'closed';
         window.CHECKOUT_CLOSED_MESSAGE = '嘖嘖募資 7 月 20 起跑，敬請期待。';
         (async function fetchCheckoutConfig() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/checkout-config`);
                 const data = await res.json();
                 if (data.success) {
-                    window.CHECKOUT_MODE = data.checkoutMode || 'open';
+                    window.CHECKOUT_MODE = data.checkoutMode || 'closed';
                     window.CHECKOUT_CLOSED_MESSAGE = data.message || window.CHECKOUT_CLOSED_MESSAGE;
                     console.log('🔧 結帳模式:', window.CHECKOUT_MODE);
                     if (typeof renderCart === 'function') renderCart();
@@ -1786,9 +1791,12 @@
                         const preciousOption = document.querySelector('#material option[value="precious_metal"]');
                         if (preciousOption) preciousOption.remove();
                     }
+                } else {
+                    if (typeof renderCart === 'function') renderCart();
                 }
             } catch (e) {
-                console.warn('⚠️ 取得結帳模式失敗，預設為正常結帳', e);
+                console.warn('⚠️ 取得結帳模式失敗，維持安全預設 closed（暫停結帳）', e);
+                if (typeof renderCart === 'function') renderCart();
             }
         })();
 
