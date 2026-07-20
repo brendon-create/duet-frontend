@@ -1769,14 +1769,16 @@
         console.log('🔧 後端 URL:', BACKEND_URL);
 
         // === 結帳模式（嘖嘖募資期間切換用：open 正常 / closed 暫停結帳 / redemption 兌換碼結帳） ===
-        window.CHECKOUT_MODE = 'open';
+        // 安全預設：抓取設定完成前、或抓取失敗時，一律當作 closed（暫停結帳），
+        // 絕不能預設 open，否則後端冷啟動或網路不穩時會誤把正常結帳畫面曝光給嘖嘖募資期間的訪客
+        window.CHECKOUT_MODE = 'closed';
         window.CHECKOUT_CLOSED_MESSAGE = '嘖嘖募資 7 月 20 起跑，敬請期待。';
         (async function fetchCheckoutConfig() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/checkout-config`);
                 const data = await res.json();
                 if (data.success) {
-                    window.CHECKOUT_MODE = data.checkoutMode || 'open';
+                    window.CHECKOUT_MODE = data.checkoutMode || 'closed';
                     window.CHECKOUT_CLOSED_MESSAGE = data.message || window.CHECKOUT_CLOSED_MESSAGE;
                     console.log('🔧 結帳模式:', window.CHECKOUT_MODE);
                     if (typeof renderCart === 'function') renderCart();
@@ -1786,9 +1788,12 @@
                         const preciousOption = document.querySelector('#material option[value="precious_metal"]');
                         if (preciousOption) preciousOption.remove();
                     }
+                } else {
+                    if (typeof renderCart === 'function') renderCart();
                 }
             } catch (e) {
-                console.warn('⚠️ 取得結帳模式失敗，預設為正常結帳', e);
+                console.warn('⚠️ 取得結帳模式失敗，維持安全預設 closed（暫停結帳）', e);
+                if (typeof renderCart === 'function') renderCart();
             }
         })();
 

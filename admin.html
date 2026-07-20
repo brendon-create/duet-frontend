@@ -2950,6 +2950,18 @@
                 document.getElementById('checkoutClosedMessage').value = data.message;
                 document.getElementById('zeczecBannerText').value = data.zeczecBannerText || '';
                 document.getElementById('zeczecBannerLink').value = data.zeczecBannerLink || '';
+                const openOption = document.querySelector('#checkoutModeSelect option[value="open"]');
+                if (openOption) {
+                    openOption.disabled = !!data.openModeLocked;
+                    openOption.textContent = data.openModeLocked
+                        ? 'open：正常綠界結帳（已被伺服器強制鎖住，無法選擇）'
+                        : 'open：正常綠界結帳';
+                }
+                const statusEl = document.getElementById('checkoutModeStatus');
+                if (data.openModeLocked) {
+                    statusEl.style.color = '#facc15';
+                    statusEl.textContent = '🔒 伺服器已強制鎖住 open 模式（CHECKOUT_LOCK_OPEN_MODE）';
+                }
             } catch (e) {
                 document.getElementById('checkoutModeStatus').textContent = '載入失敗：' + e.message;
             }
