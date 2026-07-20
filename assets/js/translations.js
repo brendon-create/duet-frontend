@@ -149,6 +149,7 @@ window.translations = {
 
         // ── 兌換碼結帳（嘖嘖募資）──
         'cart.redemption.notice':      '嘖嘖募資期間，僅開放持有兌換碼者訂製作品',
+        'cart.redemption.zeczecCta':   '前往嘖嘖募資支持專案，取得兌換碼 →',
         'cart.redeem.placeholder':     '輸入此件作品的兌換碼',
         'cart.redeem.verifyBtn':       '驗證',
         'cart.redeem.verified':        '✅ 已驗證，此件作品可兌換',
@@ -518,6 +519,7 @@ window.translations = {
 
         // ── Redemption Checkout (Zeczec Campaign) ──
         'cart.redemption.notice':      'During the Zeczec campaign, only customers holding a redemption code can order custom pieces',
+        'cart.redemption.zeczecCta':   'Back the Zeczec campaign to get a redemption code →',
         'cart.redeem.placeholder':     'Enter the redemption code for this piece',
         'cart.redeem.verifyBtn':       'Verify',
         'cart.redeem.verified':        '✅ Verified — this piece is redeemable',
