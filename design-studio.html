@@ -5561,6 +5561,14 @@
                             : '郵局配送';
                         methodBox.style.display = 'block';
                     }
+
+                    // 嘖嘖表單原本填的是公司發票（有統編）時，自動切成公司發票並帶入統編/抬頭
+                    if (info.invoiceType === 'company' && info.invoiceTaxId) {
+                        document.querySelector('input[name="invoice-type"][value="company"]').checked = true;
+                        window.toggleInvoiceFields(true);
+                        document.getElementById('company-tax-id').value = info.invoiceTaxId || '';
+                        document.getElementById('company-name').value = info.invoiceCompanyName || '';
+                    }
                 }
 
                 // 處理表單提交

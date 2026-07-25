@@ -3227,6 +3227,8 @@
                 country: header.indexOf('國家'),
                 cvsRaw: header.indexOf('超商'),
                 confirmedAt: header.indexOf('確認時間'),
+                invoiceTaxId: header.indexOf('發票統編'),
+                invoiceCompanyName: header.indexOf('發票抬頭'),
             };
             const missing = Object.keys(col).filter(k => col[k] === -1);
             if (missing.length) throw new Error('CSV 缺少必要欄位：' + missing.join('、'));
@@ -3243,6 +3245,8 @@
                 country: (r[col.country] || '').trim(),
                 cvsRaw: (r[col.cvsRaw] || '').trim(),
                 confirmedAt: (r[col.confirmedAt] || '').trim(),
+                invoiceTaxId: (r[col.invoiceTaxId] || '').trim(),
+                invoiceCompanyName: (r[col.invoiceCompanyName] || '').trim(),
             })).filter(row => row.orderNo);
 
             // 依「確認時間」由舊到新排序（訂單日期時間），無法解析的排到最後
