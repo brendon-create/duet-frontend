@@ -5435,6 +5435,9 @@
                         document.getElementById('recipient-name').disabled = true;
                         document.getElementById('recipient-phone').disabled = true;
                     } else {
+                        // 取消勾選時清空，避免使用者還要手動刪除預填的購買人資訊
+                        document.getElementById('recipient-name').value = '';
+                        document.getElementById('recipient-phone').value = '';
                         document.getElementById('recipient-name').disabled = false;
                         document.getElementById('recipient-phone').disabled = false;
                     }
@@ -5532,10 +5535,17 @@
                     }
                     updateEmailHint();
                 } else if (window.CHECKOUT_MODE === 'redemption' && window._zeczecRecipientInfo) {
-                    // 兌換碼結帳模式：依已驗證兌換碼帶出的嘖嘖募資資料自動帶入收件資訊（欄位仍可手動修改）
+                    // 兌換碼結帳模式：依已驗證兌換碼帶出的嘖嘖募資資料自動帶入購買人資訊（欄位仍可手動修改）
                     const info = window._zeczecRecipientInfo;
-                    document.getElementById('recipient-name').value = info.recipientName || '';
-                    document.getElementById('recipient-phone').value = info.recipientPhone || '';
+                    document.getElementById('buyer-name').value = info.backerName || '';
+                    document.getElementById('buyer-email').value = info.recipientEmail || '';
+                    document.getElementById('buyer-phone').value = info.recipientPhone || '';
+                    updateEmailHint();
+
+                    // 預設勾選「同購買人」：大多數人會先自己收到再轉送，收件人資訊直接同步購買人
+                    document.getElementById('same-as-buyer').checked = true;
+                    window.toggleRecipientFields(true);
+
                     if ((info.country || '').includes('台灣')) {
                         document.getElementById('shipping-country').value = 'TW';
                     }
