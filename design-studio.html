@@ -4163,6 +4163,10 @@
                 if (result.success && result.valid && result.finalTotal <= 0) {
                     item.redeemCode = code;
                     item.redeemCodeValid = true;
+                    // 嘖嘖兌換碼帶有收件資訊時，記下來供結帳表單自動帶入（以最後一次驗證成功者為準）
+                    if (result.recipientInfo) {
+                        window._zeczecRecipientInfo = result.recipientInfo;
+                    }
                 } else {
                     item.redeemCodeValid = false;
                     errorMessage = result.valid === false ? (result.error || window.t('cart.redeem.invalid'))
@@ -5329,6 +5333,11 @@
                                                      background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
                                                      resize: vertical; font-family: inherit;"></textarea>
                                 </div>
+
+                                <div id="zeczec-shipping-method-box" style="display:none; margin-bottom: 15px; padding: 10px; background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3); border-radius: 8px; font-size: 13px; color: #d4af37;">
+                                    <strong>出貨方式（依嘖嘖募資資料帶入）：</strong>
+                                    <div id="zeczec-shipping-method-text"></div>
+                                </div>
                             </div>
 
                             <!-- 發票資訊 -->
@@ -5426,6 +5435,9 @@
                         document.getElementById('recipient-name').disabled = true;
                         document.getElementById('recipient-phone').disabled = true;
                     } else {
+                        // 取消勾選時清空，避免使用者還要手動刪除預填的購買人資訊
+                        document.getElementById('recipient-name').value = '';
+                        document.getElementById('recipient-phone').value = '';
                         document.getElementById('recipient-name').disabled = false;
                         document.getElementById('recipient-phone').disabled = false;
                     }
@@ -5522,6 +5534,41 @@
                         window.toggleRecipientFields(true);
                     }
                     updateEmailHint();
+                } else if (window.CHECKOUT_MODE === 'redemption' && window._zeczecRecipientInfo) {
+                    // 兌換碼結帳模式：依已驗證兌換碼帶出的嘖嘖募資資料自動帶入購買人資訊（欄位仍可手動修改）
+                    const info = window._zeczecRecipientInfo;
+                    document.getElementById('buyer-name').value = info.backerName || '';
+                    document.getElementById('buyer-email').value = info.recipientEmail || '';
+                    document.getElementById('buyer-phone').value = info.recipientPhone || '';
+                    updateEmailHint();
+
+                    // 預設勾選「同購買人」：大多數人會先自己收到再轉送，收件人資訊直接同步購買人
+                    document.getElementById('same-as-buyer').checked = true;
+                    window.toggleRecipientFields(true);
+
+                    if ((info.country || '').includes('台灣')) {
+                        document.getElementById('shipping-country').value = 'TW';
+                    }
+                    window.updatePostalHint(document.getElementById('shipping-country').value);
+                    document.getElementById('postal-code').value = info.postalCode || '';
+                    document.getElementById('shipping-address').value = info.address || '';
+
+                    const methodBox = document.getElementById('zeczec-shipping-method-box');
+                    const methodText = document.getElementById('zeczec-shipping-method-text');
+                    if (methodBox && methodText) {
+                        methodText.textContent = info.shippingMethod === 'cvs'
+                            ? `超商店到店：${info.cvsChain || ''} ${info.cvsStoreName || ''}（店號 ${info.cvsStoreCode || ''}）`
+                            : '郵局配送';
+                        methodBox.style.display = 'block';
+                    }
+
+                    // 嘖嘖表單原本填的是公司發票（有統編）時，自動切成公司發票並帶入統編/抬頭
+                    if (info.invoiceType === 'company' && info.invoiceTaxId) {
+                        document.querySelector('input[name="invoice-type"][value="company"]').checked = true;
+                        window.toggleInvoiceFields(true);
+                        document.getElementById('company-tax-id').value = info.invoiceTaxId || '';
+                        document.getElementById('company-name').value = info.invoiceCompanyName || '';
+                    }
                 }
 
                 // 處理表單提交
@@ -5557,7 +5604,15 @@
                         name: document.getElementById('recipient-name').value.trim(),
                         email: document.getElementById('buyer-email').value.trim(),
                         phone: document.getElementById('recipient-phone').value.trim(),
-                        address: document.getElementById('shipping-address').value.trim()
+                        address: document.getElementById('shipping-address').value.trim(),
+
+                        // 兌換碼結帳模式：出貨方式（依嘖嘖募資資料帶入，僅此流程使用，一般結帳不受影響）
+                        ...(window._zeczecRecipientInfo ? {
+                            shippingMethod: window._zeczecRecipientInfo.shippingMethod || '',
+                            cvsChain: window._zeczecRecipientInfo.cvsChain || '',
+                            cvsStoreName: window._zeczecRecipientInfo.cvsStoreName || '',
+                            cvsStoreCode: window._zeczecRecipientInfo.cvsStoreCode || ''
+                        } : {})
                     };
 
                     // 快取表單內容（僅存於記憶體，不落地）：若結帳失敗需重開表單，可自動帶回避免重填

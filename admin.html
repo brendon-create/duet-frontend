@@ -796,6 +796,77 @@
                     <div id="importOrdersResult" style="margin-top: 12px; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; padding: 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);"></div>
                 </div>
 
+                <!-- 嘖嘖支持者名單 CSV 匯入（自動產生碼＋存收件資訊＋寄信通知） -->
+                <div class="detail-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 16px;">📥 嘖嘖支持者名單匯入（CSV，自動產生兌換碼＋寄信通知）</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">批次標籤（選填，例：早鳥雙字母）</label>
+                            <input id="zeczecCsvTier" type="text" placeholder="例：早鳥雙字母" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">本批每筆訂單產生幾組碼</label>
+                            <select id="zeczecCsvItemCount" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                                <option value="1">1（單人方案）</option>
+                                <option value="2">2（雙人方案，自動配對）</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">有效期限（選填）</label>
+                            <input id="zeczecCsvValidUntil" type="date" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted);">
+                                <input type="checkbox" id="zeczecCsvSendEmail" checked>
+                                產生後自動寄信通知支持者兌換碼
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); flex-shrink: 0;">
+                            <input type="checkbox" id="zeczecCsvSendTestCopy" checked>
+                            同步寄送一封測試信給內部信箱
+                        </label>
+                        <input id="zeczecCsvTestEmail" type="email" value="brendon@brendonchen.com" style="flex: 1; max-width: 320px; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                    </div>
+                    <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">選擇嘖嘖平台匯出的支持者名單 CSV</label>
+                    <input type="file" id="zeczecCsvFile" accept=".csv" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); margin-bottom: 14px;">
+
+                    <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">通知信主旨</label>
+                    <input id="zeczecCsvSubject" type="text" value="【DUET】您的嘖嘖募資兌換碼" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); margin-bottom: 10px;">
+
+                    <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">通知信內文（兌換碼與使用說明會自動附在下方，這裡只需編輯開頭問候語）</label>
+                    <textarea id="zeczecCsvMessage" rows="4" style="width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); font-size: 13px; resize: vertical; margin-bottom: 10px;">感謝您支持 DUET 嘖嘖募資！以下是您的專屬兌換碼，可用於官網訂製您的作品：</textarea>
+
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn btn-primary" onclick="importZeczecCsv()">匯入</button>
+                        <span id="zeczecCsvStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
+                    <div id="zeczecCsvResult" style="margin-top: 12px; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; padding: 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);"></div>
+
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--text-light);">📦 匯入批次紀錄</h4>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>批次</th>
+                                        <th>標籤</th>
+                                        <th>CSV 筆數</th>
+                                        <th>本批新增訂單</th>
+                                        <th>本批新增碼</th>
+                                        <th>累計訂單數</th>
+                                        <th>匯入時間</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="zeczecBatchTableBody">
+                                    <tr><td colspan="7" class="loading">載入中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 匯入區 -->
                 <div class="detail-section" style="margin-bottom: 20px;">
                     <h3 style="margin-bottom: 16px;">📥 CSV 批次匯入兌換碼（已有現成碼時使用）</h3>
@@ -1568,7 +1639,7 @@
 
             if (tab === 'users') loadUsers();
             if (tab === 'promos') loadPromoCodes();
-            if (tab === 'redeem') { loadRedeemCodes(); loadCheckoutMode(); }
+            if (tab === 'redeem') { loadRedeemCodes(); loadCheckoutMode(); loadZeczecBatches(); }
             if (tab === 'feedback') loadFeedback();
             if (tab === 'system') { loadMemoryStats(); loadPromptSuggestions(); }
             if (tab === 'gallery') loadGallery();
@@ -2441,6 +2512,10 @@
                     <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${u.email || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${u.phone || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value">${u.address || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">發票類型</span><span class="detail-value">${u.invoiceType === 'company' ? '公司發票（三聯式）' : '個人發票（二聯式）'}</span></div>
+                    ${u.invoiceType === 'company' ? `
+                    <div class="detail-row"><span class="detail-label">統一編號</span><span class="detail-value">${u.companyTaxId || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">公司抬頭</span><span class="detail-value">${u.companyName || '-'}</span></div>` : ''}
                 </div>
                 <div class="detail-section">
                     <h3>訂單內容</h3>
@@ -3093,6 +3168,188 @@
             } catch (e) {
                 statusEl.style.color = '#ef4444';
                 statusEl.textContent = '產生失敗：' + e.message;
+            }
+        }
+
+        // 解析嘖嘖平台匯出的 CSV（純 JS state machine，處理引號跳脫與欄位內的逗號/換行，不能用簡單 split(',')）
+        function parseCsvText(text) {
+            if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // 去除 UTF-8 BOM
+
+            const rows = [];
+            let row = [];
+            let field = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                if (inQuotes) {
+                    if (ch === '"') {
+                        if (text[i + 1] === '"') { field += '"'; i++; }
+                        else { inQuotes = false; }
+                    } else {
+                        field += ch;
+                    }
+                } else if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ',') {
+                    row.push(field); field = '';
+                } else if (ch === '\r') {
+                    // 忽略，換行交給 \n 統一處理
+                } else if (ch === '\n') {
+                    row.push(field); field = '';
+                    rows.push(row); row = [];
+                } else {
+                    field += ch;
+                }
+            }
+            if (field.length > 0 || row.length > 0) {
+                row.push(field);
+                rows.push(row);
+            }
+            return rows.filter(r => !(r.length === 1 && r[0] === ''));
+        }
+
+        // 依表頭欄位名稱（而非欄位順序）把 CSV rows 轉成後端要的格式
+        // 解析嘖嘖「確認時間」欄位（格式：YYYY/M/D H:MM），無法解析時回傳 null
+        function parseZeczecDateTime(str) {
+            if (!str) return null;
+            const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})/.exec(str.trim());
+            if (!m) return null;
+            const [y, mo, d, h, mi] = m.slice(1).map(Number);
+            return new Date(y, mo - 1, d, h, mi).getTime();
+        }
+
+        function csvRowsToZeczecRows(rows) {
+            if (rows.length < 2) return [];
+            const header = rows[0];
+            const col = {
+                orderNo: header.indexOf('訂單編號'),
+                refundStatus: header.indexOf('退款申請狀態'),
+                backerName: header.indexOf('贊助人'),
+                recipientName: header.indexOf('收件人'),
+                recipientPhone: header.indexOf('聯絡電話'),
+                recipientEmail: header.indexOf('電子信箱'),
+                postalCode: header.indexOf('郵遞區號'),
+                address: header.indexOf('地址'),
+                country: header.indexOf('國家'),
+                cvsRaw: header.indexOf('超商'),
+                confirmedAt: header.indexOf('確認時間'),
+                invoiceTaxId: header.indexOf('發票統編'),
+                invoiceCompanyName: header.indexOf('發票抬頭'),
+            };
+            const missing = Object.keys(col).filter(k => col[k] === -1);
+            if (missing.length) throw new Error('CSV 缺少必要欄位：' + missing.join('、'));
+
+            const parsed = rows.slice(1).map(r => ({
+                orderNo: (r[col.orderNo] || '').trim(),
+                refundStatus: (r[col.refundStatus] || '').trim(),
+                backerName: (r[col.backerName] || '').trim(),
+                recipientName: (r[col.recipientName] || '').trim(),
+                recipientPhone: (r[col.recipientPhone] || '').trim(),
+                recipientEmail: (r[col.recipientEmail] || '').trim(),
+                postalCode: (r[col.postalCode] || '').trim(),
+                address: (r[col.address] || '').trim(),
+                country: (r[col.country] || '').trim(),
+                cvsRaw: (r[col.cvsRaw] || '').trim(),
+                confirmedAt: (r[col.confirmedAt] || '').trim(),
+                invoiceTaxId: (r[col.invoiceTaxId] || '').trim(),
+                invoiceCompanyName: (r[col.invoiceCompanyName] || '').trim(),
+            })).filter(row => row.orderNo);
+
+            // 依「確認時間」由舊到新排序（訂單日期時間），無法解析的排到最後
+            parsed.sort((a, b) => {
+                const ta = parseZeczecDateTime(a.confirmedAt);
+                const tb = parseZeczecDateTime(b.confirmedAt);
+                if (ta === null && tb === null) return 0;
+                if (ta === null) return 1;
+                if (tb === null) return -1;
+                return ta - tb;
+            });
+
+            return parsed;
+        }
+
+        async function importZeczecCsv() {
+            const fileInput = document.getElementById('zeczecCsvFile');
+            const tier = document.getElementById('zeczecCsvTier').value;
+            const itemCount = parseInt(document.getElementById('zeczecCsvItemCount').value, 10);
+            const valid_until = document.getElementById('zeczecCsvValidUntil').value || null;
+            const sendEmail = document.getElementById('zeczecCsvSendEmail').checked;
+            const sendTestCopy = document.getElementById('zeczecCsvSendTestCopy').checked;
+            const testEmail = document.getElementById('zeczecCsvTestEmail').value.trim();
+            const subject = document.getElementById('zeczecCsvSubject').value.trim();
+            const message = document.getElementById('zeczecCsvMessage').value;
+            const statusEl = document.getElementById('zeczecCsvStatus');
+            const resultEl = document.getElementById('zeczecCsvResult');
+
+            if (!fileInput.files || !fileInput.files[0]) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '請先選擇 CSV 檔案';
+                return;
+            }
+
+            statusEl.style.color = 'var(--text-muted)';
+            statusEl.textContent = '讀取中...';
+            resultEl.style.display = 'none';
+
+            try {
+                const text = await fileInput.files[0].text();
+                const csvRows = parseCsvText(text);
+                const rows = csvRowsToZeczecRows(csvRows);
+                if (!rows.length) throw new Error('CSV 沒有任何有效資料列');
+
+                statusEl.textContent = `匯入中...（共 ${rows.length} 筆）`;
+
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/import-zeczec-csv`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ rows, tier, itemCount, valid_until, sendEmail, subject, message, sendTestCopy, testEmail })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                statusEl.style.color = '#4ade80';
+                statusEl.textContent = data.message;
+                resultEl.style.display = 'block';
+                const createdText = data.created.map(o => `${o.orderNo}（${o.recipientName}）: ${o.codes.join('、')}`).join('\n');
+                const skippedText = data.skipped.length
+                    ? '\n\n跳過：\n' + data.skipped.map(s => `${s.orderNo}: ${s.reason}`).join('\n')
+                    : '';
+                resultEl.textContent = createdText + skippedText;
+                fileInput.value = '';
+                loadRedeemCodes();
+                loadZeczecBatches();
+            } catch (e) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = '匯入失敗：' + e.message;
+            }
+        }
+
+        async function loadZeczecBatches() {
+            const tbody = document.getElementById('zeczecBatchTableBody');
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/zeczec-batches`, {
+                    headers: { 'Authorization': adminAuthHeader() }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                if (!data.batches.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">尚無匯入紀錄</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.batches.map(b => `
+                    <tr>
+                        <td>第 ${b.batch_no} 批</td>
+                        <td>${b.tier || '-'}</td>
+                        <td>${b.total_rows_in_file}</td>
+                        <td>${b.new_orders_count}</td>
+                        <td>${b.new_codes_count}</td>
+                        <td>${b.cumulative_orders_count}</td>
+                        <td>${new Date(b.created_at).toLocaleString('zh-TW')}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">載入失敗：${e.message}</td></tr>`;
             }
         }
 
