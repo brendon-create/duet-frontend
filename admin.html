@@ -822,6 +822,13 @@
                             </label>
                         </div>
                     </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); flex-shrink: 0;">
+                            <input type="checkbox" id="zeczecCsvSendTestCopy" checked>
+                            同步寄送一封測試信給內部信箱
+                        </label>
+                        <input id="zeczecCsvTestEmail" type="email" value="brendon@brendonchen.com" style="flex: 1; max-width: 320px; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
+                    </div>
                     <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">選擇嘖嘖平台匯出的支持者名單 CSV</label>
                     <input type="file" id="zeczecCsvFile" accept=".csv" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); margin-bottom: 14px;">
 
@@ -3268,6 +3275,8 @@
             const itemCount = parseInt(document.getElementById('zeczecCsvItemCount').value, 10);
             const valid_until = document.getElementById('zeczecCsvValidUntil').value || null;
             const sendEmail = document.getElementById('zeczecCsvSendEmail').checked;
+            const sendTestCopy = document.getElementById('zeczecCsvSendTestCopy').checked;
+            const testEmail = document.getElementById('zeczecCsvTestEmail').value.trim();
             const subject = document.getElementById('zeczecCsvSubject').value.trim();
             const message = document.getElementById('zeczecCsvMessage').value;
             const statusEl = document.getElementById('zeczecCsvStatus');
@@ -3294,7 +3303,7 @@
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/import-zeczec-csv`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
-                    body: JSON.stringify({ rows, tier, itemCount, valid_until, sendEmail, subject, message })
+                    body: JSON.stringify({ rows, tier, itemCount, valid_until, sendEmail, subject, message, sendTestCopy, testEmail })
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
