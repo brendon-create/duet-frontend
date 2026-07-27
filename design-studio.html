@@ -1999,8 +1999,8 @@
             };
 
             // 只在 envMap 存在時才加入（防止黑色球體）
-            if (envMap) {
-                materialConfig.envMap = envMap;
+            if (window.envMap) {
+                materialConfig.envMap = window.envMap;
             }
 
             return new THREE.MeshStandardMaterial(materialConfig);
@@ -3416,7 +3416,7 @@
             light2.position.set(5, 5, 10);
             slotScene.add(light1);
             slotScene.add(light2);
-            slotScene.environment = envMap;
+            slotScene.environment = window.envMap;
 
             const meshClone = mainMesh.clone();
             slotScene.add(meshClone);
