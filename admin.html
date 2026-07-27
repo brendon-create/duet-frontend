@@ -825,7 +825,7 @@
                         <div style="display: flex; align-items: flex-end;">
                             <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted);">
                                 <input type="checkbox" id="zeczecCsvSendEmail" checked>
-                                產生後自動寄信通知支持者兌換碼
+                                確認結果後寄信通知支持者兌換碼
                             </label>
                         </div>
                     </div>
@@ -846,10 +846,14 @@
                     <textarea id="zeczecCsvMessage" rows="4" style="width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); font-size: 13px; resize: vertical; margin-bottom: 10px;">感謝您支持 DUET 嘖嘖募資！以下是您的專屬兌換碼，可用於官網訂製您的作品：</textarea>
 
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn btn-primary" onclick="importZeczecCsv()">匯入</button>
+                        <button class="btn btn-primary" onclick="importZeczecCsv()">匯入（僅產生兌換碼，不寄信）</button>
                         <span id="zeczecCsvStatus" style="font-size: 13px; color: var(--text-muted);"></span>
                     </div>
                     <div id="zeczecCsvResult" style="margin-top: 12px; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; padding: 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);"></div>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                        <button class="btn btn-primary" id="zeczecSendBtn" style="display: none;" onclick="sendZeczecEmails()">✅ 確認無誤，寄出通知信</button>
+                        <span id="zeczecSendStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
 
                     <div style="margin-top: 20px;">
                         <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--text-light);">📦 匯入批次紀錄</h4>
@@ -1780,7 +1784,7 @@
                     }
                 }
             } catch (err) {
-                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
+                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入失敗</td></tr>';
             }
         }
         
@@ -3317,18 +3321,17 @@
             return parsed;
         }
 
+        let _pendingZeczecOrders = [];
+
         async function importZeczecCsv() {
             const fileInput = document.getElementById('zeczecCsvFile');
             const tier = document.getElementById('zeczecCsvTier').value;
             const itemCount = parseInt(document.getElementById('zeczecCsvItemCount').value, 10);
             const valid_until = document.getElementById('zeczecCsvValidUntil').value || null;
-            const sendEmail = document.getElementById('zeczecCsvSendEmail').checked;
-            const sendTestCopy = document.getElementById('zeczecCsvSendTestCopy').checked;
-            const testEmail = document.getElementById('zeczecCsvTestEmail').value.trim();
-            const subject = document.getElementById('zeczecCsvSubject').value.trim();
-            const message = document.getElementById('zeczecCsvMessage').value;
             const statusEl = document.getElementById('zeczecCsvStatus');
             const resultEl = document.getElementById('zeczecCsvResult');
+            const sendBtn = document.getElementById('zeczecSendBtn');
+            const sendStatusEl = document.getElementById('zeczecSendStatus');
 
             if (!fileInput.files || !fileInput.files[0]) {
                 statusEl.style.color = '#ef4444';
@@ -3339,6 +3342,9 @@
             statusEl.style.color = 'var(--text-muted)';
             statusEl.textContent = '讀取中...';
             resultEl.style.display = 'none';
+            sendBtn.style.display = 'none';
+            sendStatusEl.textContent = '';
+            _pendingZeczecOrders = [];
 
             try {
                 const text = await fileInput.files[0].text();
@@ -3351,7 +3357,7 @@
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/import-zeczec-csv`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
-                    body: JSON.stringify({ rows, tier, itemCount, valid_until, sendEmail, subject, message, sendTestCopy, testEmail })
+                    body: JSON.stringify({ rows, tier, itemCount, valid_until })
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
@@ -3367,9 +3373,50 @@
                 fileInput.value = '';
                 loadRedeemCodes();
                 loadZeczecBatches();
+
+                if (data.created.length) {
+                    _pendingZeczecOrders = data.created;
+                    sendBtn.style.display = '';
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = `✅ 確認無誤，寄出通知信（${data.created.length} 筆）`;
+                }
             } catch (e) {
                 statusEl.style.color = '#ef4444';
                 statusEl.textContent = '匯入失敗：' + e.message;
+            }
+        }
+
+        async function sendZeczecEmails() {
+            if (!_pendingZeczecOrders.length) return;
+            const sendEmail = document.getElementById('zeczecCsvSendEmail').checked;
+            const sendTestCopy = document.getElementById('zeczecCsvSendTestCopy').checked;
+            const testEmail = document.getElementById('zeczecCsvTestEmail').value.trim();
+            const subject = document.getElementById('zeczecCsvSubject').value.trim();
+            const message = document.getElementById('zeczecCsvMessage').value;
+            const sendBtn = document.getElementById('zeczecSendBtn');
+            const sendStatusEl = document.getElementById('zeczecSendStatus');
+
+            sendBtn.disabled = true;
+            sendStatusEl.style.color = 'var(--text-muted)';
+            sendStatusEl.textContent = '寄送中...';
+
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/send-zeczec-emails`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ orders: _pendingZeczecOrders, sendEmail, sendTestCopy, testEmail, subject, message })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                sendStatusEl.style.color = '#4ade80';
+                sendStatusEl.textContent = data.message;
+                sendBtn.style.display = 'none';
+                _pendingZeczecOrders = [];
+            } catch (e) {
+                sendBtn.disabled = false;
+                sendStatusEl.style.color = '#ef4444';
+                sendStatusEl.textContent = '寄送失敗：' + e.message;
             }
         }
 
