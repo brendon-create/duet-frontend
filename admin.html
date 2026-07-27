@@ -460,6 +460,12 @@
             font-size: 14px;
         }
         
+        /* 跳轉定位高亮 */
+        .jump-highlight {
+            background: rgba(212, 175, 55, 0.3) !important;
+            transition: background 0.3s;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -499,19 +505,19 @@
         
         <div class="main-content">
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('orders')" data-i18n="admin.tab.orders">訂單管理</button>
-                <button class="tab" onclick="switchTab('users')" data-i18n="admin.tab.users">員工管理</button>
-                <button class="tab" onclick="switchTab('promos')" data-i18n="admin.tab.promos">優惠券管理</button>
-                <button class="tab" onclick="switchTab('redeem')" data-i18n="admin.tab.redeem">兌換碼管理</button>
-                <button class="tab" id="feedbackTab_btn" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋<span id="feedbackUnreadBadge" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:10px;vertical-align:middle;"></span></button>
-                <button class="tab" onclick="switchTab('system')" data-i18n="admin.tab.system">系統監控</button>
-                <button class="tab" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
-                <button class="tab" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
-                <button class="tab" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
-                <button class="tab" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
-                <button class="tab" onclick="switchTab('quoteStats')">💰 製造成本統計</button>
-                <button class="tab" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
-                <button class="tab" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
+                <button class="tab active" data-tab="orders" onclick="switchTab('orders')" data-i18n="admin.tab.orders">訂單管理</button>
+                <button class="tab" data-tab="users" onclick="switchTab('users')" data-i18n="admin.tab.users">員工管理</button>
+                <button class="tab" data-tab="promos" onclick="switchTab('promos')" data-i18n="admin.tab.promos">優惠券管理</button>
+                <button class="tab" data-tab="redeem" onclick="switchTab('redeem')" data-i18n="admin.tab.redeem">兌換碼管理</button>
+                <button class="tab" data-tab="feedback" id="feedbackTab_btn" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋<span id="feedbackUnreadBadge" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:10px;vertical-align:middle;"></span></button>
+                <button class="tab" data-tab="system" onclick="switchTab('system')" data-i18n="admin.tab.system">系統監控</button>
+                <button class="tab" data-tab="fonts" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
+                <button class="tab" data-tab="print" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
+                <button class="tab" data-tab="gallery" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
+                <button class="tab" data-tab="manufacturers" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
+                <button class="tab" data-tab="quoteStats" onclick="switchTab('quoteStats')">💰 製造成本統計</button>
+                <button class="tab" data-tab="distributorOrders" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
+                <button class="tab" data-tab="distributorAccounts" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
                 <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
             </div>
             
@@ -613,13 +619,14 @@
                                 <th>客戶</th>
                                 <th>商品</th>
                                 <th>金額</th>
+                                <th>兌換碼</th>
                                 <th>狀態</th>
                                 <th>日期</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTableBody">
-                            <tr><td colspan="8" class="loading">載入中...</td></tr>
+                            <tr><td colspan="9" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -928,11 +935,12 @@
                                 <th>批次</th>
                                 <th>有效期</th>
                                 <th>狀態</th>
+                                <th>使用訂單</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="redeemTableBody">
-                            <tr><td colspan="6" class="loading">載入中...</td></tr>
+                            <tr><td colspan="7" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1619,7 +1627,8 @@
         // Tabs
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            const tabBtn = document.querySelector(`.tab[data-tab="${tab}"]`);
+            if (tabBtn) tabBtn.classList.add('active');
 
             const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers', 'quoteStats', 'distributorOrders', 'distributorAccounts'];
             allTabs.forEach(t => {
@@ -1647,6 +1656,34 @@
             if (tab === 'quoteStats') loadManufacturingQuoteStats();
             if (tab === 'distributorOrders') loadDistributorOrders();
             if (tab === 'distributorAccounts') loadDistributors();
+        }
+
+        // 訂單使用的兌換碼／優惠碼 → 跳轉到對應分頁並定位到該筆
+        function highlightRow(selector) {
+            const row = document.querySelector(selector);
+            if (!row) return;
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('jump-highlight');
+            setTimeout(() => row.classList.remove('jump-highlight'), 2000);
+        }
+
+        async function goToCode(code) {
+            switchTab('redeem');
+            await loadRedeemCodes();
+            if (_redeemCodes.some(c => c.code === code)) {
+                highlightRow(`tr[data-redeem-code="${code}"]`);
+                return;
+            }
+            // 不在兌換碼管理清單（例如透過優惠碼管理建立的 DUETVIP 兌換碼），改到優惠碼管理定位
+            switchTab('promos');
+            await loadPromoCodes();
+            highlightRow(`tr[data-promo-code="${code}"]`);
+        }
+
+        // 兌換碼使用的訂單 → 切到訂單管理並直接開啟該訂單詳情
+        function goToOrder(orderId) {
+            switchTab('orders');
+            viewOrder(orderId);
         }
 
         // 測試郵件
@@ -1992,7 +2029,7 @@
 
             const tbody = document.getElementById('ordersTableBody');
             if (!pageOrders.length) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無訂單</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
             
@@ -2008,6 +2045,10 @@
                 const date = order.timestamp ? new Date(order.timestamp).toLocaleDateString('zh-TW') : '-';
                 const isChecked = selectedOrders.includes(order.orderId) ? 'checked' : '';
                 const rowStyle = order.isInvalid ? 'opacity: 0.5; text-decoration: line-through;' : (order.isTest ? 'opacity: 0.7;' : '');
+                const redeemCodes = order.redeemCodes || [];
+                const redeemCodesHtml = redeemCodes.length
+                    ? redeemCodes.map(c => `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" onclick="goToCode('${c}')">${c}</button>`).join('<br>')
+                    : '-';
 
                 return `<tr style="${rowStyle}">
                     <td><input type="checkbox" ${isChecked} onchange="toggleOrderSelection('${order.orderId}')" style="width: 18px; height: 18px; cursor: pointer;"></td>
@@ -2020,6 +2061,7 @@
                     <td>${u.name || '-'}<br><small style="color:var(--text-muted)">${u.email || '-'}</small></td>
                     <td>${items.map(i => i.letter1 + i.letter2).join(', ') || '-'}</td>
                     <td>NT$ ${total.toLocaleString()}</td>
+                    <td>${redeemCodesHtml}</td>
                     <td><span class="status-badge ${status.class}">${status.text}</span></td>
                     <td>${date}</td>
                     <td><button class="btn btn-secondary btn-sm" onclick="viewOrder('${order.orderId}')">查看</button></td>
@@ -2792,14 +2834,16 @@
         }
         
         // ========== 優惠券管理 ==========
+        let _promoCodes = [];
         async function loadPromoCodes() {
             try {
                 const response = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes`, {
                     headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
+                    _promoCodes = data.promo_codes || [];
                     renderPromoCodes(data.promo_codes);
                     // 取得使用統計
                     loadPromoStats();
@@ -2842,7 +2886,7 @@
                 const usageLimit = p.usage_limit || '無限制';
                 const status = p.active ? '<span class="status-badge paid">啟用</span>' : '<span class="status-badge pending">停用</span>';
 
-                return `<tr>
+                return `<tr data-promo-code="${p.code}">
                     <td><strong>${p.code}</strong><br><small style="color:var(--text-muted)">${p.description || ''}</small></td>
                     <td>${typeLabel}</td>
                     <td>${discount}</td>
@@ -3084,7 +3128,7 @@
         let _redeemCodes = [];
 
         async function loadRedeemCodes() {
-            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="6" class="loading">載入中...</td></tr>';
+            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes`, {
                     headers: { 'Authorization': adminAuthHeader() }
@@ -3094,7 +3138,7 @@
                 _redeemCodes = data.redeem_codes || [];
                 renderRedeemTable();
             } catch (e) {
-                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="6" class="loading">載入失敗：${e.message}</td></tr>`;
+                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="7" class="loading">載入失敗：${e.message}</td></tr>`;
             }
         }
 
@@ -3112,7 +3156,7 @@
             document.getElementById('redeemUnused').textContent = total - used;
 
             if (!filtered.length) {
-                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="6" class="loading">無資料</td></tr>';
+                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="7" class="loading">無資料</td></tr>';
                 return;
             }
             document.getElementById('redeemTableBody').innerHTML = filtered.map(c => {
@@ -3124,12 +3168,16 @@
                 const statusBadge = isUsed
                     ? '<span style="color:#ef4444;font-size:12px;">已使用</span>'
                     : '<span style="color:#4ade80;font-size:12px;">未使用</span>';
-                return `<tr>
+                const orderCell = c.order_id
+                    ? `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" onclick="goToOrder('${c.order_id}')">${c.order_id}</button>`
+                    : '-';
+                return `<tr data-redeem-code="${c.code}">
                     <td style="font-family:monospace;">${c.code}</td>
                     <td>${discount}</td>
                     <td>${batch}</td>
                     <td>${validUntil}</td>
                     <td>${statusBadge}</td>
+                    <td>${orderCell}</td>
                     <td>
                         <button class="btn btn-secondary btn-sm" onclick="toggleRedeemCode('${c.code}', ${c.active})">
                             ${c.active ? '停用' : '啟用'}
