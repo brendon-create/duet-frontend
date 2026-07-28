@@ -1553,7 +1553,8 @@
             'completed': { text: '製作完成', class: 'completed' },
             'shipped': { text: '已出貨', class: 'shipped' },
             'delivered': { text: '已簽收', class: 'delivered' },
-            'test': { text: '測試訂單', class: 'pending' }
+            'test': { text: '測試訂單', class: 'pending' },
+            'stl_failed': { text: 'STL 生成失敗', class: 'pending' }
         };
         
         // Check login on load
@@ -2405,7 +2406,7 @@
                 <div class="detail-section">
                     <h3>基本資訊</h3>
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
-                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}</div>
+                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${order.orderId}')">🔄 重新生成 STL</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
@@ -4075,6 +4076,27 @@
                 stats.letter_combo_stats.length ? stats.letter_combo_stats.map(rowHtml).join('') : '<tr><td colspan="3" class="empty-state">尚無資料</td></tr>';
             document.getElementById('qsFontTableBody').innerHTML =
                 stats.font_stats.length ? stats.font_stats.map(rowHtml).join('') : '<tr><td colspan="3" class="empty-state">尚無資料</td></tr>';
+        }
+
+        // 重新將訂單加入 STL 生成佇列（用於 stl_failed 或卡住的訂單）
+        async function retryStlGeneration(orderId) {
+            if (!confirm(`確定要將訂單 ${orderId} 重新加入 STL 生成佇列嗎？`)) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/retry-stl`, {
+                    method: 'POST',
+                    headers: { 'Authorization': adminAuthHeader(), 'X-Admin-User': currentUser?.username || 'admin' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                    viewOrder(orderId);
+                    loadOrders();
+                } else {
+                    alert(data.error || '重新生成失敗');
+                }
+            } catch (e) {
+                alert('網路錯誤：' + e.message);
+            }
         }
 
         // ==================== 開始製作 / 發送給廠商 Modal ====================
