@@ -994,8 +994,12 @@
                 removeTypingIndicator();
 
                 if (data.completed) {
-                    // Conversation completed
-                    showCompletionScreen(data);
+                    // Conversation completed — 停一下讓使用者反應過來，避免畫面瞬間切換像是卡住了
+                    showTypingIndicator();
+                    setTimeout(() => {
+                        removeTypingIndicator();
+                        showCompletionScreen(data);
+                    }, 1500);
                 } else {
                     // 檢查 message 中是否包含 JSON（備用檢測）
                     const message = data.message;
@@ -1010,7 +1014,17 @@
 
                             if (parsed.recommendations && parsed.letters) {
                                 console.log('✅ 前端檢測到 JSON，觸發完成畫面');
-                                showCompletionScreen(parsed);
+                                // AI 有時不會完全照指示「只輸出 JSON」，JSON 前面可能還帶一句轉場話，
+                                // 先把那句話正常顯示出來、讓使用者看得完，再停一下才切到推薦畫面
+                                const leadingText = message.slice(0, jsonMatch.index).trim();
+                                if (leadingText) {
+                                    addMessage('assistant', leadingText);
+                                }
+                                showTypingIndicator();
+                                setTimeout(() => {
+                                    removeTypingIndicator();
+                                    showCompletionScreen(parsed);
+                                }, 1500);
                                 return;
                             }
                         } catch (e) {

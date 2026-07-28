@@ -1781,7 +1781,10 @@
         // 絕不能預設 open，否則後端冷啟動或網路不穩時會誤把正常結帳畫面曝光給嘖嘖募資期間的訪客
         window.CHECKOUT_MODE = 'closed';
         window.CHECKOUT_CLOSED_MESSAGE = '嘖嘖募資 7 月 20 起跑，敬請期待。';
-        (async function fetchCheckoutConfig() {
+        // 購物車第一次渲染前會等這個 promise，避免結帳模式還沒抓回來、
+        // 先用預設值畫出錯的畫面（例如兌換碼模式下短暫出現可調整數量的按鈕），之後才整個換掉
+        window._checkoutConfigResolved = false;
+        window._checkoutConfigReady = (async function fetchCheckoutConfig() {
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/checkout-config`);
                 const data = await res.json();
@@ -1802,6 +1805,8 @@
             } catch (e) {
                 console.warn('⚠️ 取得結帳模式失敗，維持安全預設 closed（暫停結帳）', e);
                 if (typeof renderCart === 'function') renderCart();
+            } finally {
+                window._checkoutConfigResolved = true;
             }
         })();
 
@@ -3717,9 +3722,20 @@
             }
         }
 
-        function openCart() {
+        async function openCart() {
             posthog.capture('cart_opened');
             document.getElementById('cart-modal').classList.add('active');
+
+            // 結帳模式（open/closed/redemption）決定了購物車該長什麼樣子（例如兌換碼模式下
+            // 不能調整數量），這裡先等設定確實抓回來再渲染，避免先畫出預設模式的舊畫面、
+            // 設定回來後才整個切換成正確畫面的閃爍
+            const container = document.getElementById('cart-items');
+            if (container && !window._checkoutConfigResolved) {
+                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">載入中⋯⋯</div>';
+            }
+            if (window._checkoutConfigReady) {
+                try { await window._checkoutConfigReady; } catch (e) { /* 已在內部處理，這裡不用重複處理 */ }
+            }
             renderCart();
         }
 
@@ -3820,9 +3836,11 @@
                 const quantityDiv = document.createElement('div');
                 quantityDiv.className = 'cart-item-quantity';
 
-                if (window.CHECKOUT_MODE === 'redemption') {
-                    // 兌換碼結帳模式：一個兌換碼只能兌換一件作品，數量固定為 1、不可調整
-                    // （後端也會擋 quantity != 1，這裡只是避免介面上出現看似可用、實際上會被拒絕的按鈕）
+                if (window.CHECKOUT_MODE !== 'open') {
+                    // 結帳模式預設安全值是 closed，實際模式要等 /api/checkout-config 回來才知道；
+                    // 兌換碼結帳模式下數量必須固定為 1、不可調整（後端也會擋 quantity != 1）。
+                    // 用「非 open 一律不可調整」而非「只在 redemption 時才隱藏」，
+                    // 避免設定值還沒抓回來的這段時間，先用預設值誤判成一般模式、短暫顯示出可調整的按鈕。
                     cartItems[index].quantity = 1;
                     quantityDiv.textContent = '1';
                     quantityDiv.style.opacity = '0.7';
