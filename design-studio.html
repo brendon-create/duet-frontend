@@ -3820,49 +3820,57 @@
                 const quantityDiv = document.createElement('div');
                 quantityDiv.className = 'cart-item-quantity';
 
-                const quantityInput = document.createElement('input');
-                quantityInput.type = 'number';
-                quantityInput.className = 'quantity-input';
-                quantityInput.value = item.quantity;
-                quantityInput.min = '1';
-                quantityInput.setAttribute('data-index', index);
-                quantityInput.addEventListener('input', (e) => {
-                    const value = parseInt(e.target.value) || 1;
-                    if (value > 0) {
-                        cartItems[index].quantity = value;
-                        cartItems[index].redeemCodeValid = false; // 數量變動需重新驗證兌換碼
-                        renderCart();
-                    }
-                });
+                if (window.CHECKOUT_MODE === 'redemption') {
+                    // 兌換碼結帳模式：一個兌換碼只能兌換一件作品，數量固定為 1、不可調整
+                    // （後端也會擋 quantity != 1，這裡只是避免介面上出現看似可用、實際上會被拒絕的按鈕）
+                    cartItems[index].quantity = 1;
+                    quantityDiv.textContent = '1';
+                    quantityDiv.style.opacity = '0.7';
+                } else {
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.className = 'quantity-input';
+                    quantityInput.value = item.quantity;
+                    quantityInput.min = '1';
+                    quantityInput.setAttribute('data-index', index);
+                    quantityInput.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value) || 1;
+                        if (value > 0) {
+                            cartItems[index].quantity = value;
+                            cartItems[index].redeemCodeValid = false; // 數量變動需重新驗證兌換碼
+                            renderCart();
+                        }
+                    });
 
-                const quantityBtns = document.createElement('div');
-                quantityBtns.className = 'quantity-btns';
+                    const quantityBtns = document.createElement('div');
+                    quantityBtns.className = 'quantity-btns';
 
-                const upBtn = document.createElement('button');
-                upBtn.className = 'qty-btn';
-                upBtn.textContent = '▲';
-                upBtn.onclick = () => {
-                    cartItems[index].quantity++;
-                    cartItems[index].redeemCodeValid = false;
-                    renderCart();
-                };
-
-                const downBtn = document.createElement('button');
-                downBtn.className = 'qty-btn';
-                downBtn.textContent = '▼';
-                downBtn.onclick = () => {
-                    if (cartItems[index].quantity > 1) {
-                        cartItems[index].quantity--;
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'qty-btn';
+                    upBtn.textContent = '▲';
+                    upBtn.onclick = () => {
+                        cartItems[index].quantity++;
                         cartItems[index].redeemCodeValid = false;
                         renderCart();
-                    }
-                };
+                    };
 
-                quantityBtns.appendChild(upBtn);
-                quantityBtns.appendChild(downBtn);
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'qty-btn';
+                    downBtn.textContent = '▼';
+                    downBtn.onclick = () => {
+                        if (cartItems[index].quantity > 1) {
+                            cartItems[index].quantity--;
+                            cartItems[index].redeemCodeValid = false;
+                            renderCart();
+                        }
+                    };
 
-                quantityDiv.appendChild(quantityInput);
-                quantityDiv.appendChild(quantityBtns);
+                    quantityBtns.appendChild(upBtn);
+                    quantityBtns.appendChild(downBtn);
+
+                    quantityDiv.appendChild(quantityInput);
+                    quantityDiv.appendChild(quantityBtns);
+                }
                 div.appendChild(quantityDiv);
 
                 const deleteBtn = document.createElement('button');
