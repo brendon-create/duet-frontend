@@ -822,18 +822,26 @@
                             <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">有效期限（選填）</label>
                             <input id="zeczecCsvValidUntil" type="date" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
                         </div>
-                        <div style="display: flex; align-items: flex-end;">
-                            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted);">
-                                <input type="checkbox" id="zeczecCsvSendEmail" checked>
-                                確認結果後寄信通知支持者兌換碼
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">寄送方式（按下方「確認寄出」按鈕時生效）</label>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted);">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="zeczecSendMode" value="test_then_real" onchange="updateZeczecSendBtnLabel()" checked>
+                                先寄測試信，確認無誤後再寄正式信給支持者
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="zeczecSendMode" value="both" onchange="updateZeczecSendBtnLabel()">
+                                測試信與正式信同時寄出
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="zeczecSendMode" value="real_only" onchange="updateZeczecSendBtnLabel()">
+                                只寄正式信給支持者（不寄測試信）
                             </label>
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); flex-shrink: 0;">
-                            <input type="checkbox" id="zeczecCsvSendTestCopy" checked>
-                            同步寄送一封測試信給內部信箱
-                        </label>
+                        <label style="font-size: 13px; color: var(--text-muted); flex-shrink: 0;">內部測試信收件信箱</label>
                         <input id="zeczecCsvTestEmail" type="email" value="brendon@brendonchen.com" style="flex: 1; max-width: 320px; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light);">
                     </div>
                     <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">選擇嘖嘖平台匯出的支持者名單 CSV</label>
@@ -3147,6 +3155,29 @@
             }
         }
 
+        // 從 description 取出批次標籤（不含 [嘖嘖兌換碼] 標記與 [ORDER:xxx] 訂單標記），跟後端 update_redeem_code_batch 用同一套邏輯
+        function _redeemCodeTier(description) {
+            const m = (description || '').match(/^\[嘖嘖兌換碼\]\s*(.*?)\s*(\[ORDER:.*)$/);
+            return m ? m[1] : '';
+        }
+
+        async function editRedeemBatch(code, currentTier) {
+            const newTier = prompt(`修改「${code}」的批次標籤（留空可清除）：`, currentTier);
+            if (newTier === null) return; // 使用者取消
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes/${code}/batch`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ tier: newTier.trim() })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                loadRedeemCodes();
+            } catch (e) {
+                alert('更新批次標籤失敗：' + e.message);
+            }
+        }
+
         function renderRedeemTable() {
             const filter = document.getElementById('redeemStatusFilter').value;
             const filtered = _redeemCodes.filter(c => {
@@ -3168,6 +3199,9 @@
                 const isUsed = c.usage_count >= 1;
                 const discount = c.promo_type === 'redeem_item' ? '完全折抵'
                     : (c.promo_type === 'percentage' ? `${c.value}% 折扣` : `NT$ ${(c.value || 0).toLocaleString()} 折扣`);
+                const tier = _redeemCodeTier(c.description);
+                // 批次欄位保留完整內容（含 [ORDER:xxx]，那是嘖嘖平台自己的訂單編號，方便對照原始募資訂單），
+                // 「編輯」只會改動批次標籤本身，不會動到這個嘖嘖訂單參照
                 const batch = (c.description || '').replace('[嘖嘖兌換碼]', '').trim() || '-';
                 const validUntil = c.valid_until || '無期限';
                 const statusBadge = isUsed
@@ -3179,7 +3213,7 @@
                 return `<tr data-redeem-code="${c.code}">
                     <td style="font-family:monospace;">${c.code}</td>
                     <td>${discount}</td>
-                    <td>${batch}</td>
+                    <td>${batch} <button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-size:11px;" onclick="editRedeemBatch('${c.code}', '${tier.replace(/'/g, "\\'")}')">編輯</button></td>
                     <td>${validUntil}</td>
                     <td>${statusBadge}</td>
                     <td>${orderCell}</td>
@@ -3323,6 +3357,22 @@
         }
 
         let _pendingZeczecOrders = [];
+        let _zeczecSendPhase = null; // null（尚未寄）｜'awaiting_real'（先測試模式下，測試信已寄出、等待寄正式信）
+
+        function _zeczecSendMode() {
+            return document.querySelector('input[name="zeczecSendMode"]:checked').value;
+        }
+
+        function updateZeczecSendBtnLabel() {
+            const sendBtn = document.getElementById('zeczecSendBtn');
+            if (sendBtn.style.display === 'none') return;
+            const count = _pendingZeczecOrders.length;
+            if (_zeczecSendPhase === 'awaiting_real') {
+                sendBtn.textContent = `✅ 測試信已確認無誤，寄出正式信給支持者（${count} 筆）`;
+            } else {
+                sendBtn.textContent = `✅ 確認無誤，寄出通知信（${count} 筆）`;
+            }
+        }
 
         async function importZeczecCsv() {
             const fileInput = document.getElementById('zeczecCsvFile');
@@ -3345,7 +3395,9 @@
             resultEl.style.display = 'none';
             sendBtn.style.display = 'none';
             sendStatusEl.textContent = '';
+            // 這批的舊資料只在匯入下一筆時才清除更新，寄信途中（例如先寄測試信、等確認）不會被清空
             _pendingZeczecOrders = [];
+            _zeczecSendPhase = null;
 
             try {
                 const text = await fileInput.files[0].text();
@@ -3379,7 +3431,7 @@
                     _pendingZeczecOrders = data.created;
                     sendBtn.style.display = '';
                     sendBtn.disabled = false;
-                    sendBtn.textContent = `✅ 確認無誤，寄出通知信（${data.created.length} 筆）`;
+                    updateZeczecSendBtnLabel();
                 }
             } catch (e) {
                 statusEl.style.color = '#ef4444';
@@ -3389,13 +3441,27 @@
 
         async function sendZeczecEmails() {
             if (!_pendingZeczecOrders.length) return;
-            const sendEmail = document.getElementById('zeczecCsvSendEmail').checked;
-            const sendTestCopy = document.getElementById('zeczecCsvSendTestCopy').checked;
+            const mode = _zeczecSendMode();
             const testEmail = document.getElementById('zeczecCsvTestEmail').value.trim();
             const subject = document.getElementById('zeczecCsvSubject').value.trim();
             const message = document.getElementById('zeczecCsvMessage').value;
             const sendBtn = document.getElementById('zeczecSendBtn');
             const sendStatusEl = document.getElementById('zeczecSendStatus');
+
+            // 「先測試信、確認後再寄正式信」模式下，第一次點擊只寄測試信，
+            // 第二次點擊（_zeczecSendPhase === 'awaiting_real'）才寄正式信
+            let sendEmail, sendTestCopy;
+            if (mode === 'test_then_real') {
+                if (_zeczecSendPhase === 'awaiting_real') {
+                    sendEmail = true; sendTestCopy = false;
+                } else {
+                    sendEmail = false; sendTestCopy = true;
+                }
+            } else if (mode === 'both') {
+                sendEmail = true; sendTestCopy = true;
+            } else { // real_only
+                sendEmail = true; sendTestCopy = false;
+            }
 
             sendBtn.disabled = true;
             sendStatusEl.style.color = 'var(--text-muted)';
@@ -3411,9 +3477,19 @@
                 if (!data.success) throw new Error(data.error);
 
                 sendStatusEl.style.color = '#4ade80';
-                sendStatusEl.textContent = data.message;
-                sendBtn.style.display = 'none';
-                _pendingZeczecOrders = [];
+                if (mode === 'test_then_real' && _zeczecSendPhase !== 'awaiting_real') {
+                    // 剛寄出的是測試信，等待後台確認無誤後再寄正式信（_pendingZeczecOrders 保留，不清除）
+                    _zeczecSendPhase = 'awaiting_real';
+                    sendStatusEl.textContent = '測試信已寄出，請確認收到內容無誤後，再點下方按鈕寄出正式信';
+                    sendBtn.disabled = false;
+                    updateZeczecSendBtnLabel();
+                } else {
+                    sendStatusEl.textContent = data.message;
+                    sendBtn.style.display = 'none';
+                    _zeczecSendPhase = null;
+                    // 注意：_pendingZeczecOrders 不在這裡清除，等下一次匯入才會被覆蓋，
+                    // 避免萬一要重新確認寄送內容時資料已經不見
+                }
             } catch (e) {
                 sendBtn.disabled = false;
                 sendStatusEl.style.color = '#ef4444';
