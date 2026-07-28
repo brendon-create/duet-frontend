@@ -5161,8 +5161,18 @@
             const modal = document.getElementById('checkout-reminder-modal');
             modal.style.display = 'flex';
 
-            // 綁定按鈕事件（只綁定一次）
+            // 兌換碼結帳模式沒有實際付款流程，「付款完成後」的文字要換成「送出設計後」
             const btn = document.getElementById('proceed-to-checkout-btn');
+            const warningEl = document.querySelector('[data-i18n="checkout.reminder.warning"]');
+            if (window.CHECKOUT_MODE === 'redemption') {
+                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning.redemption');
+                btn.textContent = window.t('checkout.reminder.btn.redemption');
+            } else {
+                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning');
+                btn.textContent = window.t('checkout.reminder.btn');
+            }
+
+            // 綁定按鈕事件（只綁定一次）
             btn.onclick = function () {
                 modal.style.display = 'none';
                 if (TESTING_MODE) {
