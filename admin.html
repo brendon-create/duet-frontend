@@ -2575,16 +2575,33 @@
                 <div class="detail-section">
                     <h3>訂單內容</h3>
                     ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${order.manufacturer_name}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
-                    ${items.map((item, idx) => `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
+                    ${items.map((item, idx) => {
+                        const views = item.threeViews || [];
+                        const findView = (key) => views.find(v => v.name && v.name.includes(key));
+                        const viewCell = (view, label) => `<div style="text-align:center;">
+                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${label}</div>
+                            ${view && view.dataURL
+                                ? `<img src="${view.dataURL}" style="width:100%;max-width:130px;border-radius:6px;border:1px solid var(--border);background:#111;">`
+                                : `<div style="width:100%;max-width:130px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px dashed var(--border);color:var(--text-muted);font-size:11px;margin:0 auto;">未提供</div>`}
+                        </div>`;
+                        const viewsHtml = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
+                            ${viewCell(findView('letter1'), '正視圖')}
+                            ${viewCell(findView('letter2'), '側視圖')}
+                            ${viewCell(findView('top'), '俯視圖')}
+                            ${viewCell(findView('hero'), 'Hero 45°')}
+                        </div>`;
+                        return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
                         <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish}</div>
+                        ${viewsHtml}
                         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
                         </div>
-                    </div>`).join('')}
+                    </div>`;
+                    }).join('')}
                     <div class="detail-row"><span class="detail-label">總金額</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${(order.total||0).toLocaleString()}</span></div>
                 </div>
                 <div class="detail-section">
