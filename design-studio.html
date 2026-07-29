@@ -5035,13 +5035,8 @@
                 // 設計確認
                 showDesignConfirmation()
                     .then(() => {
-                        const hasAiConsultation = !!localStorage.getItem('duet_ai_consultation');
-                        if (hasAiConsultation) {
-                            showCheckoutReminder();
-                        } else {
-                            if (TESTING_MODE) testModeCheckout();
-                            else processPayment();
-                        }
+                        if (TESTING_MODE) testModeCheckout();
+                        else processPayment();
                     })
                     .catch(() => {}); // 用戶選擇返回修改
             }).catch(() => {}); // 用戶點返回購物車
@@ -5164,29 +5159,27 @@
 
         // 顯示結帳提醒彈窗
         function showCheckoutReminder() {
-            const modal = document.getElementById('checkout-reminder-modal');
-            modal.style.display = 'flex';
+            return new Promise((resolve) => {
+                const modal = document.getElementById('checkout-reminder-modal');
+                modal.style.display = 'flex';
 
-            // 兌換碼結帳模式沒有實際付款流程，「付款完成後」的文字要換成「送出設計後」
-            const btn = document.getElementById('proceed-to-checkout-btn');
-            const warningEl = document.querySelector('[data-i18n="checkout.reminder.warning"]');
-            if (window.CHECKOUT_MODE === 'redemption') {
-                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning.redemption');
-                btn.textContent = window.t('checkout.reminder.btn.redemption');
-            } else {
-                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning');
-                btn.textContent = window.t('checkout.reminder.btn');
-            }
-
-            // 綁定按鈕事件（只綁定一次）
-            btn.onclick = function () {
-                modal.style.display = 'none';
-                if (TESTING_MODE) {
-                    testModeCheckout();
+                // 兌換碼結帳模式沒有實際付款流程，「付款完成後」的文字要換成「送出設計後」
+                const btn = document.getElementById('proceed-to-checkout-btn');
+                const warningEl = document.querySelector('[data-i18n="checkout.reminder.warning"]');
+                if (window.CHECKOUT_MODE === 'redemption') {
+                    if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning.redemption');
+                    btn.textContent = window.t('checkout.reminder.btn.redemption');
                 } else {
-                    processPayment();
+                    if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning');
+                    btn.textContent = window.t('checkout.reminder.btn');
                 }
-            };
+
+                // 綁定按鈕事件（只綁定一次）
+                btn.onclick = function () {
+                    modal.style.display = 'none';
+                    resolve();
+                };
+            });
         }
 
         // 正常支付流程
@@ -5202,6 +5195,9 @@
                 console.warn('⚠️ 用戶取消填寫資訊');
                 return; // 用戶取消
             }
+
+            // 收件人資訊填寫完成後，才提醒用戶不要中途離開頁面
+            await showCheckoutReminder();
 
             const orderId = 'DUET' + Date.now();
             console.log('🔢 訂單ID:', orderId);
