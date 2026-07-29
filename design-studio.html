@@ -3671,7 +3671,8 @@
                     return basePrice;
                 })(),
                 isPreciousMetal: document.getElementById('material').value === 'precious_metal',
-                // 儲存圓環相對向量
+                // 儲存圓環相對向量（注意：ringRelativeZ 是相對於物件「中心點」，
+                // 包含模型高度帶來的基準偏移，不等於下面 ringSliderZ 滑桿上顯示的數字）
                 ringRelativeX: ringRelativeX,
                 ringRelativeY: ringRelativeY,
                 ringRelativeZ: ringRelativeZ,
@@ -3680,6 +3681,11 @@
                 ringAbsoluteX: ringMesh ? ringMesh.position.x : 0,
                 ringAbsoluteY: ringMesh ? ringMesh.position.y : 0,
                 ringAbsoluteZ: ringMesh ? ringMesh.position.z : 0,
+                // 儲存滑桿上的原始數值（跟畫面上顯示的一致，供人工參考/重現用）
+                ringSliderX: parseFloat(document.getElementById('ringX').value),
+                ringSliderY: parseFloat(document.getElementById('ringY').value),
+                ringSliderZ: parseFloat(document.getElementById('ringZ').value),
+                ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
                 // 儲存字母 BBox 信息（用於後端精確建模）
                 letter1BBox: window.letter1BBox || {},
                 letter2BBox: window.letter2BBox || {},
