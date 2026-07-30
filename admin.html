@@ -2590,9 +2590,13 @@
                             ${viewCell(findView('top'), '俯視圖')}
                             ${viewCell(findView('hero'), 'Hero 45°')}
                         </div>`;
+                        const chainLabels = { silver_chain: '銀色不鏽鋼鏈', gold_chain: '金色不鏽鋼鏈', rosegold_chain: '玫瑰金不鏽鋼鏈', black_rubber: '黑色橡膠繩' };
+                        const chainLabel = chainLabels[item.chainType]
+                            ? chainLabels[item.chainType] + (item.chainType === 'black_rubber' && item.chainLength ? `・${item.chainLength}` : '')
+                            : '未選擇';
                         return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
-                        <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish}</div>
+                        <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish} | 項鍊: ${chainLabel}</div>
                         ${viewsHtml}
                         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
