@@ -334,8 +334,8 @@ window.translations = {
         'checkout.reminder.step3':       '最後呈現設計理念讓您修改與確認',
         'checkout.reminder.warning':     '請在付款完成後，稍候片刻不要關閉視窗',
         'checkout.reminder.btn':         '我知道了，前往結帳',
-        'checkout.reminder.warning.redemption': '請在送出設計後，稍候片刻不要關閉視窗',
-        'checkout.reminder.btn.redemption':     '送出設計',
+        'checkout.reminder.warning.redemption': '請在送出訂單後，稍候片刻不要關閉視窗',
+        'checkout.reminder.btn.redemption':     '我知道了，送出訂單',
 
         // ── 設計理念產生中 ──
         'design.story.generating':       '正在為您撰寫設計理念',
@@ -706,8 +706,8 @@ window.translations = {
         'checkout.reminder.step3':       'Finally, we\'ll present the design concept for your review and edits',
         'checkout.reminder.warning':     '⏳ Please stay on this page after completing payment',
         'checkout.reminder.btn':         "Got it, proceed to checkout",
-        'checkout.reminder.warning.redemption': '⏳ Please stay on this page after submitting your design',
-        'checkout.reminder.btn.redemption':     'Submit Design',
+        'checkout.reminder.warning.redemption': '⏳ Please stay on this page after submitting your order',
+        'checkout.reminder.btn.redemption':     'Got it, submit order',
 
         // ── 設計理念產生中 ──
         'design.story.generating':       'Writing your design concept',

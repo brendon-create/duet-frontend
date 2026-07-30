@@ -1766,13 +1766,7 @@
 
         // === 後端 API 設定 ===
         // ===== 配置區塊 =====
-        const TESTING_MODE = false;  // ⚠️ 測試模式關閉，使用真實金流（綠界測試站）
         // BACKEND_URL 已在前面定義（供付款檢測使用）
-
-        console.log('🔧 當前配置:', {
-            測試模式: TESTING_MODE ? '✅ 啟用' : '❌ 關閉',
-            後端URL: BACKEND_URL
-        });
 
         console.log('🔧 後端 URL:', BACKEND_URL);
 
@@ -4224,90 +4218,6 @@
             }
         }
 
-        async function testModeCheckout() {
-            console.log('🧪 測試模式：模擬支付成功');
-
-            const mockOrderId = 'TEST_' + Date.now();
-            const mockUserInfo = {
-                name: '測試用戶',
-                email: 'brendon@brendonchen.com',
-                phone: '0912345678'
-            };
-
-            try {
-                console.log('📤 發送測試訂單到後端...');
-
-                // ✅ 排除 mesh 和 ring（3D 物件），只發送必要資料
-                const itemsWithBBox = cartItems.map(item => {
-                    // 解構排除 mesh 和 ring
-                    const { mesh, ring, ...itemData } = item;
-
-                    return {
-                        ...itemData,
-                        // ✅ 確保所有數值欄位都是數字類型
-                        size: typeof item.size === 'string' ? parseInt(item.size) : item.size,
-                        quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity,
-                        price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
-                        ringAbsoluteX: typeof item.ringAbsoluteX === 'string' ? parseFloat(item.ringAbsoluteX) : (item.ringAbsoluteX || 0),
-                        ringAbsoluteY: typeof item.ringAbsoluteY === 'string' ? parseFloat(item.ringAbsoluteY) : (item.ringAbsoluteY || 0),
-                        ringAbsoluteZ: typeof item.ringAbsoluteZ === 'string' ? parseFloat(item.ringAbsoluteZ) : (item.ringAbsoluteZ || 0),
-                        ringRelativeX: typeof item.ringRelativeX === 'string' ? parseFloat(item.ringRelativeX) : (item.ringRelativeX || 0),
-                        ringRelativeY: typeof item.ringRelativeY === 'string' ? parseFloat(item.ringRelativeY) : (item.ringRelativeY || 0),
-                        ringRelativeZ: typeof item.ringRelativeZ === 'string' ? parseFloat(item.ringRelativeZ) : (item.ringRelativeZ || 0),
-                        ringRotation: typeof item.ringRotation === 'string' ? parseFloat(item.ringRotation) : (item.ringRotation || 0),
-                        letter1BBox: item.letter1BBox || { width: 10, height: 12, depth: 5, offsetX: 0, offsetY: 0, offsetZ: 0 },
-                        letter2BBox: item.letter2BBox || { width: 10, height: 12, depth: 5, offsetX: 0, offsetY: 0, offsetZ: 0 }
-                    };
-                });
-
-                console.log('📦 訂單資料:', { orderId: mockOrderId, items: itemsWithBBox, total: calculateCartTotal() });
-
-                // 取得 AI 諮詢資料（如果有的話）
-                const aiDataStr = localStorage.getItem('duet_ai_consultation');
-                const aiData = aiDataStr ? JSON.parse(aiDataStr) : null;
-
-                const response = await fetch(`${window.BACKEND_URL}/api/test-order`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: mockOrderId,
-                        items: itemsWithBBox,
-                        userInfo: mockUserInfo,
-                        total: originalTotal,
-                        promoCode: appliedPromoCode,
-                        aiConsultation: aiData,
-                        testMode: true
-                    })
-                });
-
-                console.log('📥 收到回應:', response.status);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ 後端錯誤:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-
-                const result = await response.json();
-                console.log('✅ 後端回應:', result);
-
-                if (result.success) {
-                    cartItems = [];
-                    renderCart();
-                    closeCart();
-                    // 走 payment_success 流程：讓後端資料驅動後續步驟（設計理念 / Option B）
-                    window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
-                    console.log('✅ 測試訂單完成！');
-                } else {
-                    alert('❌ 測試失敗：' + (result.error || '未知錯誤'));
-                }
-
-            } catch (error) {
-                console.error('❌ 測試模式錯誤:', error);
-                alert('❌ 連接後端失敗：\n\n' + error.message + '\n\n請查看 Console 了解詳情');
-            }
-        }
-
         // ============================================================
         // 設計理念收集流程（新增到 duet-frontend）
         // 位置：在 showSuccessModal() 之後
@@ -5035,13 +4945,7 @@
                 // 設計確認
                 showDesignConfirmation()
                     .then(() => {
-                        const hasAiConsultation = !!localStorage.getItem('duet_ai_consultation');
-                        if (hasAiConsultation) {
-                            showCheckoutReminder();
-                        } else {
-                            if (TESTING_MODE) testModeCheckout();
-                            else processPayment();
-                        }
+                        processPayment();
                     })
                     .catch(() => {}); // 用戶選擇返回修改
             }).catch(() => {}); // 用戶點返回購物車
@@ -5164,29 +5068,27 @@
 
         // 顯示結帳提醒彈窗
         function showCheckoutReminder() {
-            const modal = document.getElementById('checkout-reminder-modal');
-            modal.style.display = 'flex';
+            return new Promise((resolve) => {
+                const modal = document.getElementById('checkout-reminder-modal');
+                modal.style.display = 'flex';
 
-            // 兌換碼結帳模式沒有實際付款流程，「付款完成後」的文字要換成「送出設計後」
-            const btn = document.getElementById('proceed-to-checkout-btn');
-            const warningEl = document.querySelector('[data-i18n="checkout.reminder.warning"]');
-            if (window.CHECKOUT_MODE === 'redemption') {
-                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning.redemption');
-                btn.textContent = window.t('checkout.reminder.btn.redemption');
-            } else {
-                if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning');
-                btn.textContent = window.t('checkout.reminder.btn');
-            }
-
-            // 綁定按鈕事件（只綁定一次）
-            btn.onclick = function () {
-                modal.style.display = 'none';
-                if (TESTING_MODE) {
-                    testModeCheckout();
+                // 兌換碼結帳模式沒有實際付款流程，「付款完成後」的文字要換成「送出設計後」
+                const btn = document.getElementById('proceed-to-checkout-btn');
+                const warningEl = document.querySelector('[data-i18n="checkout.reminder.warning"]');
+                if (window.CHECKOUT_MODE === 'redemption') {
+                    if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning.redemption');
+                    btn.textContent = window.t('checkout.reminder.btn.redemption');
                 } else {
-                    processPayment();
+                    if (warningEl) warningEl.textContent = window.t('checkout.reminder.warning');
+                    btn.textContent = window.t('checkout.reminder.btn');
                 }
-            };
+
+                // 綁定按鈕事件（只綁定一次）
+                btn.onclick = function () {
+                    modal.style.display = 'none';
+                    resolve();
+                };
+            });
         }
 
         // 正常支付流程
@@ -5202,6 +5104,9 @@
                 console.warn('⚠️ 用戶取消填寫資訊');
                 return; // 用戶取消
             }
+
+            // 收件人資訊填寫完成後，才提醒用戶不要中途離開頁面
+            await showCheckoutReminder();
 
             const orderId = 'DUET' + Date.now();
             console.log('🔢 訂單ID:', orderId);
