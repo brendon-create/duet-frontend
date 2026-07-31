@@ -358,11 +358,19 @@ async function buildScene() {
     window.scene.add(result);
     removeAllPlaceholderSpheres();
 
-    // 圓環滑桿：帶入下單當時的原始滑桿數值
-    document.getElementById('ringX').value = item.ringSliderX ?? 0;
-    document.getElementById('ringY').value = item.ringSliderY ?? 0;
-    document.getElementById('ringZ').value = item.ringSliderZ ?? 0;
-    document.getElementById('ringRotation').value = item.ringSliderRotation ?? 0;
+    // 圓環滑桿：從真正的權威欄位 ringRelativeX/Y/Z/ringRotation 反推滑桿數值，
+    // 不能用 ringSliderX/Y/Z（那只是下單當時的參考快照，調整後不會被更新，會跟實際位置對不上）。
+    // 對照 ring-bail.js 的 updateRingPosition()：
+    //   position.x = modelCenter.x + sliderX  → sliderX = ringRelativeX
+    //   position.y = modelCenter.y + sliderY  → sliderY = ringRelativeY
+    //   position.z = (modelTopZ + 1.2) + sliderZ → sliderZ = ringRelativeZ - modelTopZ - 1.2
+    const ringRelX = item.ringRelativeX ?? 0;
+    const ringRelY = item.ringRelativeY ?? 0;
+    const ringRelZ = item.ringRelativeZ ?? 0;
+    document.getElementById('ringX').value = ringRelX;
+    document.getElementById('ringY').value = ringRelY;
+    document.getElementById('ringZ').value = (ringRelZ - window.modelTopZ - 1.2).toFixed(2);
+    document.getElementById('ringRotation').value = item.ringRotation ?? 0;
     ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
         const suffix = id === 'ringRotation' ? '°' : '';
         document.getElementById(`${id}-val`).textContent = document.getElementById(id).value + suffix;
