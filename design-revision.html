@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUET — 調整墜頭位置</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            font-family: 'Outfit', 'Microsoft JhengHei', Arial, sans-serif;
+            background: #0c0a06; color: #eee;
+        }
+
+        #viewport { position: fixed; inset: 0; }
+
+        .center-card {
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 520px; width: 100%; background: #16140f; border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 20px; padding: 40px 34px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .card h1 { color: #d4af37; font-size: 30px; font-weight: 600; letter-spacing: 3px; margin-bottom: 4px; }
+        .card .sub { color: #888; font-size: 12px; letter-spacing: 2px; margin-bottom: 24px; }
+        .card .icon { font-size: 46px; margin-bottom: 14px; }
+        .card p { color: #bbb; font-size: 14px; line-height: 1.8; }
+        .back-link { display: inline-block; margin-top: 24px; color: #d4af37; text-decoration: none; font-size: 13px; }
+        .spinner {
+            width: 34px; height: 34px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #d4af37;
+            border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── 主編輯畫面 ── */
+        #panel {
+            position: fixed; top: 16px; left: 16px; width: 320px; max-width: calc(100vw - 32px);
+            background: rgba(16,14,10,0.94); border: 1px solid rgba(212,175,55,0.25); border-radius: 16px;
+            padding: 20px 20px 22px; backdrop-filter: blur(10px); max-height: calc(100vh - 32px); overflow-y: auto;
+        }
+        #panel h2 { color: #d4af37; font-size: 16px; margin-bottom: 4px; }
+        #panel .order-tag { color: #777; font-size: 11px; margin-bottom: 14px; }
+        #panel .msg-box {
+            background: rgba(212,175,55,0.07); border-left: 3px solid #d4af37; border-radius: 8px;
+            padding: 12px 14px; font-size: 13px; color: #ddd; line-height: 1.7; margin-bottom: 16px; white-space: pre-wrap;
+        }
+        #panel .item-summary { font-size: 12px; color: #999; line-height: 1.7; margin-bottom: 18px; }
+        .control-group { margin-bottom: 14px; }
+        .control-group label {
+            display: flex; justify-content: space-between; font-size: 12px; color: #ccc; margin-bottom: 4px;
+        }
+        .control-group .slider-value { color: #d4af37; }
+        .control-group input[type="range"] { width: 100%; accent-color: #d4af37; }
+        .btn-gold {
+            width: 100%; padding: 14px; margin-top: 6px; background: linear-gradient(135deg,#d4af37,#b8962e);
+            color: #0c0a06; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .btn-gold:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .btn-ghost {
+            width: 100%; padding: 12px; margin-top: 8px; background: transparent; color: #999;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; font-size: 13px; cursor: pointer;
+        }
+        .hint-text { font-size: 11px; color: #777; margin-top: 10px; line-height: 1.6; }
+
+        /* ── Modal 共用 ── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
+            display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px; overflow-y: auto;
+        }
+        .modal-box {
+            background: #16140f; border: 1px solid rgba(212,175,55,0.25); border-radius: 20px;
+            padding: 32px 28px; max-width: 620px; width: 100%; margin: auto;
+        }
+        .modal-box h3 { color: #fff; font-size: 19px; margin-bottom: 6px; }
+        .modal-box .sub { color: #999; font-size: 13px; margin-bottom: 20px; }
+
+        /* 項鍊選擇 */
+        .chain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 8px; }
+        @media (min-width: 480px) { .chain-grid { grid-template-columns: repeat(4, 1fr); } }
+        .chain-opt {
+            cursor: pointer; border: 2px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden;
+            background: rgba(255,255,255,0.04); text-align: center;
+        }
+        .chain-opt img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+        .chain-opt .fallback { aspect-ratio: 1; display: none; align-items: center; justify-content: center; font-size: 32px; opacity: 0.4; }
+        .chain-opt .label { padding: 10px 6px 12px; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }
+        .length-row { display: none; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+        .length-opt {
+            cursor: pointer; padding: 4px 12px; border-radius: 16px; font-size: 12px;
+            border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);
+        }
+
+        /* 設計確認 */
+        .warn-box { background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 16px 18px; margin: 18px 0; }
+        .warn-box ul { margin: 8px 0 0 16px; color: rgba(255,255,255,0.65); font-size: 13px; line-height: 2; }
+        .confirm-checkbox-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 20px; font-size: 13px; color: rgba(255,255,255,0.7); }
+    </style>
+</head>
+<body>
+
+<div id="viewport"></div>
+
+<div id="viewLoading" class="center-card">
+    <div class="card">
+        <h1>DUET</h1>
+        <div class="sub">BCAG JEWELRY</div>
+        <div class="spinner"></div>
+        <p>載入中...</p>
+    </div>
+</div>
+
+<div id="viewError" class="center-card" style="display:none;">
+    <div class="card">
+        <div class="icon">🔗</div>
+        <p>此連結已失效或不存在。<br>如有疑問請聯繫我們。</p>
+        <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+    </div>
+</div>
+
+<div id="viewAlreadyConfirmed" class="center-card" style="display:none;">
+    <div class="card">
+        <div class="icon">✅</div>
+        <h1 style="font-size:20px;">您已確認過了</h1>
+        <p style="margin-top:10px;">此作品已完成調整並送出，感謝您！<br>若有疑問請直接回覆通知信聯繫我們。</p>
+        <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+    </div>
+</div>
+
+<div id="viewSuccess" class="center-card" style="display:none;">
+    <div class="card">
+        <div class="icon">✨</div>
+        <h1 style="font-size:20px;">送出完成，謝謝！</h1>
+        <p style="margin-top:10px;">我們已收到您調整後的設計，<br>將依此版本用心製作您的作品。</p>
+        <a href="https://duet.brendonchen.com" class="back-link">← 回到 DUET</a>
+    </div>
+</div>
+
+<div id="viewMain" style="display:none;">
+    <div id="panel">
+        <h2>調整墜頭位置</h2>
+        <div class="order-tag" id="orderTag">訂單編號 —</div>
+        <div class="msg-box" id="customMessage"></div>
+        <div class="item-summary" id="itemSummary"></div>
+
+        <div class="control-group">
+            <label><span>X 軸（左右）</span><span class="slider-value" id="ringX-val">0.0</span></label>
+            <input type="range" id="ringX" min="-10" max="10" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label><span>Y 軸（前後）</span><span class="slider-value" id="ringY-val">0.0</span></label>
+            <input type="range" id="ringY" min="-10" max="10" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label><span>Z 軸（上下）</span><span class="slider-value" id="ringZ-val">0.0</span></label>
+            <input type="range" id="ringZ" min="-10" max="10" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label><span>旋轉角度</span><span class="slider-value" id="ringRotation-val">0°</span></label>
+            <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
+        </div>
+
+        <button class="btn-gold" id="mainConfirmBtn">確認</button>
+        <div class="hint-text">拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。</div>
+    </div>
+</div>
+
+<!-- 項鍊材質選擇 -->
+<div id="chainModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>選擇項鍊材質</h3>
+        <div class="sub">請確認這件作品要搭配的項鍊。</div>
+        <div class="chain-grid" id="chainGrid"></div>
+        <button class="btn-gold" id="chainConfirmBtn" disabled>下一步</button>
+        <button class="btn-ghost" id="chainBackBtn">返回調整</button>
+    </div>
+</div>
+
+<!-- 設計確認（7 天鑑賞期提示）-->
+<div id="designConfirmModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>確認您的設計</h3>
+        <div class="sub">請仔細確認以下資訊，送出後無法再次修改</div>
+        <div class="item-summary" id="finalSummary" style="margin-bottom:14px;"></div>
+        <div class="warn-box">
+            <div style="font-size:12px;font-weight:600;color:rgba(212,175,55,0.85);">📋 重要聲明</div>
+            <ul>
+                <li>此為客製化商品，確認後無法修改設計</li>
+                <li>實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）</li>
+                <li>客製化商品不適用七天鑑賞期</li>
+            </ul>
+        </div>
+        <label class="confirm-checkbox-row">
+            <input type="checkbox" id="finalCheckbox" style="margin-top:2px;width:16px;height:16px;accent-color:#d4af37;">
+            <span>我已確認以上設計，並了解客製化商品不適用七天鑑賞期</span>
+        </label>
+        <button class="btn-gold" id="submitDesignBtn" disabled>送出設計</button>
+        <button class="btn-ghost" id="designBackBtn">返回修改</button>
+    </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "/assets/vendor/three.module.js",
+        "three/addons/": "/assets/vendor/three-addons/",
+        "three-mesh-bvh": "/assets/vendor/three-mesh-bvh.module.js",
+        "three-bvh-csg": "/assets/vendor/three-bvh-csg.module.js",
+        "opentype": "/assets/vendor/opentype.module.js"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+
+import { getMaterial } from './js/materials.js';
+import { initScene, animate, sceneReadyPromise } from './js/3d-scene.js';
+import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
+import {
+    createRing, createBail, updateRingPosition,
+    ringMesh, bailMesh
+} from './js/ring-bail.js';
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token') || '';
+
+let item = null;
+let orderId = '';
+
+const CHAIN_OPTIONS = [
+    { value: 'silver_chain',   label: '銀色不鏽鋼鏈',   img: 'assets/images/products/silver-chain.png' },
+    { value: 'gold_chain',     label: '金色不鏽鋼鏈',   img: 'assets/images/products/gold-chain.png' },
+    { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
+    { value: 'black_rubber',   label: '黑色橡膠繩',     img: 'assets/images/products/rubber-chain.png', needsLength: true },
+];
+const CHAIN_LENGTH_OPTIONS = ['45cm', '50cm'];
+
+function showView(id) {
+    ['viewLoading', 'viewError', 'viewAlreadyConfirmed', 'viewSuccess', 'viewMain']
+        .forEach(v => document.getElementById(v).style.display = v === id ? (v === 'viewMain' ? 'block' : 'flex') : 'none');
+}
+
+async function loadData() {
+    if (!token) { showView('viewError'); return; }
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/consent/item-data/${token}`);
+        const data = await res.json();
+        if (!data.success) { showView('viewError'); return; }
+        if (data.already_confirmed) { showView('viewAlreadyConfirmed'); return; }
+
+        item = data.item;
+        orderId = data.order_id;
+        document.getElementById('orderTag').textContent = `訂單編號 ${orderId} ｜ 作品 ${item.letter1}${item.letter2}`;
+        document.getElementById('customMessage').textContent = data.custom_message || '請調整墜頭位置，確認與作品本體相連後送出。';
+        document.getElementById('itemSummary').textContent =
+            `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+
+        showView('viewMain');
+        await buildScene();
+    } catch (e) {
+        console.error(e);
+        showView('viewError');
+    }
+}
+
+async function buildScene() {
+    initScene();
+    animate();
+
+    // 隱藏材質相關 DOM（ring-bail.js / materials.js 直接讀取這些欄位）
+    ['material', 'finish', 'plating'].forEach(id => {
+        const el = document.createElement('input');
+        el.type = 'hidden';
+        el.id = id;
+        el.value = item[id] || (id === 'plating' ? 'none' : '');
+        document.body.appendChild(el);
+    });
+
+    await Promise.all([sceneReadyPromise, initFontMeta()]);
+
+    const targetHeight = parseInt(item.size);
+    let geo1 = await createV3LetterGeometry(item.font1, item.letter1, targetHeight, 18);
+    let geo2 = await createV3LetterGeometry(item.font2, item.letter2, targetHeight, 18);
+
+    geo1.computeBoundingBox(); geo1.center();
+    geo2.computeBoundingBox(); geo2.center();
+
+    const h1 = geo1.boundingBox.max.y - geo1.boundingBox.min.y;
+    const h2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+    geo1.applyMatrix4(new THREE.Matrix4().makeScale(targetHeight / h1, targetHeight / h1, targetHeight / h1));
+    geo2.applyMatrix4(new THREE.Matrix4().makeScale(targetHeight / h2, targetHeight / h2, targetHeight / h2));
+
+    geo1.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+    geo2.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+    geo2.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+
+    geo1.computeBoundingBox(); geo1.center();
+    geo2.computeBoundingBox(); geo2.center();
+
+    geo1 = geo1.toNonIndexed();
+    geo2 = geo2.toNonIndexed();
+
+    const evaluator = new Evaluator();
+    const baseMat = new THREE.MeshStandardMaterial();
+    const brush1 = new Brush(geo1, baseMat); brush1.updateMatrixWorld();
+    const brush2 = new Brush(geo2, baseMat); brush2.updateMatrixWorld();
+
+    const result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+    result.geometry = result.geometry.toNonIndexed();
+    result.geometry.deleteAttribute('normal');
+    result.geometry.computeVertexNormals();
+
+    result.geometry.computeBoundingBox();
+    const center = result.geometry.boundingBox.getCenter(new THREE.Vector3());
+    result.geometry.translate(-center.x, -center.y, -center.z);
+
+    result.geometry.computeBoundingBox();
+    const bbox = result.geometry.boundingBox;
+    window.modelTopZ = bbox.max.z;
+    window.modelCenter = new THREE.Vector3(0, 0, 0);
+
+    result.material = getMaterial(item.material, item.finish, item.plating || 'none');
+    window.mainMesh = result;
+    window.scene.add(result);
+
+    // 圓環滑桿：帶入下單當時的原始滑桿數值
+    document.getElementById('ringX').value = item.ringSliderX ?? 0;
+    document.getElementById('ringY').value = item.ringSliderY ?? 0;
+    document.getElementById('ringZ').value = item.ringSliderZ ?? 0;
+    document.getElementById('ringRotation').value = item.ringSliderRotation ?? 0;
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        const suffix = id === 'ringRotation' ? '°' : '';
+        document.getElementById(`${id}-val`).textContent = document.getElementById(id).value + suffix;
+    });
+
+    createRing();
+    createBail();
+
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            const suffix = id === 'ringRotation' ? '°' : '';
+            document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
+            updateRingPosition();
+        });
+    });
+}
+
+function renderChainGrid() {
+    const grid = document.getElementById('chainGrid');
+    let selected = item.chainType || '';
+    let selectedLength = item.chainLength || '';
+
+    function render() {
+        grid.innerHTML = CHAIN_OPTIONS.map(opt => `
+            <div class="chain-opt" data-chain="${opt.value}" style="border-color:${selected === opt.value ? '#d4af37' : 'rgba(255,255,255,0.12)'};">
+                <img src="${opt.img}" alt="${opt.label}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="fallback">🔗</div>
+                <div class="label">
+                    ${opt.label}
+                    ${opt.needsLength ? `
+                        <div class="length-row" data-chain="${opt.value}" style="display:${selected === opt.value ? 'flex' : 'none'};">
+                            ${CHAIN_LENGTH_OPTIONS.map(len => `
+                                <div class="length-opt" data-length="${len}" style="border-color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.2)'};color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.7)'};">${len}</div>
+                            `).join('')}
+                        </div>` : ''}
+                </div>
+            </div>`).join('');
+        updateConfirmBtn();
+    }
+
+    function updateConfirmBtn() {
+        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
+        const ok = !!opt && (!opt.needsLength || !!selectedLength);
+        const btn = document.getElementById('chainConfirmBtn');
+        btn.disabled = !ok;
+        btn.style.opacity = ok ? '1' : '0.4';
+    }
+
+    grid.onclick = (e) => {
+        const lengthOpt = e.target.closest('.length-opt');
+        if (lengthOpt) {
+            selectedLength = lengthOpt.dataset.length;
+            render();
+            return;
+        }
+        const card = e.target.closest('.chain-opt');
+        if (!card) return;
+        selected = card.dataset.chain;
+        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
+        if (!opt.needsLength) selectedLength = '';
+        render();
+    };
+
+    render();
+
+    return {
+        getSelection: () => ({ chainType: selected, chainLength: selectedLength || null })
+    };
+}
+
+let chainSelection = null;
+
+document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+    document.getElementById('chainModal').style.display = 'flex';
+    chainSelection = renderChainGrid();
+});
+
+document.getElementById('chainBackBtn').addEventListener('click', () => {
+    document.getElementById('chainModal').style.display = 'none';
+});
+
+document.getElementById('chainConfirmBtn').addEventListener('click', () => {
+    const sel = chainSelection.getSelection();
+    const chainLabel = CHAIN_OPTIONS.find(o => o.value === sel.chainType)?.label || '';
+    document.getElementById('finalSummary').textContent =
+        `作品 ${item.letter1}${item.letter2} ｜ 項鍊：${chainLabel}${sel.chainLength ? '・' + sel.chainLength : ''}`;
+    document.getElementById('chainModal').style.display = 'none';
+    document.getElementById('designConfirmModal').style.display = 'flex';
+});
+
+document.getElementById('designBackBtn').addEventListener('click', () => {
+    document.getElementById('designConfirmModal').style.display = 'none';
+    document.getElementById('chainModal').style.display = 'flex';
+});
+
+document.getElementById('finalCheckbox').addEventListener('change', (e) => {
+    document.getElementById('submitDesignBtn').disabled = !e.target.checked;
+});
+
+document.getElementById('submitDesignBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('submitDesignBtn');
+    btn.disabled = true;
+    btn.textContent = '送出中...';
+
+    const sel = chainSelection.getSelection();
+    const payload = {
+        ringRelativeX: ringMesh.position.x - window.modelCenter.x,
+        ringRelativeY: ringMesh.position.y - window.modelCenter.y,
+        ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
+        ringRotation: ringMesh.rotation.z * 180 / Math.PI,
+        chainType: sel.chainType,
+        chainLength: sel.chainLength,
+    };
+
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/consent/confirm-item-revision/${token}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('designConfirmModal').style.display = 'none';
+            showView('viewSuccess');
+        } else {
+            alert(data.error || '送出失敗，請稍後再試');
+            btn.disabled = false;
+            btn.textContent = '送出設計';
+        }
+    } catch (e) {
+        alert('網路錯誤，請稍後再試');
+        btn.disabled = false;
+        btn.textContent = '送出設計';
+    }
+});
+
+loadData();
+</script>
+</body>
+</html>
