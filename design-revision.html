@@ -226,7 +226,7 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 window.THREE = THREE;
 
 import { getMaterial, MATERIALS, PLATING_COLORS } from './js/materials.js';
-import { initScene, animate, sceneReadyPromise } from './js/3d-scene.js';
+import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } from './js/3d-scene.js';
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import {
     createRing, createBail, updateRingPosition,
@@ -338,6 +338,7 @@ async function buildScene() {
     result.material = getMaterial(item.material, item.finish, item.plating || 'none');
     window.mainMesh = result;
     window.scene.add(result);
+    removeAllPlaceholderSpheres();
 
     // 圓環滑桿：帶入下單當時的原始滑桿數值
     document.getElementById('ringX').value = item.ringSliderX ?? 0;
