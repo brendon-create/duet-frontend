@@ -142,30 +142,32 @@
 
 <div id="viewMain" style="display:none;">
     <div id="panel">
-        <h2>調整墜頭位置</h2>
+        <h2 id="panelTitle">調整墜頭位置</h2>
         <div class="order-tag" id="orderTag">訂單編號 —</div>
         <div class="msg-box" id="customMessage"></div>
         <div class="item-summary" id="itemSummary"></div>
 
-        <div class="control-group">
-            <label><span>X 軸（左右）</span><span class="slider-value" id="ringX-val">0.0</span></label>
-            <input type="range" id="ringX" min="-10" max="10" step="0.1" value="0">
-        </div>
-        <div class="control-group">
-            <label><span>Y 軸（前後）</span><span class="slider-value" id="ringY-val">0.0</span></label>
-            <input type="range" id="ringY" min="-10" max="10" step="0.1" value="0">
-        </div>
-        <div class="control-group">
-            <label><span>Z 軸（上下）</span><span class="slider-value" id="ringZ-val">0.0</span></label>
-            <input type="range" id="ringZ" min="-10" max="10" step="0.1" value="0">
-        </div>
-        <div class="control-group">
-            <label><span>旋轉角度</span><span class="slider-value" id="ringRotation-val">0°</span></label>
-            <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
+        <div id="ringControls">
+            <div class="control-group">
+                <label><span>X 軸（左右）</span><span class="slider-value" id="ringX-val">0.0</span></label>
+                <input type="range" id="ringX" min="-10" max="10" step="0.1" value="0">
+            </div>
+            <div class="control-group">
+                <label><span>Y 軸（前後）</span><span class="slider-value" id="ringY-val">0.0</span></label>
+                <input type="range" id="ringY" min="-10" max="10" step="0.1" value="0">
+            </div>
+            <div class="control-group">
+                <label><span>Z 軸（上下）</span><span class="slider-value" id="ringZ-val">0.0</span></label>
+                <input type="range" id="ringZ" min="-10" max="10" step="0.1" value="0">
+            </div>
+            <div class="control-group">
+                <label><span>旋轉角度</span><span class="slider-value" id="ringRotation-val">0°</span></label>
+                <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
+            </div>
         </div>
 
         <button class="btn-gold" id="mainConfirmBtn">確認</button>
-        <div class="hint-text">拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。</div>
+        <div class="hint-text" id="panelHint">拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。</div>
     </div>
 </div>
 
@@ -242,6 +244,7 @@ const token = params.get('token') || '';
 
 let item = null;
 let orderId = '';
+let unlockedFields = ['ring'];
 
 const CHAIN_OPTIONS = [
     { value: 'silver_chain',   label: '銀色不鏽鋼鏈',   img: 'assets/images/products/silver-chain.png' },
@@ -266,10 +269,25 @@ async function loadData() {
 
         item = data.item;
         orderId = data.order_id;
+        unlockedFields = data.unlocked_fields && data.unlocked_fields.length ? data.unlocked_fields : ['ring'];
         document.getElementById('orderTag').textContent = `訂單編號 ${orderId} ｜ 作品 ${item.letter1}${item.letter2}`;
         document.getElementById('customMessage').textContent = data.custom_message || '請調整墜頭位置，確認與作品本體相連後送出。';
         document.getElementById('itemSummary').textContent =
             `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+
+        const hasRing = unlockedFields.includes('ring');
+        const hasChain = unlockedFields.includes('chain');
+        document.getElementById('ringControls').style.display = hasRing ? 'block' : 'none';
+        if (hasRing && hasChain) {
+            document.getElementById('panelTitle').textContent = '調整墜頭位置';
+            document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
+        } else if (hasRing) {
+            document.getElementById('panelTitle').textContent = '調整墜頭位置';
+            document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
+        } else {
+            document.getElementById('panelTitle').textContent = '確認作品設計';
+            document.getElementById('panelHint').textContent = '請確認以下作品資訊，下一步可以重新選擇項鍊材質。';
+        }
 
         showView('viewMain');
         await buildScene();
@@ -416,10 +434,68 @@ function renderChainGrid() {
 }
 
 let chainSelection = null;
+let currentChainValue = null; // 送出時用的項鍊選擇；若這次沒開放重選，就沿用原本的值
+
+function buildFinalSummaryHtml(chainSel) {
+    let frontImg = '', sideImg = '', topImg = '', heroImg = '';
+    (item.threeViews || []).forEach(v => {
+        if (!v.dataURL) return;
+        const tag = `<img src="${v.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
+        const n = v.name || '';
+        if (n === 'hero_view') heroImg = tag;
+        else if (n.includes('letter1')) frontImg = tag;
+        else if (n.includes('letter2')) sideImg = tag;
+        else if (n.includes('top')) topImg = tag;
+    });
+
+    const viewCell = (img, lbl) => `
+        <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
+            ${img || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">${lbl}</div>`}
+        </div>`;
+
+    const platingStr = (item.plating && item.plating !== 'none') ? ` + ${item.plating}` : '';
+    let chainLine = '';
+    if (chainSel) {
+        const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
+        chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}${chainSel.chainLength ? '・' + chainSel.chainLength : ''}<br>`;
+    }
+
+    return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:2.3;">
+            <span style="color:rgba(255,255,255,0.3);">字母　</span>${item.letter1} + ${item.letter2}<br>
+            <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
+            <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
+            <span style="color:rgba(255,255,255,0.3);">材質　</span>${item.material}${platingStr}<br>
+            ${chainLine}
+        </div>
+        <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
+            ${heroImg || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">Hero</div>`}
+        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        ${viewCell(frontImg, '正視')}
+        ${viewCell(sideImg, '側視')}
+        ${viewCell(topImg, '俯視')}
+    </div>`;
+}
+
+function goToDesignConfirm(chainSel) {
+    currentChainValue = chainSel;
+    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(chainSel);
+    const checkbox = document.getElementById('finalCheckbox');
+    checkbox.checked = false;
+    document.getElementById('submitDesignBtn').disabled = true;
+    document.getElementById('designConfirmModal').style.display = 'flex';
+}
 
 document.getElementById('mainConfirmBtn').addEventListener('click', () => {
-    document.getElementById('chainModal').style.display = 'flex';
-    chainSelection = renderChainGrid();
+    if (unlockedFields.includes('chain')) {
+        document.getElementById('chainModal').style.display = 'flex';
+        chainSelection = renderChainGrid();
+    } else {
+        goToDesignConfirm(null);
+    }
 });
 
 document.getElementById('chainBackBtn').addEventListener('click', () => {
@@ -428,16 +504,15 @@ document.getElementById('chainBackBtn').addEventListener('click', () => {
 
 document.getElementById('chainConfirmBtn').addEventListener('click', () => {
     const sel = chainSelection.getSelection();
-    const chainLabel = CHAIN_OPTIONS.find(o => o.value === sel.chainType)?.label || '';
-    document.getElementById('finalSummary').textContent =
-        `作品 ${item.letter1}${item.letter2} ｜ 項鍊：${chainLabel}${sel.chainLength ? '・' + sel.chainLength : ''}`;
     document.getElementById('chainModal').style.display = 'none';
-    document.getElementById('designConfirmModal').style.display = 'flex';
+    goToDesignConfirm(sel);
 });
 
 document.getElementById('designBackBtn').addEventListener('click', () => {
     document.getElementById('designConfirmModal').style.display = 'none';
-    document.getElementById('chainModal').style.display = 'flex';
+    if (unlockedFields.includes('chain')) {
+        document.getElementById('chainModal').style.display = 'flex';
+    }
 });
 
 document.getElementById('finalCheckbox').addEventListener('change', (e) => {
@@ -449,14 +524,13 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
     btn.disabled = true;
     btn.textContent = '送出中...';
 
-    const sel = chainSelection.getSelection();
     const payload = {
         ringRelativeX: ringMesh.position.x - window.modelCenter.x,
         ringRelativeY: ringMesh.position.y - window.modelCenter.y,
         ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
         ringRotation: ringMesh.rotation.z * 180 / Math.PI,
-        chainType: sel.chainType,
-        chainLength: sel.chainLength,
+        chainType: currentChainValue ? currentChainValue.chainType : item.chainType,
+        chainLength: currentChainValue ? currentChainValue.chainLength : item.chainLength,
     };
 
     try {
