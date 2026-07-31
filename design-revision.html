@@ -443,10 +443,12 @@ function renderChainGrid() {
 
 let chainSelection = null;
 let currentChainValue = null; // 送出時用的項鍊選擇；若這次沒開放重選，就沿用原本的值
+let currentCapturedViews = null; // 進入確認畫面當下，即時重新截取的四視圖（含調整後的圓環位置）
+let currentRingParams = null; // 進入確認畫面當下，即時讀取的圓環位置參數
 
-function buildFinalSummaryHtml(chainSel) {
+function buildFinalSummaryHtml(chainSel, views, ringParams) {
     let frontImg = '', sideImg = '', topImg = '', heroImg = '';
-    (item.threeViews || []).forEach(v => {
+    (views || []).forEach(v => {
         if (!v.dataURL) return;
         const tag = `<img src="${v.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
         const n = v.name || '';
@@ -467,6 +469,9 @@ function buildFinalSummaryHtml(chainSel) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
         chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}${chainSel.chainLength ? '・' + chainSel.chainLength : ''}<br>`;
     }
+    const ringLine = ringParams
+        ? `<span style="color:rgba(255,255,255,0.3);">圓環　</span>X=${ringParams.ringRelativeX.toFixed(2)} Y=${ringParams.ringRelativeY.toFixed(2)} Z=${ringParams.ringRelativeZ.toFixed(2)} 旋轉=${ringParams.ringRotation.toFixed(1)}°<br>`
+        : '';
 
     return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
@@ -475,6 +480,7 @@ function buildFinalSummaryHtml(chainSel) {
             <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
             <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
             <span style="color:rgba(255,255,255,0.3);">材質　</span>${item.material}${platingStr}<br>
+            ${ringLine}
             ${chainLine}
         </div>
         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
@@ -490,7 +496,14 @@ function buildFinalSummaryHtml(chainSel) {
 
 function goToDesignConfirm(chainSel) {
     currentChainValue = chainSel;
-    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(chainSel);
+    currentRingParams = {
+        ringRelativeX: ringMesh.position.x - window.modelCenter.x,
+        ringRelativeY: ringMesh.position.y - window.modelCenter.y,
+        ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
+        ringRotation: ringMesh.rotation.z * 180 / Math.PI,
+    };
+    currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
+    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(chainSel, currentCapturedViews, currentRingParams);
     const checkbox = document.getElementById('finalCheckbox');
     checkbox.checked = false;
     document.getElementById('submitDesignBtn').disabled = true;
@@ -573,14 +586,12 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
     btn.disabled = true;
     btn.textContent = '送出中...';
 
+    // 圓環參數與四視圖都沿用「確認畫面」當下截取的那一份，確保顧客看到的畫面跟實際送出的資料一致
     const payload = {
-        ringRelativeX: ringMesh.position.x - window.modelCenter.x,
-        ringRelativeY: ringMesh.position.y - window.modelCenter.y,
-        ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
-        ringRotation: ringMesh.rotation.z * 180 / Math.PI,
+        ...currentRingParams,
         chainType: currentChainValue ? currentChainValue.chainType : item.chainType,
         chainLength: currentChainValue ? currentChainValue.chainLength : item.chainLength,
-        threeViews: captureThreeViews(),
+        threeViews: currentCapturedViews,
     };
 
     try {
