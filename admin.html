@@ -2385,7 +2385,17 @@
                         const revData = await revRes.json();
                         if (revData.success) storyRevision = revData.revision;
                     } catch (e) { /* 靜默失敗，不影響主流程 */ }
-                    showOrderModal(data.order, storyRevision);
+
+                    let itemRevisions = [];
+                    try {
+                        const itemRevRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/item-revisions`, {
+                            headers: { 'Authorization': adminAuthHeader() }
+                        });
+                        const itemRevData = await itemRevRes.json();
+                        if (itemRevData.success) itemRevisions = itemRevData.revisions;
+                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
+
+                    showOrderModal(data.order, storyRevision, itemRevisions);
                 }
             } catch (err) { 
                 orderDetailContent.innerHTML = `
@@ -2398,7 +2408,7 @@
             }
         }
         
-        function showOrderModal(order, storyRevision) {
+        function showOrderModal(order, storyRevision, itemRevisions = []) {
             const u = order.userInfo || {};
             const items = order.items || [];
             const status = statusMap[order.status] || { text: order.status, class: '' };
@@ -2594,16 +2604,62 @@
                         const chainLabel = chainLabels[item.chainType]
                             ? chainLabels[item.chainType] + (item.chainType === 'black_rubber' && item.chainLength ? `・${item.chainLength}` : '')
                             : '未選擇';
+
+                        const itemRevs = itemRevisions.filter(r => r.item_index === idx);
+                        const fmtRing = (o) => o
+                            ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
+                            : '—';
+                        const fmtChain = (o) => o ? (chainLabels[o.chainType] || o.chainType || '未選擇') : '—';
+                        const revisionHtml = itemRevs.length ? `
+                        <div style="margin-top:10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
+                            ${itemRevs.map((r, rIdx) => {
+                                const created = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
+                                if (r.status !== 'confirmed') {
+                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認</div>`;
+                                }
+                                const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
+                                let original = null, revised = null;
+                                try { original = r.original_item ? JSON.parse(r.original_item) : null; } catch (e) {}
+                                try { revised = r.revised_item ? JSON.parse(r.revised_item) : null; } catch (e) {}
+                                const oldViews = (original && original.threeViews) || [];
+                                const findOld = (key) => oldViews.find(v => v.name && v.name.includes(key));
+                                const oldViewsId = `oldViews-${order.orderId}-${idx}-${rIdx}`;
+                                return `
+                                <div style="margin-bottom:10px;">
+                                    <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
+                                    <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
+                                        圓環：${fmtRing(original)} → ${fmtRing(revised)}<br>
+                                        項鍊：${fmtChain(original)} → ${fmtChain(revised)}
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm" onclick="const el=document.getElementById('${oldViewsId}'); el.style.display = el.style.display==='none' ? 'grid' : 'none';">查看調整前的樣子</button>
+                                    <div id="${oldViewsId}" style="display:none;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;">
+                                        ${viewCell(findOld('letter1'), '正視圖')}
+                                        ${viewCell(findOld('letter2'), '側視圖')}
+                                        ${viewCell(findOld('top'), '俯視圖')}
+                                        ${viewCell(findOld('hero'), 'Hero 45°')}
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>` : '';
+
+                        const ringPosStr = (item.ringRelativeX !== undefined && item.ringRelativeX !== null)
+                            ? `X=${Number(item.ringRelativeX).toFixed(2)} Y=${Number(item.ringRelativeY).toFixed(2)} Z=${Number(item.ringRelativeZ).toFixed(2)} 旋轉=${Number(item.ringRotation || 0).toFixed(1)}°`
+                            : '未記錄';
+
                         return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
                         <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish} | 項鍊: ${chainLabel}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">圓環位置: ${ringPosStr}</div>
                         ${viewsHtml}
                         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openItemRevisionModal('${order.orderId}', ${idx}, '${item.letter1}${item.letter2}')">與客戶確認</button>
                         </div>
+                        ${revisionHtml}
                     </div>`;
                     }).join('')}
                     <div class="detail-row"><span class="detail-label">總金額</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${(order.total||0).toLocaleString()}</span></div>
@@ -2674,6 +2730,69 @@
             } catch (e) {
                 msgEl.style.color = '#ef4444';
                 msgEl.textContent = '網路錯誤';
+            }
+        }
+
+        let itemRevisionTarget = null; // { orderId, itemIndex }
+
+        function openItemRevisionModal(orderId, itemIndex, letters) {
+            itemRevisionTarget = { orderId, itemIndex };
+            document.getElementById('itemRevisionLabel').textContent = letters;
+            document.getElementById('itemRevisionMessage').value =
+                '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
+            document.getElementById('unlockRing').checked = true;
+            document.getElementById('unlockChain').checked = false;
+            document.getElementById('itemRevisionMsg').textContent = '';
+            document.getElementById('itemRevisionModal').style.display = 'flex';
+        }
+
+        function closeItemRevisionModal() {
+            document.getElementById('itemRevisionModal').style.display = 'none';
+            itemRevisionTarget = null;
+        }
+
+        async function submitItemRevision() {
+            if (!itemRevisionTarget) return;
+            const { orderId, itemIndex } = itemRevisionTarget;
+            const message = document.getElementById('itemRevisionMessage').value.trim();
+            const msgEl = document.getElementById('itemRevisionMsg');
+            const btn = document.getElementById('itemRevisionSendBtn');
+
+            const unlockedFields = [];
+            if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
+            if (document.getElementById('unlockChain').checked) unlockedFields.push('chain');
+            if (unlockedFields.length === 0) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '至少要勾選一項讓顧客調整';
+                return;
+            }
+
+            btn.disabled = true;
+            msgEl.style.color = 'var(--text-muted)';
+            msgEl.textContent = '寄送中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/request-item-revision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ item_index: itemIndex, message, unlocked_fields: unlockedFields })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.style.color = '#86efac';
+                    msgEl.textContent = '✅ 確認信已寄送';
+                    setTimeout(() => {
+                        closeItemRevisionModal();
+                        viewOrder(orderId);
+                    }, 1200);
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = data.error || '寄送失敗';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '網路錯誤';
+                btn.disabled = false;
             }
         }
 
@@ -5002,6 +5121,36 @@
                 <button onclick="closeEmailMfrModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
                 <button onclick="openStickerTool()" style="padding:9px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">🏷 列印貼紙</button>
                 <button id="emailMfrSendBtn" onclick="sendEmailToManufacturer()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">發送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 與客戶確認作品 Modal -->
+    <div id="itemRevisionModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:520px;max-width:92vw;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">與客戶確認作品</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">作品 <strong id="itemRevisionLabel" style="color:var(--primary)"></strong>，將寄送 Email 請顧客回 Design Studio 調整。</p>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">要開放顧客調整的項目（至少選一項）</label>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="unlockRing" checked style="width:16px;height:16px;">
+                    調整墜頭位置
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="unlockChain" style="width:16px;height:16px;">
+                    重新選擇項鍊材質
+                </label>
+            </div>
+
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">給顧客的訊息</label>
+            <textarea id="itemRevisionMessage" rows="5" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;">您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！</textarea>
+
+            <div id="itemRevisionMsg" style="font-size:13px;margin-bottom:12px;"></div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeItemRevisionModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button id="itemRevisionSendBtn" onclick="submitItemRevision()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送確認信</button>
             </div>
         </div>
     </div>
