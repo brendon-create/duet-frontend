@@ -222,6 +222,9 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 
+// geometry-engine.js 內部直接使用全域 THREE.Vector2/THREE.Shape，不是自己 import 的
+window.THREE = THREE;
+
 import { getMaterial } from './js/materials.js';
 import { initScene, animate, sceneReadyPromise } from './js/3d-scene.js';
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
