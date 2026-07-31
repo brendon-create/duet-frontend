@@ -225,13 +225,17 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 // geometry-engine.js 內部直接使用全域 THREE.Vector2/THREE.Shape，不是自己 import 的
 window.THREE = THREE;
 
-import { getMaterial } from './js/materials.js';
+import { getMaterial, MATERIALS, PLATING_COLORS } from './js/materials.js';
 import { initScene, animate, sceneReadyPromise } from './js/3d-scene.js';
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import {
     createRing, createBail, updateRingPosition,
     ringMesh, bailMesh
 } from './js/ring-bail.js';
+
+// ring-bail.js 內部的 getMaterial() 也是直接讀全域 window.MATERIALS/PLATING_COLORS
+window.MATERIALS = MATERIALS;
+window.PLATING_COLORS = PLATING_COLORS;
 
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token') || '';
