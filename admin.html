@@ -2606,16 +2606,41 @@
                             : '未選擇';
 
                         const itemRevs = itemRevisions.filter(r => r.item_index === idx);
+                        const fmtRing = (o) => o
+                            ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
+                            : '—';
+                        const fmtChain = (o) => o ? (chainLabels[o.chainType] || o.chainType || '未選擇') : '—';
+                        const findHero = (o) => (o && o.threeViews || []).find(v => v.name === 'hero_view' && v.dataURL);
                         const revisionHtml = itemRevs.length ? `
                         <div style="margin-top:10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
                             <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
                             ${itemRevs.map(r => {
                                 const created = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
-                                if (r.status === 'confirmed') {
-                                    const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
-                                    return `<div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>`;
+                                if (r.status !== 'confirmed') {
+                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認</div>`;
                                 }
-                                return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認</div>`;
+                                const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
+                                let original = null, revised = null;
+                                try { original = r.original_item ? JSON.parse(r.original_item) : null; } catch (e) {}
+                                try { revised = r.revised_item ? JSON.parse(r.revised_item) : null; } catch (e) {}
+                                const oldHero = findHero(original);
+                                const newHero = findHero(revised);
+                                return `
+                                <div style="margin-bottom:10px;">
+                                    <div style="font-size:12px;color:#86efac;margin-bottom:6px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text-light);">
+                                        <div>
+                                            <div style="color:var(--text-muted);margin-bottom:4px;">調整前</div>
+                                            圓環: ${fmtRing(original)}<br>項鍊: ${fmtChain(original)}
+                                            ${oldHero ? `<img src="${oldHero.dataURL}" style="width:100%;max-width:120px;margin-top:6px;border-radius:6px;border:1px solid var(--border);">` : ''}
+                                        </div>
+                                        <div>
+                                            <div style="color:rgba(212,175,55,0.8);margin-bottom:4px;">調整後</div>
+                                            圓環: ${fmtRing(revised)}<br>項鍊: ${fmtChain(revised)}
+                                            ${newHero ? `<img src="${newHero.dataURL}" style="width:100%;max-width:120px;margin-top:6px;border-radius:6px;border:1px solid var(--border);">` : ''}
+                                        </div>
+                                    </div>
+                                </div>`;
                             }).join('')}
                         </div>` : '';
 
