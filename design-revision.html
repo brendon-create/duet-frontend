@@ -519,6 +519,47 @@ document.getElementById('finalCheckbox').addEventListener('change', (e) => {
     document.getElementById('submitDesignBtn').disabled = !e.target.checked;
 });
 
+// 重新截取四視圖（含調整後的圓環/墜頭位置），比照 design-studio.html 的 captureThreeViews()
+function captureThreeViews() {
+    const views = [];
+    const mainMesh = window.mainMesh;
+    mainMesh.geometry.computeBoundingBox();
+    const bbox = mainMesh.geometry.boundingBox;
+    const center = bbox.getCenter(new THREE.Vector3());
+    const size = bbox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const distance = maxDim * 3;
+
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = 400;
+    offCanvas.height = 400;
+    const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
+    offRenderer.setSize(400, 400);
+    offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    offRenderer.toneMappingExposure = 1.2;
+    offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+    offCamera.up.set(0, 0, 1);
+
+    const captureAngles = [
+        { name: 'letter1_view', label: 'Front View (Letter 1)', pos: [center.x, center.y - distance, center.z] },
+        { name: 'letter2_view', label: 'Side View (Letter 2)',  pos: [center.x + distance, center.y, center.z] },
+        { name: 'top_view',     label: 'Top View',              pos: [center.x, center.y, center.z + distance] },
+        { name: 'hero_view',    label: 'Hero View (45°)',       pos: [center.x + distance * 0.6, center.y - distance * 0.6, center.z + distance * 0.15] },
+    ];
+
+    for (const angle of captureAngles) {
+        offCamera.position.set(...angle.pos);
+        offCamera.lookAt(center);
+        offRenderer.render(window.scene, offCamera);
+        views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
+    }
+
+    offRenderer.dispose();
+    return views;
+}
+
 document.getElementById('submitDesignBtn').addEventListener('click', async () => {
     const btn = document.getElementById('submitDesignBtn');
     btn.disabled = true;
@@ -531,6 +572,7 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
         ringRotation: ringMesh.rotation.z * 180 / Math.PI,
         chainType: currentChainValue ? currentChainValue.chainType : item.chainType,
         chainLength: currentChainValue ? currentChainValue.chainLength : item.chainLength,
+        threeViews: captureThreeViews(),
     };
 
     try {
