@@ -5069,6 +5069,10 @@
         // 顯示結帳提醒彈窗
         function showCheckoutReminder() {
             return new Promise((resolve) => {
+                // user-info-modal 這時還蓋在畫面上（顯示「訂單資料傳送中」的 loading），
+                // 兩者 z-index 相同，DOM 順序又比它晚出現，會蓋住這個提醒視窗導致按鈕點不到、永久卡住
+                if (window.userInfoModal) window.userInfoModal.style.display = 'none';
+
                 const modal = document.getElementById('checkout-reminder-modal');
                 modal.style.display = 'flex';
 
@@ -5086,6 +5090,7 @@
                 // 綁定按鈕事件（只綁定一次）
                 btn.onclick = function () {
                     modal.style.display = 'none';
+                    if (window.userInfoModal) window.userInfoModal.style.display = 'flex';
                     resolve();
                 };
             });
