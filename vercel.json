@@ -1,6 +1,13 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/s/:slug",
+      "destination": "/?utm_source=youtube&utm_medium=shorts&utm_campaign=:slug",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)\\.html",
