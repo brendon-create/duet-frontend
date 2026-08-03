@@ -12,7 +12,7 @@ window.translations = {
         'nav.gallery': '作品展示',
         'nav.faq':     '常見問題',
         'nav.order':   '訂單查詢',
-        'nav.start':   '開始設計',
+        'nav.start':   '免費開始設計',
         'nav.lang':    'EN',
 
         // ── Hero ──
@@ -20,7 +20,7 @@ window.translations = {
         'hero.title':    '每一個關係的交織，<br>都是一段故事的開始',
         'hero.body':     '最棒的關係，是各自保有真實的自己，但讓彼此的生命都更有深度、空間、層次！<br>DUET 系列用兩個字母，承載你們的故事。透過溫暖的訂製諮詢，引導您親手打造獨一無二的交織墜飾。',
         'hero.tagline':  '「專屬於你們的交織印記」',
-        'hero.btn.start':'開始你的故事 →',
+        'hero.btn.start':'免費開始設計 →',
         'hero.btn.more': '了解更多 ↓',
         'hero.drag':     '← 拖曳旋轉 →',
 
@@ -85,7 +85,7 @@ window.translations = {
         'cta.subtitle': '開始創造',
         'cta.title':    '屬於你的<br>交織時刻',
         'cta.lead':     '每一段故事，都值得被永恆鑄造',
-        'cta.btn':      '立即開始設計 →',
+        'cta.btn':      '免費開始設計 →',
 
         // ── Footer ──
         'footer.brand.body': '為你的故事，鑄造永恆的交織。以數位精密工藝與傳統手作技藝，創造獨一無二的專屬珠寶。',
