@@ -5,6 +5,9 @@
  * 同時負責攔截網址上的 fbclid（Facebook 點擊識別碼），存進 localStorage，
  * 讓使用者從嘖嘖 Banner 進站、完成設計後回跳嘖嘖時，能把 fbclid 帶回去，
  * 讓嘖嘖頁面上的 Pixel 能歸因回同一次廣告點擊。
+ *
+ * 另外也把落地頁網址上的 UTM 參數註冊成 PostHog super properties，
+ * 讓後續跳轉到其他頁面時，PostHog 事件仍能帶著同一組 UTM 參數。
  */
 !function (f, b, e, v, n, t, s) {
     if (f.fbq) return;
@@ -60,3 +63,23 @@ window.appendStoredFbclid = function (url) {
         return url;
     }
 };
+
+// 把落地頁網址上的 UTM 參數註冊成 PostHog 的 super properties，
+// 這樣即使後續跳轉到別的頁面（網址上已經沒有 UTM），
+// 之後所有 PostHog 事件（studio_entered、add_to_cart 等）還是會自動帶上這些參數，
+// 不需要依賴 PostHog 的「已識別訪客」身分（因為訪客通常是匿名的）。
+(function () {
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var utmProps = {};
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
+            var val = params.get(key);
+            if (val) utmProps[key] = val;
+        });
+        if (Object.keys(utmProps).length > 0 && window.posthog && typeof posthog.register === 'function') {
+            posthog.register(utmProps);
+        }
+    } catch (e) {
+        // 靜默忽略，不影響其他功能
+    }
+})();
