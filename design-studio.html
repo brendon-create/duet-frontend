@@ -1943,6 +1943,11 @@
             if (zeczecLink && typeof window.appendStoredFbclid === 'function') {
                 zeczecLink.href = window.appendStoredFbclid(zeczecLink.href);
             }
+            if (zeczecLink) {
+                zeczecLink.addEventListener('click', () => {
+                    if (typeof fbq === 'function') fbq('trackCustom', 'ZeczecRedemptionClick');
+                });
+            }
 
             // 初始化可用字體清單
             await initAvailableFonts();
@@ -4938,6 +4943,14 @@
             }
 
             posthog.capture('checkout_clicked');
+            if (typeof fbq === 'function') {
+                fbq('track', 'InitiateCheckout', {
+                    content_type: 'product',
+                    num_items: cartItems.length,
+                    currency: 'TWD',
+                    value: cartItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 1), 0)
+                });
+            }
             // 若含貴金屬訂製品，改走詢問表單流程
             if (cartItems.some(i => i.isPreciousMetal)) {
                 openCustomInquiryModal();
