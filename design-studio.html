@@ -2251,8 +2251,9 @@
             }
             // 'warn' → overlay 已顯示，繼續生成
 
-            // 讓瀏覽器有機會重繪（隱藏/更新警示訊息），避免被接下來的同步運算卡住
-            await new Promise(resolve => setTimeout(resolve, 0));
+            // 強制瀏覽器完整重繪一次（隱藏/更新警示訊息），避免被接下來的同步重運算卡住
+            // setTimeout(0) 不保證會真的畫出來，雙重 rAF 才能確保畫面已經 commit
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             if (myGeneration !== modelGeneration) return;
 
             const oldMainMesh = mainMesh;
