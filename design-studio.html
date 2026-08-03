@@ -2251,6 +2251,10 @@
             }
             // 'warn' → overlay 已顯示，繼續生成
 
+            // 讓瀏覽器有機會重繪（隱藏/更新警示訊息），避免被接下來的同步運算卡住
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (myGeneration !== modelGeneration) return;
+
             const oldMainMesh = mainMesh;
             const oldRingMesh = ringMesh;
 
