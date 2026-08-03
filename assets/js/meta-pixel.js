@@ -25,6 +25,18 @@ fbq('track', 'PageView');
     var FBCLID_STORAGE_KEY = 'duet_fbclid';
     try {
         var fbclid = new URLSearchParams(window.location.search).get('fbclid');
+
+        // 備援：嘖嘖 Banner 連結是固定網址、無法動態帶參數，
+        // 退而求其次改讀 referrer（上一頁網址）裡的 fbclid，
+        // 但這要看嘖嘖頁面自己的 referrer 政策設定，不保證一定抓得到。
+        if (!fbclid && document.referrer) {
+            try {
+                fbclid = new URL(document.referrer).searchParams.get('fbclid');
+            } catch (e) {
+                // referrer 不是合法網址時忽略
+            }
+        }
+
         if (fbclid) {
             localStorage.setItem(FBCLID_STORAGE_KEY, fbclid);
         }
