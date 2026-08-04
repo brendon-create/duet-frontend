@@ -2198,8 +2198,7 @@
             });
 
             // 讓瀏覽器先渲染指示器
-            // 🧪 TEMP-TEST：暫時拉長到 2000ms 方便測試 race condition 修復，測完務必改回 50
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             if (myGeneration !== modelGeneration) return;
 
@@ -3412,7 +3411,10 @@
                 mesh: (() => { const c = mainMesh.clone(); c.geometry = mainMesh.geometry.clone(); c.material = mainMesh.material.clone(); return c; })(),
                 ring: ringMesh ? (() => { const c = ringMesh.clone(); c.geometry = ringMesh.geometry.clone(); c.material = ringMesh.material.clone(); return c; })() : null,
                 bail: bailMesh ? (() => { const c = bailMesh.clone(); c.geometry = bailMesh.geometry.clone(); c.material = bailMesh.material.clone(); return c; })() : null,
-                bailRelativeOffset: bailRelativeOffset.clone()
+                bailRelativeOffset: bailRelativeOffset.clone(),
+                // 🔧 一併存下當前的字母 BBox，避免 loadFromSlot 還原模型後，BBox 停留在別的 slot 殘影（供後端生產參考用）
+                letter1BBox: window.letter1BBox ? { ...window.letter1BBox } : null,
+                letter2BBox: window.letter2BBox ? { ...window.letter2BBox } : null
             };
 
             // 創建縮略圖
@@ -3547,6 +3549,10 @@
             if (slotData.bail) {
                 restoreBailFromSave(slotData.bail, slotData.bailRelativeOffset);
             }
+
+            // 🔧 還原這個 slot 存檔當時的字母 BBox，避免沿用上一個作品的殘影
+            window.letter1BBox = slotData.letter1BBox || {};
+            window.letter2BBox = slotData.letter2BBox || {};
 
             updateVolumeWeight();
         }
