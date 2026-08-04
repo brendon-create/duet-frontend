@@ -292,6 +292,7 @@
         }
         
         .status-badge.pending { background: rgba(255,165,0,0.2); color: #ffa500; }
+        .status-badge.exhausted { background: rgba(158,158,158,0.2); color: #9e9e9e; }
         .status-badge.paid { background: rgba(76,175,80,0.2); color: #4CAF50; }
         .status-badge.free_order { background: rgba(76,175,80,0.12); color: #2e7d32; border: 1px dashed #4CAF50; }
         .status-badge.processing { background: rgba(33,150,243,0.2); color: #2196F3; }
@@ -3037,7 +3038,12 @@
                 const discount = isRedeemItem ? '完全折抵' : (p.promo_type === 'percentage' ? `${p.value}%` : `NT$ ${p.value}`);
                 const typeLabel = isRedeemItem ? '兌換一件作品' : (p.promo_type === 'percentage' ? '折扣%' : '固定金額');
                 const usageLimit = p.usage_limit || '無限制';
-                const status = p.active ? '<span class="status-badge paid">啟用</span>' : '<span class="status-badge pending">停用</span>';
+                const isExhausted = p.usage_limit && p.usage_count >= p.usage_limit;
+                const status = !p.active
+                    ? '<span class="status-badge pending">停用</span>'
+                    : isExhausted
+                        ? '<span class="status-badge exhausted">已使用</span>'
+                        : '<span class="status-badge paid">啟用</span>';
 
                 return `<tr data-promo-code="${p.code}">
                     <td><strong>${p.code}</strong><br><small style="color:var(--text-muted)">${p.description || ''}</small></td>
