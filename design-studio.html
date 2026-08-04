@@ -1986,6 +1986,7 @@
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
         let modelNeedsCleanup = false;    // 標記：模型有分離部件尚未處理（封鎖購物車）
+        let isModelGenerating = false;    // 標記：generateModel() 尚未跑完（封鎖購物車，避免抓到重繪中的殘影 BBox/圓環位置）
         let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
         let isCleanupInProgress = false;  // 防止清理重複執行
         let renderCount = 0;              // 成功 render 次數（用於下單統計）
@@ -2181,6 +2182,8 @@
         // 3D 建模（Z-up 系統：XY 水平面，Z 軸向上）
         async function generateModel() {
             const myGeneration = ++modelGeneration;
+            isModelGenerating = true;
+            try {
             console.log('[V3 generateModel] 開始生成模型');
 
             // 🛡️ 防禦性清理：如果 mainMesh 已存在但 placeholderSphere 還在，順手清掉
@@ -2616,6 +2619,10 @@
                 ProductPhotoStudio.setMeshes(mainMesh, ringMesh, gridHelper, axesHelper);
             } else {
                 ProductPhotoStudio.setMeshes(mainMesh, ringMesh, null, null);
+            }
+            } finally {
+                // 只有「最新」這次呼叫才能解鎖，避免被更早、已過期的呼叫提前解鎖
+                if (myGeneration === modelGeneration) isModelGenerating = false;
             }
         }
 
@@ -3404,7 +3411,10 @@
                 mesh: (() => { const c = mainMesh.clone(); c.geometry = mainMesh.geometry.clone(); c.material = mainMesh.material.clone(); return c; })(),
                 ring: ringMesh ? (() => { const c = ringMesh.clone(); c.geometry = ringMesh.geometry.clone(); c.material = ringMesh.material.clone(); return c; })() : null,
                 bail: bailMesh ? (() => { const c = bailMesh.clone(); c.geometry = bailMesh.geometry.clone(); c.material = bailMesh.material.clone(); return c; })() : null,
-                bailRelativeOffset: bailRelativeOffset.clone()
+                bailRelativeOffset: bailRelativeOffset.clone(),
+                // 🔧 一併存下當前的字母 BBox，避免 loadFromSlot 還原模型後，BBox 停留在別的 slot 殘影（供後端生產參考用）
+                letter1BBox: window.letter1BBox ? { ...window.letter1BBox } : null,
+                letter2BBox: window.letter2BBox ? { ...window.letter2BBox } : null
             };
 
             // 創建縮略圖
@@ -3540,6 +3550,10 @@
                 restoreBailFromSave(slotData.bail, slotData.bailRelativeOffset);
             }
 
+            // 🔧 還原這個 slot 存檔當時的字母 BBox，避免沿用上一個作品的殘影
+            window.letter1BBox = slotData.letter1BBox || {};
+            window.letter2BBox = slotData.letter2BBox || {};
+
             updateVolumeWeight();
         }
 
@@ -3601,6 +3615,12 @@
 
         function addToCart() {
             if (!mainMesh) return;
+
+            // ⏳ 模型還在背景重新運算（例如剛改完尺寸），此時 BBox/圓環位置都還是舊資料，先擋下來
+            if (isModelGenerating) {
+                showToast('模型正在更新中，請稍候一下再加入購物車');
+                return;
+            }
 
             // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
             if (modelNeedsCleanup) {
