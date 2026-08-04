@@ -2198,7 +2198,8 @@
             });
 
             // 讓瀏覽器先渲染指示器
-            await new Promise(resolve => setTimeout(resolve, 50));
+            // 🧪 TEMP-TEST：暫時拉長到 2000ms 方便測試 race condition 修復，測完務必改回 50
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             if (myGeneration !== modelGeneration) return;
 
