@@ -76,6 +76,15 @@
         }
         .hint-text { font-size: 11px; color: #777; margin-top: 10px; line-height: 1.6; }
 
+        /* ── 手機版 RWD：面板改成底部抽屜，讓出上方空間顯示作品 ── */
+        @media (max-width: 768px) {
+            #panel {
+                top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%;
+                max-height: 40vh; border-radius: 20px 20px 0 0;
+            }
+            #viewport { bottom: 42vh; top: 0; left: 0; right: 0; }
+        }
+
         /* ── Modal 共用 ── */
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
