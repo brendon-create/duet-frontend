@@ -2797,6 +2797,27 @@
             }
         }
 
+        function openStaffItemRevisionEditor() {
+            if (!itemRevisionTarget) return;
+            const { orderId, itemIndex } = itemRevisionTarget;
+            const message = document.getElementById('itemRevisionMessage').value.trim();
+
+            const unlockedFields = [];
+            if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
+            if (document.getElementById('unlockChain').checked) unlockedFields.push('chain');
+            if (unlockedFields.length === 0) {
+                const msgEl = document.getElementById('itemRevisionMsg');
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '至少要勾選一項讓客服調整';
+                return;
+            }
+
+            const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
+                + `&unlockedFields=${encodeURIComponent(unlockedFields.join(','))}&message=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+            closeItemRevisionModal();
+        }
+
         function toggleStoryEdit(orderId) {
             const editBlock = document.getElementById(`storyEditBlock-${orderId}`);
             const viewBlock = document.getElementById(`storyViewBlock-${orderId}`);
@@ -5154,9 +5175,10 @@
 
             <div id="itemRevisionMsg" style="font-size:13px;margin-bottom:12px;"></div>
 
-            <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
                 <button onclick="closeItemRevisionModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
-                <button id="itemRevisionSendBtn" onclick="submitItemRevision()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送確認信</button>
+                <button id="itemRevisionStaffBtn" onclick="openStaffItemRevisionEditor()" style="padding:9px 18px;background:transparent;border:1px solid var(--primary);border-radius:8px;color:var(--primary);cursor:pointer;font-size:13px;font-weight:600;">我們先調整外觀，再送出</button>
+                <button id="itemRevisionSendBtn" onclick="submitItemRevision()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">直接寄送確認信</button>
             </div>
         </div>
     </div>
