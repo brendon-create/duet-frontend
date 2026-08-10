@@ -261,6 +261,30 @@ window.PLATING_COLORS = PLATING_COLORS;
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token') || '';
 
+// 員工模式：客服直接在後台開這個頁面調整外觀，調整完送出時直接套用到訂單並寄信給顧客
+// （顧客打開連結時看到的就是客服調整後的樣子），跟客戶走 token 的公開流程分開處理
+const isStaffMode = params.get('admin') === '1';
+const staffOrderId = params.get('orderId') || '';
+const staffItemIndex = parseInt(params.get('itemIndex') || '0', 10);
+const staffUnlockedFields = (params.get('unlockedFields') || 'ring').split(',');
+const staffMessage = params.get('message') || '';
+const submitBtnLabel = isStaffMode ? '送出給顧客確認' : '送出設計';
+
+if (isStaffMode) {
+    document.querySelector('#designConfirmModal h3').textContent = '確認送出給顧客';
+    document.querySelector('#designConfirmModal .sub').textContent = '送出後將立即寄送確認信給顧客，顧客打開連結時會看到您目前調整的樣子（可直接按確認，也可以再自行調整）。';
+    document.querySelector('#designConfirmModal .warn-box').innerHTML = `
+        <div style="font-size:12px;font-weight:600;color:rgba(212,175,55,0.85);">📋 提醒</div>
+        <ul>
+            <li>送出後會立即寄出確認信給顧客</li>
+            <li>此頁面現在看到的畫面，就是顧客即將收到的起始畫面</li>
+        </ul>`;
+    document.querySelector('#designConfirmModal .confirm-checkbox-row span').textContent = '我已確認以上調整無誤，送出後將寄信通知顧客';
+    document.getElementById('submitDesignBtn').textContent = submitBtnLabel;
+    document.querySelector('#viewSuccess h1').textContent = '已送出給顧客確認！';
+    document.querySelector('#viewSuccess p').textContent = '已將調整後的設計寄送確認信給顧客，顧客可直接確認，也能再自行調整後送出。';
+}
+
 let item = null;
 let orderId = '';
 let unlockedFields = ['ring'];
@@ -278,7 +302,51 @@ function showView(id) {
         .forEach(v => document.getElementById(v).style.display = v === id ? (v === 'viewMain' ? 'block' : 'flex') : 'none');
 }
 
+function applyPanelTexts() {
+    const hasRing = unlockedFields.includes('ring');
+    const hasChain = unlockedFields.includes('chain');
+    document.getElementById('ringControls').style.display = hasRing ? 'block' : 'none';
+    if (hasRing && hasChain) {
+        document.getElementById('panelTitle').textContent = '調整墜頭位置';
+        document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
+    } else if (hasRing) {
+        document.getElementById('panelTitle').textContent = '調整墜頭位置';
+        document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
+    } else {
+        document.getElementById('panelTitle').textContent = '確認作品設計';
+        document.getElementById('panelHint').textContent = '請確認以下作品資訊，下一步可以重新選擇項鍊材質。';
+    }
+}
+
 async function loadData() {
+    if (isStaffMode) {
+        if (!staffOrderId) { showView('viewError'); return; }
+        try {
+            const adminToken = localStorage.getItem('adminToken') || '';
+            const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${staffOrderId}/item/${staffItemIndex}`, {
+                headers: { 'Authorization': 'Bearer ' + adminToken }
+            });
+            const data = await res.json();
+            if (!data.success) { showView('viewError'); return; }
+
+            item = data.item;
+            orderId = data.order_id;
+            unlockedFields = staffUnlockedFields;
+            document.getElementById('orderTag').textContent = `【員工調整模式】訂單編號 ${orderId} ｜ 作品 ${item.letter1}${item.letter2}`;
+            document.getElementById('customMessage').textContent = '請調整以下作品，送出後會直接寄送確認信給顧客（顧客可直接確認，也能再自行調整）。';
+            document.getElementById('itemSummary').textContent =
+                `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+            applyPanelTexts();
+
+            showView('viewMain');
+            await buildScene();
+        } catch (e) {
+            console.error(e);
+            showView('viewError');
+        }
+        return;
+    }
+
     if (!token) { showView('viewError'); return; }
     try {
         const res = await fetch(`${window.BACKEND_URL}/api/consent/item-data/${token}`);
@@ -293,20 +361,7 @@ async function loadData() {
         document.getElementById('customMessage').textContent = data.custom_message || '請調整墜頭位置，確認與作品本體相連後送出。';
         document.getElementById('itemSummary').textContent =
             `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
-
-        const hasRing = unlockedFields.includes('ring');
-        const hasChain = unlockedFields.includes('chain');
-        document.getElementById('ringControls').style.display = hasRing ? 'block' : 'none';
-        if (hasRing && hasChain) {
-            document.getElementById('panelTitle').textContent = '調整墜頭位置';
-            document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
-        } else if (hasRing) {
-            document.getElementById('panelTitle').textContent = '調整墜頭位置';
-            document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
-        } else {
-            document.getElementById('panelTitle').textContent = '確認作品設計';
-            document.getElementById('panelHint').textContent = '請確認以下作品資訊，下一步可以重新選擇項鍊材質。';
-        }
+        applyPanelTexts();
 
         showView('viewMain');
         await buildScene();
@@ -614,11 +669,21 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
     };
 
     try {
-        const res = await fetch(`${window.BACKEND_URL}/api/consent/confirm-item-revision/${token}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        let res;
+        if (isStaffMode) {
+            const adminToken = localStorage.getItem('adminToken') || '';
+            res = await fetch(`${window.BACKEND_URL}/api/admin/order/${staffOrderId}/item/${staffItemIndex}/apply-and-send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+                body: JSON.stringify({ ...payload, unlocked_fields: unlockedFields, message: staffMessage })
+            });
+        } else {
+            res = await fetch(`${window.BACKEND_URL}/api/consent/confirm-item-revision/${token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
         const data = await res.json();
         if (data.success) {
             document.getElementById('designConfirmModal').style.display = 'none';
@@ -626,12 +691,12 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
         } else {
             alert(data.error || '送出失敗，請稍後再試');
             btn.disabled = false;
-            btn.textContent = '送出設計';
+            btn.textContent = submitBtnLabel;
         }
     } catch (e) {
         alert('網路錯誤，請稍後再試');
         btn.disabled = false;
-        btn.textContent = '送出設計';
+        btn.textContent = submitBtnLabel;
     }
 });
 
