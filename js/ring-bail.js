@@ -161,6 +161,9 @@ export function createBail() {
                     ringMesh.position.y,
                     bailCenterZ
                 );
+                // Bail STL 是非同步載入的，如果 ringMesh 建立時就已經是非 0° 旋轉（例如還原已儲存的作品），
+                // 沒有這行的話 bail 會維持預設 0°，直到下次拖動滑桿觸發 updateRingPosition() 才會轉正
+                bailMesh.rotation.z = ringMesh.rotation.z;
 
                 // 🔧 儲存 Bail 與 Ring 的相對位移偏移量（用於聯動）
                 bailRelativeOffset.set(
