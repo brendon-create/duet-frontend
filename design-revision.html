@@ -375,6 +375,20 @@ async function buildScene() {
     initScene();
     animate();
 
+    // 手機版 #viewport 被 CSS 壓成畫面上方一小塊（下方留給操作面板抽屜），
+    // 但 3d-scene.js 的 camera/renderer 預設用整個視窗尺寸計算並置中，
+    // 導致作品的視覺中心沒有真正置中在縮小後的可見區域，看起來會偏低、貼近面板。
+    // 改用 #viewport 實際尺寸重新設定，讓作品置中在真正看得到的範圍內；桌機版 #viewport 等於全螢幕，不受影響。
+    function fitCameraToViewport() {
+        const viewportEl = document.getElementById('viewport');
+        const w = viewportEl.clientWidth, h = viewportEl.clientHeight;
+        window.camera.aspect = w / h;
+        window.camera.updateProjectionMatrix();
+        window.renderer.setSize(w, h);
+    }
+    fitCameraToViewport();
+    window.addEventListener('resize', fitCameraToViewport);
+
     // 隱藏材質相關 DOM（ring-bail.js / materials.js 直接讀取這些欄位）
     ['material', 'finish', 'plating'].forEach(id => {
         const el = document.createElement('input');
