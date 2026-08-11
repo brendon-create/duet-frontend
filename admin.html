@@ -2736,11 +2736,15 @@
 
         let itemRevisionTarget = null; // { orderId, itemIndex }
 
+        // 彈窗預設文案：只適用於「直接請顧客自己調整」的情境。
+        // 若客服選擇「先調整外觀，再送出」且沒有動過這段文字，會改用後端對應的「已調整」版本文案，
+        // 不會把這段話原封不動寄給顧客（見 openStaffItemRevisionEditor）
+        const DEFAULT_ITEM_REVISION_MESSAGE = '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
+
         function openItemRevisionModal(orderId, itemIndex, letters) {
             itemRevisionTarget = { orderId, itemIndex };
             document.getElementById('itemRevisionLabel').textContent = letters;
-            document.getElementById('itemRevisionMessage').value =
-                '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
+            document.getElementById('itemRevisionMessage').value = DEFAULT_ITEM_REVISION_MESSAGE;
             document.getElementById('unlockRing').checked = true;
             document.getElementById('unlockChain').checked = false;
             document.getElementById('itemRevisionMsg').textContent = '';
@@ -2800,7 +2804,10 @@
         function openStaffItemRevisionEditor() {
             if (!itemRevisionTarget) return;
             const { orderId, itemIndex } = itemRevisionTarget;
-            const message = document.getElementById('itemRevisionMessage').value.trim();
+            const rawMessage = document.getElementById('itemRevisionMessage').value.trim();
+            // 沒動過預設文案的話留空，讓後端依「客服已先調整」情境套用對應的預設信件文案；
+            // 若客服有自己改寫，尊重客服打的內容
+            const message = rawMessage === DEFAULT_ITEM_REVISION_MESSAGE ? '' : rawMessage;
 
             const unlockedFields = [];
             if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
