@@ -183,14 +183,21 @@ export function animate() {
     controls.update();
 
     // 同步 Slot 預覽 - 讀取 window.slot1Camera 等（由 saveToSlot 在 design-studio.html 中寫入）
-    if (window.slot1Camera && window.slot1Renderer && window.slot1Scene) {
-        window.slot1Camera.position.copy(camera.position).multiplyScalar(0.5);
-        window.slot1Camera.lookAt(0, 0, 0);
+    // 相機方向沿用主畫面相機（orbit target 固定在原點），置中目標改用該作品自己的外框中心（slot1Target），
+    // 避免固定看向原點時作品因為 Bail/尺寸不同而偏移；縮放距離則是「作品自己算出的基準距離（slot1Dist）」
+    // 乘上「主相機現在的距離 ÷ 存檔當下主相機的距離」，讓縮圖的縮放跟著主畫面滾輪縮放同步變化
+    if (window.slot1Camera && window.slot1Renderer && window.slot1Scene && window.slot1Target) {
+        const dir1 = camera.position.clone().normalize();
+        const zoomRatio1 = camera.position.length() / window.slot1BaseMainDist;
+        window.slot1Camera.position.copy(window.slot1Target).addScaledVector(dir1, window.slot1Dist * zoomRatio1);
+        window.slot1Camera.lookAt(window.slot1Target);
         window.slot1Renderer.render(window.slot1Scene, window.slot1Camera);
     }
-    if (window.slot2Camera && window.slot2Renderer && window.slot2Scene) {
-        window.slot2Camera.position.copy(camera.position).multiplyScalar(0.5);
-        window.slot2Camera.lookAt(0, 0, 0);
+    if (window.slot2Camera && window.slot2Renderer && window.slot2Scene && window.slot2Target) {
+        const dir2 = camera.position.clone().normalize();
+        const zoomRatio2 = camera.position.length() / window.slot2BaseMainDist;
+        window.slot2Camera.position.copy(window.slot2Target).addScaledVector(dir2, window.slot2Dist * zoomRatio2);
+        window.slot2Camera.lookAt(window.slot2Target);
         window.slot2Renderer.render(window.slot2Scene, window.slot2Camera);
     }
 

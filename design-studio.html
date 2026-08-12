@@ -3430,32 +3430,19 @@
             // 創建縮略圖
             slotElement.innerHTML = '';
             const canvas = document.createElement('canvas');
-            canvas.width = 160;
-            canvas.height = 160;
             slotElement.appendChild(canvas);
 
+            // 🔧 內部繪製解析度依容器實際顯示大小（手機版比桌機版大很多）+ 螢幕像素密度來算，避免用固定 160px 的畫布被 CSS 撐大後糊掉
+            const slotDisplaySize = Math.max(160, Math.round(slotElement.getBoundingClientRect().width));
             const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            slotRenderer.setSize(160, 160);
+            slotRenderer.setPixelRatio(window.devicePixelRatio || 1);
+            slotRenderer.setSize(slotDisplaySize, slotDisplaySize, false); // false：不寫入 inline style，讓 CSS 的 width:100%/height:100% 能撐滿容器
             slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
             slotRenderer.outputColorSpace = THREE.SRGBColorSpace;
 
             const slotScene = new THREE.Scene();
             const slotCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             slotCamera.up.set(0, 0, 1); // Z-up 系統
-            const dist = 50;
-            const ratioX = 1.0;
-            const ratioY = 0.4;
-            const ratioZ = 1.0;
-            const totalRatio = Math.sqrt(ratioX * ratioX + ratioY * ratioY + ratioZ * ratioZ);
-            const scaleFactor = dist / totalRatio;
-            const newRatioX = ratioZ;
-            const newRatioY = -ratioX;
-            slotCamera.position.set(
-                newRatioX * scaleFactor,
-                newRatioY * scaleFactor,
-                ratioY * scaleFactor
-            );
-            slotCamera.lookAt(0, 0, 0);
 
             const light1 = new THREE.AmbientLight(0xffffff, 0.5);
             const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -3466,27 +3453,60 @@
 
             const meshClone = mainMesh.clone();
             slotScene.add(meshClone);
+            let ringClone = null, bailClone = null;
             if (ringMesh) {
-                const ringClone = ringMesh.clone();
+                ringClone = ringMesh.clone();
                 slotScene.add(ringClone);
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
-                const bailClone = bailMesh.clone();
+                bailClone = bailMesh.clone();
                 slotScene.add(bailClone);
             }
 
+            // 🔧 準心只用主體字母本身的外框中心（不含 Bail/Ring），跟主畫面的邏輯一致；
+            // 若準心改用「字母+Bail+Ring」合併後的中心，Bail 會把準心往上拉，縮放時字母會被推出畫面
+            const meshBBox = new THREE.Box3();
+            meshBBox.expandByObject(meshClone);
+            const previewCenter = meshBBox.getCenter(new THREE.Vector3());
+
+            // 縮放距離：仍把 Bail/Ring 一起算進去以免被裁到，用「準心到外框最遠角」的距離換算安全的拍攝距離
+            const combinedBBox = new THREE.Box3();
+            combinedBBox.expandByObject(meshClone);
+            if (ringClone) combinedBBox.expandByObject(ringClone);
+            if (bailClone) combinedBBox.expandByObject(bailClone);
+            const farCorner = new THREE.Vector3(
+                Math.max(Math.abs(combinedBBox.max.x - previewCenter.x), Math.abs(combinedBBox.min.x - previewCenter.x)),
+                Math.max(Math.abs(combinedBBox.max.y - previewCenter.y), Math.abs(combinedBBox.min.y - previewCenter.y)),
+                Math.max(Math.abs(combinedBBox.max.z - previewCenter.z), Math.abs(combinedBBox.min.z - previewCenter.z))
+            );
+            const previewDist = farCorner.length() * 2.6;
+
+            // 初始視角沿用當下主畫面相機方向，之後由 3d-scene.js 的動畫迴圈同步旋轉
+            const initialDir = window.camera ? window.camera.position.clone().normalize() : new THREE.Vector3(0.71, -0.71, 0.28);
+            slotCamera.position.copy(previewCenter).addScaledVector(initialDir, previewDist);
+            slotCamera.lookAt(previewCenter);
+
             slotRenderer.render(slotScene, slotCamera);
 
-            // 保存到全域變數以便同步旋轉
+            // 🔧 記錄存檔當下主相機的實際距離，之後動畫迴圈才能算出「主畫面縮放了多少倍」，讓縮圖跟著同步縮放
+            const baseMainDist = window.camera ? window.camera.position.length() : previewDist;
+
+            // 保存到全域變數以便同步旋轉+縮放（含置中目標、縮放距離、主相機基準距離，供 3d-scene.js 動畫迴圈使用）
             if (slotIndex === 0) {
                 window.slot1Renderer = slotRenderer;
                 window.slot1Scene = slotScene;
                 window.slot1Camera = slotCamera;
+                window.slot1Target = previewCenter;
+                window.slot1Dist = previewDist;
+                window.slot1BaseMainDist = baseMainDist;
             } else {
                 window.slot2Renderer = slotRenderer;
                 window.slot2Scene = slotScene;
                 window.slot2Camera = slotCamera;
+                window.slot2Target = previewCenter;
+                window.slot2Dist = previewDist;
+                window.slot2BaseMainDist = baseMainDist;
             }
 
             const label = document.createElement('div');
@@ -3828,13 +3848,13 @@
                     const img = document.createElement('img');
                     img.src = item.thumbnail;
                     img.className = 'cart-item-image';
-                    img.style.cssText = 'width: 100px; height: 100px; object-fit: contain; background: transparent;';
+                    img.style.cssText = 'object-fit: contain; background: transparent;';
                     div.appendChild(img);
                 } else {
                     // 備用：顯示佔位符
                     const placeholder = document.createElement('div');
                     placeholder.className = 'cart-item-image';
-                    placeholder.style.cssText = 'width: 100px; height: 100px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px;';
+                    placeholder.style.cssText = 'background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px;';
                     placeholder.textContent = item.letter1 + item.letter2;
                     div.appendChild(placeholder);
                 }
@@ -4916,8 +4936,9 @@
                         if (!img || img.style.display === 'none') return;
                         previewImg.onerror = null;
                         previewImg.src = img.src;
+                        preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度現在是響應式的（min(640px,92vw)），不能再用寫死的數字
                         // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱
-                        const pw = 640, ph = 480;
+                        const pw = preview.offsetWidth, ph = preview.offsetHeight;
                         const imgRect = img.getBoundingClientRect();
                         let left = imgRect.left + imgRect.width / 2 - pw / 2;
                         let top  = imgRect.bottom - ph;
@@ -4927,7 +4948,6 @@
                         top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
                         preview.style.left = left + 'px';
                         preview.style.top  = top  + 'px';
-                        preview.style.display = 'block';
                     });
                     body.addEventListener('mouseout', e => {
                         const target = e.target.closest('.cart-chain-opt');
@@ -6694,8 +6714,9 @@
     </div>
 
     <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫；置中疊在卡片正前方） -->
+    <!-- 寬度改用 min(640px, 92vw)：手機螢幕比 640px 窄時會等比縮小，避免邊框超出螢幕範圍 -->
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
-         width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+         width:min(640px, 92vw);aspect-ratio:4/3;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
