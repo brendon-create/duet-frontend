@@ -183,14 +183,18 @@ export function animate() {
     controls.update();
 
     // 同步 Slot 預覽 - 讀取 window.slot1Camera 等（由 saveToSlot 在 design-studio.html 中寫入）
-    if (window.slot1Camera && window.slot1Renderer && window.slot1Scene) {
-        window.slot1Camera.position.copy(camera.position).multiplyScalar(0.5);
-        window.slot1Camera.lookAt(0, 0, 0);
+    // 相機方向沿用主畫面相機（orbit target 固定在原點），但置中目標與縮放距離改用該作品自己的外框（slot1Target/slot1Dist），
+    // 避免用固定 0.5 倍距離、固定看向原點時，作品因為 Bail/尺寸不同而偏移或過小
+    if (window.slot1Camera && window.slot1Renderer && window.slot1Scene && window.slot1Target) {
+        const dir1 = camera.position.clone().normalize();
+        window.slot1Camera.position.copy(window.slot1Target).addScaledVector(dir1, window.slot1Dist);
+        window.slot1Camera.lookAt(window.slot1Target);
         window.slot1Renderer.render(window.slot1Scene, window.slot1Camera);
     }
-    if (window.slot2Camera && window.slot2Renderer && window.slot2Scene) {
-        window.slot2Camera.position.copy(camera.position).multiplyScalar(0.5);
-        window.slot2Camera.lookAt(0, 0, 0);
+    if (window.slot2Camera && window.slot2Renderer && window.slot2Scene && window.slot2Target) {
+        const dir2 = camera.position.clone().normalize();
+        window.slot2Camera.position.copy(window.slot2Target).addScaledVector(dir2, window.slot2Dist);
+        window.slot2Camera.lookAt(window.slot2Target);
         window.slot2Renderer.render(window.slot2Scene, window.slot2Camera);
     }
 

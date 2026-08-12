@@ -3442,20 +3442,6 @@
             const slotScene = new THREE.Scene();
             const slotCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             slotCamera.up.set(0, 0, 1); // Z-up 系統
-            const dist = 50;
-            const ratioX = 1.0;
-            const ratioY = 0.4;
-            const ratioZ = 1.0;
-            const totalRatio = Math.sqrt(ratioX * ratioX + ratioY * ratioY + ratioZ * ratioZ);
-            const scaleFactor = dist / totalRatio;
-            const newRatioX = ratioZ;
-            const newRatioY = -ratioX;
-            slotCamera.position.set(
-                newRatioX * scaleFactor,
-                newRatioY * scaleFactor,
-                ratioY * scaleFactor
-            );
-            slotCamera.lookAt(0, 0, 0);
 
             const light1 = new THREE.AmbientLight(0xffffff, 0.5);
             const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -3466,27 +3452,46 @@
 
             const meshClone = mainMesh.clone();
             slotScene.add(meshClone);
+            let ringClone = null, bailClone = null;
             if (ringMesh) {
-                const ringClone = ringMesh.clone();
+                ringClone = ringMesh.clone();
                 slotScene.add(ringClone);
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
-                const bailClone = bailMesh.clone();
+                bailClone = bailMesh.clone();
                 slotScene.add(bailClone);
             }
 
+            // 🔧 依作品實際外框（含 Bail/Ring）算出置中目標與縮放距離，避免縮圖偏移或過小
+            const previewBBox = new THREE.Box3();
+            previewBBox.expandByObject(meshClone);
+            if (ringClone) previewBBox.expandByObject(ringClone);
+            if (bailClone) previewBBox.expandByObject(bailClone);
+            const previewCenter = previewBBox.getCenter(new THREE.Vector3());
+            const previewSize = previewBBox.getSize(new THREE.Vector3());
+            const previewDist = Math.max(previewSize.x, previewSize.y, previewSize.z) * 2.2;
+
+            // 初始視角沿用當下主畫面相機方向，之後由 3d-scene.js 的動畫迴圈同步旋轉
+            const initialDir = window.camera ? window.camera.position.clone().normalize() : new THREE.Vector3(0.71, -0.71, 0.28);
+            slotCamera.position.copy(previewCenter).addScaledVector(initialDir, previewDist);
+            slotCamera.lookAt(previewCenter);
+
             slotRenderer.render(slotScene, slotCamera);
 
-            // 保存到全域變數以便同步旋轉
+            // 保存到全域變數以便同步旋轉（含置中目標與縮放距離，供 3d-scene.js 動畫迴圈使用）
             if (slotIndex === 0) {
                 window.slot1Renderer = slotRenderer;
                 window.slot1Scene = slotScene;
                 window.slot1Camera = slotCamera;
+                window.slot1Target = previewCenter;
+                window.slot1Dist = previewDist;
             } else {
                 window.slot2Renderer = slotRenderer;
                 window.slot2Scene = slotScene;
                 window.slot2Camera = slotCamera;
+                window.slot2Target = previewCenter;
+                window.slot2Dist = previewDist;
             }
 
             const label = document.createElement('div');
