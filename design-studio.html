@@ -3479,19 +3479,24 @@
 
             slotRenderer.render(slotScene, slotCamera);
 
-            // 保存到全域變數以便同步旋轉（含置中目標與縮放距離，供 3d-scene.js 動畫迴圈使用）
+            // 🔧 記錄存檔當下主相機的實際距離，之後動畫迴圈才能算出「主畫面縮放了多少倍」，讓縮圖跟著同步縮放
+            const baseMainDist = window.camera ? window.camera.position.length() : previewDist;
+
+            // 保存到全域變數以便同步旋轉+縮放（含置中目標、縮放距離、主相機基準距離，供 3d-scene.js 動畫迴圈使用）
             if (slotIndex === 0) {
                 window.slot1Renderer = slotRenderer;
                 window.slot1Scene = slotScene;
                 window.slot1Camera = slotCamera;
                 window.slot1Target = previewCenter;
                 window.slot1Dist = previewDist;
+                window.slot1BaseMainDist = baseMainDist;
             } else {
                 window.slot2Renderer = slotRenderer;
                 window.slot2Scene = slotScene;
                 window.slot2Camera = slotCamera;
                 window.slot2Target = previewCenter;
                 window.slot2Dist = previewDist;
+                window.slot2BaseMainDist = baseMainDist;
             }
 
             const label = document.createElement('div');
