@@ -2601,7 +2601,11 @@
                             ${viewCell(findView('top'), '俯視圖')}
                             ${viewCell(findView('hero'), 'Hero 45°')}
                         </div>`;
-                        const chainLabels = { silver_chain: '銀色不鏽鋼鏈', gold_chain: '金色不鏽鋼鏈', rosegold_chain: '玫瑰金不鏽鋼鏈', black_rubber: '黑色橡膠繩' };
+                        const chainLabels = {
+                            silver_chain: '0.8mm 銀色不鏽鋼鏈', gold_chain: '0.8mm 金色不鏽鋼鏈', rosegold_chain: '0.8mm 玫瑰金不鏽鋼鏈',
+                            silver_chain_2mm: '2mm 銀色不鏽鋼鏈', black_chain_2mm: '2mm 黑色不鏽鋼鏈',
+                            black_rubber: '黑色橡膠繩（已停售）',
+                        };
                         const chainLabel = chainLabels[item.chainType]
                             ? chainLabels[item.chainType] + (item.chainType === 'black_rubber' && item.chainLength ? `・${item.chainLength}` : '')
                             : '未選擇';

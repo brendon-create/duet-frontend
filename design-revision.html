@@ -98,8 +98,7 @@
         .modal-box .sub { color: #999; font-size: 13px; margin-bottom: 20px; }
 
         /* 項鍊選擇 */
-        .chain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 8px; }
-        @media (min-width: 480px) { .chain-grid { grid-template-columns: repeat(4, 1fr); } }
+        .chain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 14px; margin-bottom: 8px; }
         .chain-opt {
             cursor: pointer; border: 2px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden;
             background: rgba(255,255,255,0.04); text-align: center;
@@ -107,11 +106,6 @@
         .chain-opt img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
         .chain-opt .fallback { aspect-ratio: 1; display: none; align-items: center; justify-content: center; font-size: 32px; opacity: 0.4; }
         .chain-opt .label { padding: 10px 6px 12px; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }
-        .length-row { display: none; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
-        .length-opt {
-            cursor: pointer; padding: 4px 12px; border-radius: 16px; font-size: 12px;
-            border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);
-        }
 
         /* 設計確認 */
         .warn-box { background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 16px 18px; margin: 18px 0; }
@@ -290,12 +284,12 @@ let orderId = '';
 let unlockedFields = ['ring'];
 
 const CHAIN_OPTIONS = [
-    { value: 'silver_chain',   label: '銀色不鏽鋼鏈',   img: 'assets/images/products/silver-chain.png' },
-    { value: 'gold_chain',     label: '金色不鏽鋼鏈',   img: 'assets/images/products/gold-chain.png' },
-    { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
-    { value: 'black_rubber',   label: '黑色橡膠繩',     img: 'assets/images/products/rubber-chain.png', needsLength: true },
+    { value: 'silver_chain',     label: '0.8mm 銀色不鏽鋼鏈', img: 'assets/images/products/silver-chain.png' },
+    { value: 'gold_chain',       label: '0.8mm 金色不鏽鋼鏈', img: 'assets/images/products/gold-chain.png' },
+    { value: 'rosegold_chain',   label: '0.8mm 玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
+    { value: 'silver_chain_2mm', label: '2mm 銀色不鏽鋼鏈',   img: 'assets/images/products/male-silver-chain.png' },
+    { value: 'black_chain_2mm',  label: '2mm 黑色不鏽鋼鏈',   img: 'assets/images/products/male-black-chain.png' },
 ];
-const CHAIN_LENGTH_OPTIONS = ['45cm', '50cm'];
 
 function showView(id) {
     ['viewLoading', 'viewError', 'viewAlreadyConfirmed', 'viewSuccess', 'viewMain']
@@ -478,54 +472,37 @@ async function buildScene() {
 
 function renderChainGrid() {
     const grid = document.getElementById('chainGrid');
-    let selected = item.chainType || '';
-    let selectedLength = item.chainLength || '';
+    // 若原本選的是已停售款式（如舊版黑色橡膠繩），不預先選取，強制重選
+    let selected = CHAIN_OPTIONS.some(o => o.value === item.chainType) ? item.chainType : '';
 
     function render() {
         grid.innerHTML = CHAIN_OPTIONS.map(opt => `
             <div class="chain-opt" data-chain="${opt.value}" style="border-color:${selected === opt.value ? '#d4af37' : 'rgba(255,255,255,0.12)'};">
                 <img src="${opt.img}" alt="${opt.label}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                 <div class="fallback">🔗</div>
-                <div class="label">
-                    ${opt.label}
-                    ${opt.needsLength ? `
-                        <div class="length-row" data-chain="${opt.value}" style="display:${selected === opt.value ? 'flex' : 'none'};">
-                            ${CHAIN_LENGTH_OPTIONS.map(len => `
-                                <div class="length-opt" data-length="${len}" style="border-color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.2)'};color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.7)'};">${len}</div>
-                            `).join('')}
-                        </div>` : ''}
-                </div>
+                <div class="label">${opt.label}</div>
             </div>`).join('');
         updateConfirmBtn();
     }
 
     function updateConfirmBtn() {
-        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
-        const ok = !!opt && (!opt.needsLength || !!selectedLength);
+        const ok = CHAIN_OPTIONS.some(o => o.value === selected);
         const btn = document.getElementById('chainConfirmBtn');
         btn.disabled = !ok;
         btn.style.opacity = ok ? '1' : '0.4';
     }
 
     grid.onclick = (e) => {
-        const lengthOpt = e.target.closest('.length-opt');
-        if (lengthOpt) {
-            selectedLength = lengthOpt.dataset.length;
-            render();
-            return;
-        }
         const card = e.target.closest('.chain-opt');
         if (!card) return;
         selected = card.dataset.chain;
-        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
-        if (!opt.needsLength) selectedLength = '';
         render();
     };
 
     render();
 
     return {
-        getSelection: () => ({ chainType: selected, chainLength: selectedLength || null })
+        getSelection: () => ({ chainType: selected, chainLength: null })
     };
 }
 
@@ -555,7 +532,7 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
     let chainLine = '';
     if (chainSel) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
-        chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}${chainSel.chainLength ? '・' + chainSel.chainLength : ''}<br>`;
+        chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}<br>`;
     }
     const ringLine = ringParams
         ? `<span style="color:rgba(255,255,255,0.3);">圓環　</span>X=${ringParams.ringRelativeX.toFixed(2)} Y=${ringParams.ringRelativeY.toFixed(2)} Z=${ringParams.ringRelativeZ.toFixed(2)} 旋轉=${ringParams.ringRotation.toFixed(1)}°<br>`
