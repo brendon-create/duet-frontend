@@ -488,36 +488,36 @@
 
             <div style="display:flex;flex-direction:column;gap:16px;">
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">姓名 *</label>
-                    <input id="inquiry-name" type="text" placeholder="您的姓名" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.name" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">姓名 *</label>
+                    <input id="inquiry-name" type="text" data-i18n-placeholder="inquiry.field.name.placeholder" placeholder="您的姓名" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">Email 或 LINE ID *</label>
-                    <input id="inquiry-contact" type="text" placeholder="your@email.com 或 LINE ID" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.contact" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">Email 或 LINE ID *</label>
+                    <input id="inquiry-contact" type="text" data-i18n-placeholder="inquiry.field.contact.placeholder" placeholder="your@email.com 或 LINE ID" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">材質偏好</label>
+                    <label data-i18n="inquiry.field.material" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">材質偏好</label>
                     <select id="inquiry-material" style="width:100%;padding:12px 14px;background:rgba(20,18,14,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
-                        <option value="18k_yellow">18K 黃金</option>
-                        <option value="18k_rose">18K 玫瑰金</option>
-                        <option value="18k_white">18K 白K金</option>
-                        <option value="platinum">鉑金</option>
-                        <option value="undecided">尚未決定，希望諮詢</option>
+                        <option value="18k_yellow" data-i18n="inquiry.material.gold">18K 黃金</option>
+                        <option value="18k_rose" data-i18n="inquiry.material.rose">18K 玫瑰金</option>
+                        <option value="18k_white" data-i18n="inquiry.material.white">18K 白K金</option>
+                        <option value="platinum" data-i18n="inquiry.material.platinum">鉑金</option>
+                        <option value="undecided" data-i18n="inquiry.material.undecided">尚未決定，希望諮詢</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">希望完成時間</label>
-                    <input id="inquiry-timeline" type="text" placeholder="例如：2 個月內、聖誕節前⋯" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.timeline" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">希望完成時間</label>
+                    <input id="inquiry-timeline" type="text" data-i18n-placeholder="inquiry.field.timeline.placeholder" placeholder="例如：2 個月內、聖誕節前⋯" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">備註</label>
-                    <textarea id="inquiry-notes" placeholder="其他想告訴我們的⋯" rows="3" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;resize:vertical;font-family:inherit;"></textarea>
+                    <label data-i18n="inquiry.field.notes" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">備註</label>
+                    <textarea id="inquiry-notes" data-i18n-placeholder="inquiry.field.notes.placeholder" placeholder="其他想告訴我們的⋯" rows="3" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;resize:vertical;font-family:inherit;"></textarea>
                 </div>
             </div>
 
             <div style="display:flex;gap:12px;margin-top:28px;">
-                <button onclick="document.getElementById('custom-inquiry-modal').style.display='none';" style="flex:1;padding:14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">取消</button>
-                <button id="submit-inquiry-btn" onclick="submitCustomInquiry();" style="flex:2;padding:14px;background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.1));border:1px solid rgba(212,175,55,0.5);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;font-weight:500;">送出訂製需求</button>
+                <button onclick="document.getElementById('custom-inquiry-modal').style.display='none';" data-i18n="inquiry.cancel" style="flex:1;padding:14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">取消</button>
+                <button id="submit-inquiry-btn" onclick="submitCustomInquiry();" data-i18n="cart.inquiry" style="flex:2;padding:14px;background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.1));border:1px solid rgba(212,175,55,0.5);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;font-weight:500;">送出訂製需求</button>
             </div>
             <div id="inquiry-status" style="margin-top:14px;font-size:13px;text-align:center;min-height:18px;"></div>
         </div>
@@ -4118,12 +4118,12 @@
             promoMessage.innerHTML = '';
 
             if (!promoCode) {
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">⚠️ 請輸入優惠碼</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.empty')}</span>`;
                 return;
             }
 
             if (cartItems.length === 0) {
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">⚠️ 購物車是空的</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">⚠️ ${window.t('studio.cart.empty')}</span>`;
                 return;
             }
 
@@ -4162,7 +4162,7 @@
                         <div style="color: #4CAF50; display: flex; align-items: center; justify-content: space-between;">
                             <span>✅ ${result.description}</span>
                             <button onclick="removePromoCode()" style="background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 14px;">
-                                移除
+                                ${window.t('studio.promo.remove')}
                             </button>
                         </div>
                     `;
@@ -4170,7 +4170,7 @@
                     // 禁用輸入框
                     promoInput.disabled = true;
                     applyBtn.disabled = true;
-                    applyBtn.textContent = '已套用';
+                    applyBtn.textContent = window.t('studio.promo.applied');
 
                     // 更新顯示
                     renderCart();
@@ -4188,13 +4188,13 @@
 
             } catch (error) {
                 console.error('❌ 優惠碼驗證錯誤:', error);
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">❌ 驗證失敗，請稍後再試</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.failed')}</span>`;
                 appliedPromoCode = '';
                 promoDiscount = 0;
             } finally {
                 // 重置按鈕
                 applyBtn.disabled = false;
-                applyBtn.textContent = '套用';
+                applyBtn.textContent = window.t('studio.promo.apply');
             }
         }
 
@@ -4209,7 +4209,7 @@
             promoInput.value = '';
             promoInput.disabled = false;
             applyBtn.disabled = false;
-            applyBtn.textContent = '套用';
+            applyBtn.textContent = window.t('studio.promo.apply');
             promoMessage.innerHTML = '';
 
             renderCart();
@@ -4740,7 +4740,7 @@
                 `DUET "${item.letter1}${item.letter2}" — "${item.letter1}" × ${item.font1}，"${item.letter2}" × ${item.font2}，${item.size}mm`
             );
             document.getElementById('inquiry-design-summary').innerHTML =
-                '<strong style="color:rgba(212,175,55,0.8);font-size:11px;letter-spacing:1px;text-transform:uppercase;">作品資訊</strong><br>' +
+                `<strong style="color:rgba(212,175,55,0.8);font-size:11px;letter-spacing:1px;text-transform:uppercase;">${window.t('inquiry.itemInfo')}</strong><br>` +
                 summaryLines.join('<br>');
             document.getElementById('inquiry-status').textContent = '';
             document.getElementById('custom-inquiry-modal').style.display = 'flex';
@@ -4750,13 +4750,13 @@
             const name    = document.getElementById('inquiry-name').value.trim();
             const contact = document.getElementById('inquiry-contact').value.trim();
             if (!name || !contact) {
-                document.getElementById('inquiry-status').innerHTML = '<span style="color:#ff6b6b;">請填寫姓名及聯絡方式</span>';
+                document.getElementById('inquiry-status').innerHTML = `<span style="color:#ff6b6b;">${window.t('inquiry.error.missingInfo')}</span>`;
                 return;
             }
 
             const btn = document.getElementById('submit-inquiry-btn');
             btn.disabled = true;
-            btn.textContent = '傳送中⋯';
+            btn.textContent = window.t('inquiry.sending');
             document.getElementById('inquiry-status').textContent = '';
 
             const preciousItems = cartItems.filter(i => i.isPreciousMetal);
@@ -4786,8 +4786,8 @@
                 });
                 if (!res.ok) throw new Error('server error');
                 document.getElementById('inquiry-status').innerHTML =
-                    '<span style="color:#7ec87e;">✓ 已送出！我們將在 2 個工作天內與您聯繫。</span>';
-                btn.textContent = '已送出';
+                    `<span style="color:#7ec87e;">${window.t('inquiry.sent.message')}</span>`;
+                btn.textContent = window.t('inquiry.sent.button');
                 // 移除貴金屬品項
                 cartItems = cartItems.filter(i => !i.isPreciousMetal);
                 // 1 秒後關閉 modal，顯示跳轉提示
@@ -4797,9 +4797,9 @@
                 }, 1200);
             } catch (e) {
                 document.getElementById('inquiry-status').innerHTML =
-                    '<span style="color:#ff6b6b;">傳送失敗，請稍後再試或直接 Email 至 duet@brendonchen.com</span>';
+                    `<span style="color:#ff6b6b;">${window.t('inquiry.error.sendFailed')}</span>`;
                 btn.disabled = false;
-                btn.textContent = '送出訂製需求';
+                btn.textContent = window.t('cart.inquiry');
             }
         }
 
