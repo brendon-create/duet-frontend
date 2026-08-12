@@ -1176,6 +1176,10 @@
                 max-height: 33vh;
                 border-radius: 20px 20px 0 0;
                 z-index: 1000;
+                /* 手機版面板疊在背景木桌亮區上，維持 .glass 的透明底會讓白/黃字看不清，改用深色毛玻璃 */
+                background: rgba(10, 10, 14, 0.75);
+                backdrop-filter: blur(16px) saturate(120%);
+                -webkit-backdrop-filter: blur(16px) saturate(120%);
             }
             
             #saved-versions {
