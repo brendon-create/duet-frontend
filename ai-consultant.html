@@ -1051,7 +1051,8 @@
                 console.error('Error:', error);
                 removeTypingIndicator();
                 // 顯示友善的錯誤訊息，而不是要求重新整理
-                addMessage('assistant', '顧問忙碌中，請點擊重試');
+                const isEnErr = (localStorage.getItem('duet_language') || 'zh') === 'en';
+                addMessage('assistant', isEnErr ? 'The consultant is busy, please click to retry' : '顧問忙碌中，請點擊重試');
             } finally {
                 isWaitingForResponse = false;
                 document.getElementById('send-btn').disabled = false;
