@@ -65,6 +65,7 @@
         }
         .control-group .slider-value { color: #d4af37; }
         .control-group input[type="range"] { width: 100%; accent-color: #d4af37; }
+        .control-group input[type="range"]:disabled { cursor: not-allowed; }
         .btn-gold {
             width: 100%; padding: 14px; margin-top: 6px; background: linear-gradient(135deg,#d4af37,#b8962e);
             color: #0c0a06; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
@@ -380,16 +381,31 @@ function showView(id) {
 function applyPanelTexts() {
     const hasRing = unlockedFields.includes('ring');
     const hasChain = unlockedFields.includes('chain');
-    document.getElementById('ringControls').style.display = hasRing ? 'block' : 'none';
+    const ringControls = document.getElementById('ringControls');
+    const confirmBtn = document.getElementById('mainConfirmBtn');
+
+    // 面板一律顯示（讓客戶能核對作品參數，確認是要重選項鍊的那一件——
+    // 同一設計常有大小兩種尺寸分別給男女生佩戴，光看模型外觀不一定分得出來）；
+    // 沒開放調整墜頭位置時，滑桿反灰、不可拖動，純供參考
+    ringControls.style.display = 'block';
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        document.getElementById(id).disabled = !hasRing;
+    });
+    ringControls.style.opacity = hasRing ? '1' : '0.4';
+    ringControls.style.pointerEvents = hasRing ? '' : 'none';
+
     if (hasRing && hasChain) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
+        confirmBtn.textContent = '確認';
     } else if (hasRing) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
+        confirmBtn.textContent = '確認';
     } else {
-        document.getElementById('panelTitle').textContent = '確認作品設計';
-        document.getElementById('panelHint').textContent = '請確認以下作品資訊，下一步可以重新選擇項鍊材質。';
+        document.getElementById('panelTitle').textContent = '確認作品';
+        document.getElementById('panelHint').textContent = '請確認以上是您要重新選擇項鍊的作品；墜頭位置維持原樣，不會被更動。';
+        confirmBtn.textContent = '前往選擇項鍊';
     }
 }
 
@@ -415,10 +431,6 @@ async function loadData() {
 
             showView('viewMain');
             await buildScene();
-            // 純項鍊修改（沒有開放調整墜頭位置）不需要額外一次「確認作品設計」的過場，直接進入項鍊選擇
-            if (!unlockedFields.includes('ring') && unlockedFields.includes('chain')) {
-                proceedFromMainPanel();
-            }
         } catch (e) {
             console.error(e);
             showView('viewError');
@@ -444,10 +456,6 @@ async function loadData() {
 
         showView('viewMain');
         await buildScene();
-        // 純項鍊修改（沒有開放調整墜頭位置）不需要額外一次「確認作品設計」的過場，直接進入項鍊選擇
-        if (!unlockedFields.includes('ring') && unlockedFields.includes('chain')) {
-            proceedFromMainPanel();
-        }
     } catch (e) {
         console.error(e);
         showView('viewError');
