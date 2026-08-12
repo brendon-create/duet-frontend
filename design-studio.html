@@ -3828,13 +3828,13 @@
                     const img = document.createElement('img');
                     img.src = item.thumbnail;
                     img.className = 'cart-item-image';
-                    img.style.cssText = 'width: 100px; height: 100px; object-fit: contain; background: transparent;';
+                    img.style.cssText = 'object-fit: contain; background: transparent;';
                     div.appendChild(img);
                 } else {
                     // 備用：顯示佔位符
                     const placeholder = document.createElement('div');
                     placeholder.className = 'cart-item-image';
-                    placeholder.style.cssText = 'width: 100px; height: 100px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px;';
+                    placeholder.style.cssText = 'background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px;';
                     placeholder.textContent = item.letter1 + item.letter2;
                     div.appendChild(placeholder);
                 }
