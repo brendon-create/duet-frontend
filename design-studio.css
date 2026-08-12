@@ -296,6 +296,13 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
         }
 
+        /* 縮圖 canvas 內部繪製解析度固定 160x160，靠這條規則撐滿容器實際尺寸（手機版容器比 160x160 大很多） */
+        .version-slot canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
         .version-slot:hover {
             transform: scale(1.2);
             z-index: 200;
@@ -1191,13 +1198,13 @@
                 flex-direction: row;
                 align-items: center;
                 gap: 8px;
-                justify-content: stretch;
+                justify-content: space-between;
             }
-            
+
             .version-slot {
-                width: 50%;
+                width: 42.5%;
                 height: 0;
-                padding-bottom: 50%;
+                padding-bottom: 42.5%;
                 min-height: 0;
                 max-height: none;
             }
