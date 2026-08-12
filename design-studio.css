@@ -296,9 +296,16 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
         }
 
-        /* 縮圖 canvas 內部繪製解析度固定 160x160，靠這條規則撐滿容器實際尺寸（手機版容器比 160x160 大很多） */
+        /* 縮圖 canvas 內部繪製解析度固定 160x160，靠這條規則撐滿容器實際尺寸（手機版容器比 160x160 大很多）。
+           手機版 .version-slot 是用 height:0 + padding-bottom 撐出正方形，content box 高度是 0，
+           若用一般文件流的 width/height:100% 會算成 0（完全不顯示）；改用 absolute + 四邊 0 貼齊 padding box 才會撐滿。 */
         .version-slot canvas {
             display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             width: 100%;
             height: 100%;
         }
