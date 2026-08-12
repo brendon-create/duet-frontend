@@ -4795,13 +4795,17 @@
         function openChainWearPhotos() {
             const overlay = document.getElementById('chain-wear-photos-overlay');
             const strip   = document.getElementById('chain-wear-photos-strip');
-            if (!strip.dataset.rendered) {
-                strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
-                    <div style="flex:0 0 auto;scroll-snap-align:center;text-align:center;">
-                        <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
-                        <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${window.t(p.captionKey)}</div>
-                    </div>`).join('');
-                strip.dataset.rendered = '1';
+
+            // 圖說每次開啟都重新渲染，避免切換語言後仍顯示舊語言的舊快取內容
+            strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
+                <div style="flex:0 0 auto;scroll-snap-align:center;text-align:center;">
+                    <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
+                    <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${window.t(p.captionKey)}</div>
+                </div>`).join('');
+
+            // 事件監聽只綁一次
+            if (!overlay.dataset.listenersAdded) {
+                overlay.dataset.listenersAdded = '1';
 
                 // 滑鼠滾輪轉為橫向捲動
                 strip.addEventListener('wheel', e => {
