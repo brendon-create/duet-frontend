@@ -1197,12 +1197,13 @@
                 width: auto;
                 flex-direction: row;
                 align-items: center;
-                gap: 8px;
-                justify-content: space-between;
+                gap: 10px;
+                justify-content: flex-start;
             }
 
             .version-slot {
-                width: 42.5%;
+                /* 寬度扣掉中間 10px 間距後平分，讓中間間距與左右邊界留白（皆為 10px）視覺一致；高度維持不變 */
+                width: calc((100% - 10px) / 2);
                 height: 0;
                 padding-bottom: 42.5%;
                 min-height: 0;
