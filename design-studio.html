@@ -172,6 +172,7 @@
                 <option value="8">8 mm</option>
                 <option value="10" selected>10 mm</option>
                 <option value="12">12 mm</option>
+                <option value="15" disabled style="color:#555;">15 mm</option>
             </select>
         </div>
 
@@ -2050,10 +2051,13 @@
             return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
         }
 
-        const ALL_SIZES = [8, 10, 12];
+        const ALL_SIZES = [8, 10, 12, 15];
+        // 暫時停用的尺寸（不開放新選擇，但保留選項與舊資料顯示；日後恢復時從此清單移除即可）
+        const RETIRED_SIZES = [15];
 
         function getMinAvailableSize(fontName) {
             for (const sz of ALL_SIZES) {
+                if (RETIRED_SIZES.includes(sz)) continue;
                 if (getFontConstraint(fontName, sz) !== 'unavailable') return sz;
             }
             return null;
@@ -2118,6 +2122,13 @@
                 opt.style.color = '';
                 opt.title       = '';
                 opt.text        = sz + ' mm';
+
+                // 暫時停用的尺寸：一律鎖住，不參與字體規範判斷
+                if (RETIRED_SIZES.includes(sz)) {
+                    opt.disabled    = true;
+                    opt.style.color = '#555';
+                    return;
+                }
 
                 if (l1 === 'unavailable' || l2 === 'unavailable') {
                     opt.disabled    = true;
