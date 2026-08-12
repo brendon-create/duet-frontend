@@ -172,7 +172,7 @@
                 <option value="8">8 mm</option>
                 <option value="10" selected>10 mm</option>
                 <option value="12">12 mm</option>
-                <option value="15">15 mm</option>
+                <option value="15" disabled style="color:#555;">15 mm</option>
             </select>
         </div>
 
@@ -2052,9 +2052,12 @@
         }
 
         const ALL_SIZES = [8, 10, 12, 15];
+        // 暫時停用的尺寸（不開放新選擇，但保留選項與舊資料顯示；日後恢復時從此清單移除即可）
+        const RETIRED_SIZES = [15];
 
         function getMinAvailableSize(fontName) {
             for (const sz of ALL_SIZES) {
+                if (RETIRED_SIZES.includes(sz)) continue;
                 if (getFontConstraint(fontName, sz) !== 'unavailable') return sz;
             }
             return null;
@@ -2119,6 +2122,13 @@
                 opt.style.color = '';
                 opt.title       = '';
                 opt.text        = sz + ' mm';
+
+                // 暫時停用的尺寸：一律鎖住，不參與字體規範判斷
+                if (RETIRED_SIZES.includes(sz)) {
+                    opt.disabled    = true;
+                    opt.style.color = '#555';
+                    return;
+                }
 
                 if (l1 === 'unavailable' || l2 === 'unavailable') {
                     opt.disabled    = true;
@@ -3855,14 +3865,11 @@
                         color:${chainOpt ? '#d4af37' : 'rgba(212,175,55,0.85)'};
                         ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
-                    const chainLabel = chainOpt && chainOpt.needsLength && item.chainLength
-                        ? `${chainOpt.label}・${item.chainLength}`
-                        : (chainOpt ? chainOpt.label : '');
                     chainBtn.innerHTML = chainOpt
-                        ? `<span>${chainLabel}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
+                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
                         : `<span>${window.t('cart.chain.select')}</span>`;
                     chainBtn.addEventListener('click', () => {
-                        showChainTypeModal().then(() => renderCart()).catch(() => {});
+                        showChainTypeModal(index).then(() => renderCart()).catch(() => {});
                     });
                     infoDiv.appendChild(chainBtn);
                 }
@@ -4768,12 +4775,65 @@
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
         const CHAIN_OPTIONS = [
-            { value: 'silver_chain',   label: window.t('chain.option.silver'),   img: 'assets/images/products/silver-chain.png', note: window.t('chain.note.adjustable') },
-            { value: 'gold_chain',     label: window.t('chain.option.gold'),     img: 'assets/images/products/gold-chain.png', note: window.t('chain.note.adjustable') },
-            { value: 'rosegold_chain', label: window.t('chain.option.rosegold'), img: 'assets/images/products/rosegold-chain.png', note: window.t('chain.note.adjustable') },
-            { value: 'black_rubber',   label: window.t('chain.option.rubber'),   img: 'assets/images/products/rubber-chain.png', note: window.t('chain.note.selectable'), needsLength: true },
+            { value: 'silver_chain',     label: window.t('chain.option.silver'),     img: 'assets/images/products/silver-chain.png',      note: window.t('chain.note.adjustable') },
+            { value: 'gold_chain',       label: window.t('chain.option.gold'),       img: 'assets/images/products/gold-chain.png',        note: window.t('chain.note.adjustable') },
+            { value: 'rosegold_chain',   label: window.t('chain.option.rosegold'),   img: 'assets/images/products/rosegold-chain.png',    note: window.t('chain.note.adjustable') },
+            { value: 'silver_chain_2mm', label: window.t('chain.option.silverBold'), img: 'assets/images/products/male-silver-chain.jpg', note: window.t('chain.note.adjustable') },
+            { value: 'black_chain_2mm',  label: window.t('chain.option.blackBold'),  img: 'assets/images/products/male-black-chain.jpg',  note: window.t('chain.note.adjustable') },
         ];
-        const CHAIN_LENGTH_OPTIONS = ['45cm', '50cm'];
+
+        // 項鍊佩戴示意圖素材（橫向捲動膠卷用）
+        const CHAIN_WEAR_PHOTOS = [
+            { img: 'assets/images/products/DUET_Female_1.jpg',        captionKey: 'chain.wear.fineShort' },
+            { img: 'assets/images/products/DUET_Female_2.jpg',        captionKey: 'chain.wear.fineLong' },
+            { img: 'assets/images/products/DUET_Male_Silver_Short.jpg', captionKey: 'chain.wear.silverBoldShort' },
+            { img: 'assets/images/products/DUET_Male_silver_long.jpg',  captionKey: 'chain.wear.silverBoldLong' },
+            { img: 'assets/images/products/DUET_Male_black_short.jpg',  captionKey: 'chain.wear.blackBoldShort' },
+            { img: 'assets/images/products/DUET_Male_Black_Long.jpg',   captionKey: 'chain.wear.blackBoldLong' },
+        ];
+
+        function openChainWearPhotos() {
+            const overlay = document.getElementById('chain-wear-photos-overlay');
+            const strip   = document.getElementById('chain-wear-photos-strip');
+
+            // 圖說每次開啟都重新渲染，避免切換語言後仍顯示舊語言的舊快取內容
+            strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
+                <div style="flex:0 0 auto;text-align:center;">
+                    <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
+                    <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${window.t(p.captionKey)}</div>
+                </div>`).join('');
+
+            // 事件監聽只綁一次
+            if (!overlay.dataset.listenersAdded) {
+                overlay.dataset.listenersAdded = '1';
+
+                // 滑鼠滾輪轉為橫向捲動
+                strip.addEventListener('wheel', e => {
+                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                        strip.scrollLeft += e.deltaY;
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                // 點擊任意處關閉（排除拖曳捲動誤觸為點擊）
+                let downX = 0, downY = 0, dragged = false;
+                overlay.addEventListener('pointerdown', e => { downX = e.clientX; downY = e.clientY; dragged = false; });
+                overlay.addEventListener('pointermove', e => {
+                    if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) dragged = true;
+                });
+                overlay.addEventListener('click', () => {
+                    if (dragged) { dragged = false; return; }
+                    overlay.style.display = 'none';
+                });
+
+                // 右上角關閉鈕：明確可見的離開入口
+                document.getElementById('chain-wear-photos-close').addEventListener('click', e => {
+                    e.stopPropagation();
+                    overlay.style.display = 'none';
+                });
+            }
+            overlay.style.display = 'flex';
+        }
 
         function _defaultChainForItem(item) {
             const plating = item.plating || 'none';
@@ -4784,91 +4844,63 @@
             return item.material === 'brass' ? 'gold_chain' : 'silver_chain';
         }
 
-        function showChainTypeModal() {
+        function showChainTypeModal(itemIdx) {
             return new Promise((resolve, reject) => {
                 const modal      = document.getElementById('chain-type-modal');
                 const body       = document.getElementById('chain-type-modal-body');
                 const confirmBtn = document.getElementById('chain-type-confirm-btn');
                 const backBtn    = document.getElementById('chain-type-back-btn');
                 const preview    = document.getElementById('chain-img-preview');
+                const item       = cartItems[itemIdx];
 
                 // 預設：根據作品材質自動選擇匹配的項鍊
-                cartItems.forEach(item => {
-                    if (!item.chainType) item.chainType = _defaultChainForItem(item);
-                });
+                if (!item.chainType) item.chainType = _defaultChainForItem(item);
 
-                // 為每件作品渲染選項
-                body.innerHTML = cartItems.map((item, idx) => `
-                    <div style="margin-bottom:28px;">
-                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                // 只渲染這一件作品的選項（每件作品獨立選擇，避免誤以為全部作品共用同一次選擇）
+                body.innerHTML = `
+                    <div style="margin-bottom:20px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                             ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.12);">` : ''}
                             <div style="font-size:14px;color:#fff;font-weight:600;">${window.t('chain.modal.itemLabel').replace('{letters}', `${item.letter1}${item.letter2}`)}</div>
                         </div>
-                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:16px;">
                             ${CHAIN_OPTIONS.map(opt => `
-                                <div class="cart-chain-opt" data-item="${idx}" data-chain="${opt.value}"
+                                <div class="cart-chain-opt" data-chain="${opt.value}"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
                                             border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
                                     <img src="${opt.img}" alt="${opt.label}"
                                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                                          style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
                                     <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:40px;opacity:0.4;">🔗</div>
-                                    <div style="padding:12px 10px 16px;font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4;">
+                                    <div style="padding:12px 8px 16px;font-size:13px;color:rgba(255,255,255,0.75);line-height:1.4;">
                                         ${opt.label}
-                                        ${opt.note ? `<br><span style="font-size:13px;color:rgba(212,175,55,0.75);">${opt.note}</span>` : ''}
-                                        ${opt.needsLength ? `
-                                            <div class="cart-chain-length-row" data-item="${idx}"
-                                                 style="display:${item.chainType==='black_rubber' ? 'flex' : 'none'};gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;">
-                                                <span style="font-size:13px;color:rgba(255,255,255,0.5);">${window.t('chain.modal.lengthLabel')}</span>
-                                                ${CHAIN_LENGTH_OPTIONS.map(len => `
-                                                    <div class="cart-chain-length-opt" data-item="${idx}" data-length="${len}"
-                                                         style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:13px;
-                                                                border:1.5px solid ${item.chainLength===len ? '#d4af37' : 'rgba(255,255,255,0.2)'};
-                                                                color:${item.chainLength===len ? '#d4af37' : 'rgba(255,255,255,0.7)'};
-                                                                background:${item.chainLength===len ? 'rgba(212,175,55,0.1)' : 'transparent'};">
-                                                        ${len}
-                                                    </div>`).join('')}
-                                            </div>` : ''}
+                                        ${opt.note ? `<br><span style="font-size:11px;color:rgba(212,175,55,0.75);">${opt.note}</span>` : ''}
                                     </div>
                                 </div>`).join('')}
                         </div>
-                        <div class="chain-adjust-hint" data-item="${idx}"
-                             style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.5);cursor:help;display:inline-flex;align-items:center;gap:4px;">
-                            ${window.t('chain.modal.lengthHint')}
-                        </div>
-                    </div>`).join('');
+                        <button id="chain-wear-photos-btn" type="button"
+                                style="margin-top:16px;padding:8px 16px;border-radius:20px;font-size:13px;
+                                       background:transparent;border:1px solid rgba(255,255,255,0.18);
+                                       color:rgba(255,255,255,0.6);cursor:pointer;">
+                            ${window.t('chain.modal.wearPhotos')}
+                        </button>
+                    </div>`;
 
                 // 點選卡片（event delegation，避免 onclick 無法存取 closure 內函式）
                 // 每次重新渲染 body 後重新綁定（先移除舊的）
                 if (body._chainClickHandler) body.removeEventListener('click', body._chainClickHandler);
                 body._chainClickHandler = e => {
-                    const lengthOpt = e.target.closest('.cart-chain-length-opt');
-                    if (lengthOpt) {
-                        const itemIdx    = parseInt(lengthOpt.dataset.item);
-                        const lengthValue = lengthOpt.dataset.length;
-                        cartItems[itemIdx].chainLength = lengthValue;
-                        body.querySelectorAll(`.cart-chain-length-opt[data-item="${itemIdx}"]`).forEach(el => {
-                            const selected = el.dataset.length === lengthValue;
-                            el.style.borderColor = selected ? '#d4af37' : 'rgba(255,255,255,0.2)';
-                            el.style.color       = selected ? '#d4af37' : 'rgba(255,255,255,0.7)';
-                            el.style.background  = selected ? 'rgba(212,175,55,0.1)' : 'transparent';
-                        });
-                        updateConfirmBtn();
+                    if (e.target.closest('#chain-wear-photos-btn')) {
+                        openChainWearPhotos();
                         return;
                     }
-
                     const card = e.target.closest('.cart-chain-opt');
                     if (!card) return;
-                    const itemIdx   = parseInt(card.dataset.item);
                     const chainValue = card.dataset.chain;
-                    cartItems[itemIdx].chainType = chainValue;
-                    const opt = CHAIN_OPTIONS.find(o => o.value === chainValue);
-                    if (!opt.needsLength) cartItems[itemIdx].chainLength = null;
-                    body.querySelectorAll(`.cart-chain-opt[data-item="${itemIdx}"]`).forEach(el => {
+                    item.chainType = chainValue;
+                    body.querySelectorAll('.cart-chain-opt').forEach(el => {
                         el.style.borderColor = el.dataset.chain === chainValue ? '#d4af37' : 'rgba(255,255,255,0.12)';
                     });
-                    const lengthRow = body.querySelector(`.cart-chain-length-row[data-item="${itemIdx}"]`);
-                    if (lengthRow) lengthRow.style.display = opt.needsLength ? 'flex' : 'none';
                     updateConfirmBtn();
                 };
                 body.addEventListener('click', body._chainClickHandler);
@@ -4878,29 +4910,17 @@
                     window._chainHoverListenerAdded = true;
                     const previewImg = document.getElementById('chain-img-preview-img');
                     body.addEventListener('mouseover', e => {
-                        const hint = e.target.closest('.chain-adjust-hint');
-                        const card = hint ? null : e.target.closest('.cart-chain-opt');
-                        if (!hint && !card) return;
-
+                        const card = e.target.closest('.cart-chain-opt');
+                        if (!card) return;
+                        const img = card.querySelector('img');
+                        if (!img || img.style.display === 'none') return;
+                        previewImg.onerror = null;
+                        previewImg.src = img.src;
+                        // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱
                         const pw = 640, ph = 480;
-                        let left, top;
-
-                        if (hint) {
-                            previewImg.onerror = () => { preview.style.display = 'none'; };
-                            previewImg.src = 'assets/images/products/chain-adjust-detail.jpg';
-                            const rect = hint.getBoundingClientRect();
-                            left = rect.left + rect.width / 2 - pw / 2;
-                            top  = rect.top + rect.height / 2 - ph / 2;
-                        } else {
-                            const img = card.querySelector('img');
-                            if (!img || img.style.display === 'none') return;
-                            previewImg.onerror = null;
-                            previewImg.src = img.src;
-                            // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱與（橡膠繩專屬的）長度選項
-                            const imgRect = img.getBoundingClientRect();
-                            left = imgRect.left + imgRect.width / 2 - pw / 2;
-                            top  = imgRect.bottom - ph;
-                        }
+                        const imgRect = img.getBoundingClientRect();
+                        let left = imgRect.left + imgRect.width / 2 - pw / 2;
+                        let top  = imgRect.bottom - ph;
 
                         // 限制在畫面內，避免超出邊界看不到
                         left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
@@ -4910,21 +4930,17 @@
                         preview.style.display = 'block';
                     });
                     body.addEventListener('mouseout', e => {
-                        const target = e.target.closest('.cart-chain-opt, .chain-adjust-hint');
+                        const target = e.target.closest('.cart-chain-opt');
                         if (!target || target.contains(e.relatedTarget)) return;
                         preview.style.display = 'none';
                     });
                 }
 
                 function updateConfirmBtn() {
-                    const allSelected = cartItems.every(i => {
-                        if (!i.chainType) return false;
-                        const opt = CHAIN_OPTIONS.find(o => o.value === i.chainType);
-                        return !opt.needsLength || !!i.chainLength;
-                    });
-                    confirmBtn.disabled = !allSelected;
-                    confirmBtn.style.opacity = allSelected ? '1' : '0.4';
-                    confirmBtn.style.cursor  = allSelected ? 'pointer' : 'not-allowed';
+                    const selected = CHAIN_OPTIONS.some(o => o.value === item.chainType);
+                    confirmBtn.disabled = !selected;
+                    confirmBtn.style.opacity = selected ? '1' : '0.4';
+                    confirmBtn.style.cursor  = selected ? 'pointer' : 'not-allowed';
                 }
                 updateConfirmBtn();
 
@@ -4988,16 +5004,15 @@
                 return;
             }
 
-            // 若有作品尚未選擇項鍊（或選了橡膠繩但未選長度），先強制補選（safety net）
-            const needsChain = cartItems.filter(i => {
-                if (i.isPreciousMetal) return false;
-                if (!i.chainType) return true;
-                const opt = CHAIN_OPTIONS.find(o => o.value === i.chainType);
-                return opt.needsLength && !i.chainLength;
-            });
-            const chainPromise = needsChain.length > 0
-                ? showChainTypeModal()
-                : Promise.resolve();
+            // 若有作品尚未選擇項鍊（含選了已停售款式的舊訂單資料），逐件依序強制補選（safety net）
+            const needsChainIndices = cartItems.reduce((acc, i, idx) => {
+                if (!i.isPreciousMetal && !CHAIN_OPTIONS.some(o => o.value === i.chainType)) acc.push(idx);
+                return acc;
+            }, []);
+            const chainPromise = needsChainIndices.reduce(
+                (chain, idx) => chain.then(() => showChainTypeModal(idx)),
+                Promise.resolve()
+            );
 
             chainPromise.then(() => {
                 // 設計確認
@@ -5054,6 +5069,8 @@
                     const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
                     const platingStr = (item.plating && item.plating !== 'none')
                         ? ` + ${_PLATING_LABELS[item.plating] || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
+                    const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
+                    const chainLabel = chainOpt ? chainOpt.label : window.t('cart.chain.select');
 
                     const viewCell = (img, lbl) => `
                         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
@@ -5070,7 +5087,8 @@
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.letter')}　</span>${item.letter1} + ${item.letter2}<br>
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.font')}　</span>${item.font1} / ${item.font2}<br>
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.size')}　</span>${item.size} mm<br>
-                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.material')}　</span>${materialLabel}${platingStr}
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.material')}　</span>${materialLabel}${platingStr}<br>
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.chain')}　</span>${chainLabel}
                             </div>
                             <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
                                 ${heroImg || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">Hero</div>`}
@@ -6652,11 +6670,11 @@
         -webkit-backdrop-filter:blur(16px);z-index:99995;
         justify-content:center;align-items:center;">
         <div style="
-            max-width:1400px;width:96%;max-height:90vh;overflow-y:auto;
+            max-width:1100px;width:96%;max-height:90vh;overflow-y:auto;
             background:rgba(18,18,18,0.96);border:1px solid rgba(212,175,55,0.3);
             border-radius:20px;padding:36px 40px;">
             <h3 data-i18n="chain.modal.title" style="font-size:18px;font-weight:600;color:#fff;margin:0 0 6px 0;">選擇項鍊材質</h3>
-            <p data-i18n="chain.modal.subtitle" style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請為每件作品選擇要搭配的項鍊。</p>
+            <p data-i18n="chain.modal.subtitle" style="font-size:13px;color:rgba(255,255,255,0.5);margin:0 0 24px 0;">請選擇要搭配的項鍊。</p>
             <div id="chain-type-modal-body"></div>
             <button id="chain-type-confirm-btn" data-i18n="chain.modal.confirm" disabled style="
                 width:100%;padding:14px;margin-top:8px;
@@ -6679,6 +6697,23 @@
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
          width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
+    </div>
+
+    <!-- 項鍊佩戴示意圖：橫向捲動膠卷，點畫面任意處或右上角 ✕ 關閉 -->
+    <div id="chain-wear-photos-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+         background:rgba(0,0,0,0.92);z-index:100000;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;">
+        <button id="chain-wear-photos-close" type="button" aria-label="Close"
+                style="position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;
+                       background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                       display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M1 1L15 15M15 1L1 15" stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <div id="chain-wear-photos-strip" style="display:flex;overflow-x:auto;overflow-y:hidden;
+             gap:32px;padding:40px 10vw;width:100%;box-sizing:border-box;
+             -webkit-overflow-scrolling:touch;cursor:default;"></div>
+        <div data-i18n="chain.wear.scrollHint" style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.4);">← 左右滑動查看更多 →</div>
     </div>
 
     <!-- ── Option B：付款後 AI 諮詢補做 Modal ─────────────────── -->

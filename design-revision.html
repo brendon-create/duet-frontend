@@ -65,6 +65,7 @@
         }
         .control-group .slider-value { color: #d4af37; }
         .control-group input[type="range"] { width: 100%; accent-color: #d4af37; }
+        .control-group input[type="range"]:disabled { cursor: not-allowed; }
         .btn-gold {
             width: 100%; padding: 14px; margin-top: 6px; background: linear-gradient(135deg,#d4af37,#b8962e);
             color: #0c0a06; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
@@ -98,8 +99,7 @@
         .modal-box .sub { color: #999; font-size: 13px; margin-bottom: 20px; }
 
         /* 項鍊選擇 */
-        .chain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 8px; }
-        @media (min-width: 480px) { .chain-grid { grid-template-columns: repeat(4, 1fr); } }
+        .chain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 14px; margin-bottom: 8px; }
         .chain-opt {
             cursor: pointer; border: 2px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden;
             background: rgba(255,255,255,0.04); text-align: center;
@@ -107,11 +107,6 @@
         .chain-opt img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
         .chain-opt .fallback { aspect-ratio: 1; display: none; align-items: center; justify-content: center; font-size: 32px; opacity: 0.4; }
         .chain-opt .label { padding: 10px 6px 12px; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }
-        .length-row { display: none; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
-        .length-opt {
-            cursor: pointer; padding: 4px 12px; border-radius: 16px; font-size: 12px;
-            border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);
-        }
 
         /* 設計確認 */
         .warn-box { background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 16px 18px; margin: 18px 0; }
@@ -196,9 +191,38 @@
         <h3>選擇項鍊材質</h3>
         <div class="sub">請確認這件作品要搭配的項鍊。</div>
         <div class="chain-grid" id="chainGrid"></div>
+        <button id="chainWearPhotosBtn" type="button"
+                style="margin-top:14px;padding:8px 16px;border-radius:20px;font-size:13px;
+                       background:transparent;border:1px solid rgba(255,255,255,0.18);
+                       color:rgba(255,255,255,0.6);cursor:pointer;">
+            佩戴示意圖
+        </button>
         <button class="btn-gold" id="chainConfirmBtn" disabled>下一步</button>
         <button class="btn-ghost" id="chainBackBtn">返回調整</button>
     </div>
+</div>
+
+<!-- 項鍊 hover 放大預覽 -->
+<div id="chain-img-preview" style="display:none;position:fixed;z-index:600;pointer-events:none;
+     width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+    <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
+</div>
+
+<!-- 項鍊佩戴示意圖：橫向捲動膠卷，點畫面任意處或右上角 ✕ 關閉 -->
+<div id="chain-wear-photos-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+     background:rgba(0,0,0,0.92);z-index:700;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;">
+    <button id="chain-wear-photos-close" type="button" aria-label="Close"
+            style="position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;
+                   background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                   display:flex;align-items:center;justify-content:center;cursor:pointer;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M1 1L15 15M15 1L1 15" stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    </button>
+    <div id="chain-wear-photos-strip" style="display:flex;overflow-x:auto;overflow-y:hidden;
+         gap:32px;padding:40px 10vw;width:100%;box-sizing:border-box;
+         -webkit-overflow-scrolling:touch;cursor:default;"></div>
+    <div style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.4);">← 左右滑動查看更多 →</div>
 </div>
 
 <!-- 設計確認（7 天鑑賞期提示）-->
@@ -290,12 +314,64 @@ let orderId = '';
 let unlockedFields = ['ring'];
 
 const CHAIN_OPTIONS = [
-    { value: 'silver_chain',   label: '銀色不鏽鋼鏈',   img: 'assets/images/products/silver-chain.png' },
-    { value: 'gold_chain',     label: '金色不鏽鋼鏈',   img: 'assets/images/products/gold-chain.png' },
-    { value: 'rosegold_chain', label: '玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
-    { value: 'black_rubber',   label: '黑色橡膠繩',     img: 'assets/images/products/rubber-chain.png', needsLength: true },
+    { value: 'silver_chain',     label: '0.8mm 銀色不鏽鋼鏈', img: 'assets/images/products/silver-chain.png' },
+    { value: 'gold_chain',       label: '0.8mm 金色不鏽鋼鏈', img: 'assets/images/products/gold-chain.png' },
+    { value: 'rosegold_chain',   label: '0.8mm 玫瑰金不鏽鋼鏈', img: 'assets/images/products/rosegold-chain.png' },
+    { value: 'silver_chain_2mm', label: '2mm 銀色不鏽鋼鏈',   img: 'assets/images/products/male-silver-chain.jpg' },
+    { value: 'black_chain_2mm',  label: '2mm 黑色不鏽鋼鏈',   img: 'assets/images/products/male-black-chain.jpg' },
 ];
-const CHAIN_LENGTH_OPTIONS = ['45cm', '50cm'];
+
+// 項鍊佩戴示意圖素材（橫向捲動膠卷用）
+const CHAIN_WEAR_PHOTOS = [
+    { img: 'assets/images/products/DUET_Female_1.jpg',          caption: '0.8mm 細鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Female_2.jpg',          caption: '0.8mm 細鏈・最長 50cm' },
+    { img: 'assets/images/products/DUET_Male_Silver_Short.jpg', caption: '2mm 銀色鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Male_silver_long.jpg',  caption: '2mm 銀色鏈・最長 50cm' },
+    { img: 'assets/images/products/DUET_Male_black_short.jpg',  caption: '2mm 黑色鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Male_Black_Long.jpg',   caption: '2mm 黑色鏈・最長 50cm' },
+];
+
+function openChainWearPhotos() {
+    const overlay = document.getElementById('chain-wear-photos-overlay');
+    const strip   = document.getElementById('chain-wear-photos-strip');
+
+    // 圖說每次開啟都重新渲染
+    strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
+        <div style="flex:0 0 auto;text-align:center;">
+            <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
+            <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${p.caption}</div>
+        </div>`).join('');
+
+    if (!overlay.dataset.listenersAdded) {
+        overlay.dataset.listenersAdded = '1';
+
+        // 滑鼠滾輪轉為橫向捲動
+        strip.addEventListener('wheel', e => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                strip.scrollLeft += e.deltaY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 點擊任意處關閉（排除拖曳捲動誤觸為點擊）
+        let downX = 0, downY = 0, dragged = false;
+        overlay.addEventListener('pointerdown', e => { downX = e.clientX; downY = e.clientY; dragged = false; });
+        overlay.addEventListener('pointermove', e => {
+            if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) dragged = true;
+        });
+        overlay.addEventListener('click', () => {
+            if (dragged) { dragged = false; return; }
+            overlay.style.display = 'none';
+        });
+
+        document.getElementById('chain-wear-photos-close').addEventListener('click', e => {
+            e.stopPropagation();
+            overlay.style.display = 'none';
+        });
+    }
+    overlay.style.display = 'flex';
+}
+document.getElementById('chainWearPhotosBtn').addEventListener('click', openChainWearPhotos);
 
 function showView(id) {
     ['viewLoading', 'viewError', 'viewAlreadyConfirmed', 'viewSuccess', 'viewMain']
@@ -305,16 +381,31 @@ function showView(id) {
 function applyPanelTexts() {
     const hasRing = unlockedFields.includes('ring');
     const hasChain = unlockedFields.includes('chain');
-    document.getElementById('ringControls').style.display = hasRing ? 'block' : 'none';
+    const ringControls = document.getElementById('ringControls');
+    const confirmBtn = document.getElementById('mainConfirmBtn');
+
+    // 面板一律顯示（讓客戶能核對作品參數，確認是要重選項鍊的那一件——
+    // 同一設計常有大小兩種尺寸分別給男女生佩戴，光看模型外觀不一定分得出來）；
+    // 沒開放調整墜頭位置時，滑桿反灰、不可拖動，純供參考
+    ringControls.style.display = 'block';
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        document.getElementById(id).disabled = !hasRing;
+    });
+    ringControls.style.opacity = hasRing ? '1' : '0.4';
+    ringControls.style.pointerEvents = hasRing ? '' : 'none';
+
     if (hasRing && hasChain) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
+        confirmBtn.textContent = '確認';
     } else if (hasRing) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
+        confirmBtn.textContent = '確認';
     } else {
-        document.getElementById('panelTitle').textContent = '確認作品設計';
-        document.getElementById('panelHint').textContent = '請確認以下作品資訊，下一步可以重新選擇項鍊材質。';
+        document.getElementById('panelTitle').textContent = '確認作品';
+        document.getElementById('panelHint').textContent = '請確認以上是您要重新選擇項鍊的作品；墜頭位置維持原樣，不會被更動。';
+        confirmBtn.textContent = '前往選擇項鍊';
     }
 }
 
@@ -478,54 +569,66 @@ async function buildScene() {
 
 function renderChainGrid() {
     const grid = document.getElementById('chainGrid');
-    let selected = item.chainType || '';
-    let selectedLength = item.chainLength || '';
+    // 若原本選的是已停售款式（如舊版黑色橡膠繩），不預先選取，強制重選
+    let selected = CHAIN_OPTIONS.some(o => o.value === item.chainType) ? item.chainType : '';
 
     function render() {
         grid.innerHTML = CHAIN_OPTIONS.map(opt => `
             <div class="chain-opt" data-chain="${opt.value}" style="border-color:${selected === opt.value ? '#d4af37' : 'rgba(255,255,255,0.12)'};">
                 <img src="${opt.img}" alt="${opt.label}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                 <div class="fallback">🔗</div>
-                <div class="label">
-                    ${opt.label}
-                    ${opt.needsLength ? `
-                        <div class="length-row" data-chain="${opt.value}" style="display:${selected === opt.value ? 'flex' : 'none'};">
-                            ${CHAIN_LENGTH_OPTIONS.map(len => `
-                                <div class="length-opt" data-length="${len}" style="border-color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.2)'};color:${selectedLength === len ? '#d4af37' : 'rgba(255,255,255,0.7)'};">${len}</div>
-                            `).join('')}
-                        </div>` : ''}
-                </div>
+                <div class="label">${opt.label}</div>
             </div>`).join('');
         updateConfirmBtn();
     }
 
     function updateConfirmBtn() {
-        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
-        const ok = !!opt && (!opt.needsLength || !!selectedLength);
+        const ok = CHAIN_OPTIONS.some(o => o.value === selected);
         const btn = document.getElementById('chainConfirmBtn');
         btn.disabled = !ok;
         btn.style.opacity = ok ? '1' : '0.4';
     }
 
     grid.onclick = (e) => {
-        const lengthOpt = e.target.closest('.length-opt');
-        if (lengthOpt) {
-            selectedLength = lengthOpt.dataset.length;
-            render();
-            return;
-        }
         const card = e.target.closest('.chain-opt');
         if (!card) return;
         selected = card.dataset.chain;
-        const opt = CHAIN_OPTIONS.find(o => o.value === selected);
-        if (!opt.needsLength) selectedLength = '';
         render();
     };
+
+    // hover 放大預覽（只綁一次）
+    if (!window._chainHoverListenerAdded) {
+        window._chainHoverListenerAdded = true;
+        const preview    = document.getElementById('chain-img-preview');
+        const previewImg = document.getElementById('chain-img-preview-img');
+        grid.addEventListener('mouseover', e => {
+            const card = e.target.closest('.chain-opt');
+            if (!card) return;
+            const img = card.querySelector('img');
+            if (!img || img.style.display === 'none') return;
+            previewImg.onerror = null;
+            previewImg.src = img.src;
+            const pw = 640, ph = 480;
+            const imgRect = img.getBoundingClientRect();
+            let left = imgRect.left + imgRect.width / 2 - pw / 2;
+            let top  = imgRect.bottom - ph;
+            left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+            top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
+            preview.style.left = left + 'px';
+            preview.style.top  = top  + 'px';
+            preview.style.display = 'block';
+        });
+        grid.addEventListener('mouseout', e => {
+            const target = e.target.closest('.chain-opt');
+            if (!target || target.contains(e.relatedTarget)) return;
+            preview.style.display = 'none';
+        });
+    }
 
     render();
 
     return {
-        getSelection: () => ({ chainType: selected, chainLength: selectedLength || null })
+        getSelection: () => ({ chainType: selected, chainLength: null })
     };
 }
 
@@ -555,7 +658,7 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
     let chainLine = '';
     if (chainSel) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
-        chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}${chainSel.chainLength ? '・' + chainSel.chainLength : ''}<br>`;
+        chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}<br>`;
     }
     const ringLine = ringParams
         ? `<span style="color:rgba(255,255,255,0.3);">圓環　</span>X=${ringParams.ringRelativeX.toFixed(2)} Y=${ringParams.ringRelativeY.toFixed(2)} Z=${ringParams.ringRelativeZ.toFixed(2)} 旋轉=${ringParams.ringRotation.toFixed(1)}°<br>`
@@ -598,22 +701,28 @@ function goToDesignConfirm(chainSel) {
     document.getElementById('designConfirmModal').style.display = 'flex';
 }
 
-document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+function proceedFromMainPanel() {
     if (unlockedFields.includes('chain')) {
         document.getElementById('chainModal').style.display = 'flex';
         chainSelection = renderChainGrid();
     } else {
         goToDesignConfirm(null);
     }
+}
+
+document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+    proceedFromMainPanel();
 });
 
 document.getElementById('chainBackBtn').addEventListener('click', () => {
     document.getElementById('chainModal').style.display = 'none';
+    document.getElementById('chain-img-preview').style.display = 'none';
 });
 
 document.getElementById('chainConfirmBtn').addEventListener('click', () => {
     const sel = chainSelection.getSelection();
     document.getElementById('chainModal').style.display = 'none';
+    document.getElementById('chain-img-preview').style.display = 'none';
     goToDesignConfirm(sel);
 });
 
