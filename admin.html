@@ -2743,12 +2743,25 @@
         // 彈窗預設文案：只適用於「直接請顧客自己調整」的情境。
         // 若客服選擇「先調整外觀，再送出」且沒有動過這段文字，會改用後端對應的「已調整」版本文案，
         // 不會把這段話原封不動寄給顧客（見 openStaffItemRevisionEditor）
-        const DEFAULT_ITEM_REVISION_MESSAGE = '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
+        const DEFAULT_ITEM_REVISION_MESSAGE_RING = '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
+        const DEFAULT_ITEM_REVISION_MESSAGE_CHAIN = '您好，在比較適合男性佩戴的項鍊選項上，我們將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），有銀色與黑色兩種選項，因為我們測試後發現這款項鍊更能配合身體的曲線與動作，不僅較為舒適、也比較不會有悶熱感。請您點擊下方按鈕，前往確認您希望變更的項鍊選項後送出即可。謝謝！';
+        const DEFAULT_ITEM_REVISION_MESSAGES = [DEFAULT_ITEM_REVISION_MESSAGE_RING, DEFAULT_ITEM_REVISION_MESSAGE_CHAIN];
+
+        // 依目前勾選的項目切換預設文案；若客服已自行改寫過內容（不等於任何一個預設值），不覆蓋
+        function syncItemRevisionDefaultMessage() {
+            const textarea = document.getElementById('itemRevisionMessage');
+            if (!DEFAULT_ITEM_REVISION_MESSAGES.includes(textarea.value)) return;
+            const ringChecked  = document.getElementById('unlockRing').checked;
+            const chainChecked = document.getElementById('unlockChain').checked;
+            textarea.value = (chainChecked && !ringChecked)
+                ? DEFAULT_ITEM_REVISION_MESSAGE_CHAIN
+                : DEFAULT_ITEM_REVISION_MESSAGE_RING;
+        }
 
         function openItemRevisionModal(orderId, itemIndex, letters) {
             itemRevisionTarget = { orderId, itemIndex };
             document.getElementById('itemRevisionLabel').textContent = letters;
-            document.getElementById('itemRevisionMessage').value = DEFAULT_ITEM_REVISION_MESSAGE;
+            document.getElementById('itemRevisionMessage').value = DEFAULT_ITEM_REVISION_MESSAGE_RING;
             document.getElementById('unlockRing').checked = true;
             document.getElementById('unlockChain').checked = false;
             document.getElementById('itemRevisionMsg').textContent = '';
@@ -2811,7 +2824,7 @@
             const rawMessage = document.getElementById('itemRevisionMessage').value.trim();
             // 沒動過預設文案的話留空，讓後端依「客服已先調整」情境套用對應的預設信件文案；
             // 若客服有自己改寫，尊重客服打的內容
-            const message = rawMessage === DEFAULT_ITEM_REVISION_MESSAGE ? '' : rawMessage;
+            const message = DEFAULT_ITEM_REVISION_MESSAGES.includes(rawMessage) ? '' : rawMessage;
 
             const unlockedFields = [];
             if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
@@ -5172,11 +5185,11 @@
             <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">要開放顧客調整的項目（至少選一項）</label>
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="unlockRing" checked style="width:16px;height:16px;">
+                    <input type="checkbox" id="unlockRing" checked onchange="syncItemRevisionDefaultMessage()" style="width:16px;height:16px;">
                     調整墜頭位置
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="unlockChain" style="width:16px;height:16px;">
+                    <input type="checkbox" id="unlockChain" onchange="syncItemRevisionDefaultMessage()" style="width:16px;height:16px;">
                     重新選擇項鍊材質
                 </label>
             </div>

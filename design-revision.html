@@ -190,9 +190,38 @@
         <h3>選擇項鍊材質</h3>
         <div class="sub">請確認這件作品要搭配的項鍊。</div>
         <div class="chain-grid" id="chainGrid"></div>
+        <button id="chainWearPhotosBtn" type="button"
+                style="margin-top:14px;padding:8px 16px;border-radius:20px;font-size:13px;
+                       background:transparent;border:1px solid rgba(255,255,255,0.18);
+                       color:rgba(255,255,255,0.6);cursor:pointer;">
+            👀 佩戴示意圖
+        </button>
         <button class="btn-gold" id="chainConfirmBtn" disabled>下一步</button>
         <button class="btn-ghost" id="chainBackBtn">返回調整</button>
     </div>
+</div>
+
+<!-- 項鍊 hover 放大預覽 -->
+<div id="chain-img-preview" style="display:none;position:fixed;z-index:600;pointer-events:none;
+     width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+    <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
+</div>
+
+<!-- 項鍊佩戴示意圖：橫向捲動膠卷，點畫面任意處或右上角 ✕ 關閉 -->
+<div id="chain-wear-photos-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+     background:rgba(0,0,0,0.92);z-index:700;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;">
+    <button id="chain-wear-photos-close" type="button" aria-label="Close"
+            style="position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;
+                   background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                   display:flex;align-items:center;justify-content:center;cursor:pointer;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M1 1L15 15M15 1L1 15" stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    </button>
+    <div id="chain-wear-photos-strip" style="display:flex;overflow-x:auto;overflow-y:hidden;
+         gap:32px;padding:40px 10vw;width:100%;box-sizing:border-box;
+         -webkit-overflow-scrolling:touch;cursor:default;"></div>
+    <div style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.4);">← 左右滑動查看更多 →</div>
 </div>
 
 <!-- 設計確認（7 天鑑賞期提示）-->
@@ -291,6 +320,58 @@ const CHAIN_OPTIONS = [
     { value: 'black_chain_2mm',  label: '2mm 黑色不鏽鋼鏈',   img: 'assets/images/products/male-black-chain.jpg' },
 ];
 
+// 項鍊佩戴示意圖素材（橫向捲動膠卷用）
+const CHAIN_WEAR_PHOTOS = [
+    { img: 'assets/images/products/DUET_Female_1.jpg',          caption: '0.8mm 細鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Female_2.jpg',          caption: '0.8mm 細鏈・最長 50cm' },
+    { img: 'assets/images/products/DUET_Male_Silver_Short.jpg', caption: '2mm 銀色鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Male_silver_long.jpg',  caption: '2mm 銀色鏈・最長 50cm' },
+    { img: 'assets/images/products/DUET_Male_black_short.jpg',  caption: '2mm 黑色鏈・最短 45cm' },
+    { img: 'assets/images/products/DUET_Male_Black_Long.jpg',   caption: '2mm 黑色鏈・最長 50cm' },
+];
+
+function openChainWearPhotos() {
+    const overlay = document.getElementById('chain-wear-photos-overlay');
+    const strip   = document.getElementById('chain-wear-photos-strip');
+
+    // 圖說每次開啟都重新渲染
+    strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
+        <div style="flex:0 0 auto;text-align:center;">
+            <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
+            <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${p.caption}</div>
+        </div>`).join('');
+
+    if (!overlay.dataset.listenersAdded) {
+        overlay.dataset.listenersAdded = '1';
+
+        // 滑鼠滾輪轉為橫向捲動
+        strip.addEventListener('wheel', e => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                strip.scrollLeft += e.deltaY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 點擊任意處關閉（排除拖曳捲動誤觸為點擊）
+        let downX = 0, downY = 0, dragged = false;
+        overlay.addEventListener('pointerdown', e => { downX = e.clientX; downY = e.clientY; dragged = false; });
+        overlay.addEventListener('pointermove', e => {
+            if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) dragged = true;
+        });
+        overlay.addEventListener('click', () => {
+            if (dragged) { dragged = false; return; }
+            overlay.style.display = 'none';
+        });
+
+        document.getElementById('chain-wear-photos-close').addEventListener('click', e => {
+            e.stopPropagation();
+            overlay.style.display = 'none';
+        });
+    }
+    overlay.style.display = 'flex';
+}
+document.getElementById('chainWearPhotosBtn').addEventListener('click', openChainWearPhotos);
+
 function showView(id) {
     ['viewLoading', 'viewError', 'viewAlreadyConfirmed', 'viewSuccess', 'viewMain']
         .forEach(v => document.getElementById(v).style.display = v === id ? (v === 'viewMain' ? 'block' : 'flex') : 'none');
@@ -334,6 +415,10 @@ async function loadData() {
 
             showView('viewMain');
             await buildScene();
+            // 純項鍊修改（沒有開放調整墜頭位置）不需要額外一次「確認作品設計」的過場，直接進入項鍊選擇
+            if (!unlockedFields.includes('ring') && unlockedFields.includes('chain')) {
+                proceedFromMainPanel();
+            }
         } catch (e) {
             console.error(e);
             showView('viewError');
@@ -359,6 +444,10 @@ async function loadData() {
 
         showView('viewMain');
         await buildScene();
+        // 純項鍊修改（沒有開放調整墜頭位置）不需要額外一次「確認作品設計」的過場，直接進入項鍊選擇
+        if (!unlockedFields.includes('ring') && unlockedFields.includes('chain')) {
+            proceedFromMainPanel();
+        }
     } catch (e) {
         console.error(e);
         showView('viewError');
@@ -499,6 +588,35 @@ function renderChainGrid() {
         render();
     };
 
+    // hover 放大預覽（只綁一次）
+    if (!window._chainHoverListenerAdded) {
+        window._chainHoverListenerAdded = true;
+        const preview    = document.getElementById('chain-img-preview');
+        const previewImg = document.getElementById('chain-img-preview-img');
+        grid.addEventListener('mouseover', e => {
+            const card = e.target.closest('.chain-opt');
+            if (!card) return;
+            const img = card.querySelector('img');
+            if (!img || img.style.display === 'none') return;
+            previewImg.onerror = null;
+            previewImg.src = img.src;
+            const pw = 640, ph = 480;
+            const imgRect = img.getBoundingClientRect();
+            let left = imgRect.left + imgRect.width / 2 - pw / 2;
+            let top  = imgRect.bottom - ph;
+            left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+            top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
+            preview.style.left = left + 'px';
+            preview.style.top  = top  + 'px';
+            preview.style.display = 'block';
+        });
+        grid.addEventListener('mouseout', e => {
+            const target = e.target.closest('.chain-opt');
+            if (!target || target.contains(e.relatedTarget)) return;
+            preview.style.display = 'none';
+        });
+    }
+
     render();
 
     return {
@@ -575,22 +693,28 @@ function goToDesignConfirm(chainSel) {
     document.getElementById('designConfirmModal').style.display = 'flex';
 }
 
-document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+function proceedFromMainPanel() {
     if (unlockedFields.includes('chain')) {
         document.getElementById('chainModal').style.display = 'flex';
         chainSelection = renderChainGrid();
     } else {
         goToDesignConfirm(null);
     }
+}
+
+document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+    proceedFromMainPanel();
 });
 
 document.getElementById('chainBackBtn').addEventListener('click', () => {
     document.getElementById('chainModal').style.display = 'none';
+    document.getElementById('chain-img-preview').style.display = 'none';
 });
 
 document.getElementById('chainConfirmBtn').addEventListener('click', () => {
     const sel = chainSelection.getSelection();
     document.getElementById('chainModal').style.display = 'none';
+    document.getElementById('chain-img-preview').style.display = 'none';
     goToDesignConfirm(sel);
 });
 
