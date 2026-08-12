@@ -196,6 +196,23 @@ window.translations = {
         'studio.bg.label':          '切換背景',
         'studio.font.error.none':   '請至少選擇一個字體！',
         'studio.font.error.chars': '請輸入 2 個字母',
+        'studio.font.preload.loading': '預載入字體中...',
+        'studio.font.preload.ready':   '✓ {count} 個字體已就緒！',
+        'studio.font.preload.faster':  '切換字體將更快速',
+
+        // ── 分離部件 (Fragment) / 購物車提示 ──
+        'fragment.cart.detected':   '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。',
+        'fragment.cart.clear':      '✅ 確認完畢，作品無分離部件，可以進行製作。',
+        'fragment.warning.body':    '作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。',
+        'fragment.warning.ok':      '知道了',
+        'studio.generate.first':    '請先生成作品',
+        'studio.cleanup.failed':    '清理失敗：',
+        'studio.model.updating':    '模型正在更新中，請稍候一下再加入購物車',
+        'studio.fragment.addToCart':'⚠️ 作品含有分離部件，請先使用左側面板中正在發光的開關清理後再加入購物車',
+        'studio.cart.maxItems':     '購物車最多只能加入 {max} 個商品，如需訂購更多請分批結帳',
+        'studio.fragment.checking': '⏳ 正在確認作品是否有分離部件，請稍候⋯⋯',
+        'studio.cart.loading':      '載入中⋯⋯',
+        'studio.cart.redeemed':     '已兌換',
 
         // ── 字體規範標籤 & 提示 ──
         'font.label.thin':             ' (細)',
@@ -281,6 +298,18 @@ window.translations = {
         'inquiry.complete.title':   '訂製需求已送出',
         'inquiry.complete.body':    '我們將在 2 個工作天內與您聯繫確認細節<br>畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁',
         'complete.redirect.countdown': '3 秒後自動跳轉...',
+
+        // ── 付款/訂單狀態通知 ──
+        'notify.payment.success':      '付款成功！正在為您準備設計諮詢...',
+        'notify.order.loadFailed':     '載入訂單資料失敗: ',
+        'notify.order.dataIncomplete': '訂單資料不完整',
+        'notify.payment.failed':       '付款失敗，請重新嘗試',
+        'notify.order.processing':     '訂單處理中，請稍候...',
+        'notify.order.itemsLoadFailed':'無法載入訂單商品',
+        'notify.order.vipConfirmed':   'VIP 免費訂單已確認！正在為您準備諮詢服務...',
+        'notify.order.confirmed':      '訂單已確認！感謝您的訂購',
+        'alert.checkout.failed':       '❌ 結帳失敗：',
+        'alert.payment.error':         '❌ 支付過程發生錯誤：',
 
         // ── 後端連線錯誤 ──
         'error.backend.title':      '連線中斷',
@@ -591,6 +620,23 @@ window.translations = {
         'studio.bg.label':          'Switch Background',
         'studio.font.error.none':   'Please select at least one font!',
         'studio.font.error.chars': 'Please enter 2 letters',
+        'studio.font.preload.loading': 'Preloading fonts...',
+        'studio.font.preload.ready':   '✓ {count} fonts ready!',
+        'studio.font.preload.faster':  'Font switching will be faster',
+
+        // ── 分離部件 (Fragment) / 購物車提示 ──
+        'fragment.cart.detected':   '⚠️ Detached parts found. Please go back to the main view and clean up using the left panel before adding to cart.',
+        'fragment.cart.clear':      '✅ Confirmed — no detached parts. Ready for production.',
+        'fragment.warning.body':    'This piece has detached parts. Please use the glowing switch in the<br><strong style="color:#d4af37;">left panel</strong> to clean it up and confirm the design before adding to cart.',
+        'fragment.warning.ok':      'Got it',
+        'studio.generate.first':    'Please generate a design first',
+        'studio.cleanup.failed':    'Cleanup failed: ',
+        'studio.model.updating':    'Model is updating, please wait a moment before adding to cart',
+        'studio.fragment.addToCart':'⚠️ This piece has detached parts. Please clean it up using the glowing switch in the left panel before adding to cart',
+        'studio.cart.maxItems':     'You can add up to {max} items to the cart at once — for more, please check out in batches',
+        'studio.fragment.checking': '⏳ Checking for detached parts, please wait⋯⋯',
+        'studio.cart.loading':      'Loading⋯⋯',
+        'studio.cart.redeemed':     'Redeemed',
 
         // ── Font Constraint Labels & Tips ──
         'font.label.thin':             ' (Thin)',
@@ -676,6 +722,18 @@ window.translations = {
         'inquiry.complete.title':   'Custom Request Submitted',
         'inquiry.complete.body':    'We\'ll contact you within 2 business days to confirm the details.<br>You\'ll be redirected to DUET\'s parent brand, BCAG Custom Jewelry.',
         'complete.redirect.countdown': 'Redirecting in 3 seconds...',
+
+        // ── 付款/訂單狀態通知 ──
+        'notify.payment.success':      'Payment successful! Preparing your design consultation...',
+        'notify.order.loadFailed':     'Failed to load order data: ',
+        'notify.order.dataIncomplete': 'Order data incomplete',
+        'notify.payment.failed':       'Payment failed, please try again',
+        'notify.order.processing':     'Order is being processed, please wait...',
+        'notify.order.itemsLoadFailed':'Unable to load order items',
+        'notify.order.vipConfirmed':   'VIP free order confirmed! Preparing your consultation service...',
+        'notify.order.confirmed':      'Order confirmed! Thank you for your order',
+        'alert.checkout.failed':       '❌ Checkout failed: ',
+        'alert.payment.error':         '❌ An error occurred during payment: ',
 
         // ── 後端連線錯誤 ──
         'error.backend.title':      'Connection Lost',

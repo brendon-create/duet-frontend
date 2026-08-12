@@ -249,7 +249,7 @@
                 <div
                     style="width: 12px; height: 12px; border: 2px solid rgba(212, 175, 55, 0.3); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite;">
                 </div>
-                <span id="preload-text">預載入字體中...</span>
+                <span id="preload-text" data-i18n="studio.font.preload.loading">預載入字體中...</span>
             </div>
             <div style="margin-top: 6px; font-size: 10px; color: rgba(255, 255, 255, 0.5);" id="preload-progress">0 / 0
             </div>
@@ -1476,7 +1476,7 @@
                 window.isPostPayment = true;
 
                 // 顯示付款成功通知
-                showNotification('付款成功！正在為您準備設計諮詢...', 'success');
+                showNotification(window.t('notify.payment.success'), 'success');
 
                 // 延遲 1.5 秒後載入訂單並觸發設計理念收集流程
                 setTimeout(async () => {
@@ -1545,14 +1545,14 @@
                             console.error('  - order:', data.order);
                             console.error('  - order?.items:', data.order?.items);
                             console.error('  - error:', data.error);
-                            showNotification('載入訂單資料失敗: ' + (data.error || '訂單資料不完整'), 'error');
+                            showNotification(window.t('notify.order.loadFailed') + (data.error || window.t('notify.order.dataIncomplete')), 'error');
                         }
                     } catch (error) {
                         console.error('❌ 載入訂單時發生錯誤:', error);
                         console.error('  - Error name:', error.name);
                         console.error('  - Error message:', error.message);
                         console.error('  - Error stack:', error.stack);
-                        showNotification('載入訂單資料失敗: ' + error.message, 'error');
+                        showNotification(window.t('notify.order.loadFailed') + error.message, 'error');
                     }
                 }, 500);
 
@@ -1562,7 +1562,7 @@
             // 檢測付款失敗
             if (paymentFailed && orderId) {
                 console.log('❌ 檢測到付款失敗');
-                showNotification('付款失敗，請重新嘗試', 'error');
+                showNotification(window.t('notify.payment.failed'), 'error');
                 return true;
             }
 
@@ -1580,7 +1580,7 @@
 
                 if (data.success && data.paid) {
                     console.log('✅ 後端確認訂單已付款');
-                    showNotification('付款成功！正在為您準備設計諮詢...', 'success');
+                    showNotification(window.t('notify.payment.success'), 'success');
                     setTimeout(() => {
                         if (typeof showAIIntroModal === 'function') {
                             showAIIntroModal();
@@ -1588,7 +1588,7 @@
                     }, 500);
                 } else {
                     console.log('⚠️ 訂單尚未完成付款');
-                    showNotification('訂單處理中，請稍候...', 'info');
+                    showNotification(window.t('notify.order.processing'), 'info');
                 }
             } catch (error) {
                 console.error('❌ 查詢訂單狀態失敗:', error);
@@ -2615,10 +2615,10 @@
                     const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
                     if (cartPendingMsg) {
                         if (modelNeedsCleanup) {
-                            cartPendingMsg.innerHTML = '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。';
+                            cartPendingMsg.innerHTML = window.t('fragment.cart.detected');
                             cartPendingMsg.style.color = '#d4af37';
                         } else {
-                            cartPendingMsg.innerHTML = '✅ 確認完畢，作品無分離部件，可以進行製作。';
+                            cartPendingMsg.innerHTML = window.t('fragment.cart.clear');
                             cartPendingMsg.style.color = '#8fd4a0';
                             setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
                         }
@@ -2718,7 +2718,7 @@
                 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;">
                     <div style="flex-shrink:0; font-size:18px; color:#d4af37; line-height:1.5; margin-top:1px;">←</div>
                     <p style="color:#e8d5a0; font-size:13px; line-height:1.7; margin:0; letter-spacing:0.2px;">
-                        作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。
+                        ${window.t('fragment.warning.body')}
                     </p>
                 </div>
                 <div style="text-align:center;">
@@ -2726,7 +2726,7 @@
                         background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none; color: #000; padding: 8px 24px; font-size: 13px;
                         border-radius: 8px; cursor: pointer; font-weight: 600; letter-spacing: 0.5px;
-                    ">知道了</button>
+                    ">${window.t('fragment.warning.ok')}</button>
                 </div>
             `;
             document.body.appendChild(toast);
@@ -2737,7 +2737,7 @@
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
-                showToast('請先生成作品');
+                showToast(window.t('studio.generate.first'));
                 return;
             }
 
@@ -2946,7 +2946,7 @@
                     cleanupLabel.style.color = '';
                 }
                 
-                alert('清理失敗：' + error.message);
+                alert(window.t('studio.cleanup.failed') + error.message);
                 
             } finally {
                 isCleanupInProgress = false;
@@ -3206,7 +3206,7 @@
             const preloadText = document.getElementById('preload-text');
 
             statusDiv.style.display = 'block';
-            preloadText.textContent = '預載入字體中...';
+            preloadText.textContent = window.t('studio.font.preload.loading');
             progressText.textContent = `0 / ${fontNames.length}`;
 
             const startTime = Date.now();
@@ -3231,8 +3231,8 @@
                 console.log(`✅ 字體預載入完成！成功: ${successCount}/${fontNames.length}，耗時: ${duration}秒`);
 
                 // 顯示完成狀態 2 秒後隱藏
-                preloadText.textContent = `✓ ${successCount} 個字體已就緒！`;
-                progressText.textContent = `切換字體將更快速`;
+                preloadText.textContent = window.t('studio.font.preload.ready').replace('{count}', successCount);
+                progressText.textContent = window.t('studio.font.preload.faster');
 
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
@@ -3661,20 +3661,20 @@
 
             // ⏳ 模型還在背景重新運算（例如剛改完尺寸），此時 BBox/圓環位置都還是舊資料，先擋下來
             if (isModelGenerating) {
-                showToast('模型正在更新中，請稍候一下再加入購物車');
+                showToast(window.t('studio.model.updating'));
                 return;
             }
 
             // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
             if (modelNeedsCleanup) {
-                showToast('⚠️ 作品含有分離部件，請先使用左側面板中正在發光的開關清理後再加入購物車');
+                showToast(window.t('studio.fragment.addToCart'));
                 return;
             }
 
             // ✅ 限制購物車件數（避免表單誤觸/意外大量下單的安全上限）
             const maxCartItems = 10;
             if (cartItems.length >= maxCartItems) {
-                showToast(`購物車最多只能加入 ${maxCartItems} 個商品，如需訂購更多請分批結帳`);
+                showToast(window.t('studio.cart.maxItems').replace('{max}', maxCartItems));
                 return;
             }
             
@@ -3810,7 +3810,7 @@
                     line-height: 1.6;
                     letter-spacing: 0.2px;
                 `;
-                msg.innerHTML = '⏳ 正在確認作品是否有分離部件，請稍候⋯⋯';
+                msg.innerHTML = window.t('studio.fragment.checking');
                 container.insertBefore(msg, container.firstChild);
             }
         }
@@ -3824,7 +3824,7 @@
             // 設定回來後才整個切換成正確畫面的閃爍
             const container = document.getElementById('cart-items');
             if (container && !window._checkoutConfigResolved) {
-                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">載入中⋯⋯</div>';
+                container.innerHTML = `<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">${window.t('studio.cart.loading')}</div>`;
             }
             if (window._checkoutConfigReady) {
                 try { await window._checkoutConfigReady; } catch (e) { /* 已在內部處理，這裡不用重複處理 */ }
@@ -3917,7 +3917,7 @@
                     priceDiv.style.color = '#d4af37';
                     priceDiv.style.fontSize = '13px';
                 } else if (itemRedeemed) {
-                    priceDiv.innerHTML = `<span style="text-decoration:line-through; opacity:0.5; font-size:12px;">NT$ ${(item.price * item.quantity).toLocaleString()}</span><br><span style="color:#4ade80;">NT$ 0（已兌換）</span>`;
+                    priceDiv.innerHTML = `<span style="text-decoration:line-through; opacity:0.5; font-size:12px;">NT$ ${(item.price * item.quantity).toLocaleString()}</span><br><span style="color:#4ade80;">NT$ 0（${window.t('studio.cart.redeemed')}）</span>`;
                 } else {
                     priceDiv.textContent = `NT$ ${(item.price * item.quantity).toLocaleString()}`;
                 }
@@ -4396,7 +4396,7 @@
 
             if (items.length === 0) {
                 console.error('❌ 沒有購物車資料');
-                showNotification('無法載入訂單商品', 'error');
+                showNotification(window.t('notify.order.itemsLoadFailed'), 'error');
                 return;
             }
 
@@ -4453,7 +4453,7 @@
 
             if (items.length === 0) {
                 console.error('❌ 沒有購物車資料');
-                showNotification('無法載入訂單商品', 'error');
+                showNotification(window.t('notify.order.itemsLoadFailed'), 'error');
                 return;
             }
 
@@ -5276,13 +5276,13 @@
                         // 根據是否有 AI consultation 決定跳轉
                         if (result.hasAiConsultation) {
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
-                            showNotification('VIP 免費訂單已確認！正在為您準備諮詢服務...', 'success');
+                            showNotification(window.t('notify.order.vipConfirmed'), 'success');
                             setTimeout(() => {
                                 window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
                             // 沒有 AI consultation → 回到 design-studio 觸發 Option B 諮詢補做
-                            showNotification('訂單已確認！感謝您的訂購', 'success');
+                            showNotification(window.t('notify.order.confirmed'), 'success');
                             setTimeout(() => {
                                 window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                             }, 2000);
@@ -5314,7 +5314,7 @@
                         window.userInfoModal.remove();
                         window.userInfoModal = null;
                     }
-                    alert('❌ 結帳失敗：' + result.error);
+                    alert(window.t('alert.checkout.failed') + result.error);
                 }
 
             } catch (error) {
@@ -5327,7 +5327,7 @@
                     window.userInfoModal.remove();
                     window.userInfoModal = null;
                 }
-                alert('❌ 支付過程發生錯誤：' + error.message);
+                alert(window.t('alert.payment.error') + error.message);
             }
         }
 
