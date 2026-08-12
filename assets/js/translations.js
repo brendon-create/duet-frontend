@@ -137,6 +137,7 @@ window.translations = {
         'studio.cart.total':       '總計',
         'studio.cart.continue':    '繼續選購',
         'studio.cart.checkout':    '結帳',
+        'studio.cart.empty':       '購物車是空的',
         'cart.inquiry':            '送出訂製需求',
         'studio.slot.1':           '版本 1',
         'studio.slot.2':           '版本 2',
@@ -193,6 +194,8 @@ window.translations = {
         'studio.reselect.fonts':    '＋ 重選字體',
         'studio.bg.hint':           '可切換背景 ↘',
         'studio.bg.label':          '切換背景',
+        'studio.font.error.none':   '請至少選擇一個字體！',
+        'studio.font.error.chars': '請輸入 2 個字母',
 
         // ── 字體規範標籤 & 提示 ──
         'font.label.thin':             ' (細)',
@@ -271,6 +274,18 @@ window.translations = {
         'order.processing.desc':    '請稍候，即將跳轉至付款頁面',
         'order.processing.redemption':      '訂單資料傳送中...',
         'order.processing.redemption.desc': '請稍候',
+
+        // ── 訂單/詢價完成頁面 ──
+        'order.complete.title':     '訂單已完成',
+        'order.complete.body':      '您的設計已完成，將很快收到訂單確認信<br>畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁',
+        'inquiry.complete.title':   '訂製需求已送出',
+        'inquiry.complete.body':    '我們將在 2 個工作天內與您聯繫確認細節<br>畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁',
+        'complete.redirect.countdown': '3 秒後自動跳轉...',
+
+        // ── 後端連線錯誤 ──
+        'error.backend.title':      '連線中斷',
+        'error.backend.message':    '無法連線至伺服器<br>請確認網路後重新整理',
+        'error.backend.reload':     '重新整理',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            '作品',
@@ -517,6 +532,7 @@ window.translations = {
         'studio.cart.total':       'Total',
         'studio.cart.continue':    'Continue Shopping',
         'studio.cart.checkout':    'Checkout',
+        'studio.cart.empty':       'Your cart is empty',
         'cart.inquiry':            'Submit Custom Order',
         'studio.slot.1':           'Slot 1',
         'studio.slot.2':           'Slot 2',
@@ -573,6 +589,8 @@ window.translations = {
         'studio.reselect.fonts':    '+ Reselect Fonts',
         'studio.bg.hint':           'Switch background ↘',
         'studio.bg.label':          'Switch Background',
+        'studio.font.error.none':   'Please select at least one font!',
+        'studio.font.error.chars': 'Please enter 2 letters',
 
         // ── Font Constraint Labels & Tips ──
         'font.label.thin':             ' (Thin)',
@@ -651,6 +669,18 @@ window.translations = {
         'order.processing.desc':    'Please wait, redirecting to payment page...',
         'order.processing.redemption':      'Submitting order...',
         'order.processing.redemption.desc': 'Please wait',
+
+        // ── 訂單/詢價完成頁面 ──
+        'order.complete.title':     'Order Complete',
+        'order.complete.body':      'Your design is complete — you\'ll receive an order confirmation email shortly.<br>You\'ll be redirected to DUET\'s parent brand, BCAG Custom Jewelry.',
+        'inquiry.complete.title':   'Custom Request Submitted',
+        'inquiry.complete.body':    'We\'ll contact you within 2 business days to confirm the details.<br>You\'ll be redirected to DUET\'s parent brand, BCAG Custom Jewelry.',
+        'complete.redirect.countdown': 'Redirecting in 3 seconds...',
+
+        // ── 後端連線錯誤 ──
+        'error.backend.title':      'Connection Lost',
+        'error.backend.message':    'Unable to connect to the server<br>Please check your network and reload',
+        'error.backend.reload':     'Reload',
 
         // ── 結帳確認商品標籤 ──
         'checkout.item':            'Item',

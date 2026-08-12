@@ -1914,13 +1914,13 @@
                         font-size: 18px;
                         font-weight: 500;
                         letter-spacing: 1px;
-                    ">連線中斷</h3>
+                    ">${window.t('error.backend.title')}</h3>
                     <p style="
                         color: rgba(255,255,255,0.55);
                         margin: 0 0 28px;
                         font-size: 14px;
                         line-height: 1.7;
-                    ">無法連線至伺服器<br>請確認網路後重新整理</p>
+                    ">${window.t('error.backend.message')}</p>
                     <button onclick="location.reload()" style="
                         background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none;
@@ -1932,7 +1932,7 @@
                         font-weight: 600;
                         letter-spacing: 0.5px;
                         box-shadow: 0 4px 16px rgba(212,175,55,0.3);
-                    ">重新整理</button>
+                    ">${window.t('error.backend.reload')}</button>
                 </div>
             `;
             document.body.appendChild(toast);
@@ -3255,13 +3255,13 @@
 
         function confirmFontSelection() {
             if (checkedFonts.size === 0) {
-                alert('Please select at least one font!');
+                alert(window.t('studio.font.error.none'));
                 return;
             }
 
             const inputChars = document.getElementById('char-input').value.trim();
             if (inputChars.length < 2) {
-                alert('Please enter 2 letters');
+                alert(window.t('studio.font.error.chars'));
                 return;
             }
 
@@ -3844,7 +3844,7 @@
             if (redemptionNotice) redemptionNotice.style.display = (window.CHECKOUT_MODE === 'redemption') ? 'block' : 'none';
 
             if (cartItems.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">Your cart is empty</div>';
+                container.innerHTML = `<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">${window.t('studio.cart.empty')}</div>`;
                 document.getElementById('cart-total').textContent = 'NT$ 0';
                 return;
             }
@@ -5796,21 +5796,20 @@
                         font-size: 22px;
                         font-weight: 500;
                         letter-spacing: 0.5px;
-                    ">訂單已完成</h2>
+                    ">${window.t('order.complete.title')}</h2>
                     <p style="
                         color: rgba(255, 255, 255, 0.7);
                         font-size: 14px;
                         line-height: 1.8;
                         margin: 0 0 28px 0;
                     ">
-                        您的設計已完成，將很快收到訂單確認信<br>
-                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
+                        ${window.t('order.complete.body')}
                     </p>
                     <div style="
                         color: rgba(212, 175, 55, 0.8);
                         font-size: 13px;
                         font-weight: 500;
-                    ">3 秒後自動跳轉...</div>
+                    ">${window.t('complete.redirect.countdown')}</div>
                 </div>
             `;
 
@@ -5841,12 +5840,11 @@
                 ">
                     <div style="font-size: 64px; margin-bottom: 24px;">✓</div>
                     <h2 style="color:rgba(255,255,255,0.95);margin:0 0 20px 0;font-size:22px;font-weight:500;letter-spacing:0.5px;">
-                        訂製需求已送出</h2>
+                        ${window.t('inquiry.complete.title')}</h2>
                     <p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;margin:0 0 28px 0;">
-                        我們將在 2 個工作天內與您聯繫確認細節<br>
-                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
+                        ${window.t('inquiry.complete.body')}
                     </p>
-                    <div style="color:rgba(212,175,55,0.8);font-size:13px;font-weight:500;">3 秒後自動跳轉...</div>
+                    <div style="color:rgba(212,175,55,0.8);font-size:13px;font-weight:500;">${window.t('complete.redirect.countdown')}</div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -6013,8 +6011,8 @@
                             display: flex; align-items: center; justify-content: center;">
                     <div style="background: white; padding: 40px; border-radius: 15px; 
                                 max-width: 500px; text-align: center;">
-                        <h2 style="color: #333; margin-bottom: 15px;">跳轉至綠界支付...</h2>
-                        <p style="color: #666; margin-bottom: 20px;">請稍候，正在為您導向支付頁面</p>
+                        <h2 style="color: #333; margin-bottom: 15px;">${window.t('order.processing')}</h2>
+                        <p style="color: #666; margin-bottom: 20px;">${window.t('order.processing.desc')}</p>
                         <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; 
                                     border-top: 5px solid #3498db; border-radius: 50%; 
                                     animation: spin 1s linear infinite; margin: 0 auto;"></div>
@@ -6952,7 +6950,7 @@
                         isPostPayment: true
                     }));
                     const done = lang === 'en'
-                        ? '感謝您的分享！正在為您生成設計理念…'
+                        ? 'Thank you for sharing! Generating your design story…'
                         : '感謝您的分享！正在為您生成設計理念…';
                     _ppAddMessage('assistant', done);
                     progress.textContent = lang === 'en' ? 'Completed ✓' : '諮詢完成 ✓';
