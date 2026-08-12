@@ -278,6 +278,7 @@ window.translations = {
         'checkout.item.size':       '尺寸',
         'checkout.item.material':   '材質',
         'checkout.item.plating.suffix': '電鍍',
+        'checkout.item.chain':      '項鍊',
 
         // ── 材質 / 電鍍名稱 ──
         'mat.silver925':            '925 銀',
@@ -656,6 +657,7 @@ window.translations = {
         'checkout.item.size':       'Size',
         'checkout.item.material':   'Material',
         'checkout.item.plating.suffix': 'Plating',
+        'checkout.item.chain':      'Chain',
 
         // ── 材質 / 電鍍名稱 ──
         'mat.silver925':            '925 Silver',

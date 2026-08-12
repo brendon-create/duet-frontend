@@ -4778,18 +4778,18 @@
             { value: 'silver_chain',     label: window.t('chain.option.silver'),     img: 'assets/images/products/silver-chain.png',      note: window.t('chain.note.adjustable') },
             { value: 'gold_chain',       label: window.t('chain.option.gold'),       img: 'assets/images/products/gold-chain.png',        note: window.t('chain.note.adjustable') },
             { value: 'rosegold_chain',   label: window.t('chain.option.rosegold'),   img: 'assets/images/products/rosegold-chain.png',    note: window.t('chain.note.adjustable') },
-            { value: 'silver_chain_2mm', label: window.t('chain.option.silverBold'), img: 'assets/images/products/male-silver-chain.png', note: window.t('chain.note.adjustable') },
-            { value: 'black_chain_2mm',  label: window.t('chain.option.blackBold'),  img: 'assets/images/products/male-black-chain.png',  note: window.t('chain.note.adjustable') },
+            { value: 'silver_chain_2mm', label: window.t('chain.option.silverBold'), img: 'assets/images/products/male-silver-chain.jpg', note: window.t('chain.note.adjustable') },
+            { value: 'black_chain_2mm',  label: window.t('chain.option.blackBold'),  img: 'assets/images/products/male-black-chain.jpg',  note: window.t('chain.note.adjustable') },
         ];
 
         // 項鍊佩戴示意圖素材（橫向捲動膠卷用）
         const CHAIN_WEAR_PHOTOS = [
-            { img: 'assets/images/products/DUET_Female_1.png',        captionKey: 'chain.wear.fineShort' },
-            { img: 'assets/images/products/DUET_Female_2.png',        captionKey: 'chain.wear.fineLong' },
-            { img: 'assets/images/products/DUET_Male_Silver_Short.png', captionKey: 'chain.wear.silverBoldShort' },
-            { img: 'assets/images/products/DUET_Male_silver_long.png',  captionKey: 'chain.wear.silverBoldLong' },
-            { img: 'assets/images/products/DUET_Male_black_short.png',  captionKey: 'chain.wear.blackBoldShort' },
-            { img: 'assets/images/products/DUET_Male_Black_Long.png',   captionKey: 'chain.wear.blackBoldLong' },
+            { img: 'assets/images/products/DUET_Female_1.jpg',        captionKey: 'chain.wear.fineShort' },
+            { img: 'assets/images/products/DUET_Female_2.jpg',        captionKey: 'chain.wear.fineLong' },
+            { img: 'assets/images/products/DUET_Male_Silver_Short.jpg', captionKey: 'chain.wear.silverBoldShort' },
+            { img: 'assets/images/products/DUET_Male_silver_long.jpg',  captionKey: 'chain.wear.silverBoldLong' },
+            { img: 'assets/images/products/DUET_Male_black_short.jpg',  captionKey: 'chain.wear.blackBoldShort' },
+            { img: 'assets/images/products/DUET_Male_Black_Long.jpg',   captionKey: 'chain.wear.blackBoldLong' },
         ];
 
         function openChainWearPhotos() {
@@ -4798,7 +4798,7 @@
 
             // 圖說每次開啟都重新渲染，避免切換語言後仍顯示舊語言的舊快取內容
             strip.innerHTML = CHAIN_WEAR_PHOTOS.map(p => `
-                <div style="flex:0 0 auto;scroll-snap-align:center;text-align:center;">
+                <div style="flex:0 0 auto;text-align:center;">
                     <img src="${p.img}" style="height:65vh;max-width:80vw;object-fit:contain;border-radius:12px;display:block;">
                     <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">${window.t(p.captionKey)}</div>
                 </div>`).join('');
@@ -4823,6 +4823,12 @@
                 });
                 overlay.addEventListener('click', () => {
                     if (dragged) { dragged = false; return; }
+                    overlay.style.display = 'none';
+                });
+
+                // 右上角關閉鈕：明確可見的離開入口
+                document.getElementById('chain-wear-photos-close').addEventListener('click', e => {
+                    e.stopPropagation();
                     overlay.style.display = 'none';
                 });
             }
@@ -5063,6 +5069,8 @@
                     const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
                     const platingStr = (item.plating && item.plating !== 'none')
                         ? ` + ${_PLATING_LABELS[item.plating] || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
+                    const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
+                    const chainLabel = chainOpt ? chainOpt.label : window.t('cart.chain.select');
 
                     const viewCell = (img, lbl) => `
                         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
@@ -5079,7 +5087,8 @@
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.letter')}　</span>${item.letter1} + ${item.letter2}<br>
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.font')}　</span>${item.font1} / ${item.font2}<br>
                                 <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.size')}　</span>${item.size} mm<br>
-                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.material')}　</span>${materialLabel}${platingStr}
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.material')}　</span>${materialLabel}${platingStr}<br>
+                                <span style="color:rgba(255,255,255,0.3);">${window.t('checkout.item.chain')}　</span>${chainLabel}
                             </div>
                             <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
                                 ${heroImg || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">Hero</div>`}
@@ -6690,11 +6699,19 @@
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
-    <!-- 項鍊佩戴示意圖：橫向捲動膠卷，點畫面任意處關閉 -->
+    <!-- 項鍊佩戴示意圖：橫向捲動膠卷，點畫面任意處或右上角 ✕ 關閉 -->
     <div id="chain-wear-photos-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
          background:rgba(0,0,0,0.92);z-index:100000;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;">
+        <button id="chain-wear-photos-close" type="button" aria-label="Close"
+                style="position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;
+                       background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                       display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M1 1L15 15M15 1L1 15" stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </button>
         <div id="chain-wear-photos-strip" style="display:flex;overflow-x:auto;overflow-y:hidden;
-             scroll-snap-type:x mandatory;gap:32px;padding:40px 10vw;width:100%;box-sizing:border-box;
+             gap:32px;padding:40px 10vw;width:100%;box-sizing:border-box;
              -webkit-overflow-scrolling:touch;cursor:default;"></div>
         <div data-i18n="chain.wear.scrollHint" style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.4);">← 左右滑動查看更多 →</div>
     </div>
