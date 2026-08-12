@@ -4936,8 +4936,9 @@
                         if (!img || img.style.display === 'none') return;
                         previewImg.onerror = null;
                         previewImg.src = img.src;
+                        preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度現在是響應式的（min(640px,92vw)），不能再用寫死的數字
                         // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱
-                        const pw = 640, ph = 480;
+                        const pw = preview.offsetWidth, ph = preview.offsetHeight;
                         const imgRect = img.getBoundingClientRect();
                         let left = imgRect.left + imgRect.width / 2 - pw / 2;
                         let top  = imgRect.bottom - ph;
@@ -4947,7 +4948,6 @@
                         top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
                         preview.style.left = left + 'px';
                         preview.style.top  = top  + 'px';
-                        preview.style.display = 'block';
                     });
                     body.addEventListener('mouseout', e => {
                         const target = e.target.closest('.cart-chain-opt');
@@ -6714,8 +6714,9 @@
     </div>
 
     <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫；置中疊在卡片正前方） -->
+    <!-- 寬度改用 min(640px, 92vw)：手機螢幕比 640px 窄時會等比縮小，避免邊框超出螢幕範圍 -->
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
-         width:640px;height:480px;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+         width:min(640px, 92vw);aspect-ratio:4/3;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
         <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
     </div>
 
