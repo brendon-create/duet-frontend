@@ -3430,12 +3430,13 @@
             // 創建縮略圖
             slotElement.innerHTML = '';
             const canvas = document.createElement('canvas');
-            canvas.width = 160;
-            canvas.height = 160;
             slotElement.appendChild(canvas);
 
+            // 🔧 內部繪製解析度依容器實際顯示大小（手機版比桌機版大很多）+ 螢幕像素密度來算，避免用固定 160px 的畫布被 CSS 撐大後糊掉
+            const slotDisplaySize = Math.max(160, Math.round(slotElement.getBoundingClientRect().width));
             const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            slotRenderer.setSize(160, 160, false); // false：不寫入 inline style，讓 CSS 的 width:100%/height:100% 能撐滿容器
+            slotRenderer.setPixelRatio(window.devicePixelRatio || 1);
+            slotRenderer.setSize(slotDisplaySize, slotDisplaySize, false); // false：不寫入 inline style，讓 CSS 的 width:100%/height:100% 能撐滿容器
             slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
             slotRenderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -3463,14 +3464,23 @@
                 slotScene.add(bailClone);
             }
 
-            // 🔧 依作品實際外框（含 Bail/Ring）算出置中目標與縮放距離，避免縮圖偏移或過小
-            const previewBBox = new THREE.Box3();
-            previewBBox.expandByObject(meshClone);
-            if (ringClone) previewBBox.expandByObject(ringClone);
-            if (bailClone) previewBBox.expandByObject(bailClone);
-            const previewCenter = previewBBox.getCenter(new THREE.Vector3());
-            const previewSize = previewBBox.getSize(new THREE.Vector3());
-            const previewDist = Math.max(previewSize.x, previewSize.y, previewSize.z) * 2.2;
+            // 🔧 準心只用主體字母本身的外框中心（不含 Bail/Ring），跟主畫面的邏輯一致；
+            // 若準心改用「字母+Bail+Ring」合併後的中心，Bail 會把準心往上拉，縮放時字母會被推出畫面
+            const meshBBox = new THREE.Box3();
+            meshBBox.expandByObject(meshClone);
+            const previewCenter = meshBBox.getCenter(new THREE.Vector3());
+
+            // 縮放距離：仍把 Bail/Ring 一起算進去以免被裁到，用「準心到外框最遠角」的距離換算安全的拍攝距離
+            const combinedBBox = new THREE.Box3();
+            combinedBBox.expandByObject(meshClone);
+            if (ringClone) combinedBBox.expandByObject(ringClone);
+            if (bailClone) combinedBBox.expandByObject(bailClone);
+            const farCorner = new THREE.Vector3(
+                Math.max(Math.abs(combinedBBox.max.x - previewCenter.x), Math.abs(combinedBBox.min.x - previewCenter.x)),
+                Math.max(Math.abs(combinedBBox.max.y - previewCenter.y), Math.abs(combinedBBox.min.y - previewCenter.y)),
+                Math.max(Math.abs(combinedBBox.max.z - previewCenter.z), Math.abs(combinedBBox.min.z - previewCenter.z))
+            );
+            const previewDist = farCorner.length() * 2.6;
 
             // 初始視角沿用當下主畫面相機方向，之後由 3d-scene.js 的動畫迴圈同步旋轉
             const initialDir = window.camera ? window.camera.position.clone().normalize() : new THREE.Vector3(0.71, -0.71, 0.28);
