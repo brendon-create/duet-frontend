@@ -3899,7 +3899,7 @@
                         ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
                     chainBtn.innerHTML = chainOpt
-                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
+                        ? `<span>${window.t(chainOpt.labelKey)}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
                         : `<span>${window.t('cart.chain.select')}</span>`;
                     chainBtn.addEventListener('click', () => {
                         showChainTypeModal(index).then(() => renderCart()).catch(() => {});
@@ -4807,12 +4807,14 @@
         window.submitCustomInquiry = submitCustomInquiry;
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
+        // 只存翻譯 key（labelKey/noteKey），實際文字在每次渲染時才用 window.t() 現查，
+        // 避免像 CHAIN_OPTIONS 這種在模組頂層算一次的寫法，切換語言後不會跟著更新
         const CHAIN_OPTIONS = [
-            { value: 'silver_chain',     label: window.t('chain.option.silver'),     img: 'assets/images/products/silver-chain.png',      note: window.t('chain.note.adjustable') },
-            { value: 'gold_chain',       label: window.t('chain.option.gold'),       img: 'assets/images/products/gold-chain.png',        note: window.t('chain.note.adjustable') },
-            { value: 'rosegold_chain',   label: window.t('chain.option.rosegold'),   img: 'assets/images/products/rosegold-chain.png',    note: window.t('chain.note.adjustable') },
-            { value: 'silver_chain_2mm', label: window.t('chain.option.silverBold'), img: 'assets/images/products/male-silver-chain.jpg', note: window.t('chain.note.adjustable') },
-            { value: 'black_chain_2mm',  label: window.t('chain.option.blackBold'),  img: 'assets/images/products/male-black-chain.jpg',  note: window.t('chain.note.adjustable') },
+            { value: 'silver_chain',     labelKey: 'chain.option.silver',     img: 'assets/images/products/silver-chain.png',      noteKey: 'chain.note.adjustable' },
+            { value: 'gold_chain',       labelKey: 'chain.option.gold',       img: 'assets/images/products/gold-chain.png',        noteKey: 'chain.note.adjustable' },
+            { value: 'rosegold_chain',   labelKey: 'chain.option.rosegold',   img: 'assets/images/products/rosegold-chain.png',    noteKey: 'chain.note.adjustable' },
+            { value: 'silver_chain_2mm', labelKey: 'chain.option.silverBold', img: 'assets/images/products/male-silver-chain.jpg', noteKey: 'chain.note.adjustable' },
+            { value: 'black_chain_2mm',  labelKey: 'chain.option.blackBold',  img: 'assets/images/products/male-black-chain.jpg',  noteKey: 'chain.note.adjustable' },
         ];
 
         // 項鍊佩戴示意圖素材（橫向捲動膠卷用）
@@ -4901,13 +4903,13 @@
                                 <div class="cart-chain-opt" data-chain="${opt.value}"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
                                             border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
-                                    <img src="${opt.img}" alt="${opt.label}"
+                                    <img src="${opt.img}" alt="${window.t(opt.labelKey)}"
                                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                                          style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
                                     <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:40px;opacity:0.4;">🔗</div>
                                     <div style="padding:12px 8px 16px;font-size:13px;color:rgba(255,255,255,0.75);line-height:1.4;">
-                                        ${opt.label}
-                                        ${opt.note ? `<br><span style="font-size:11px;color:rgba(212,175,55,0.75);">${opt.note}</span>` : ''}
+                                        ${window.t(opt.labelKey)}
+                                        ${opt.noteKey ? `<br><span style="font-size:11px;color:rgba(212,175,55,0.75);">${window.t(opt.noteKey)}</span>` : ''}
                                     </div>
                                 </div>`).join('')}
                         </div>
@@ -5060,8 +5062,10 @@
         // ── 設計確認 Modal ──────────────────────────────────
         const _DESIGN_STATEMENT_TEXT = '此為客製化商品，確認後無法修改設計；實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）；客製化商品不適用七天鑑賞期。';
         const _DESIGN_STATEMENT_VERSION = 'v1';
-        const _MATERIAL_LABELS = { silver925: window.t('mat.silver925'), brass: window.t('mat.brass'), precious_metal: window.t('mat.precious') };
-        const _PLATING_LABELS  = { none: window.t('plating.none') || '無', gold18k: window.t('plating.gold18k'), whitegold18k: window.t('plating.whitegold18k'), rosegold18k: window.t('plating.rosegold18k') };
+        // 只存翻譯 key，實際文字在每次渲染時才用 window.t() 現查，避免切換語言後這裡的文字卡住不更新；
+        // 'plating.none' 這個 key 在 translations.js 裡其實不存在（原本 `|| '無'` fallback 因此從沒真的生效過），改用真正存在的 'cart.item.plating.none'
+        const _MATERIAL_LABEL_KEYS = { silver925: 'mat.silver925', brass: 'mat.brass', precious_metal: 'mat.precious' };
+        const _PLATING_LABEL_KEYS  = { none: 'cart.item.plating.none', gold18k: 'plating.gold18k', whitegold18k: 'plating.whitegold18k', rosegold18k: 'plating.rosegold18k' };
 
         function showDesignConfirmation() {
             return new Promise((resolve, reject) => {
@@ -5099,11 +5103,11 @@
                         heroImg = `<img src="${item.heroView.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
                     }
 
-                    const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
+                    const materialLabel = window.t(_MATERIAL_LABEL_KEYS[item.material]) || item.material;
                     const platingStr = (item.plating && item.plating !== 'none')
-                        ? ` + ${_PLATING_LABELS[item.plating] || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
+                        ? ` + ${window.t(_PLATING_LABEL_KEYS[item.plating]) || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
                     const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
-                    const chainLabel = chainOpt ? chainOpt.label : window.t('cart.chain.select');
+                    const chainLabel = chainOpt ? window.t(chainOpt.labelKey) : window.t('cart.chain.select');
 
                     const viewCell = (img, lbl) => `
                         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
