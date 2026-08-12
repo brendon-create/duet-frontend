@@ -2765,6 +2765,9 @@
             document.getElementById('unlockRing').checked = true;
             document.getElementById('unlockChain').checked = false;
             document.getElementById('itemRevisionMsg').textContent = '';
+            // 上一次成功寄送後按鈕會停留在 disabled（submitItemRevision 成功時沒有重新啟用），
+            // 每次開啟都重置，避免換一筆訂單後按鈕變得毫無反應
+            document.getElementById('itemRevisionSendBtn').disabled = false;
             document.getElementById('itemRevisionModal').style.display = 'flex';
         }
 
