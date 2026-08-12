@@ -3435,7 +3435,7 @@
             slotElement.appendChild(canvas);
 
             const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            slotRenderer.setSize(160, 160);
+            slotRenderer.setSize(160, 160, false); // false：不寫入 inline style，讓 CSS 的 width:100%/height:100% 能撐滿容器
             slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
             slotRenderer.outputColorSpace = THREE.SRGBColorSpace;
 
