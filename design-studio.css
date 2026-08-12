@@ -323,6 +323,14 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
+        /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體），
+           這裡只補文繞排版需要的留白與置中 */
+        .version-slot-hint {
+            padding: 0 16px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
         .version-label {
             position: absolute;
             bottom: 0;
@@ -880,28 +888,8 @@
             display: none;
         }
 
-        /* 點點動畫 */
-        @keyframes dots {
-
-            0%,
-            20% {
-                content: '.';
-            }
-
-            40% {
-                content: '..';
-            }
-
-            60%,
-            100% {
-                content: '...';
-            }
-        }
-
-        .dots-animation::after {
-            content: '';
-            animation: dots 1.5s infinite;
-        }
+        /* 點點動畫：文字內容改由 JS 直接輪替 .dots-animation 的 textContent（見 design-studio.html），
+           animation 對 content 屬性做 keyframes 在瀏覽器間支援不穩定，之前會卡在第一格不再前進 */
 
         /* 🧹 Toggle Switch 樣式 */
         .toggle-switch {

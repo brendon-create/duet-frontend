@@ -317,9 +317,11 @@
 
     <div id="saved-versions">
         <div class="version-slot empty" data-slot="1">
+            <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
             <div class="version-label" data-i18n="studio.slot.1">版本 1</div>
         </div>
         <div class="version-slot empty" data-slot="2">
+            <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
             <div class="version-label" data-i18n="studio.slot.2">版本 2</div>
         </div>
     </div>
@@ -883,6 +885,19 @@
         // loadGoogleFonts 定義於本模組底部，但 resource-loader.js 需透過 window 存取
         // 利用 function hoisting，此處可安全提前暴露
         window.loadGoogleFonts = loadGoogleFonts;
+
+        // 「製作中...」點點循環動畫：改用 JS 直接輪替文字，不再依賴 CSS 對 content 屬性做 keyframes
+        // （animation 動畫 content 屬性不是所有瀏覽器都可靠支援，之前會卡在第一個影格不再前進）
+        (function startDotsAnimation() {
+            const DOTS_CYCLE = ['.', '..', '...'];
+            let dotsIndex = 0;
+            setInterval(() => {
+                dotsIndex = (dotsIndex + 1) % DOTS_CYCLE.length;
+                document.querySelectorAll('.dots-animation').forEach(el => {
+                    el.textContent = DOTS_CYCLE[dotsIndex];
+                });
+            }, 500);
+        })();
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
@@ -3507,7 +3522,9 @@
 
             const label = document.createElement('div');
             label.className = 'version-label';
-            label.textContent = `SLOT ${slotIndex + 1}`;
+            const slotLabelKey = `studio.slot.${slotIndex + 1}`;
+            label.setAttribute('data-i18n', slotLabelKey); // 讓之後切換語言時 applyLanguage() 也能重新翻譯這個動態產生的標籤
+            label.textContent = window.t ? window.t(slotLabelKey) : `Slot ${slotIndex + 1}`;
             slotElement.appendChild(label);
         }
 
