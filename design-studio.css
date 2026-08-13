@@ -323,9 +323,20 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
-        /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體），
-           這裡只補文繞排版需要的留白與置中 */
+        /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體）。
+           手機版 .version-slot 用 height:0 + padding-bottom 撐正方形，content box 高度是 0，
+           如果靠父層 .version-slot.empty 的 flex 置中（在 0 高度的 content box 裡置中）文字會被推到頂端；
+           改成自己 absolute 貼滿四邊（padding box，不受 content box 是 0 影響）、自己內部 flex 置中，
+           跟 .version-slot canvas 的做法一樣 */
         .version-slot-hint {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 0 16px;
             text-align: center;
             line-height: 1.5;
