@@ -83,7 +83,7 @@
 
         <div class="section">
             <!-- 3D 模型重建提示 - Letter1 上方 -->
-            <div id="model-rebuilding-indicator-top" style="
+            <div id="model-rebuilding-indicator-top" class="loading-pulse" style="
                 display: none;
                 margin-bottom: 8px;
                 padding: 8px 12px;
@@ -94,7 +94,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                作品模型製作中<span class="dots-animation"></span>
+                作品模型製作中...
             </div>
             
             <div class="control-group">
@@ -216,7 +216,7 @@
         </div>
 
         <!-- 3D 模型重建提示 - 清理零碎部件下方 -->
-        <div id="model-rebuilding-indicator-cleanup" style="
+        <div id="model-rebuilding-indicator-cleanup" class="loading-pulse" style="
             display: none;
             margin-top: 8px;
             padding: 8px 12px;
@@ -227,7 +227,7 @@
             color: #d4af37;
             text-align: center;
         ">
-            作品模型製作中<span class="dots-animation"></span>
+            作品模型製作中...
         </div>
 
         <div class="divider"></div>
@@ -249,7 +249,7 @@
                 <div
                     style="width: 12px; height: 12px; border: 2px solid rgba(212, 175, 55, 0.3); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite;">
                 </div>
-                <span id="preload-text">預載入字體中...</span>
+                <span id="preload-text" data-i18n="studio.font.preload.loading">預載入字體中...</span>
             </div>
             <div style="margin-top: 6px; font-size: 10px; color: rgba(255, 255, 255, 0.5);" id="preload-progress">0 / 0
             </div>
@@ -317,9 +317,11 @@
 
     <div id="saved-versions">
         <div class="version-slot empty" data-slot="1">
+            <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
             <div class="version-label" data-i18n="studio.slot.1">版本 1</div>
         </div>
         <div class="version-slot empty" data-slot="2">
+            <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
             <div class="version-label" data-i18n="studio.slot.2">版本 2</div>
         </div>
     </div>
@@ -486,36 +488,36 @@
 
             <div style="display:flex;flex-direction:column;gap:16px;">
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">姓名 *</label>
-                    <input id="inquiry-name" type="text" placeholder="您的姓名" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.name" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">姓名 *</label>
+                    <input id="inquiry-name" type="text" data-i18n-placeholder="inquiry.field.name.placeholder" placeholder="您的姓名" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">Email 或 LINE ID *</label>
-                    <input id="inquiry-contact" type="text" placeholder="your@email.com 或 LINE ID" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.contact" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">Email 或 LINE ID *</label>
+                    <input id="inquiry-contact" type="text" data-i18n-placeholder="inquiry.field.contact.placeholder" placeholder="your@email.com 或 LINE ID" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">材質偏好</label>
+                    <label data-i18n="inquiry.field.material" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">材質偏好</label>
                     <select id="inquiry-material" style="width:100%;padding:12px 14px;background:rgba(20,18,14,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
-                        <option value="18k_yellow">18K 黃金</option>
-                        <option value="18k_rose">18K 玫瑰金</option>
-                        <option value="18k_white">18K 白K金</option>
-                        <option value="platinum">鉑金</option>
-                        <option value="undecided">尚未決定，希望諮詢</option>
+                        <option value="18k_yellow" data-i18n="inquiry.material.gold">18K 黃金</option>
+                        <option value="18k_rose" data-i18n="inquiry.material.rose">18K 玫瑰金</option>
+                        <option value="18k_white" data-i18n="inquiry.material.white">18K 白K金</option>
+                        <option value="platinum" data-i18n="inquiry.material.platinum">鉑金</option>
+                        <option value="undecided" data-i18n="inquiry.material.undecided">尚未決定，希望諮詢</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">希望完成時間</label>
-                    <input id="inquiry-timeline" type="text" placeholder="例如：2 個月內、聖誕節前⋯" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
+                    <label data-i18n="inquiry.field.timeline" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">希望完成時間</label>
+                    <input id="inquiry-timeline" type="text" data-i18n-placeholder="inquiry.field.timeline.placeholder" placeholder="例如：2 個月內、聖誕節前⋯" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">備註</label>
-                    <textarea id="inquiry-notes" placeholder="其他想告訴我們的⋯" rows="3" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;resize:vertical;font-family:inherit;"></textarea>
+                    <label data-i18n="inquiry.field.notes" style="display:block;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">備註</label>
+                    <textarea id="inquiry-notes" data-i18n-placeholder="inquiry.field.notes.placeholder" placeholder="其他想告訴我們的⋯" rows="3" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;resize:vertical;font-family:inherit;"></textarea>
                 </div>
             </div>
 
             <div style="display:flex;gap:12px;margin-top:28px;">
-                <button onclick="document.getElementById('custom-inquiry-modal').style.display='none';" style="flex:1;padding:14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">取消</button>
-                <button id="submit-inquiry-btn" onclick="submitCustomInquiry();" style="flex:2;padding:14px;background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.1));border:1px solid rgba(212,175,55,0.5);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;font-weight:500;">送出訂製需求</button>
+                <button onclick="document.getElementById('custom-inquiry-modal').style.display='none';" data-i18n="inquiry.cancel" style="flex:1;padding:14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">取消</button>
+                <button id="submit-inquiry-btn" onclick="submitCustomInquiry();" data-i18n="cart.inquiry" style="flex:2;padding:14px;background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.1));border:1px solid rgba(212,175,55,0.5);border-radius:12px;color:#d4af37;font-size:14px;letter-spacing:0.5px;cursor:pointer;font-weight:500;">送出訂製需求</button>
             </div>
             <div id="inquiry-status" style="margin-top:14px;font-size:13px;text-align:center;min-height:18px;"></div>
         </div>
@@ -1461,7 +1463,7 @@
                 window.isPostPayment = true;
 
                 // 顯示付款成功通知
-                showNotification('付款成功！正在為您準備設計諮詢...', 'success');
+                showNotification(window.t('notify.payment.success'), 'success');
 
                 // 延遲 1.5 秒後載入訂單並觸發設計理念收集流程
                 setTimeout(async () => {
@@ -1530,14 +1532,14 @@
                             console.error('  - order:', data.order);
                             console.error('  - order?.items:', data.order?.items);
                             console.error('  - error:', data.error);
-                            showNotification('載入訂單資料失敗: ' + (data.error || '訂單資料不完整'), 'error');
+                            showNotification(window.t('notify.order.loadFailed') + (data.error || window.t('notify.order.dataIncomplete')), 'error');
                         }
                     } catch (error) {
                         console.error('❌ 載入訂單時發生錯誤:', error);
                         console.error('  - Error name:', error.name);
                         console.error('  - Error message:', error.message);
                         console.error('  - Error stack:', error.stack);
-                        showNotification('載入訂單資料失敗: ' + error.message, 'error');
+                        showNotification(window.t('notify.order.loadFailed') + error.message, 'error');
                     }
                 }, 500);
 
@@ -1547,7 +1549,7 @@
             // 檢測付款失敗
             if (paymentFailed && orderId) {
                 console.log('❌ 檢測到付款失敗');
-                showNotification('付款失敗，請重新嘗試', 'error');
+                showNotification(window.t('notify.payment.failed'), 'error');
                 return true;
             }
 
@@ -1565,7 +1567,7 @@
 
                 if (data.success && data.paid) {
                     console.log('✅ 後端確認訂單已付款');
-                    showNotification('付款成功！正在為您準備設計諮詢...', 'success');
+                    showNotification(window.t('notify.payment.success'), 'success');
                     setTimeout(() => {
                         if (typeof showAIIntroModal === 'function') {
                             showAIIntroModal();
@@ -1573,7 +1575,7 @@
                     }, 500);
                 } else {
                     console.log('⚠️ 訂單尚未完成付款');
-                    showNotification('訂單處理中，請稍候...', 'info');
+                    showNotification(window.t('notify.order.processing'), 'info');
                 }
             } catch (error) {
                 console.error('❌ 查詢訂單狀態失敗:', error);
@@ -1899,13 +1901,13 @@
                         font-size: 18px;
                         font-weight: 500;
                         letter-spacing: 1px;
-                    ">連線中斷</h3>
+                    ">${window.t('error.backend.title')}</h3>
                     <p style="
                         color: rgba(255,255,255,0.55);
                         margin: 0 0 28px;
                         font-size: 14px;
                         line-height: 1.7;
-                    ">無法連線至伺服器<br>請確認網路後重新整理</p>
+                    ">${window.t('error.backend.message')}</p>
                     <button onclick="location.reload()" style="
                         background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none;
@@ -1917,7 +1919,7 @@
                         font-weight: 600;
                         letter-spacing: 0.5px;
                         box-shadow: 0 4px 16px rgba(212,175,55,0.3);
-                    ">重新整理</button>
+                    ">${window.t('error.backend.reload')}</button>
                 </div>
             `;
             document.body.appendChild(toast);
@@ -2550,6 +2552,7 @@
             if (cleanupLabel) {
                 cleanupLabel.textContent = window.t('studio.cleanup.label');  // 重置文字
                 cleanupLabel.style.color = '';  // 重置顏色
+                cleanupLabel.classList.remove('loading-pulse');
             }
             
             modelNeedsCleanup = false;
@@ -2600,10 +2603,10 @@
                     const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
                     if (cartPendingMsg) {
                         if (modelNeedsCleanup) {
-                            cartPendingMsg.innerHTML = '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。';
+                            cartPendingMsg.innerHTML = window.t('fragment.cart.detected');
                             cartPendingMsg.style.color = '#d4af37';
                         } else {
-                            cartPendingMsg.innerHTML = '✅ 確認完畢，作品無分離部件，可以進行製作。';
+                            cartPendingMsg.innerHTML = window.t('fragment.cart.clear');
                             cartPendingMsg.style.color = '#8fd4a0';
                             setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
                         }
@@ -2703,7 +2706,7 @@
                 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;">
                     <div style="flex-shrink:0; font-size:18px; color:#d4af37; line-height:1.5; margin-top:1px;">←</div>
                     <p style="color:#e8d5a0; font-size:13px; line-height:1.7; margin:0; letter-spacing:0.2px;">
-                        作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。
+                        ${window.t('fragment.warning.body')}
                     </p>
                 </div>
                 <div style="text-align:center;">
@@ -2711,7 +2714,7 @@
                         background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
                         border: none; color: #000; padding: 8px 24px; font-size: 13px;
                         border-radius: 8px; cursor: pointer; font-weight: 600; letter-spacing: 0.5px;
-                    ">知道了</button>
+                    ">${window.t('fragment.warning.ok')}</button>
                 </div>
             `;
             document.body.appendChild(toast);
@@ -2722,7 +2725,7 @@
         async function cleanupFragments() {
             if (isCleanupInProgress) return;
             if (!mainMesh) {
-                showToast('請先生成作品');
+                showToast(window.t('studio.generate.first'));
                 return;
             }
 
@@ -2732,8 +2735,9 @@
             
             // 更新 label 狀態
             if (cleanupLabel) {
-                cleanupLabel.innerHTML = window.t('studio.cleanup.cleaning') + '<span class="dots-animation"></span>';
+                cleanupLabel.textContent = window.t('studio.cleanup.cleaning') + '...';
                 cleanupLabel.style.color = '#4a90e2';
+                cleanupLabel.classList.add('loading-pulse');
             }
 
             try {
@@ -2913,6 +2917,7 @@
                 if (cleanupLabel) {
                     cleanupLabel.textContent = window.t('studio.cleanup.done');
                     cleanupLabel.style.color = '#4caf50';
+                    cleanupLabel.classList.remove('loading-pulse');
                 }
 
                 // 更新體積重量（清理後可能改變）
@@ -2929,9 +2934,10 @@
                 if (cleanupLabel) {
                     cleanupLabel.textContent = window.t('studio.cleanup.label');
                     cleanupLabel.style.color = '';
+                    cleanupLabel.classList.remove('loading-pulse');
                 }
-                
-                alert('清理失敗：' + error.message);
+
+                alert(window.t('studio.cleanup.failed') + error.message);
                 
             } finally {
                 isCleanupInProgress = false;
@@ -3191,7 +3197,7 @@
             const preloadText = document.getElementById('preload-text');
 
             statusDiv.style.display = 'block';
-            preloadText.textContent = '預載入字體中...';
+            preloadText.textContent = window.t('studio.font.preload.loading');
             progressText.textContent = `0 / ${fontNames.length}`;
 
             const startTime = Date.now();
@@ -3216,8 +3222,8 @@
                 console.log(`✅ 字體預載入完成！成功: ${successCount}/${fontNames.length}，耗時: ${duration}秒`);
 
                 // 顯示完成狀態 2 秒後隱藏
-                preloadText.textContent = `✓ ${successCount} 個字體已就緒！`;
-                progressText.textContent = `切換字體將更快速`;
+                preloadText.textContent = window.t('studio.font.preload.ready').replace('{count}', successCount);
+                progressText.textContent = window.t('studio.font.preload.faster');
 
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
@@ -3240,13 +3246,13 @@
 
         function confirmFontSelection() {
             if (checkedFonts.size === 0) {
-                alert('Please select at least one font!');
+                alert(window.t('studio.font.error.none'));
                 return;
             }
 
             const inputChars = document.getElementById('char-input').value.trim();
             if (inputChars.length < 2) {
-                alert('Please enter 2 letters');
+                alert(window.t('studio.font.error.chars'));
                 return;
             }
 
@@ -3489,29 +3495,27 @@
 
             slotRenderer.render(slotScene, slotCamera);
 
-            // 🔧 記錄存檔當下主相機的實際距離，之後動畫迴圈才能算出「主畫面縮放了多少倍」，讓縮圖跟著同步縮放
-            const baseMainDist = window.camera ? window.camera.position.length() : previewDist;
-
-            // 保存到全域變數以便同步旋轉+縮放（含置中目標、縮放距離、主相機基準距離，供 3d-scene.js 動畫迴圈使用）
+            // 保存到全域變數以便同步旋轉+縮放（含置中目標與縮放距離，供 3d-scene.js 動畫迴圈使用；
+            // 縮放同步的共同基準距離是 window.initialCameraDist，兩個 slot 共用，不在這裡各自記錄）
             if (slotIndex === 0) {
                 window.slot1Renderer = slotRenderer;
                 window.slot1Scene = slotScene;
                 window.slot1Camera = slotCamera;
                 window.slot1Target = previewCenter;
                 window.slot1Dist = previewDist;
-                window.slot1BaseMainDist = baseMainDist;
             } else {
                 window.slot2Renderer = slotRenderer;
                 window.slot2Scene = slotScene;
                 window.slot2Camera = slotCamera;
                 window.slot2Target = previewCenter;
                 window.slot2Dist = previewDist;
-                window.slot2BaseMainDist = baseMainDist;
             }
 
             const label = document.createElement('div');
             label.className = 'version-label';
-            label.textContent = `SLOT ${slotIndex + 1}`;
+            const slotLabelKey = `studio.slot.${slotIndex + 1}`;
+            label.setAttribute('data-i18n', slotLabelKey); // 讓之後切換語言時 applyLanguage() 也能重新翻譯這個動態產生的標籤
+            label.textContent = window.t ? window.t(slotLabelKey) : `Slot ${slotIndex + 1}`;
             slotElement.appendChild(label);
         }
 
@@ -3648,20 +3652,20 @@
 
             // ⏳ 模型還在背景重新運算（例如剛改完尺寸），此時 BBox/圓環位置都還是舊資料，先擋下來
             if (isModelGenerating) {
-                showToast('模型正在更新中，請稍候一下再加入購物車');
+                showToast(window.t('studio.model.updating'));
                 return;
             }
 
             // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
             if (modelNeedsCleanup) {
-                showToast('⚠️ 作品含有分離部件，請先使用左側面板中正在發光的開關清理後再加入購物車');
+                showToast(window.t('studio.fragment.addToCart'));
                 return;
             }
 
             // ✅ 限制購物車件數（避免表單誤觸/意外大量下單的安全上限）
             const maxCartItems = 10;
             if (cartItems.length >= maxCartItems) {
-                showToast(`購物車最多只能加入 ${maxCartItems} 個商品，如需訂購更多請分批結帳`);
+                showToast(window.t('studio.cart.maxItems').replace('{max}', maxCartItems));
                 return;
             }
             
@@ -3797,7 +3801,7 @@
                     line-height: 1.6;
                     letter-spacing: 0.2px;
                 `;
-                msg.innerHTML = '⏳ 正在確認作品是否有分離部件，請稍候⋯⋯';
+                msg.innerHTML = window.t('studio.fragment.checking');
                 container.insertBefore(msg, container.firstChild);
             }
         }
@@ -3811,7 +3815,7 @@
             // 設定回來後才整個切換成正確畫面的閃爍
             const container = document.getElementById('cart-items');
             if (container && !window._checkoutConfigResolved) {
-                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">載入中⋯⋯</div>';
+                container.innerHTML = `<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">${window.t('studio.cart.loading')}</div>`;
             }
             if (window._checkoutConfigReady) {
                 try { await window._checkoutConfigReady; } catch (e) { /* 已在內部處理，這裡不用重複處理 */ }
@@ -3831,7 +3835,7 @@
             if (redemptionNotice) redemptionNotice.style.display = (window.CHECKOUT_MODE === 'redemption') ? 'block' : 'none';
 
             if (cartItems.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">Your cart is empty</div>';
+                container.innerHTML = `<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 40px;">${window.t('studio.cart.empty')}</div>`;
                 document.getElementById('cart-total').textContent = 'NT$ 0';
                 return;
             }
@@ -3886,7 +3890,7 @@
                         ${chainOpt ? '' : 'animation:cleanupGlow 1.6s ease-in-out infinite;'}
                     `;
                     chainBtn.innerHTML = chainOpt
-                        ? `<span>${chainOpt.label}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
+                        ? `<span>${window.t(chainOpt.labelKey)}</span><span style="opacity:0.6;font-size:11px;">${window.t('cart.chain.change')}</span>`
                         : `<span>${window.t('cart.chain.select')}</span>`;
                     chainBtn.addEventListener('click', () => {
                         showChainTypeModal(index).then(() => renderCart()).catch(() => {});
@@ -3904,7 +3908,7 @@
                     priceDiv.style.color = '#d4af37';
                     priceDiv.style.fontSize = '13px';
                 } else if (itemRedeemed) {
-                    priceDiv.innerHTML = `<span style="text-decoration:line-through; opacity:0.5; font-size:12px;">NT$ ${(item.price * item.quantity).toLocaleString()}</span><br><span style="color:#4ade80;">NT$ 0（已兌換）</span>`;
+                    priceDiv.innerHTML = `<span style="text-decoration:line-through; opacity:0.5; font-size:12px;">NT$ ${(item.price * item.quantity).toLocaleString()}</span><br><span style="color:#4ade80;">NT$ 0（${window.t('studio.cart.redeemed')}）</span>`;
                 } else {
                     priceDiv.textContent = `NT$ ${(item.price * item.quantity).toLocaleString()}`;
                 }
@@ -4105,12 +4109,12 @@
             promoMessage.innerHTML = '';
 
             if (!promoCode) {
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">⚠️ 請輸入優惠碼</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.empty')}</span>`;
                 return;
             }
 
             if (cartItems.length === 0) {
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">⚠️ 購物車是空的</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">⚠️ ${window.t('studio.cart.empty')}</span>`;
                 return;
             }
 
@@ -4149,7 +4153,7 @@
                         <div style="color: #4CAF50; display: flex; align-items: center; justify-content: space-between;">
                             <span>✅ ${result.description}</span>
                             <button onclick="removePromoCode()" style="background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 14px;">
-                                移除
+                                ${window.t('studio.promo.remove')}
                             </button>
                         </div>
                     `;
@@ -4157,7 +4161,7 @@
                     // 禁用輸入框
                     promoInput.disabled = true;
                     applyBtn.disabled = true;
-                    applyBtn.textContent = '已套用';
+                    applyBtn.textContent = window.t('studio.promo.applied');
 
                     // 更新顯示
                     renderCart();
@@ -4175,13 +4179,13 @@
 
             } catch (error) {
                 console.error('❌ 優惠碼驗證錯誤:', error);
-                promoMessage.innerHTML = '<span style="color: #ff6b6b;">❌ 驗證失敗，請稍後再試</span>';
+                promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.failed')}</span>`;
                 appliedPromoCode = '';
                 promoDiscount = 0;
             } finally {
                 // 重置按鈕
                 applyBtn.disabled = false;
-                applyBtn.textContent = '套用';
+                applyBtn.textContent = window.t('studio.promo.apply');
             }
         }
 
@@ -4196,7 +4200,7 @@
             promoInput.value = '';
             promoInput.disabled = false;
             applyBtn.disabled = false;
-            applyBtn.textContent = '套用';
+            applyBtn.textContent = window.t('studio.promo.apply');
             promoMessage.innerHTML = '';
 
             renderCart();
@@ -4383,7 +4387,7 @@
 
             if (items.length === 0) {
                 console.error('❌ 沒有購物車資料');
-                showNotification('無法載入訂單商品', 'error');
+                showNotification(window.t('notify.order.itemsLoadFailed'), 'error');
                 return;
             }
 
@@ -4440,7 +4444,7 @@
 
             if (items.length === 0) {
                 console.error('❌ 沒有購物車資料');
-                showNotification('無法載入訂單商品', 'error');
+                showNotification(window.t('notify.order.itemsLoadFailed'), 'error');
                 return;
             }
 
@@ -4503,7 +4507,7 @@
                     font-size: 14px;
                 ">
                     <div style="font-size: 32px; margin-bottom: 15px;">✍️</div>
-                    <div>${window.t('design.story.generating')}<span class="dots-animation"></span></div>
+                    <div class="loading-pulse">${window.t('design.story.generating')}...</div>
                 </div>
             `;
 
@@ -4727,7 +4731,7 @@
                 `DUET "${item.letter1}${item.letter2}" — "${item.letter1}" × ${item.font1}，"${item.letter2}" × ${item.font2}，${item.size}mm`
             );
             document.getElementById('inquiry-design-summary').innerHTML =
-                '<strong style="color:rgba(212,175,55,0.8);font-size:11px;letter-spacing:1px;text-transform:uppercase;">作品資訊</strong><br>' +
+                `<strong style="color:rgba(212,175,55,0.8);font-size:11px;letter-spacing:1px;text-transform:uppercase;">${window.t('inquiry.itemInfo')}</strong><br>` +
                 summaryLines.join('<br>');
             document.getElementById('inquiry-status').textContent = '';
             document.getElementById('custom-inquiry-modal').style.display = 'flex';
@@ -4737,13 +4741,13 @@
             const name    = document.getElementById('inquiry-name').value.trim();
             const contact = document.getElementById('inquiry-contact').value.trim();
             if (!name || !contact) {
-                document.getElementById('inquiry-status').innerHTML = '<span style="color:#ff6b6b;">請填寫姓名及聯絡方式</span>';
+                document.getElementById('inquiry-status').innerHTML = `<span style="color:#ff6b6b;">${window.t('inquiry.error.missingInfo')}</span>`;
                 return;
             }
 
             const btn = document.getElementById('submit-inquiry-btn');
             btn.disabled = true;
-            btn.textContent = '傳送中⋯';
+            btn.textContent = window.t('inquiry.sending');
             document.getElementById('inquiry-status').textContent = '';
 
             const preciousItems = cartItems.filter(i => i.isPreciousMetal);
@@ -4773,8 +4777,8 @@
                 });
                 if (!res.ok) throw new Error('server error');
                 document.getElementById('inquiry-status').innerHTML =
-                    '<span style="color:#7ec87e;">✓ 已送出！我們將在 2 個工作天內與您聯繫。</span>';
-                btn.textContent = '已送出';
+                    `<span style="color:#7ec87e;">${window.t('inquiry.sent.message')}</span>`;
+                btn.textContent = window.t('inquiry.sent.button');
                 // 移除貴金屬品項
                 cartItems = cartItems.filter(i => !i.isPreciousMetal);
                 // 1 秒後關閉 modal，顯示跳轉提示
@@ -4784,9 +4788,9 @@
                 }, 1200);
             } catch (e) {
                 document.getElementById('inquiry-status').innerHTML =
-                    '<span style="color:#ff6b6b;">傳送失敗，請稍後再試或直接 Email 至 duet@brendonchen.com</span>';
+                    `<span style="color:#ff6b6b;">${window.t('inquiry.error.sendFailed')}</span>`;
                 btn.disabled = false;
-                btn.textContent = '送出訂製需求';
+                btn.textContent = window.t('cart.inquiry');
             }
         }
 
@@ -4794,12 +4798,14 @@
         window.submitCustomInquiry = submitCustomInquiry;
 
         // ── 項鏈選擇 Modal（結帳前強制）─────────────────────────
+        // 只存翻譯 key（labelKey/noteKey），實際文字在每次渲染時才用 window.t() 現查，
+        // 避免像 CHAIN_OPTIONS 這種在模組頂層算一次的寫法，切換語言後不會跟著更新
         const CHAIN_OPTIONS = [
-            { value: 'silver_chain',     label: window.t('chain.option.silver'),     img: 'assets/images/products/silver-chain.png',      note: window.t('chain.note.adjustable') },
-            { value: 'gold_chain',       label: window.t('chain.option.gold'),       img: 'assets/images/products/gold-chain.png',        note: window.t('chain.note.adjustable') },
-            { value: 'rosegold_chain',   label: window.t('chain.option.rosegold'),   img: 'assets/images/products/rosegold-chain.png',    note: window.t('chain.note.adjustable') },
-            { value: 'silver_chain_2mm', label: window.t('chain.option.silverBold'), img: 'assets/images/products/male-silver-chain.jpg', note: window.t('chain.note.adjustable') },
-            { value: 'black_chain_2mm',  label: window.t('chain.option.blackBold'),  img: 'assets/images/products/male-black-chain.jpg',  note: window.t('chain.note.adjustable') },
+            { value: 'silver_chain',     labelKey: 'chain.option.silver',     img: 'assets/images/products/silver-chain.png',      noteKey: 'chain.note.adjustable' },
+            { value: 'gold_chain',       labelKey: 'chain.option.gold',       img: 'assets/images/products/gold-chain.png',        noteKey: 'chain.note.adjustable' },
+            { value: 'rosegold_chain',   labelKey: 'chain.option.rosegold',   img: 'assets/images/products/rosegold-chain.png',    noteKey: 'chain.note.adjustable' },
+            { value: 'silver_chain_2mm', labelKey: 'chain.option.silverBold', img: 'assets/images/products/male-silver-chain.jpg', noteKey: 'chain.note.adjustable' },
+            { value: 'black_chain_2mm',  labelKey: 'chain.option.blackBold',  img: 'assets/images/products/male-black-chain.jpg',  noteKey: 'chain.note.adjustable' },
         ];
 
         // 項鍊佩戴示意圖素材（橫向捲動膠卷用）
@@ -4888,20 +4894,23 @@
                                 <div class="cart-chain-opt" data-chain="${opt.value}"
                                      style="cursor:pointer;border:2px solid ${item.chainType===opt.value?'#d4af37':'rgba(255,255,255,0.12)'};
                                             border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.04);text-align:center;transition:border-color 0.15s;">
-                                    <img src="${opt.img}" alt="${opt.label}"
+                                    <img src="${opt.img}" alt="${window.t(opt.labelKey)}"
                                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                                          style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
                                     <div style="aspect-ratio:1;display:none;align-items:center;justify-content:center;font-size:40px;opacity:0.4;">🔗</div>
                                     <div style="padding:12px 8px 16px;font-size:13px;color:rgba(255,255,255,0.75);line-height:1.4;">
-                                        ${opt.label}
-                                        ${opt.note ? `<br><span style="font-size:11px;color:rgba(212,175,55,0.75);">${opt.note}</span>` : ''}
+                                        ${window.t(opt.labelKey)}
+                                        ${opt.noteKey ? `<br><span style="font-size:11px;color:rgba(212,175,55,0.75);">${window.t(opt.noteKey)}</span>` : ''}
                                     </div>
                                 </div>`).join('')}
                         </div>
                         <button id="chain-wear-photos-btn" type="button"
-                                style="margin-top:16px;padding:8px 16px;border-radius:20px;font-size:13px;
-                                       background:transparent;border:1px solid rgba(255,255,255,0.18);
-                                       color:rgba(255,255,255,0.6);cursor:pointer;">
+                                onmouseenter="this.style.background='rgba(212,175,55,0.14)'"
+                                onmouseleave="this.style.background='rgba(212,175,55,0.08)'"
+                                style="display:flex;align-items:center;justify-content:center;gap:8px;
+                                       width:100%;margin-top:20px;padding:12px 16px;border-radius:12px;font-size:13.5px;font-weight:500;
+                                       background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.4);
+                                       color:#d4af37;cursor:pointer;transition:background 0.15s;">
                             ${window.t('chain.modal.wearPhotos')}
                         </button>
                     </div>`;
@@ -4925,18 +4934,20 @@
                 };
                 body.addEventListener('click', body._chainClickHandler);
 
-                // hover 放大預覽（只綁一次）
+                // 放大預覽（只綁一次）：桌機用 hover 顯示/移開消失；手機沒有真正的 hover，
+                // 改成點卡片顯示、點畫面任何地方（含放大圖本身）關閉，避免卡片被放大圖擋住點不到、
+                // 也避免點擊「穿透」放大圖誤選到後面別的選項
                 if (!window._chainHoverListenerAdded) {
                     window._chainHoverListenerAdded = true;
                     const previewImg = document.getElementById('chain-img-preview-img');
-                    body.addEventListener('mouseover', e => {
-                        const card = e.target.closest('.cart-chain-opt');
-                        if (!card) return;
-                        const img = card.querySelector('img');
-                        if (!img || img.style.display === 'none') return;
+                    const previewBackdrop = document.getElementById('chain-img-preview-backdrop');
+                    const isTouchDevice = window.matchMedia('(hover: none)').matches;
+
+                    const showPreview = (img) => {
                         previewImg.onerror = null;
                         previewImg.src = img.src;
-                        preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度現在是響應式的（min(640px,92vw)），不能再用寫死的數字
+                        preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度是響應式的（min(640px,92vw)），不能用寫死的數字
+                        if (isTouchDevice) previewBackdrop.style.display = 'block';
                         // 對齊卡片內圖片的下緣，避免蓋住下方的材質名稱
                         const pw = preview.offsetWidth, ph = preview.offsetHeight;
                         const imgRect = img.getBoundingClientRect();
@@ -4948,12 +4959,35 @@
                         top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
                         preview.style.left = left + 'px';
                         preview.style.top  = top  + 'px';
-                    });
-                    body.addEventListener('mouseout', e => {
-                        const target = e.target.closest('.cart-chain-opt');
-                        if (!target || target.contains(e.relatedTarget)) return;
+                    };
+                    const hidePreview = () => {
                         preview.style.display = 'none';
-                    });
+                        previewBackdrop.style.display = 'none';
+                    };
+
+                    if (isTouchDevice) {
+                        body.addEventListener('click', e => {
+                            const card = e.target.closest('.cart-chain-opt');
+                            if (!card) return;
+                            const img = card.querySelector('img');
+                            if (!img || img.style.display === 'none') return;
+                            showPreview(img);
+                        });
+                        previewBackdrop.addEventListener('click', hidePreview);
+                    } else {
+                        body.addEventListener('mouseover', e => {
+                            const card = e.target.closest('.cart-chain-opt');
+                            if (!card) return;
+                            const img = card.querySelector('img');
+                            if (!img || img.style.display === 'none') return;
+                            showPreview(img);
+                        });
+                        body.addEventListener('mouseout', e => {
+                            const target = e.target.closest('.cart-chain-opt');
+                            if (!target || target.contains(e.relatedTarget)) return;
+                            hidePreview();
+                        });
+                    }
                 }
 
                 function updateConfirmBtn() {
@@ -5047,8 +5081,10 @@
         // ── 設計確認 Modal ──────────────────────────────────
         const _DESIGN_STATEMENT_TEXT = '此為客製化商品，確認後無法修改設計；實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）；客製化商品不適用七天鑑賞期。';
         const _DESIGN_STATEMENT_VERSION = 'v1';
-        const _MATERIAL_LABELS = { silver925: window.t('mat.silver925'), brass: window.t('mat.brass'), precious_metal: window.t('mat.precious') };
-        const _PLATING_LABELS  = { none: window.t('plating.none') || '無', gold18k: window.t('plating.gold18k'), whitegold18k: window.t('plating.whitegold18k'), rosegold18k: window.t('plating.rosegold18k') };
+        // 只存翻譯 key，實際文字在每次渲染時才用 window.t() 現查，避免切換語言後這裡的文字卡住不更新；
+        // 'plating.none' 這個 key 在 translations.js 裡其實不存在（原本 `|| '無'` fallback 因此從沒真的生效過），改用真正存在的 'cart.item.plating.none'
+        const _MATERIAL_LABEL_KEYS = { silver925: 'mat.silver925', brass: 'mat.brass', precious_metal: 'mat.precious' };
+        const _PLATING_LABEL_KEYS  = { none: 'cart.item.plating.none', gold18k: 'plating.gold18k', whitegold18k: 'plating.whitegold18k', rosegold18k: 'plating.rosegold18k' };
 
         function showDesignConfirmation() {
             return new Promise((resolve, reject) => {
@@ -5086,11 +5122,11 @@
                         heroImg = `<img src="${item.heroView.dataURL}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
                     }
 
-                    const materialLabel = _MATERIAL_LABELS[item.material] || item.material;
+                    const materialLabel = window.t(_MATERIAL_LABEL_KEYS[item.material]) || item.material;
                     const platingStr = (item.plating && item.plating !== 'none')
-                        ? ` + ${_PLATING_LABELS[item.plating] || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
+                        ? ` + ${window.t(_PLATING_LABEL_KEYS[item.plating]) || item.plating} ${window.t('checkout.item.plating.suffix')}` : '';
                     const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
-                    const chainLabel = chainOpt ? chainOpt.label : window.t('cart.chain.select');
+                    const chainLabel = chainOpt ? window.t(chainOpt.labelKey) : window.t('cart.chain.select');
 
                     const viewCell = (img, lbl) => `
                         <div style="aspect-ratio:1;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;">
@@ -5259,13 +5295,13 @@
                         // 根據是否有 AI consultation 決定跳轉
                         if (result.hasAiConsultation) {
                             // 有 AI consultation：跳轉到 design-studio 繼續填寫設計理念
-                            showNotification('VIP 免費訂單已確認！正在為您準備諮詢服務...', 'success');
+                            showNotification(window.t('notify.order.vipConfirmed'), 'success');
                             setTimeout(() => {
                                 window.location.href = `${window.location.origin}/design-studio?payment_success=true&order=${result.orderId}`;
                             }, 2000);  // 改成 2 秒，讓用戶看到通知
                         } else {
                             // 沒有 AI consultation → 回到 design-studio 觸發 Option B 諮詢補做
-                            showNotification('訂單已確認！感謝您的訂購', 'success');
+                            showNotification(window.t('notify.order.confirmed'), 'success');
                             setTimeout(() => {
                                 window.location.href = `${window.location.origin}/design-studio.html?payment_success=true&order=${result.orderId}`;
                             }, 2000);
@@ -5297,7 +5333,7 @@
                         window.userInfoModal.remove();
                         window.userInfoModal = null;
                     }
-                    alert('❌ 結帳失敗：' + result.error);
+                    alert(window.t('alert.checkout.failed') + result.error);
                 }
 
             } catch (error) {
@@ -5310,7 +5346,7 @@
                     window.userInfoModal.remove();
                     window.userInfoModal = null;
                 }
-                alert('❌ 支付過程發生錯誤：' + error.message);
+                alert(window.t('alert.payment.error') + error.message);
             }
         }
 
@@ -5552,7 +5588,7 @@
                 const emailHint = document.getElementById('email-confirm-hint');
                 const updateEmailHint = () => {
                     const v = emailInput.value.trim();
-                    const label = window.currentLang === 'en'
+                    const label = (localStorage.getItem('duet_language') || 'zh') === 'en'
                         ? 'Confirmation email will be sent to:'
                         : '確認信將寄至：';
                     emailHint.textContent = v ? `${label} ${v}` : '';
@@ -5779,21 +5815,20 @@
                         font-size: 22px;
                         font-weight: 500;
                         letter-spacing: 0.5px;
-                    ">訂單已完成</h2>
+                    ">${window.t('order.complete.title')}</h2>
                     <p style="
                         color: rgba(255, 255, 255, 0.7);
                         font-size: 14px;
                         line-height: 1.8;
                         margin: 0 0 28px 0;
                     ">
-                        您的設計已完成，將很快收到訂單確認信<br>
-                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
+                        ${window.t('order.complete.body')}
                     </p>
                     <div style="
                         color: rgba(212, 175, 55, 0.8);
                         font-size: 13px;
                         font-weight: 500;
-                    ">3 秒後自動跳轉...</div>
+                    ">${window.t('complete.redirect.countdown')}</div>
                 </div>
             `;
 
@@ -5824,12 +5859,11 @@
                 ">
                     <div style="font-size: 64px; margin-bottom: 24px;">✓</div>
                     <h2 style="color:rgba(255,255,255,0.95);margin:0 0 20px 0;font-size:22px;font-weight:500;letter-spacing:0.5px;">
-                        訂製需求已送出</h2>
+                        ${window.t('inquiry.complete.title')}</h2>
                     <p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;margin:0 0 28px 0;">
-                        我們將在 2 個工作天內與您聯繫確認細節<br>
-                        畫面即將導引至 DUET 的母品牌 BCAG 設計師訂製珠寶首頁
+                        ${window.t('inquiry.complete.body')}
                     </p>
-                    <div style="color:rgba(212,175,55,0.8);font-size:13px;font-weight:500;">3 秒後自動跳轉...</div>
+                    <div style="color:rgba(212,175,55,0.8);font-size:13px;font-weight:500;">${window.t('complete.redirect.countdown')}</div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -5996,8 +6030,8 @@
                             display: flex; align-items: center; justify-content: center;">
                     <div style="background: white; padding: 40px; border-radius: 15px; 
                                 max-width: 500px; text-align: center;">
-                        <h2 style="color: #333; margin-bottom: 15px;">跳轉至綠界支付...</h2>
-                        <p style="color: #666; margin-bottom: 20px;">請稍候，正在為您導向支付頁面</p>
+                        <h2 style="color: #333; margin-bottom: 15px;">${window.t('order.processing')}</h2>
+                        <p style="color: #666; margin-bottom: 20px;">${window.t('order.processing.desc')}</p>
                         <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; 
                                     border-top: 5px solid #3498db; border-radius: 50%; 
                                     animation: spin 1s linear infinite; margin: 0 auto;"></div>
@@ -6713,6 +6747,10 @@
         </div>
     </div>
 
+    <!-- 手機（無滑鼠 hover）點卡片顯示放大圖時，蓋一層全螢幕透明背景擋掉底下的點擊，
+         點畫面任何地方都會關閉放大圖，不會像之前一樣「穿透」誤點到後面別的項鍊選項 -->
+    <div id="chain-img-preview-backdrop" style="display:none;position:fixed;inset:0;z-index:99998;background:transparent;"></div>
+
     <!-- 項鍊 hover 放大預覽（4:3 橫式，顯示中央 50% 範圍，等效 2x 特寫；置中疊在卡片正前方） -->
     <!-- 寬度改用 min(640px, 92vw)：手機螢幕比 640px 窄時會等比縮小，避免邊框超出螢幕範圍 -->
     <div id="chain-img-preview" style="display:none;position:fixed;z-index:99999;pointer-events:none;
@@ -6802,7 +6840,7 @@
                 border-bottom: 1px solid rgba(255,255,255,0.07);
                 flex-shrink: 0;
             ">
-                <div style="font-size: 13px; color: #d4af37; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px;">AI 諮詢</div>
+                <div id="post-payment-chat-title" style="font-size: 13px; color: #d4af37; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px;">AI 諮詢</div>
                 <div style="font-size: 12px; color: rgba(255,255,255,0.4);" id="post-payment-chat-progress">與 Duet 顧問對話中…</div>
             </div>
             <!-- 訊息區 -->
@@ -6855,6 +6893,9 @@
             modal.querySelectorAll('p')[1].innerHTML = 'We recommend completing the consultation for a richer, more personal result.';
             document.getElementById('post-payment-yes-btn').textContent = 'Start consultation (recommended)';
             document.getElementById('post-payment-no-btn').textContent = 'Skip, use a simple version';
+            document.getElementById('post-payment-chat-title').textContent = 'AI Consultation';
+            document.getElementById('post-payment-chat-progress').textContent = 'Chatting with your Duet advisor…';
+            document.getElementById('post-payment-user-input').placeholder = 'Type a message…';
         }
 
         modal.style.display = 'flex';
@@ -6935,7 +6976,7 @@
                         isPostPayment: true
                     }));
                     const done = lang === 'en'
-                        ? '感謝您的分享！正在為您生成設計理念…'
+                        ? 'Thank you for sharing! Generating your design story…'
                         : '感謝您的分享！正在為您生成設計理念…';
                     _ppAddMessage('assistant', done);
                     progress.textContent = lang === 'en' ? 'Completed ✓' : '諮詢完成 ✓';

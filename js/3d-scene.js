@@ -49,6 +49,9 @@ export function initScene() {
     window.scene = scene;
     window.camera = camera;
     window.renderer = renderer;
+    // 主相機的初始距離：Slot 預覽縮放同步要用同一個基準，不能各自用「存檔當下」的距離，
+    // 否則兩個 slot 在不同縮放程度下存檔，事後同樣物件會顯示成不同大小
+    window.initialCameraDist = camera.position.length();
 
     // 必須在 new OrbitControls() 之前註冊，stopImmediatePropagation 才能攔截它的 wheel handler
 
@@ -185,17 +188,19 @@ export function animate() {
     // 同步 Slot 預覽 - 讀取 window.slot1Camera 等（由 saveToSlot 在 design-studio.html 中寫入）
     // 相機方向沿用主畫面相機（orbit target 固定在原點），置中目標改用該作品自己的外框中心（slot1Target），
     // 避免固定看向原點時作品因為 Bail/尺寸不同而偏移；縮放距離則是「作品自己算出的基準距離（slot1Dist）」
-    // 乘上「主相機現在的距離 ÷ 存檔當下主相機的距離」，讓縮圖的縮放跟著主畫面滾輪縮放同步變化
+    // 乘上「主相機現在的距離 ÷ 主相機的初始距離（window.initialCameraDist，跟哪個 slot 無關的共同基準）」，
+    // 讓縮圖的縮放跟著主畫面滾輪縮放同步變化。兩個 slot 一定要共用同一個基準距離，
+    // 不能各自用「存檔當下」主相機的距離，否則兩個 slot 在不同縮放程度下存檔，事後同樣物件會顯示成不同大小
     if (window.slot1Camera && window.slot1Renderer && window.slot1Scene && window.slot1Target) {
         const dir1 = camera.position.clone().normalize();
-        const zoomRatio1 = camera.position.length() / window.slot1BaseMainDist;
+        const zoomRatio1 = camera.position.length() / window.initialCameraDist;
         window.slot1Camera.position.copy(window.slot1Target).addScaledVector(dir1, window.slot1Dist * zoomRatio1);
         window.slot1Camera.lookAt(window.slot1Target);
         window.slot1Renderer.render(window.slot1Scene, window.slot1Camera);
     }
     if (window.slot2Camera && window.slot2Renderer && window.slot2Scene && window.slot2Target) {
         const dir2 = camera.position.clone().normalize();
-        const zoomRatio2 = camera.position.length() / window.slot2BaseMainDist;
+        const zoomRatio2 = camera.position.length() / window.initialCameraDist;
         window.slot2Camera.position.copy(window.slot2Target).addScaledVector(dir2, window.slot2Dist * zoomRatio2);
         window.slot2Camera.lookAt(window.slot2Target);
         window.slot2Renderer.render(window.slot2Scene, window.slot2Camera);
