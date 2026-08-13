@@ -899,8 +899,16 @@
             display: none;
         }
 
-        /* 點點動畫：文字內容改由 JS 直接輪替 .dots-animation 的 textContent（見 design-studio.html），
-           animation 對 content 屬性做 keyframes 在瀏覽器間支援不穩定，之前會卡在第一格不再前進 */
+        /* 「製作中...」淡入淡出：只動畫 opacity，這是唯一保證交給合成執行緒處理、不受主執行緒
+           忙碌影響的屬性。之前不管是動畫 content 屬性（不穩定）還是用 JS setInterval 輪替文字，
+           都會被 V3 幾何運算那種長時間同步阻塞主執行緒的操作卡住，導致動畫停在運算結束當下剛好停留的畫面 */
+        @keyframes loadingPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .loading-pulse {
+            animation: loadingPulse 1.4s ease-in-out infinite;
+        }
 
         /* 🧹 Toggle Switch 樣式 */
         .toggle-switch {

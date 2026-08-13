@@ -83,7 +83,7 @@
 
         <div class="section">
             <!-- 3D 模型重建提示 - Letter1 上方 -->
-            <div id="model-rebuilding-indicator-top" style="
+            <div id="model-rebuilding-indicator-top" class="loading-pulse" style="
                 display: none;
                 margin-bottom: 8px;
                 padding: 8px 12px;
@@ -94,7 +94,7 @@
                 color: #d4af37;
                 text-align: center;
             ">
-                作品模型製作中<span class="dots-animation"></span>
+                作品模型製作中...
             </div>
             
             <div class="control-group">
@@ -216,7 +216,7 @@
         </div>
 
         <!-- 3D 模型重建提示 - 清理零碎部件下方 -->
-        <div id="model-rebuilding-indicator-cleanup" style="
+        <div id="model-rebuilding-indicator-cleanup" class="loading-pulse" style="
             display: none;
             margin-top: 8px;
             padding: 8px 12px;
@@ -227,7 +227,7 @@
             color: #d4af37;
             text-align: center;
         ">
-            作品模型製作中<span class="dots-animation"></span>
+            作品模型製作中...
         </div>
 
         <div class="divider"></div>
@@ -885,19 +885,6 @@
         // loadGoogleFonts 定義於本模組底部，但 resource-loader.js 需透過 window 存取
         // 利用 function hoisting，此處可安全提前暴露
         window.loadGoogleFonts = loadGoogleFonts;
-
-        // 「製作中...」點點循環動畫：改用 JS 直接輪替文字，不再依賴 CSS 對 content 屬性做 keyframes
-        // （animation 動畫 content 屬性不是所有瀏覽器都可靠支援，之前會卡在第一個影格不再前進）
-        (function startDotsAnimation() {
-            const DOTS_CYCLE = ['.', '..', '...'];
-            let dotsIndex = 0;
-            setInterval(() => {
-                dotsIndex = (dotsIndex + 1) % DOTS_CYCLE.length;
-                document.querySelectorAll('.dots-animation').forEach(el => {
-                    el.textContent = DOTS_CYCLE[dotsIndex];
-                });
-            }, 500);
-        })();
 
         // 供非 module 腳本（wearing-preview.js）使用 three.js 類別
         // （例如 Box3 / Vector3 投影計算，以便截取墜飾區域）
@@ -2565,6 +2552,7 @@
             if (cleanupLabel) {
                 cleanupLabel.textContent = window.t('studio.cleanup.label');  // 重置文字
                 cleanupLabel.style.color = '';  // 重置顏色
+                cleanupLabel.classList.remove('loading-pulse');
             }
             
             modelNeedsCleanup = false;
@@ -2747,8 +2735,9 @@
             
             // 更新 label 狀態
             if (cleanupLabel) {
-                cleanupLabel.innerHTML = window.t('studio.cleanup.cleaning') + '<span class="dots-animation"></span>';
+                cleanupLabel.textContent = window.t('studio.cleanup.cleaning') + '...';
                 cleanupLabel.style.color = '#4a90e2';
+                cleanupLabel.classList.add('loading-pulse');
             }
 
             try {
@@ -2928,6 +2917,7 @@
                 if (cleanupLabel) {
                     cleanupLabel.textContent = window.t('studio.cleanup.done');
                     cleanupLabel.style.color = '#4caf50';
+                    cleanupLabel.classList.remove('loading-pulse');
                 }
 
                 // 更新體積重量（清理後可能改變）
@@ -2944,8 +2934,9 @@
                 if (cleanupLabel) {
                     cleanupLabel.textContent = window.t('studio.cleanup.label');
                     cleanupLabel.style.color = '';
+                    cleanupLabel.classList.remove('loading-pulse');
                 }
-                
+
                 alert(window.t('studio.cleanup.failed') + error.message);
                 
             } finally {
@@ -4516,7 +4507,7 @@
                     font-size: 14px;
                 ">
                     <div style="font-size: 32px; margin-bottom: 15px;">✍️</div>
-                    <div>${window.t('design.story.generating')}<span class="dots-animation"></span></div>
+                    <div class="loading-pulse">${window.t('design.story.generating')}...</div>
                 </div>
             `;
 
