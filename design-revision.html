@@ -71,6 +71,9 @@
             color: #0c0a06; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
         }
         .btn-gold:disabled { background: #444; color: #888; cursor: not-allowed; }
+        /* 批次模式：用顏色引導客戶「現在該按哪一顆」——已完成的項目/還沒全部完成的送出鈕變灰，
+           但維持可以點擊（不用 disabled），這樣點下去該有的提醒（還缺哪些項目）還是會照常跳出來 */
+        .btn-gold.muted { background: #3a3a3a; color: rgba(255,255,255,0.5); }
         .btn-ghost {
             width: 100%; padding: 12px; margin-top: 8px; background: transparent; color: #999;
             border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; font-size: 13px; cursor: pointer;
@@ -495,6 +498,20 @@ function renderBatchStatusList() {
             selectBatchTask(parseInt(row.dataset.taskId, 10));
         });
     });
+
+    updateBatchActionButtonsState();
+}
+
+// 用顏色引導客戶「現在該按哪一顆」，畫面上任何時刻只有一顆金色按鈕看起來是該按的：
+// 目前這個項目已完成 → 「確認」變灰；全部項目都完成前 → 「全部送出」維持灰色
+function updateBatchActionButtonsState() {
+    const mainBtn = document.getElementById('mainConfirmBtn');
+    const currentDone = activeTaskId != null && !!batchLocalDone[activeTaskId];
+    mainBtn.classList.toggle('muted', currentDone);
+
+    const allBtn = document.getElementById('batchSubmitAllBtn');
+    const allDone = batchTasks.length > 0 && batchTasks.every(t => batchLocalDone[t.id]);
+    allBtn.classList.toggle('muted', !allDone);
 }
 
 // 切換到批次裡的某一個 task：把該 task 對應的作品資料（若這個 task 已經完成過，疊上目前暫存在
