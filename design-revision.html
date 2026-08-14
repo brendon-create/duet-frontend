@@ -71,6 +71,9 @@
             color: #0c0a06; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
         }
         .btn-gold:disabled { background: #444; color: #888; cursor: not-allowed; }
+        /* 批次模式：用顏色引導客戶「現在該按哪一顆」——已完成的項目/還沒全部完成的送出鈕變灰，
+           但維持可以點擊（不用 disabled），這樣點下去該有的提醒（還缺哪些項目）還是會照常跳出來 */
+        .btn-gold.muted { background: #3a3a3a; color: rgba(255,255,255,0.5); }
         .btn-ghost {
             width: 100%; padding: 12px; margin-top: 8px; background: transparent; color: #999;
             border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; font-size: 13px; cursor: pointer;
@@ -156,6 +159,17 @@
 
 <div id="viewMain" style="display:none;">
     <div id="panel">
+        <!-- 批次模式專用：這批需要處理的作品/項目清單，點一項就切換下方編輯區到那一項；
+             全部完成才能按「全部送出」，未完成點下去會跳出擋板提醒還缺哪些 -->
+        <div id="batchStatusPanel" style="display:none;margin-bottom:16px;">
+            <h2 style="color:#d4af37;font-size:16px;margin-bottom:4px;">確認清單</h2>
+            <div class="order-tag" id="batchOrderTag">訂單編號 —</div>
+            <div class="msg-box" id="batchMessage"></div>
+            <div id="batchStatusList" style="margin-bottom:12px;"></div>
+            <button class="btn-gold" id="batchSubmitAllBtn">全部送出</button>
+            <div style="height:1px;background:rgba(255,255,255,0.1);margin:18px 0;"></div>
+        </div>
+
         <h2 id="panelTitle">調整墜頭位置</h2>
         <div class="order-tag" id="orderTag">訂單編號 —</div>
         <div class="msg-box" id="customMessage"></div>
@@ -255,6 +269,16 @@
     </div>
 </div>
 
+<!-- 批次模式：還有項目未完成時擋住「全部送出」的提醒視窗 -->
+<div id="batchIncompleteModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>還有項目尚未確認</h3>
+        <div class="sub">請先完成以下項目，全部確認完成後才能送出</div>
+        <div id="batchIncompleteList" style="margin:14px 0 20px;"></div>
+        <button class="btn-gold" id="batchIncompleteCloseBtn">我知道了</button>
+    </div>
+</div>
+
 <script src="assets/js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 
@@ -282,6 +306,7 @@ import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } fr
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import {
     createRing, createBail, updateRingPosition,
+    resetRingState, resetBailState,
     ringMesh, bailMesh
 } from './js/ring-bail.js';
 
@@ -299,7 +324,13 @@ const staffOrderId = params.get('orderId') || '';
 const staffItemIndex = parseInt(params.get('itemIndex') || '0', 10);
 const staffUnlockedFields = (params.get('unlockedFields') || 'ring').split(',');
 const staffMessage = params.get('message') || '';
-const submitBtnLabel = isStaffMode ? '送出給顧客確認' : '送出設計';
+
+// 批次確認模式：一張訂單裡多件作品/多個項目一起確認，全部完成才算這批完成
+const batchToken = params.get('batchToken') || '';
+const isBatchMode = !!batchToken;
+const DEFAULT_REVISION_BATCH_MESSAGE_FALLBACK = '請依序確認以下作品的調整項目。';
+
+const submitBtnLabel = isStaffMode ? '送出給顧客確認' : (isBatchMode ? '全部送出' : '送出設計');
 
 if (isStaffMode) {
     document.querySelector('#designConfirmModal h3').textContent = '確認送出給顧客';
@@ -316,9 +347,26 @@ if (isStaffMode) {
     document.querySelector('#viewSuccess p').textContent = '已將調整後的設計寄送確認信給顧客，顧客可直接確認，也能再自行調整後送出。';
 }
 
+if (isBatchMode) {
+    document.querySelector('#designConfirmModal h3').textContent = '確認送出全部項目';
+    document.querySelector('#designConfirmModal .sub').textContent = '請仔細確認以下資訊，送出後這批確認項目就會全部完成，無法再次修改。';
+    document.getElementById('submitDesignBtn').textContent = submitBtnLabel;
+    document.querySelector('#viewSuccess h1').textContent = '已完成全部確認！';
+    document.querySelector('#viewSuccess p').textContent = '感謝您完成所有項目的確認，我們將盡快為您安排後續製作。';
+}
+
 let item = null;
 let orderId = '';
 let unlockedFields = ['ring'];
+
+// 批次模式狀態
+let batchOrderId = '';
+let batchMessage = '';
+let batchItemsByIndex = {};     // { itemIndex: itemData }
+let batchTasks = [];            // [{id, item_index, category, mode, status}]
+let batchLocalDone = {};        // { taskId: true/false }——本地暫存的完成狀態，送出前都只存在瀏覽器
+let batchCollectedUpdates = {}; // { taskId: { ...要送給後端的欄位 } }
+let activeTaskId = null;
 
 const CHAIN_OPTIONS = [
     { value: 'silver_chain',     label: '0.8mm 銀色不鏽鋼鏈', img: 'assets/images/products/silver-chain.png' },
@@ -409,14 +457,195 @@ function applyPanelTexts() {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。';
         confirmBtn.textContent = '確認';
-    } else {
+    } else if (hasChain) {
         document.getElementById('panelTitle').textContent = '確認作品';
         document.getElementById('panelHint').textContent = '請確認以上是您要重新選擇項鍊的作品；墜頭位置維持原樣，不會被更動。';
         confirmBtn.textContent = '前往選擇項鍊';
+    } else {
+        // 批次模式「僅供確認閱覽」：不開放調整任何欄位，客戶核對無誤後按確認即可
+        document.getElementById('panelTitle').textContent = '確認閱覽';
+        document.getElementById('panelHint').textContent = '此作品不需要調整，請確認以上作品參數無誤即可。';
+        confirmBtn.textContent = '確認閱覽';
     }
 }
 
+const CATEGORY_LABELS = { ring: '調整墜頭位置', chain: '重新選擇項鍊材質', ack: '確認閱覽' };
+
+function renderBatchStatusList() {
+    const list = document.getElementById('batchStatusList');
+    list.innerHTML = batchTasks.map(t => {
+        const it = batchItemsByIndex[t.item_index];
+        const done = !!batchLocalDone[t.id];
+        const active = t.id === activeTaskId;
+        return `
+        <div class="batch-task-row" data-task-id="${t.id}" style="
+            display:flex;align-items:center;justify-content:space-between;gap:10px;
+            padding:10px 12px;margin-bottom:6px;border-radius:10px;cursor:pointer;
+            border:1px solid ${active ? '#d4af37' : 'rgba(255,255,255,0.1)'};
+            background:${active ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)'};">
+            <div style="font-size:12.5px;color:#ddd;">
+                <span style="color:#d4af37;">${it.letter1}${it.letter2}</span>
+                　${CATEGORY_LABELS[t.category] || t.category}
+            </div>
+            <div style="font-size:12px;color:${done ? '#7ed67e' : '#999'};white-space:nowrap;">
+                ${done ? '✔ 已完成' : '待確認'}
+            </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.batch-task-row').forEach(row => {
+        row.addEventListener('click', () => {
+            selectBatchTask(parseInt(row.dataset.taskId, 10));
+        });
+    });
+
+    updateBatchActionButtonsState();
+}
+
+// 用顏色引導客戶「現在該按哪一顆」，畫面上任何時刻只有一顆金色按鈕看起來是該按的：
+// 目前這個項目已完成 → 「確認」變灰；全部項目都完成前 → 「全部送出」維持灰色
+function updateBatchActionButtonsState() {
+    const mainBtn = document.getElementById('mainConfirmBtn');
+    const currentDone = activeTaskId != null && !!batchLocalDone[activeTaskId];
+    mainBtn.classList.toggle('muted', currentDone);
+
+    const allBtn = document.getElementById('batchSubmitAllBtn');
+    const allDone = batchTasks.length > 0 && batchTasks.every(t => batchLocalDone[t.id]);
+    allBtn.classList.toggle('muted', !allDone);
+}
+
+// 切換到批次裡的某一個 task：把該 task 對應的作品資料（若這個 task 已經完成過，疊上目前暫存在
+// 本地、還沒送出的調整結果，讓客戶回頭查看時看到的是自己調過的樣子，而不是還沒調整前的原始資料）
+// 當成當前編輯中的 item，重新走一次原本單品項的 buildScene() 流程
+async function selectBatchTask(taskId) {
+    activeTaskId = taskId;
+    const task = batchTasks.find(t => t.id === taskId);
+    const base = batchItemsByIndex[task.item_index];
+    const localUpdate = batchLocalDone[taskId] ? (batchCollectedUpdates[taskId] || {}) : {};
+    item = Object.assign({}, base, localUpdate);
+    orderId = batchOrderId;
+    unlockedFields = task.category === 'ack' ? [] : [task.category];
+
+    document.getElementById('itemSummary').textContent =
+        `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+    applyPanelTexts();
+    renderBatchStatusList();
+
+    await buildScene();
+}
+
+function onItemFieldTouched(category) {
+    if (!isBatchMode || activeTaskId == null) return;
+    const task = batchTasks.find(t => t.id === activeTaskId);
+    if (!task || task.category !== category) return;
+    if (batchLocalDone[activeTaskId]) {
+        batchLocalDone[activeTaskId] = false;
+        delete batchCollectedUpdates[activeTaskId];
+        renderBatchStatusList();
+    }
+}
+
+function showIncompleteBatchModal(incomplete) {
+    document.getElementById('batchIncompleteList').innerHTML = incomplete.map(t => {
+        const it = batchItemsByIndex[t.item_index];
+        return `<div style="font-size:13px;color:rgba(255,255,255,0.7);padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <span style="color:#d4af37;">${it.letter1}${it.letter2}</span>　${CATEGORY_LABELS[t.category] || t.category}
+        </div>`;
+    }).join('');
+    document.getElementById('batchIncompleteModal').style.display = 'flex';
+}
+
+// 全部送出前的最終確認畫面：跟單品項流程一樣，要讓客戶看到調整後「實際的樣子」（截圖、圓環數值、
+// 項鍊選項），不能只列一排打勾的項目名稱——不然客戶等於是憑印象按下無法反悔的送出鍵
+function buildBatchFinalSummaryHtml() {
+    const itemIndexes = [...new Set(batchTasks.map(t => t.item_index))];
+    return itemIndexes.map(idx => {
+        const base = batchItemsByIndex[idx];
+        const tasksForItem = batchTasks.filter(t => t.item_index === idx);
+        const ringTask = tasksForItem.find(t => t.category === 'ring');
+        const chainTask = tasksForItem.find(t => t.category === 'chain');
+
+        const ringUpdate = ringTask ? (batchCollectedUpdates[ringTask.id] || {}) : null;
+        const chainUpdate = chainTask ? (batchCollectedUpdates[chainTask.id] || {}) : null;
+
+        const ringParams = ringUpdate ? {
+            ringRelativeX: ringUpdate.ringRelativeX,
+            ringRelativeY: ringUpdate.ringRelativeY,
+            ringRelativeZ: ringUpdate.ringRelativeZ,
+            ringRotation: ringUpdate.ringRotation,
+        } : null;
+        const chainSel = chainUpdate ? { chainType: chainUpdate.chainType, chainLength: chainUpdate.chainLength } : null;
+        // 沒有 ring task 的話這件作品這次沒有重新截圖，退回顯示這件作品原本（建立這批確認要求當下）的照片
+        const views = (ringUpdate && ringUpdate.threeViews) ? ringUpdate.threeViews : (base.threeViews || []);
+        const itemData = chainUpdate ? Object.assign({}, base, chainUpdate) : base;
+
+        return `<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:13px;color:#d4af37;font-weight:600;margin-bottom:8px;">作品：${base.letter1}${base.letter2}</div>
+            ${buildFinalSummaryHtml(itemData, chainSel, views, ringParams)}
+        </div>`;
+    }).join('');
+}
+
+function submitWholeBatch() {
+    const incomplete = batchTasks.filter(t => !batchLocalDone[t.id]);
+    if (incomplete.length) {
+        showIncompleteBatchModal(incomplete);
+        return;
+    }
+    document.getElementById('finalSummary').innerHTML = buildBatchFinalSummaryHtml();
+    const checkbox = document.getElementById('finalCheckbox');
+    checkbox.checked = false;
+    document.getElementById('submitDesignBtn').disabled = true;
+    document.getElementById('designConfirmModal').style.display = 'flex';
+}
+
+document.getElementById('batchSubmitAllBtn').addEventListener('click', submitWholeBatch);
+document.getElementById('batchIncompleteCloseBtn').addEventListener('click', () => {
+    document.getElementById('batchIncompleteModal').style.display = 'none';
+});
+
 async function loadData() {
+    // 只能執行一次的場景初始化（renderer/render loop），搬到這裡在最外層跑一次；
+    // buildScene() 之後可能被批次模式重複呼叫，不能再放在裡面
+    initScene();
+    animate();
+
+    if (isBatchMode) {
+        if (!batchToken) { showView('viewError'); return; }
+        try {
+            const res = await fetch(`${window.BACKEND_URL}/api/consent/revision-batch/${batchToken}`);
+            const data = await res.json();
+            if (!data.success) { showView('viewError'); return; }
+            // 整批是一次 commit（confirm_revision_batch 只要有任一項不是 pending 就整批拒絕），
+            // 所以「全部都是 confirmed」等同「這批已經確認過了」，沒有單獨的 already_confirmed 欄位
+            if (data.tasks.length && data.tasks.every(t => t.status === 'confirmed')) {
+                showView('viewAlreadyConfirmed');
+                return;
+            }
+
+            batchOrderId = data.order_id;
+            batchMessage = data.message || DEFAULT_REVISION_BATCH_MESSAGE_FALLBACK;
+            batchItemsByIndex = data.items;
+            batchTasks = data.tasks;
+            batchTasks.forEach(t => { batchLocalDone[t.id] = false; });
+
+            document.getElementById('batchStatusPanel').style.display = 'block';
+            document.getElementById('batchOrderTag').textContent = `訂單編號 ${batchOrderId}`;
+            document.getElementById('batchMessage').textContent = batchMessage;
+            // 訂單編號跟留言已經在上面的批次清單區顯示過，這裡不用重複顯示
+            document.getElementById('orderTag').style.display = 'none';
+            document.getElementById('customMessage').style.display = 'none';
+            renderBatchStatusList();
+
+            showView('viewMain');
+            await selectBatchTask(batchTasks[0].id);
+        } catch (e) {
+            console.error(e);
+            showView('viewError');
+        }
+        return;
+    }
+
     if (isStaffMode) {
         if (!staffOrderId) { showView('viewError'); return; }
         try {
@@ -469,31 +698,51 @@ async function loadData() {
     }
 }
 
-async function buildScene() {
-    initScene();
-    animate();
-
-    // 手機版 #viewport 被 CSS 壓成畫面上方一小塊（下方留給操作面板抽屜），
-    // 但 3d-scene.js 的 camera/renderer 預設用整個視窗尺寸計算並置中，
-    // 導致作品的視覺中心沒有真正置中在縮小後的可見區域，看起來會偏低、貼近面板。
-    // 改用 #viewport 實際尺寸重新設定，讓作品置中在真正看得到的範圍內；桌機版 #viewport 等於全螢幕，不受影響。
-    function fitCameraToViewport() {
-        const viewportEl = document.getElementById('viewport');
-        const w = viewportEl.clientWidth, h = viewportEl.clientHeight;
-        window.camera.aspect = w / h;
-        window.camera.updateProjectionMatrix();
-        window.renderer.setSize(w, h);
+// initScene()/animate() 只能呼叫一次（重複呼叫等於疊加第二個 renderer/render loop），
+// 移到呼叫端（loadData）在最外層只執行一次；buildScene() 改成純粹「把目前的 item 建成 3D 場景」，
+// 批次模式下客戶切換作品/項目時會重複呼叫，所以一開始要先清掉上一次留下的 mesh，避免場景裡疊了好幾件作品。
+// ring/bail 有各自的模組內部狀態（bailInitialized 等），不能只是把 window.ringMesh/bailMesh 設 null 了事，
+// 否則下次 createBail() 會誤判成「已初始化過，只更新位置」而不重建，導致舊 mesh 已被移除但沒有新的補上。
+function clearPreviousItemFromScene() {
+    resetRingState();
+    resetBailState();
+    if (window.mainMesh) {
+        if (window.scene) window.scene.remove(window.mainMesh);
+        window.mainMesh.geometry?.dispose();
+        window.mainMesh.material?.dispose();
+        window.mainMesh = null;
     }
-    fitCameraToViewport();
-    window.addEventListener('resize', fitCameraToViewport);
+}
 
-    // 隱藏材質相關 DOM（ring-bail.js / materials.js 直接讀取這些欄位）
+// 手機版 #viewport 被 CSS 壓成畫面上方一小塊（下方留給操作面板抽屜），
+// 但 3d-scene.js 的 camera/renderer 預設用整個視窗尺寸計算並置中，
+// 導致作品的視覺中心沒有真正置中在縮小後的可見區域，看起來會偏低、貼近面板。
+// 改用 #viewport 實際尺寸重新設定，讓作品置中在真正看得到的範圍內；桌機版 #viewport 等於全螢幕，不受影響。
+function fitCameraToViewport() {
+    const viewportEl = document.getElementById('viewport');
+    const w = viewportEl.clientWidth, h = viewportEl.clientHeight;
+    window.camera.aspect = w / h;
+    window.camera.updateProjectionMatrix();
+    window.renderer.setSize(w, h);
+}
+window.addEventListener('resize', fitCameraToViewport);
+
+async function buildScene() {
+    clearPreviousItemFromScene();
+    fitCameraToViewport();
+
+    // 隱藏材質相關 DOM（ring-bail.js / materials.js 直接讀取這些欄位）；批次模式下 buildScene()
+    // 會被重複呼叫，若每次都新建一組同 id 的 input，document.getElementById() 只會抓到第一個（舊的），
+    // 所以改成「有就更新值，沒有才新建」
     ['material', 'finish', 'plating'].forEach(id => {
-        const el = document.createElement('input');
-        el.type = 'hidden';
-        el.id = id;
+        let el = document.getElementById(id);
+        if (!el) {
+            el = document.createElement('input');
+            el.type = 'hidden';
+            el.id = id;
+            document.body.appendChild(el);
+        }
         el.value = item[id] || (id === 'plating' ? 'none' : '');
-        document.body.appendChild(el);
     });
 
     await Promise.all([sceneReadyPromise, initFontMeta()]);
@@ -565,12 +814,15 @@ async function buildScene() {
     createRing();
     createBail();
 
+    // 用賦值（oninput=）而不是 addEventListener，因為批次模式下 buildScene() 會重複呼叫，
+    // addEventListener 每次都會疊加一個新的 handler，導致同一個滑桿動作觸發好幾次 updateRingPosition()
     ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
-        document.getElementById(id).addEventListener('input', (e) => {
+        document.getElementById(id).oninput = (e) => {
             const suffix = id === 'ringRotation' ? '°' : '';
             document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
             updateRingPosition();
-        });
+            onItemFieldTouched('ring');
+        };
     });
 }
 
@@ -601,6 +853,7 @@ function renderChainGrid() {
         if (!card) return;
         selected = card.dataset.chain;
         render();
+        onItemFieldTouched('chain');
     };
 
     // 放大預覽（只綁一次）：桌機用 hover 顯示/移開消失；手機沒有真正的 hover，
@@ -669,7 +922,7 @@ let currentChainValue = null; // 送出時用的項鍊選擇；若這次沒開�
 let currentCapturedViews = null; // 進入確認畫面當下，即時重新截取的四視圖（含調整後的圓環位置）
 let currentRingParams = null; // 進入確認畫面當下，即時讀取的圓環位置參數
 
-function buildFinalSummaryHtml(chainSel, views, ringParams) {
+function buildFinalSummaryHtml(itemData, chainSel, views, ringParams) {
     let frontImg = '', sideImg = '', topImg = '', heroImg = '';
     (views || []).forEach(v => {
         if (!v.dataURL) return;
@@ -686,7 +939,7 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
             ${img || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">${lbl}</div>`}
         </div>`;
 
-    const platingStr = (item.plating && item.plating !== 'none') ? ` + ${item.plating}` : '';
+    const platingStr = (itemData.plating && itemData.plating !== 'none') ? ` + ${itemData.plating}` : '';
     let chainLine = '';
     if (chainSel) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
@@ -699,10 +952,10 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
     return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
         <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:2.3;">
-            <span style="color:rgba(255,255,255,0.3);">字母　</span>${item.letter1} + ${item.letter2}<br>
-            <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
-            <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
-            <span style="color:rgba(255,255,255,0.3);">材質　</span>${item.material}${platingStr}<br>
+            <span style="color:rgba(255,255,255,0.3);">字母　</span>${itemData.letter1} + ${itemData.letter2}<br>
+            <span style="color:rgba(255,255,255,0.3);">字體　</span>${itemData.font1} / ${itemData.font2}<br>
+            <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${itemData.size} mm<br>
+            <span style="color:rgba(255,255,255,0.3);">材質　</span>${itemData.material}${platingStr}<br>
             ${ringLine}
             ${chainLine}
         </div>
@@ -717,23 +970,48 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
     </div>`;
 }
 
-function goToDesignConfirm(chainSel) {
-    currentChainValue = chainSel;
-    currentRingParams = {
+function captureCurrentRingParams() {
+    return {
         ringRelativeX: ringMesh.position.x - window.modelCenter.x,
         ringRelativeY: ringMesh.position.y - window.modelCenter.y,
         ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
         ringRotation: ringMesh.rotation.z * 180 / Math.PI,
     };
+}
+
+function goToDesignConfirm(chainSel) {
+    currentChainValue = chainSel;
+    currentRingParams = captureCurrentRingParams();
     currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
-    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(chainSel, currentCapturedViews, currentRingParams);
+    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(item, chainSel, currentCapturedViews, currentRingParams);
     const checkbox = document.getElementById('finalCheckbox');
     checkbox.checked = false;
     document.getElementById('submitDesignBtn').disabled = true;
     document.getElementById('designConfirmModal').style.display = 'flex';
 }
 
+// 批次模式：每個 task 只對應單一類別（'ring' 或 'chain' 或 'ack'），確認後不跳出法律聲明視窗，
+// 直接記錄、標記完成、自動跳到下一個未完成的 task；法律聲明視窗保留給最後「全部送出」那一步用
+function completeBatchTask(fields) {
+    batchCollectedUpdates[activeTaskId] = fields;
+    batchLocalDone[activeTaskId] = true;
+    renderBatchStatusList();
+    const next = batchTasks.find(t => !batchLocalDone[t.id]);
+    if (next) selectBatchTask(next.id);
+}
+
 function proceedFromMainPanel() {
+    if (isBatchMode) {
+        if (unlockedFields.includes('chain')) {
+            document.getElementById('chainModal').style.display = 'flex';
+            chainSelection = renderChainGrid();
+        } else if (unlockedFields.includes('ring')) {
+            completeBatchTask({ ...captureCurrentRingParams(), threeViews: captureThreeViews() });
+        } else {
+            completeBatchTask({}); // 僅供確認閱覽
+        }
+        return;
+    }
     if (unlockedFields.includes('chain')) {
         document.getElementById('chainModal').style.display = 'flex';
         chainSelection = renderChainGrid();
@@ -755,11 +1033,16 @@ document.getElementById('chainConfirmBtn').addEventListener('click', () => {
     const sel = chainSelection.getSelection();
     document.getElementById('chainModal').style.display = 'none';
     document.getElementById('chain-img-preview').style.display = 'none';
+    if (isBatchMode) {
+        completeBatchTask({ chainType: sel.chainType, chainLength: sel.chainLength });
+        return;
+    }
     goToDesignConfirm(sel);
 });
 
 document.getElementById('designBackBtn').addEventListener('click', () => {
     document.getElementById('designConfirmModal').style.display = 'none';
+    if (isBatchMode) return;
     if (unlockedFields.includes('chain')) {
         document.getElementById('chainModal').style.display = 'flex';
     }
@@ -814,6 +1097,32 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
     const btn = document.getElementById('submitDesignBtn');
     btn.disabled = true;
     btn.textContent = '送出中...';
+
+    if (isBatchMode) {
+        try {
+            const tasksPayload = {};
+            batchTasks.forEach(t => { tasksPayload[t.id] = batchCollectedUpdates[t.id] || {}; });
+            const res = await fetch(`${window.BACKEND_URL}/api/consent/confirm-revision-batch/${batchToken}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tasks: tasksPayload })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('designConfirmModal').style.display = 'none';
+                showView('viewSuccess');
+            } else {
+                alert(data.error || '送出失敗，請稍後再試');
+                btn.disabled = false;
+                btn.textContent = submitBtnLabel;
+            }
+        } catch (e) {
+            alert('網路錯誤，請稍後再試');
+            btn.disabled = false;
+            btn.textContent = submitBtnLabel;
+        }
+        return;
+    }
 
     // 圓環參數與四視圖都沿用「確認畫面」當下截取的那一份，確保顧客看到的畫面跟實際送出的資料一致
     const payload = {
