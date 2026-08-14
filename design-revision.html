@@ -555,11 +555,33 @@ function showIncompleteBatchModal(incomplete) {
     document.getElementById('batchIncompleteModal').style.display = 'flex';
 }
 
+// 全部送出前的最終確認畫面：跟單品項流程一樣，要讓客戶看到調整後「實際的樣子」（截圖、圓環數值、
+// 項鍊選項），不能只列一排打勾的項目名稱——不然客戶等於是憑印象按下無法反悔的送出鍵
 function buildBatchFinalSummaryHtml() {
-    return batchTasks.map(t => {
-        const it = batchItemsByIndex[t.item_index];
-        return `<div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:2;">
-            <span style="color:#d4af37;">${it.letter1}${it.letter2}</span>　${CATEGORY_LABELS[t.category] || t.category}　<span style="color:#7ed67e;">✔</span>
+    const itemIndexes = [...new Set(batchTasks.map(t => t.item_index))];
+    return itemIndexes.map(idx => {
+        const base = batchItemsByIndex[idx];
+        const tasksForItem = batchTasks.filter(t => t.item_index === idx);
+        const ringTask = tasksForItem.find(t => t.category === 'ring');
+        const chainTask = tasksForItem.find(t => t.category === 'chain');
+
+        const ringUpdate = ringTask ? (batchCollectedUpdates[ringTask.id] || {}) : null;
+        const chainUpdate = chainTask ? (batchCollectedUpdates[chainTask.id] || {}) : null;
+
+        const ringParams = ringUpdate ? {
+            ringRelativeX: ringUpdate.ringRelativeX,
+            ringRelativeY: ringUpdate.ringRelativeY,
+            ringRelativeZ: ringUpdate.ringRelativeZ,
+            ringRotation: ringUpdate.ringRotation,
+        } : null;
+        const chainSel = chainUpdate ? { chainType: chainUpdate.chainType, chainLength: chainUpdate.chainLength } : null;
+        // 沒有 ring task 的話這件作品這次沒有重新截圖，退回顯示這件作品原本（建立這批確認要求當下）的照片
+        const views = (ringUpdate && ringUpdate.threeViews) ? ringUpdate.threeViews : (base.threeViews || []);
+        const itemData = chainUpdate ? Object.assign({}, base, chainUpdate) : base;
+
+        return `<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:13px;color:#d4af37;font-weight:600;margin-bottom:8px;">作品：${base.letter1}${base.letter2}</div>
+            ${buildFinalSummaryHtml(itemData, chainSel, views, ringParams)}
         </div>`;
     }).join('');
 }
@@ -900,7 +922,7 @@ let currentChainValue = null; // 送出時用的項鍊選擇；若這次沒開�
 let currentCapturedViews = null; // 進入確認畫面當下，即時重新截取的四視圖（含調整後的圓環位置）
 let currentRingParams = null; // 進入確認畫面當下，即時讀取的圓環位置參數
 
-function buildFinalSummaryHtml(chainSel, views, ringParams) {
+function buildFinalSummaryHtml(itemData, chainSel, views, ringParams) {
     let frontImg = '', sideImg = '', topImg = '', heroImg = '';
     (views || []).forEach(v => {
         if (!v.dataURL) return;
@@ -917,7 +939,7 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
             ${img || `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.18);font-size:11px;">${lbl}</div>`}
         </div>`;
 
-    const platingStr = (item.plating && item.plating !== 'none') ? ` + ${item.plating}` : '';
+    const platingStr = (itemData.plating && itemData.plating !== 'none') ? ` + ${itemData.plating}` : '';
     let chainLine = '';
     if (chainSel) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
@@ -930,10 +952,10 @@ function buildFinalSummaryHtml(chainSel, views, ringParams) {
     return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;align-items:start;">
         <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:2.3;">
-            <span style="color:rgba(255,255,255,0.3);">字母　</span>${item.letter1} + ${item.letter2}<br>
-            <span style="color:rgba(255,255,255,0.3);">字體　</span>${item.font1} / ${item.font2}<br>
-            <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${item.size} mm<br>
-            <span style="color:rgba(255,255,255,0.3);">材質　</span>${item.material}${platingStr}<br>
+            <span style="color:rgba(255,255,255,0.3);">字母　</span>${itemData.letter1} + ${itemData.letter2}<br>
+            <span style="color:rgba(255,255,255,0.3);">字體　</span>${itemData.font1} / ${itemData.font2}<br>
+            <span style="color:rgba(255,255,255,0.3);">尺寸　</span>${itemData.size} mm<br>
+            <span style="color:rgba(255,255,255,0.3);">材質　</span>${itemData.material}${platingStr}<br>
             ${ringLine}
             ${chainLine}
         </div>
@@ -961,7 +983,7 @@ function goToDesignConfirm(chainSel) {
     currentChainValue = chainSel;
     currentRingParams = captureCurrentRingParams();
     currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
-    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(chainSel, currentCapturedViews, currentRingParams);
+    document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(item, chainSel, currentCapturedViews, currentRingParams);
     const checkbox = document.getElementById('finalCheckbox');
     checkbox.checked = false;
     document.getElementById('submitDesignBtn').disabled = true;
