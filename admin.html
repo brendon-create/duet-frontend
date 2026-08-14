@@ -2664,8 +2664,15 @@
                             <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
                             ${itemRevs.map((r, rIdx) => {
                                 const created = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
+                                if (r.status === 'cancelled') {
+                                    return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送，後來手動取消，不算顧客確認</div>`;
+                                }
                                 if (r.status !== 'confirmed') {
-                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認</div>`;
+                                    // 只有舊版單獨送出（非批次）的確認要求才能手動取消；批次的中途取消會跟「全部一起送出」的機制打架，先不開放
+                                    const cancelBtn = !r.batch_id
+                                        ? ` <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`
+                                        : '';
+                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認${cancelBtn}</div>`;
                                 }
                                 const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
                                 let original = null, revised = null;
@@ -2674,6 +2681,16 @@
                                 const oldViews = (original && original.threeViews) || [];
                                 const findOld = (key) => oldViews.find(v => v.name && v.name.includes(key));
                                 const oldViewsId = `oldViews-${order.orderId}-${idx}-${rIdx}`;
+                                // 只有這件作品「第一筆」修改紀錄才有留底截圖（節省空間，見後端 _is_first_revision_for_item），
+                                // 之後每一輪只有文字異動，沒有圖可以看，就不顯示這顆按鈕，避免點了只看到一排空白框
+                                const oldViewsBtn = oldViews.length ? `
+                                    <button class="btn btn-secondary btn-sm" onclick="const el=document.getElementById('${oldViewsId}'); el.style.display = el.style.display==='none' ? 'grid' : 'none';">查看調整前的樣子</button>
+                                    <div id="${oldViewsId}" style="display:none;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;">
+                                        ${viewCell(findOld('letter1'), '正視圖')}
+                                        ${viewCell(findOld('letter2'), '側視圖')}
+                                        ${viewCell(findOld('top'), '俯視圖')}
+                                        ${viewCell(findOld('hero'), 'Hero 45°')}
+                                    </div>` : '';
                                 return `
                                 <div style="margin-bottom:10px;">
                                     <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
@@ -2681,13 +2698,7 @@
                                         圓環：${fmtRing(original)} → ${fmtRing(revised)}<br>
                                         項鍊：${fmtChain(original)} → ${fmtChain(revised)}
                                     </div>
-                                    <button class="btn btn-secondary btn-sm" onclick="const el=document.getElementById('${oldViewsId}'); el.style.display = el.style.display==='none' ? 'grid' : 'none';">查看調整前的樣子</button>
-                                    <div id="${oldViewsId}" style="display:none;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;">
-                                        ${viewCell(findOld('letter1'), '正視圖')}
-                                        ${viewCell(findOld('letter2'), '側視圖')}
-                                        ${viewCell(findOld('top'), '俯視圖')}
-                                        ${viewCell(findOld('hero'), 'Hero 45°')}
-                                    </div>
+                                    ${oldViewsBtn}
                                 </div>`;
                             }).join('')}
                         </div>` : '';
@@ -2781,6 +2792,24 @@
             } catch (e) {
                 msgEl.style.color = '#ef4444';
                 msgEl.textContent = '網路錯誤';
+            }
+        }
+
+        async function cancelItemRevision(orderId, revisionId) {
+            if (!confirm('確定要取消這項確認要求嗎？\n取消後不算顧客確認過，但訂單列表的狀態會變成已完成（✔）。')) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/item-revision/${revisionId}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Authorization': adminAuthHeader() }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    viewOrder(orderId);
+                } else {
+                    alert(data.error || '取消失敗');
+                }
+            } catch (e) {
+                alert('網路錯誤');
             }
         }
 
