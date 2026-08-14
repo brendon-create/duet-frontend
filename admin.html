@@ -2632,7 +2632,10 @@
                     <div class="detail-row"><span class="detail-label">公司抬頭</span><span class="detail-value">${u.companyName || '-'}</span></div>` : ''}
                 </div>
                 <div class="detail-section">
-                    <h3>訂單內容</h3>
+                    <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                        <span>訂單內容</span>
+                        <button class="btn btn-primary btn-sm" onclick='openRevisionBatchModal(${JSON.stringify(order.orderId)}, ${JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2})))})'>與客戶確認</button>
+                    </h3>
                     ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${order.manufacturer_name}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
                     ${items.map((item, idx) => {
                         const views = item.threeViews || [];
@@ -2703,7 +2706,7 @@
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="openItemRevisionModal('${order.orderId}', ${idx}, '${item.letter1}${item.letter2}')">與客戶確認</button>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx})">客服先調整外觀</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2781,57 +2784,66 @@
             }
         }
 
-        let itemRevisionTarget = null; // { orderId, itemIndex }
-
-        // 彈窗預設文案：只適用於「直接請顧客自己調整」的情境。
-        // 若客服選擇「先調整外觀，再送出」且沒有動過這段文字，會改用後端對應的「已調整」版本文案，
-        // 不會把這段話原封不動寄給顧客（見 openStaffItemRevisionEditor）
-        const DEFAULT_ITEM_REVISION_MESSAGE_RING = '您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！';
-        const DEFAULT_ITEM_REVISION_MESSAGE_CHAIN = '您好，在比較適合男性佩戴的項鍊選項上，我們將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），有銀色與黑色兩種選項，因為我們測試後發現這款項鍊更能配合身體的曲線與動作，不僅較為舒適、也比較不會有悶熱感。請您點擊下方按鈕，前往確認您希望變更的項鍊選項後送出即可。謝謝！';
-        const DEFAULT_ITEM_REVISION_MESSAGES = [DEFAULT_ITEM_REVISION_MESSAGE_RING, DEFAULT_ITEM_REVISION_MESSAGE_CHAIN];
-
-        // 依目前勾選的項目切換預設文案；若客服已自行改寫過內容（不等於任何一個預設值），不覆蓋
-        function syncItemRevisionDefaultMessage() {
-            const textarea = document.getElementById('itemRevisionMessage');
-            if (!DEFAULT_ITEM_REVISION_MESSAGES.includes(textarea.value)) return;
-            const ringChecked  = document.getElementById('unlockRing').checked;
-            const chainChecked = document.getElementById('unlockChain').checked;
-            textarea.value = (chainChecked && !ringChecked)
-                ? DEFAULT_ITEM_REVISION_MESSAGE_CHAIN
-                : DEFAULT_ITEM_REVISION_MESSAGE_RING;
+        // 客服直接在編輯頁調整這件作品的墜頭位置，調完在編輯頁按「送出給顧客確認」直接寄送——
+        // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）
+        function openStaffItemRevisionEditor(orderId, itemIndex) {
+            const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
+                + `&unlockedFields=ring&message=`;
+            window.open(url, '_blank');
         }
 
-        function openItemRevisionModal(orderId, itemIndex, letters) {
-            itemRevisionTarget = { orderId, itemIndex };
-            document.getElementById('itemRevisionLabel').textContent = letters;
-            document.getElementById('itemRevisionMessage').value = DEFAULT_ITEM_REVISION_MESSAGE_RING;
-            document.getElementById('unlockRing').checked = true;
-            document.getElementById('unlockChain').checked = false;
-            document.getElementById('itemRevisionMsg').textContent = '';
-            // 上一次成功寄送後按鈕會停留在 disabled（submitItemRevision 成功時沒有重新啟用），
-            // 每次開啟都重置，避免換一筆訂單後按鈕變得毫無反應
-            document.getElementById('itemRevisionSendBtn').disabled = false;
-            document.getElementById('itemRevisionModal').style.display = 'flex';
+        // ── 批次確認：一次寄送同一張訂單裡多件作品/多個項目，顧客在同一個連結裡逐項完成 ──
+        const DEFAULT_REVISION_BATCH_MESSAGE = '您好，請點擊下方按鈕，逐一確認以下作品的調整項目。全部確認完成後才算完成，謝謝！';
+        let revisionBatchOrderId = null;
+
+        function openRevisionBatchModal(orderId, items) {
+            revisionBatchOrderId = orderId;
+            document.getElementById('revisionBatchMessage').value = DEFAULT_REVISION_BATCH_MESSAGE;
+            document.getElementById('revisionBatchMsg').textContent = '';
+            document.getElementById('revisionBatchSendBtn').disabled = false;
+
+            document.getElementById('revisionBatchItemsList').innerHTML = items.map((item, idx) => `
+                <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+                    <div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:8px;">作品 ${idx + 1}：${item.letter1}${item.letter2}</div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ring" style="width:16px;height:16px;">
+                            請顧客調整墜頭位置
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="chain" style="width:16px;height:16px;">
+                            請顧客重新選擇項鍊材質
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ack" style="width:16px;height:16px;">
+                            僅供確認閱覽（不開放調整，客戶按確認即可）
+                        </label>
+                    </div>
+                </div>`).join('');
+
+            document.getElementById('revisionBatchModal').style.display = 'flex';
         }
 
-        function closeItemRevisionModal() {
-            document.getElementById('itemRevisionModal').style.display = 'none';
-            itemRevisionTarget = null;
+        function closeRevisionBatchModal() {
+            document.getElementById('revisionBatchModal').style.display = 'none';
+            revisionBatchOrderId = null;
         }
 
-        async function submitItemRevision() {
-            if (!itemRevisionTarget) return;
-            const { orderId, itemIndex } = itemRevisionTarget;
-            const message = document.getElementById('itemRevisionMessage').value.trim();
-            const msgEl = document.getElementById('itemRevisionMsg');
-            const btn = document.getElementById('itemRevisionSendBtn');
+        async function submitRevisionBatch() {
+            if (!revisionBatchOrderId) return;
+            const orderId = revisionBatchOrderId;
+            const message = document.getElementById('revisionBatchMessage').value.trim();
+            const msgEl = document.getElementById('revisionBatchMsg');
+            const btn = document.getElementById('revisionBatchSendBtn');
 
-            const unlockedFields = [];
-            if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
-            if (document.getElementById('unlockChain').checked) unlockedFields.push('chain');
-            if (unlockedFields.length === 0) {
+            const tasks = Array.from(document.querySelectorAll('.rb-task:checked')).map(el => ({
+                item_index: Number(el.dataset.itemIndex),
+                category: el.dataset.category,
+                mode: 'self',
+            }));
+            if (tasks.length === 0) {
                 msgEl.style.color = '#ef4444';
-                msgEl.textContent = '至少要勾選一項讓顧客調整';
+                msgEl.textContent = '至少要選一件作品的一個項目';
                 return;
             }
 
@@ -2839,17 +2851,17 @@
             msgEl.style.color = 'var(--text-muted)';
             msgEl.textContent = '寄送中…';
             try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/request-item-revision`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/request-revision-batch`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
-                    body: JSON.stringify({ item_index: itemIndex, message, unlocked_fields: unlockedFields })
+                    body: JSON.stringify({ tasks, message })
                 });
                 const data = await res.json();
                 if (data.success) {
                     msgEl.style.color = '#86efac';
                     msgEl.textContent = '✅ 確認信已寄送';
                     setTimeout(() => {
-                        closeItemRevisionModal();
+                        closeRevisionBatchModal();
                         viewOrder(orderId);
                     }, 1200);
                 } else {
@@ -2862,30 +2874,6 @@
                 msgEl.textContent = '網路錯誤';
                 btn.disabled = false;
             }
-        }
-
-        function openStaffItemRevisionEditor() {
-            if (!itemRevisionTarget) return;
-            const { orderId, itemIndex } = itemRevisionTarget;
-            const rawMessage = document.getElementById('itemRevisionMessage').value.trim();
-            // 沒動過預設文案的話留空，讓後端依「客服已先調整」情境套用對應的預設信件文案；
-            // 若客服有自己改寫，尊重客服打的內容
-            const message = DEFAULT_ITEM_REVISION_MESSAGES.includes(rawMessage) ? '' : rawMessage;
-
-            const unlockedFields = [];
-            if (document.getElementById('unlockRing').checked) unlockedFields.push('ring');
-            if (document.getElementById('unlockChain').checked) unlockedFields.push('chain');
-            if (unlockedFields.length === 0) {
-                const msgEl = document.getElementById('itemRevisionMsg');
-                msgEl.style.color = '#ef4444';
-                msgEl.textContent = '至少要勾選一項讓客服調整';
-                return;
-            }
-
-            const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=${encodeURIComponent(unlockedFields.join(','))}&message=${encodeURIComponent(message)}`;
-            window.open(url, '_blank');
-            closeItemRevisionModal();
         }
 
         function toggleStoryEdit(orderId) {
@@ -5223,32 +5211,21 @@
     </div>
 
     <!-- 與客戶確認作品 Modal -->
-    <div id="itemRevisionModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
-        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:520px;max-width:92vw;position:relative;">
+    <div id="revisionBatchModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:560px;max-width:92vw;max-height:85vh;overflow-y:auto;position:relative;">
             <h3 style="color:var(--text-primary);margin:0 0 6px 0;">與客戶確認作品</h3>
-            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">作品 <strong id="itemRevisionLabel" style="color:var(--primary)"></strong>，將寄送 Email 請顧客回 Design Studio 調整。</p>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">勾選這張訂單裡需要客戶處理的作品與項目，一次寄送同一封信；不需要處理的作品不用勾，客戶不會看到。</p>
 
-            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">要開放顧客調整的項目（至少選一項）</label>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="unlockRing" checked onchange="syncItemRevisionDefaultMessage()" style="width:16px;height:16px;">
-                    調整墜頭位置
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="unlockChain" onchange="syncItemRevisionDefaultMessage()" style="width:16px;height:16px;">
-                    重新選擇項鍊材質
-                </label>
-            </div>
+            <div id="revisionBatchItemsList" style="margin-bottom:16px;"></div>
 
             <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">給顧客的訊息</label>
-            <textarea id="itemRevisionMessage" rows="5" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;">您好，我們發現您的作品墜頭與作品本體沒有相連，請您點擊下方按鈕，前往確認您希望的墜頭位置與面向之後，重新送出設計。謝謝！</textarea>
+            <textarea id="revisionBatchMessage" rows="4" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
 
-            <div id="itemRevisionMsg" style="font-size:13px;margin-bottom:12px;"></div>
+            <div id="revisionBatchMsg" style="font-size:13px;margin-bottom:12px;"></div>
 
             <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-                <button onclick="closeItemRevisionModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
-                <button id="itemRevisionStaffBtn" onclick="openStaffItemRevisionEditor()" style="padding:9px 18px;background:transparent;border:1px solid var(--primary);border-radius:8px;color:var(--primary);cursor:pointer;font-size:13px;font-weight:600;">我們先調整外觀，再送出</button>
-                <button id="itemRevisionSendBtn" onclick="submitItemRevision()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">直接寄送確認信</button>
+                <button onclick="closeRevisionBatchModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button id="revisionBatchSendBtn" onclick="submitRevisionBatch()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送確認信</button>
             </div>
         </div>
     </div>
