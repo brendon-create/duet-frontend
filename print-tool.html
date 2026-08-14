@@ -552,7 +552,7 @@ body {
 短文：只用右半面板。
 長文：自動從左半開始，延伸至右半（同一張卡）。"></textarea>
             <div class="char-count"><span id="char-count">0</span> 字</div>
-            <div id="overflow-warning" style="display:none;font-size:11px;color:#ff6b6b;line-height:1.6;margin-top:4px;">⚠️ 文字量過長，左右欄已放到極限但仍可能被裁切，請縮短文字後再列印</div>
+            <div id="overflow-warning" style="display:none;font-size:11px;line-height:1.6;margin-top:4px;"></div>
         </div>
 
         <div class="layout-hint">
@@ -774,22 +774,27 @@ async function importOrder() {
     }
 }
 
+/* 字級退階清單：預設 4.5mm 放不下時，依序縮小字級重試 */
+const STORY_FONT_SIZES = [4.5, 4.2, 3.9, 3.6, 3.3];
+
 /* ── 共用：把故事文字切成左右欄 HTML，確保左右都不溢出（single + batch 共用）
-   量測一律用隱形的 #measure-left / #measure-right（與正式面板同 CSS），
+   量測一律用隱形的 #measure-left / #measure-right（與正式面板同 CSS）。
+   斷點以「字」為最小單位（一般書籍換頁也不是照標點斷，字數滿了就換），
    在「左右皆不爆版」的可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行；
-   若全文長度連最佳分割點都放不下，回傳 overflow:true 供呼叫端顯示警示，
+   預設字級放不下時，依 STORY_FONT_SIZES 逐階縮小字級重試；
+   若縮到最小字級仍放不下，回傳 overflow:true 供呼叫端顯示警示，
    絕不再靜默用 overflow:hidden 裁掉沒被發現的文字。 */
 function splitStoryToPanels(text) {
     const paras = text.trim() ? text.trim().split(/\n+/).filter(p => p.trim()) : [];
-    if (paras.length === 0) return { leftHTML: '', rightHTML: '', wide: false, overflow: false };
+    if (paras.length === 0) return { leftHTML: '', rightHTML: '', wide: false, overflow: false, fontSize: STORY_FONT_SIZES[0] };
 
     const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const toP = s => `<p>${esc(s.trim())}</p>`;
+    const toP = s => `<p>${esc(s)}</p>`;
 
-    // 攤平成句子清單（保留段落編號，輸出時同段落的句子會合併回同一個 <p>）
+    // 攤平成「字」清單（保留段落編號，輸出時同段落的字會合併回同一個 <p>）
     const atoms = [];
     paras.forEach((p, pi) => {
-        p.split(/(?<=[。？！])/).filter(s => s.trim()).forEach(s => atoms.push({ para: pi, text: s }));
+        Array.from(p.trim()).forEach(ch => atoms.push({ para: pi, text: ch }));
     });
 
     const buildHTML = list => {
@@ -804,44 +809,54 @@ function splitStoryToPanels(text) {
 
     const mLeft = document.getElementById('measure-left');
     const mRight = document.getElementById('measure-right');
-    const fitsLeft = list => { mLeft.innerHTML = buildHTML(list); return mLeft.scrollHeight <= mLeft.clientHeight + 2; };
-    const fitsRight = list => { mRight.innerHTML = buildHTML(list); return mRight.scrollHeight <= mRight.clientHeight + 2; };
 
-    // 短文：整篇塞右欄就放得下
-    if (fitsRight(atoms)) return { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false };
+    let result = null;
+    for (const fontSize of STORY_FONT_SIZES) {
+        mLeft.style.fontSize = fontSize + 'mm';
+        mRight.style.fontSize = fontSize + 'mm';
+        const fitsLeft = list => { mLeft.innerHTML = buildHTML(list); return mLeft.scrollHeight <= mLeft.clientHeight + 2; };
+        const fitsRight = list => { mRight.innerHTML = buildHTML(list); return mRight.scrollHeight <= mRight.clientHeight + 2; };
 
-    // 長文：找出左欄能放的最大句數（越多句越可能爆版，具單調性，可二分搜尋）
-    let lo = 0, hi = atoms.length;
-    while (lo < hi) {
-        const mid = Math.ceil((lo + hi) / 2);
-        if (fitsLeft(atoms.slice(0, mid))) lo = mid; else hi = mid - 1;
-    }
-    const maxLeftCut = lo;
+        // 短文：整篇塞右欄就放得下
+        if (fitsRight(atoms)) { result = { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false, fontSize }; break; }
 
-    // 找出右欄能放的最小起點（越少句越可能放得下，同樣單調）
-    lo = 0; hi = atoms.length;
-    while (lo < hi) {
-        const mid = Math.floor((lo + hi) / 2);
-        if (fitsRight(atoms.slice(mid))) hi = mid; else lo = mid + 1;
-    }
-    const minRightCut = lo;
+        // 找出左欄能放的最大字數（越多字越可能爆版，具單調性，可二分搜尋）
+        let lo = 0, hi = atoms.length;
+        while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            if (fitsLeft(atoms.slice(0, mid))) lo = mid; else hi = mid - 1;
+        }
+        const maxLeftCut = lo;
 
-    let cut = maxLeftCut;
-    let overflow = minRightCut > maxLeftCut; // 兩欄容量加總仍不夠，無論怎麼切都會有一邊爆版
+        // 找出右欄能放的最小起點（越少字越可能放得下，同樣單調）
+        lo = 0; hi = atoms.length;
+        while (lo < hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (fitsRight(atoms.slice(mid))) hi = mid; else lo = mid + 1;
+        }
+        const minRightCut = lo;
 
-    if (!overflow) {
-        // 可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行、很難看
+        if (minRightCut > maxLeftCut) {
+            // 這個字級仍放不下：先記住這階的最佳結果，換更小字級再試
+            result = { leftHTML: buildHTML(atoms.slice(0, maxLeftCut)), rightHTML: buildHTML(atoms.slice(maxLeftCut)), wide: true, overflow: true, fontSize };
+            continue;
+        }
+
+        // 找到放得下的字級：可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行、很難看
+        let cut = maxLeftCut;
         const minRightHeightPx = (parseFloat(getComputedStyle(mRight).lineHeight) || 0) * 2;
         while (cut > minRightCut) {
             const rightList = atoms.slice(cut);
             mRight.innerHTML = buildHTML(rightList);
             if (rightList.length > 0 && mRight.scrollHeight < minRightHeightPx) cut--; else break;
         }
+        result = { leftHTML: buildHTML(atoms.slice(0, cut)), rightHTML: buildHTML(atoms.slice(cut)), wide: true, overflow: false, fontSize };
+        break;
     }
 
-    const leftHTML = buildHTML(atoms.slice(0, cut));
-    const rightHTML = buildHTML(atoms.slice(cut));
-    return { leftHTML, rightHTML, wide: true, overflow };
+    mLeft.style.fontSize = '';
+    mRight.style.fontSize = '';
+    return result;
 }
 
 /* 更新所有卡片文字 */
@@ -857,7 +872,7 @@ function updateCards() {
     // Clear all panels
     ['preview-left-1','preview-right-1','preview-right-2'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = '';
+        if (el) { el.innerHTML = ''; el.style.fontSize = ''; }
     });
     ['preview-sig-1','preview-sig-2'].forEach(id => {
         const el = document.getElementById(id);
@@ -869,14 +884,31 @@ function updateCards() {
         return;
     }
 
-    const { leftHTML, rightHTML, wide, overflow } = splitStoryToPanels(text);
+    const { leftHTML, rightHTML, wide, overflow, fontSize } = splitStoryToPanels(text);
 
     if (wide) document.querySelector('.card-inner.card-1').classList.add('wide');
-    document.getElementById('preview-left-1').innerHTML = leftHTML;
-    document.getElementById('preview-right-1').innerHTML = rightHTML;
+    const pLeft = document.getElementById('preview-left-1');
+    const pRight = document.getElementById('preview-right-1');
+    pLeft.innerHTML = leftHTML;
+    pRight.innerHTML = rightHTML;
+    if (fontSize < STORY_FONT_SIZES[0]) {
+        pLeft.style.fontSize = pRight.style.fontSize = fontSize + 'mm';
+    }
     document.getElementById('preview-sig-1').style.display = 'block';
 
-    if (overflowWarnEl) overflowWarnEl.style.display = overflow ? 'block' : 'none';
+    if (overflowWarnEl) {
+        if (overflow) {
+            overflowWarnEl.textContent = '⚠️ 文字量過長，左右欄已放到極限（含自動縮小字級）但仍可能被裁切，請縮短文字後再列印';
+            overflowWarnEl.style.color = '#ff6b6b';
+            overflowWarnEl.style.display = 'block';
+        } else if (fontSize < STORY_FONT_SIZES[0]) {
+            overflowWarnEl.textContent = `ℹ️ 文字較長，字級已自動縮小為 ${fontSize}mm 以完整顯示`;
+            overflowWarnEl.style.color = 'rgba(212,175,55,0.85)';
+            overflowWarnEl.style.display = 'block';
+        } else {
+            overflowWarnEl.style.display = 'none';
+        }
+    }
 }
 
 /* 縮放螢幕預覽以符合可用寬度 */
@@ -974,6 +1006,7 @@ async function batchImport() {
     const container = document.getElementById('batch-container');
     container.innerHTML = '';
     const overflowIds = [];
+    const shrunkIds = [];
 
     for (let i = 0; i < ok.length; i += 2) {
         const o1 = ok[i];
@@ -989,7 +1022,9 @@ async function batchImport() {
         const c1 = buildBatchCardInner(o1, 1);
         const c2 = buildBatchCardInner(o2, 2);
         if (c1.overflow) overflowIds.push(o1.id);
+        else if (c1.fontSize < STORY_FONT_SIZES[0]) shrunkIds.push(o1.id);
         if (o2 && c2.overflow) overflowIds.push(o2.id);
+        else if (o2 && c2.fontSize < STORY_FONT_SIZES[0]) shrunkIds.push(o2.id);
         const storyPage = document.createElement('div');
         storyPage.className = 'batch-page';
         storyPage.innerHTML = c1.html + c2.html;
@@ -1011,31 +1046,36 @@ async function batchImport() {
         statusEl.innerHTML = `已載入 ${ok.length} 筆：<br><span style="color:rgba(232,224,208,0.6)">${names}</span>`;
     }
     if (overflowIds.length > 0) {
-        statusEl.innerHTML += `<br><span style="color:#ff6b6b;">⚠️ 以下訂單文字過長，左右欄已放到極限但仍可能被裁切：${overflowIds.join('、')}</span>`;
+        statusEl.innerHTML += `<br><span style="color:#ff6b6b;">⚠️ 以下訂單文字過長，左右欄已放到極限（含自動縮小字級）但仍可能被裁切：${overflowIds.join('、')}</span>`;
+    }
+    if (shrunkIds.length > 0) {
+        statusEl.innerHTML += `<br><span style="color:rgba(212,175,55,0.85);">ℹ️ 以下訂單文字較長，已自動縮小字級以完整顯示：${shrunkIds.join('、')}</span>`;
     }
     document.getElementById('batchPrintBar').style.display = 'flex';
 }
 
 /* 批次內頁卡片（與單筆 card-inner 相同版面，使用 DOM 量測決定分段位置） */
 function buildBatchCardInner(result, num) {
-    if (!result) return { html: '', overflow: false };
+    if (!result) return { html: '', overflow: false, fontSize: STORY_FONT_SIZES[0] };
     const order = result.order;
     const item = (order.items && order.items[0]) || {};
     const story = order.finalDesignStory || order.design_story ||
         item.designStory || item.design_story || '';
 
-    let leftHTML = '', rightHTML = '', wide = false, overflow = false;
+    let leftHTML = '', rightHTML = '', wide = false, overflow = false, fontSize = STORY_FONT_SIZES[0];
 
     if (!story.trim()) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
     } else {
-        ({ leftHTML, rightHTML, wide, overflow } = splitStoryToPanels(story));
+        ({ leftHTML, rightHTML, wide, overflow, fontSize } = splitStoryToPanels(story));
     }
+
+    const fontStyle = fontSize < STORY_FONT_SIZES[0] ? ` style="font-size:${fontSize}mm;"` : '';
 
     const html = `
         <div class="card-inner card-${num}${wide ? ' wide' : ''}">
-            <div class="text-panel-left">${leftHTML}</div>
-            <div class="text-panel">${rightHTML}</div>
+            <div class="text-panel-left"${fontStyle}>${leftHTML}</div>
+            <div class="text-panel"${fontStyle}>${rightHTML}</div>
             <div class="card-sig" style="display:block"><span class="sig-line"></span></div>
         </div>
         <div class="card-marks marks-${num}">
@@ -1045,7 +1085,7 @@ function buildBatchCardInner(result, num) {
             <div class="cm cm-h cm-br-h"></div><div class="cm cm-v cm-br-v"></div>
             <div class="cm cm-fold cm-fold-t"></div><div class="cm cm-fold cm-fold-b"></div>
         </div>`;
-    return { html, overflow };
+    return { html, overflow, fontSize };
 }
 
 /* 批次封面卡片（與單筆 card-cover 相同） */
