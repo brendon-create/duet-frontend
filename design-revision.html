@@ -15,9 +15,10 @@
             width: 100%; height: 100%; overflow: hidden;
             font-family: 'Outfit', 'Microsoft JhengHei', Arial, sans-serif;
             color: #eee;
-            /* 跟 design-studio.html 用同一張背景圖，維持一致的視覺體驗 */
+            /* 跟 design-studio.html 用同一張背景圖，維持一致的視覺體驗；
+               改用 Supabase Storage，raw.githubusercontent.com 不能拿來當網站 CDN 用，會被限流（2026-08 曾導致正式環境全黑） */
             background-color: #000;
-            background-image: url('https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png');
+            background-image: url('https://nwaylnzaminszyuvcrng.supabase.co/storage/v1/object/public/gallery/1786979239_49f7954e.png');
             background-position: center 14%;
             background-size: cover;
             background-repeat: no-repeat;
@@ -115,6 +116,41 @@
         .warn-box { background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 16px 18px; margin: 18px 0; }
         .warn-box ul { margin: 8px 0 0 16px; color: rgba(255,255,255,0.65); font-size: 13px; line-height: 2; }
         .confirm-checkbox-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 20px; font-size: 13px; color: rgba(255,255,255,0.7); }
+
+        /* ── 字體重選：視覺上比照 design-studio 的字體選擇卡片，讓客戶不會面對陌生介面 ── */
+        .font-current-row { margin-bottom: 12px; }
+        .font-current-row label { display:block; font-size: 12px; color: #ccc; margin-bottom: 4px; }
+        .font-select-btn {
+            width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
+            color: #fff; border-radius: 8px; font-size: 14px; cursor: pointer;
+        }
+        .font-reselect-link { display:block; text-align:right; font-size: 11px; color: #d4af37; margin-top: 4px; cursor: pointer; }
+        #fontSelectorModal .modal-box { max-width: 900px; max-height: 88vh; display: flex; flex-direction: column; }
+        .font-modal-layout { display: flex; gap: 0; flex: 1; min-height: 0; margin-top: 10px; }
+        .font-sidebar {
+            width: 220px; flex-shrink: 0; background: rgba(255,255,255,0.02); border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 14px; overflow-y: auto;
+        }
+        .select-all-group { padding: 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; display: flex; align-items: center; font-size: 12px; color: #ccc; }
+        .select-all-group input { margin-right: 8px; cursor: pointer; }
+        .font-list-item { display: flex; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+        .font-list-item:hover { background: rgba(255,255,255,0.05); }
+        .font-list-item input[type="checkbox"] { margin-right: 10px; cursor: pointer; }
+        .font-list-item span { font-size: 12.5px; color: #ccc; }
+        .font-display-area {
+            flex: 1; padding: 14px 4px 14px 18px; overflow-y: auto;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px; align-content: start;
+        }
+        .font-preview-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 16px 8px; background: rgba(255,255,255,0.03); border: 2px solid transparent; border-radius: 12px;
+            cursor: pointer; min-height: 110px; transition: all 0.2s;
+        }
+        .font-preview-card:hover { background: rgba(255,255,255,0.08); }
+        .font-preview-card.selected { border-color: #d4af37; background: rgba(212,175,55,0.15); }
+        .preview-char { font-size: 38px; margin-bottom: 6px; color: #fff; }
+        .preview-name { font-size: 10.5px; color: rgba(255,255,255,0.5); text-align: center; }
+        .font-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; }
     </style>
 </head>
 <body>
@@ -174,6 +210,19 @@
         <div class="order-tag" id="orderTag">訂單編號 —</div>
         <div class="msg-box" id="customMessage"></div>
         <div class="item-summary" id="itemSummary"></div>
+
+        <div id="fontControls" style="display:none;margin-bottom:14px;">
+            <div class="font-current-row">
+                <label id="font1LetterLabel">字母 1</label>
+                <button type="button" class="font-select-btn" id="font1Btn"></button>
+                <span class="font-reselect-link" id="font1ReselectLink">重新選擇字體</span>
+            </div>
+            <div class="font-current-row">
+                <label id="font2LetterLabel">字母 2</label>
+                <button type="button" class="font-select-btn" id="font2Btn"></button>
+                <span class="font-reselect-link" id="font2ReselectLink">重新選擇字體</span>
+            </div>
+        </div>
 
         <div id="ringControls">
             <div class="control-group">
@@ -246,6 +295,60 @@
     <div style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.4);">← 左右滑動查看更多 →</div>
 </div>
 
+<!-- 重選字體：勾選候選字體（可多選），確認後回到面板各自的下拉選單分別選一個 -->
+<div id="fontSelectorModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>選擇候選字體</h3>
+        <div class="sub" id="fontSelectorLetterHint">請勾選您想比較的候選字體，確認後可分別為兩個字母選定一個。</div>
+        <div class="font-modal-layout">
+            <div class="font-sidebar">
+                <div class="select-all-group">
+                    <input type="checkbox" id="fontSelectAllCheckbox">全選 / 取消全選
+                </div>
+                <div id="fontListContainer"></div>
+            </div>
+            <div class="font-display-area" id="fontDisplayArea"></div>
+        </div>
+        <div class="font-modal-footer">
+            <button class="btn-ghost" id="fontSelectorCancelBtn" style="width:auto;padding:10px 20px;margin-top:0;">取消</button>
+            <button class="btn-gold" id="fontSelectorConfirmBtn" style="width:auto;padding:10px 24px;margin-top:0;">確認</button>
+        </div>
+    </div>
+</div>
+
+<!-- 重選字體後，詢問是否要請 AI 重新生成設計理念 -->
+<div id="storyRegenAskModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>要重新生成設計理念嗎？</h3>
+        <div class="sub">字體組合已經調整，您可以選擇讓我們依新的字體重新產出一段設計理念文字，或是沿用原本的設計理念。</div>
+        <button class="btn-gold" id="storyRegenYesBtn">要，重新生成</button>
+        <button class="btn-ghost" id="storyRegenNoBtn">不用，沿用原本的設計理念</button>
+    </div>
+</div>
+
+<!-- 選擇「要重新生成」後，請顧客填新的選字原因 -->
+<div id="storyRegenReasonModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>新的選字原因</h3>
+        <div class="sub">請簡單說明這次重新選擇字體的想法，我們將依此重新生成設計理念。</div>
+        <textarea id="storyRegenReasonInput" rows="4" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:13px;line-height:1.6;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;" placeholder="例如：想換一個比較活潑俏皮的字體風格"></textarea>
+        <div id="storyRegenMsg" style="font-size:13px;margin-bottom:12px;"></div>
+        <button class="btn-gold" id="storyRegenSubmitBtn">重新生成</button>
+        <button class="btn-ghost" id="storyRegenBackBtn">返回</button>
+    </div>
+</div>
+
+<!-- 顯示重新生成的設計理念，讓顧客確認 -->
+<div id="storyRegenResultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>新的設計理念</h3>
+        <div class="sub">請確認以下內容，也可以直接編輯文字。</div>
+        <textarea id="storyRegenResultText" rows="8" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:13px;line-height:1.8;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
+        <button class="btn-gold" id="storyRegenAcceptBtn">確認採用這段文字</button>
+        <button class="btn-ghost" id="storyRegenRetryBtn">不滿意，重新生成一次</button>
+    </div>
+</div>
+
 <!-- 設計確認（7 天鑑賞期提示）-->
 <div id="designConfirmModal" class="modal-overlay">
     <div class="modal-box">
@@ -314,6 +417,22 @@ import {
 window.MATERIALS = MATERIALS;
 window.PLATING_COLORS = PLATING_COLORS;
 
+// 重選字體組合用：字體清單來源跟 design-studio.html 共用同一支自足模組
+import { availableFonts, fontsLoadedPromise } from './js/resource-loader.js';
+// resource-loader.js 載入完字體清單後，會呼叫 window.loadGoogleFonts()（若存在）注入 Google Fonts CSS，
+// 沒有這個全域函式的話，字體清單卡片上的文字都會顯示成瀏覽器預設字體，看不出差異
+window.loadGoogleFonts = function () {
+    if (!availableFonts || availableFonts.length === 0) return;
+    const batchSize = 50;
+    for (let i = 0; i < availableFonts.length; i += batchSize) {
+        const batch = availableFonts.slice(i, i + batchSize);
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=' + batch.map(f => f.name.replace(/ /g, '+')).join('&family=') + '&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+    }
+};
+
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token') || '';
 
@@ -358,6 +477,7 @@ if (isBatchMode) {
 let item = null;
 let orderId = '';
 let unlockedFields = ['ring'];
+let orderAiConsultation = null; // 訂單原本的 AI 諮詢完整素材，重選字體後若要重新生成設計理念會用到
 
 // 批次模式狀態
 let batchOrderId = '';
@@ -433,11 +553,197 @@ function showView(id) {
         .forEach(v => document.getElementById(v).style.display = v === id ? (v === 'viewMain' ? 'block' : 'flex') : 'none');
 }
 
+function updateItemSummary() {
+    document.getElementById('itemSummary').textContent =
+        `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+}
+
+// ============ 字體重選：候選清單邏輯、規範判斷照抄 design-studio.html，UI 簡化為單選版本 ============
+let fontConstraints = {};
+async function loadFontConstraints() {
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/font-constraints`);
+        const data = await res.json();
+        fontConstraints = {};
+        for (const c of (data.constraints || [])) {
+            fontConstraints[`${c.font_name}:${c.size_mm}`] = c.label;
+        }
+    } catch (e) { console.warn('[constraints] 載入字體規範失敗，預設全部可用', e); }
+}
+const fontConstraintsPromise = loadFontConstraints();
+function getFontConstraint(fontName, sizeMm) {
+    return fontConstraints[`${fontName}:${sizeMm}`] || 'ok';
+}
+
+let checkedFonts = new Set();
+
+function renderFontModalList() {
+    const listContainer = document.getElementById('fontListContainer');
+    const displayArea = document.getElementById('fontDisplayArea');
+    listContainer.innerHTML = '';
+    displayArea.innerHTML = '';
+    const chars = `${item.letter1 || ''}${item.letter2 || ''}`.substring(0, 2) || 'A';
+
+    availableFonts.forEach((fontObj) => {
+        const font = fontObj.name;
+
+        const row = document.createElement('div');
+        row.className = 'font-list-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.font = font;
+        checkbox.checked = checkedFonts.has(font);
+        const label = document.createElement('span');
+        label.textContent = font;
+        label.style.fontFamily = `"${font}", sans-serif`;
+        row.appendChild(checkbox);
+        row.appendChild(label);
+        listContainer.appendChild(row);
+
+        const card = document.createElement('div');
+        card.className = 'font-preview-card' + (checkedFonts.has(font) ? ' selected' : '');
+        card.dataset.font = font;
+        const charDiv = document.createElement('div');
+        charDiv.className = 'preview-char';
+        charDiv.style.fontFamily = `"${font}", sans-serif`;
+        charDiv.textContent = chars;
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'preview-name';
+        nameDiv.textContent = font;
+        card.appendChild(charDiv);
+        card.appendChild(nameDiv);
+        displayArea.appendChild(card);
+
+        const toggle = () => {
+            checkbox.checked = !checkbox.checked;
+            if (checkbox.checked) checkedFonts.add(font); else checkedFonts.delete(font);
+            card.classList.toggle('selected', checkbox.checked);
+        };
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) checkedFonts.add(font); else checkedFonts.delete(font);
+            card.classList.toggle('selected', checkbox.checked);
+        });
+        row.addEventListener('click', (e) => { if (e.target !== checkbox) toggle(); });
+        card.addEventListener('click', toggle);
+    });
+}
+
+async function openFontSelectorModal() {
+    await Promise.all([fontsLoadedPromise, fontConstraintsPromise]);
+    if (checkedFonts.size === 0) {
+        // 第一次打開：預先勾選目前的 font1/font2，讓使用者一眼在清單裡看到現在選的是哪個
+        if (item.font1) checkedFonts.add(item.font1);
+        if (item.font2) checkedFonts.add(item.font2);
+    }
+    renderFontModalList();
+    document.getElementById('fontSelectAllCheckbox').checked = false;
+    document.getElementById('fontSelectorModal').style.display = 'flex';
+}
+
+document.getElementById('fontSelectAllCheckbox').addEventListener('change', (e) => {
+    document.querySelectorAll('#fontListContainer input[type="checkbox"]').forEach(cb => {
+        if (cb.checked !== e.target.checked) cb.dispatchEvent(new Event('click'));
+    });
+});
+document.getElementById('fontSelectorCancelBtn').addEventListener('click', () => {
+    document.getElementById('fontSelectorModal').style.display = 'none';
+});
+document.getElementById('font1ReselectLink').addEventListener('click', openFontSelectorModal);
+document.getElementById('font2ReselectLink').addEventListener('click', openFontSelectorModal);
+// 顯示目前字體的按鈕本身（尚未選過候選清單前那個看起來像下拉選單的按鈕）也要能點開，
+// 不能只靠底下那行小小的「重新選擇字體」文字連結，不然使用者容易找不到入口
+document.getElementById('font1Btn').addEventListener('click', openFontSelectorModal);
+document.getElementById('font2Btn').addEventListener('click', openFontSelectorModal);
+
+function applyFontSelectOptions(selectEl, fonts, currentValue) {
+    selectEl.innerHTML = '';
+    const sizeMm = parseInt(item.size);
+    fonts.forEach(font => {
+        const opt = document.createElement('option');
+        opt.value = font;
+        opt.style.fontFamily = `"${font}", sans-serif`;
+        const label = getFontConstraint(font, sizeMm);
+        if (label === 'unavailable') {
+            opt.text = '✗ ' + font;
+            opt.disabled = true;
+            opt.style.color = '#555';
+        } else if (label === 'wide') {
+            opt.text = font + '（較粗）';
+            opt.style.color = '#8a6836';
+        } else if (label === 'thin') {
+            opt.text = font + '（較細）';
+            opt.style.color = '#486880';
+        } else {
+            opt.text = font;
+        }
+        selectEl.appendChild(opt);
+    });
+    selectEl.value = fonts.includes(currentValue) ? currentValue : fonts[0];
+    selectEl.style.fontFamily = `"${selectEl.value}", sans-serif`;
+}
+
+async function onFontSelectionChanged() {
+    item.font1 = document.getElementById('font1-select').value;
+    item.font2 = document.getElementById('font2-select').value;
+    updateItemSummary();
+    onItemFieldTouched('font');
+    await buildScene();
+}
+
+document.getElementById('fontSelectorConfirmBtn').addEventListener('click', () => {
+    const shortlist = Array.from(checkedFonts);
+    if (shortlist.length === 0) {
+        alert('請至少勾選一個候選字體');
+        return;
+    }
+    document.getElementById('fontSelectorModal').style.display = 'none';
+
+    ['font1', 'font2'].forEach((target) => {
+        const btn = document.getElementById(`${target}Btn`);
+        btn.style.display = 'none';
+        let select = document.getElementById(`${target}-select`);
+        if (!select) {
+            select = document.createElement('select');
+            select.id = `${target}-select`;
+            select.className = 'font-select-btn';
+            select.style.cursor = 'pointer';
+            btn.parentNode.insertBefore(select, btn.nextSibling);
+        }
+        select.style.display = 'block';
+        applyFontSelectOptions(select, shortlist, item[target]);
+        select.onchange = onFontSelectionChanged;
+    });
+
+    onFontSelectionChanged();
+});
+
 function applyPanelTexts() {
-    const hasRing = unlockedFields.includes('ring');
+    const hasFont = unlockedFields.includes('font');
+    // 換字體後模型幾何形狀會變，圓環位置需要一併重新確認，所以 font 類別自動連帶解鎖圓環控制項
+    const hasRing = unlockedFields.includes('ring') || hasFont;
     const hasChain = unlockedFields.includes('chain');
     const ringControls = document.getElementById('ringControls');
+    const fontControls = document.getElementById('fontControls');
     const confirmBtn = document.getElementById('mainConfirmBtn');
+
+    fontControls.style.display = hasFont ? 'block' : 'none';
+    if (hasFont) {
+        document.getElementById('font1LetterLabel').textContent = `字母「${item.letter1}」的字體`;
+        document.getElementById('font2LetterLabel').textContent = `字母「${item.letter2}」的字體`;
+        // 尚未打開過候選字體清單時，先用按鈕顯示目前的字體（唯讀），選過候選清單後才會換成下拉選單；
+        // 批次模式下在多個 font 任務之間切換時，下拉選單元素會留在 DOM 裡，這裡把選中值同步成這個任務目前的字體
+        ['font1', 'font2'].forEach(target => {
+            const select = document.getElementById(`${target}-select`);
+            if (!select) {
+                const btn = document.getElementById(`${target}Btn`);
+                btn.style.display = 'block';
+                btn.textContent = item[target] || '—';
+            } else if (Array.from(select.options).some(o => o.value === item[target])) {
+                select.value = item[target];
+                select.style.fontFamily = `"${item[target]}", sans-serif`;
+            }
+        });
+    }
 
     // 面板一律顯示（讓客戶能核對作品參數，確認是要重選項鍊的那一件——
     // 同一設計常有大小兩種尺寸分別給男女生佩戴，光看模型外觀不一定分得出來）；
@@ -449,7 +755,11 @@ function applyPanelTexts() {
     ringControls.style.opacity = hasRing ? '1' : '0.4';
     ringControls.style.pointerEvents = hasRing ? '' : 'none';
 
-    if (hasRing && hasChain) {
+    if (hasFont) {
+        document.getElementById('panelTitle').textContent = '重新選擇字體組合';
+        document.getElementById('panelHint').textContent = '請為兩個字母分別選擇新的字體（字母本身不會更動）。更換字體後模型會重新產生，請一併確認墜頭位置是否需要微調。材質與尺寸不會被更動。';
+        confirmBtn.textContent = '確認';
+    } else if (hasRing && hasChain) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
         document.getElementById('panelHint').textContent = '拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。確認後可以重新選擇項鍊材質。字母、字體、材質與尺寸不會被更動。';
         confirmBtn.textContent = '確認';
@@ -469,7 +779,7 @@ function applyPanelTexts() {
     }
 }
 
-const CATEGORY_LABELS = { ring: '調整墜頭位置', chain: '重新選擇項鍊材質', ack: '確認閱覽' };
+const CATEGORY_LABELS = { ring: '調整墜頭位置', chain: '重新選擇項鍊材質', font: '重新選擇字體組合', ack: '確認閱覽' };
 
 function renderBatchStatusList() {
     const list = document.getElementById('batchStatusList');
@@ -526,8 +836,7 @@ async function selectBatchTask(taskId) {
     orderId = batchOrderId;
     unlockedFields = task.category === 'ack' ? [] : [task.category];
 
-    document.getElementById('itemSummary').textContent =
-        `字體：${item.font1} / ${item.font2} ｜ 材質：${item.material} ｜ 電鍍：${item.plating || '無'} ｜ 尺寸：${item.size}mm`;
+    updateItemSummary();
     applyPanelTexts();
     renderBatchStatusList();
 
@@ -537,7 +846,11 @@ async function selectBatchTask(taskId) {
 function onItemFieldTouched(category) {
     if (!isBatchMode || activeTaskId == null) return;
     const task = batchTasks.find(t => t.id === activeTaskId);
-    if (!task || task.category !== category) return;
+    if (!task) return;
+    // font 任務連帶開放了圓環欄位（換字體後圓環位置要一併重新確認），
+    // 所以動了圓環滑桿也要能讓已完成的 font 任務被打回待確認，不能只比對完全相同的類別
+    const matches = task.category === category || (task.category === 'font' && category === 'ring');
+    if (!matches) return;
     if (batchLocalDone[activeTaskId]) {
         batchLocalDone[activeTaskId] = false;
         delete batchCollectedUpdates[activeTaskId];
@@ -564,20 +877,25 @@ function buildBatchFinalSummaryHtml() {
         const tasksForItem = batchTasks.filter(t => t.item_index === idx);
         const ringTask = tasksForItem.find(t => t.category === 'ring');
         const chainTask = tasksForItem.find(t => t.category === 'chain');
+        const fontTask = tasksForItem.find(t => t.category === 'font');
 
         const ringUpdate = ringTask ? (batchCollectedUpdates[ringTask.id] || {}) : null;
         const chainUpdate = chainTask ? (batchCollectedUpdates[chainTask.id] || {}) : null;
+        // font 類別的圓環欄位/threeViews 是跟字體一起在同一個 task 裡送出的（換字體後圓環位置需要一併重新確認），
+        // 不是獨立的 ring task，所以圓環相關資料要優先看 fontUpdate
+        const fontUpdate = fontTask ? (batchCollectedUpdates[fontTask.id] || {}) : null;
+        const ringSource = fontUpdate || ringUpdate;
 
-        const ringParams = ringUpdate ? {
-            ringRelativeX: ringUpdate.ringRelativeX,
-            ringRelativeY: ringUpdate.ringRelativeY,
-            ringRelativeZ: ringUpdate.ringRelativeZ,
-            ringRotation: ringUpdate.ringRotation,
+        const ringParams = ringSource ? {
+            ringRelativeX: ringSource.ringRelativeX,
+            ringRelativeY: ringSource.ringRelativeY,
+            ringRelativeZ: ringSource.ringRelativeZ,
+            ringRotation: ringSource.ringRotation,
         } : null;
         const chainSel = chainUpdate ? { chainType: chainUpdate.chainType, chainLength: chainUpdate.chainLength } : null;
-        // 沒有 ring task 的話這件作品這次沒有重新截圖，退回顯示這件作品原本（建立這批確認要求當下）的照片
-        const views = (ringUpdate && ringUpdate.threeViews) ? ringUpdate.threeViews : (base.threeViews || []);
-        const itemData = chainUpdate ? Object.assign({}, base, chainUpdate) : base;
+        // 沒有重新截圖過的話，退回顯示這件作品原本（建立這批確認要求當下）的照片
+        const views = (ringSource && ringSource.threeViews) ? ringSource.threeViews : (base.threeViews || []);
+        const itemData = Object.assign({}, base, chainUpdate || {}, fontUpdate || {});
 
         return `<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);">
             <div style="font-size:13px;color:#d4af37;font-weight:600;margin-bottom:8px;">作品：${base.letter1}${base.letter2}</div>
@@ -627,6 +945,7 @@ async function loadData() {
             batchMessage = data.message || DEFAULT_REVISION_BATCH_MESSAGE_FALLBACK;
             batchItemsByIndex = data.items;
             batchTasks = data.tasks;
+            orderAiConsultation = data.ai_consultation || null;
             batchTasks.forEach(t => { batchLocalDone[t.id] = false; });
 
             document.getElementById('batchStatusPanel').style.display = 'block';
@@ -659,6 +978,7 @@ async function loadData() {
             item = data.item;
             orderId = data.order_id;
             unlockedFields = staffUnlockedFields;
+            orderAiConsultation = data.ai_consultation || null;
             document.getElementById('orderTag').textContent = `【員工調整模式】訂單編號 ${orderId} ｜ 作品 ${item.letter1}${item.letter2}`;
             document.getElementById('customMessage').textContent = '請調整以下作品，送出後會直接寄送確認信給顧客（顧客可直接確認，也能再自行調整）。';
             document.getElementById('itemSummary').textContent =
@@ -684,6 +1004,7 @@ async function loadData() {
         item = data.item;
         orderId = data.order_id;
         unlockedFields = data.unlocked_fields && data.unlocked_fields.length ? data.unlocked_fields : ['ring'];
+        orderAiConsultation = data.ai_consultation || null;
         document.getElementById('orderTag').textContent = `訂單編號 ${orderId} ｜ 作品 ${item.letter1}${item.letter2}`;
         document.getElementById('customMessage').textContent = data.custom_message || '請調整墜頭位置，確認與作品本體相連後送出。';
         document.getElementById('itemSummary').textContent =
@@ -982,6 +1303,10 @@ function captureCurrentRingParams() {
 function goToDesignConfirm(chainSel) {
     currentChainValue = chainSel;
     currentRingParams = captureCurrentRingParams();
+    if (unlockedFields.includes('font')) {
+        currentRingParams.font1 = item.font1;
+        currentRingParams.font2 = item.font2;
+    }
     currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
     document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(item, chainSel, currentCapturedViews, currentRingParams);
     const checkbox = document.getElementById('finalCheckbox');
@@ -990,7 +1315,7 @@ function goToDesignConfirm(chainSel) {
     document.getElementById('designConfirmModal').style.display = 'flex';
 }
 
-// 批次模式：每個 task 只對應單一類別（'ring' 或 'chain' 或 'ack'），確認後不跳出法律聲明視窗，
+// 批次模式：每個 task 只對應單一類別（'ring' 或 'chain' 或 'font' 或 'ack'），確認後不跳出法律聲明視窗，
 // 直接記錄、標記完成、自動跳到下一個未完成的 task；法律聲明視窗保留給最後「全部送出」那一步用
 function completeBatchTask(fields) {
     batchCollectedUpdates[activeTaskId] = fields;
@@ -1000,13 +1325,27 @@ function completeBatchTask(fields) {
     if (next) selectBatchTask(next.id);
 }
 
+// 重選字體後，要先問一次「要不要重新生成設計理念」，問完（不管答案）才繼續原本 chain/ring/ack 的流程
 function proceedFromMainPanel() {
+    if (unlockedFields.includes('font')) {
+        document.getElementById('storyRegenAskModal').style.display = 'flex';
+        return;
+    }
+    proceedAfterFontDecision();
+}
+
+function proceedAfterFontDecision() {
     if (isBatchMode) {
         if (unlockedFields.includes('chain')) {
             document.getElementById('chainModal').style.display = 'flex';
             chainSelection = renderChainGrid();
-        } else if (unlockedFields.includes('ring')) {
-            completeBatchTask({ ...captureCurrentRingParams(), threeViews: captureThreeViews() });
+        } else if (unlockedFields.includes('ring') || unlockedFields.includes('font')) {
+            const fields = { ...captureCurrentRingParams(), threeViews: captureThreeViews() };
+            if (unlockedFields.includes('font')) {
+                fields.font1 = item.font1;
+                fields.font2 = item.font2;
+            }
+            completeBatchTask(fields);
         } else {
             completeBatchTask({}); // 僅供確認閱覽
         }
@@ -1019,6 +1358,81 @@ function proceedFromMainPanel() {
         goToDesignConfirm(null);
     }
 }
+
+// ============ 重新生成設計理念（僅 font 類別會走到這裡）============
+let pendingNewDesignStory = null; // 若這次重新生成了設計理念，暫存新文字，跟其他欄位一起送出
+
+document.getElementById('storyRegenYesBtn').addEventListener('click', () => {
+    document.getElementById('storyRegenAskModal').style.display = 'none';
+    document.getElementById('storyRegenReasonInput').value = '';
+    document.getElementById('storyRegenMsg').textContent = '';
+    document.getElementById('storyRegenReasonModal').style.display = 'flex';
+});
+
+document.getElementById('storyRegenNoBtn').addEventListener('click', () => {
+    document.getElementById('storyRegenAskModal').style.display = 'none';
+    pendingNewDesignStory = null;
+    proceedAfterFontDecision();
+});
+
+document.getElementById('storyRegenBackBtn').addEventListener('click', () => {
+    document.getElementById('storyRegenReasonModal').style.display = 'none';
+    document.getElementById('storyRegenAskModal').style.display = 'flex';
+});
+
+async function requestStoryRegeneration() {
+    const reason = document.getElementById('storyRegenReasonInput').value.trim();
+    const msgEl = document.getElementById('storyRegenMsg');
+    const btn = document.getElementById('storyRegenSubmitBtn');
+    if (!reason) {
+        msgEl.style.color = '#ef4444';
+        msgEl.textContent = '請簡單說明選字原因';
+        return;
+    }
+    btn.disabled = true;
+    msgEl.style.color = '#999';
+    msgEl.textContent = '生成中，請稍候…';
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/design-story`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                // 帶入原本諮詢的完整素材（逐輪對話、字體推薦理由），重新生成的故事才不會只靠這次的選字原因，
+                // 細節（寵物名字、個人故事等）才不會比原本薄
+                conversationSummary: orderAiConsultation || {},
+                selectedFonts: { letter1: item.letter1, font1: item.font1, letter2: item.letter2, font2: item.font2 },
+                fontReason: reason,
+                lang: 'zh',
+            })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        if (data.success && data.designStory) {
+            document.getElementById('storyRegenReasonModal').style.display = 'none';
+            document.getElementById('storyRegenResultText').value = data.designStory;
+            document.getElementById('storyRegenResultModal').style.display = 'flex';
+        } else {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = data.error || '生成失敗，請再試一次';
+        }
+    } catch (e) {
+        btn.disabled = false;
+        msgEl.style.color = '#ef4444';
+        msgEl.textContent = '網路錯誤，請再試一次';
+    }
+}
+document.getElementById('storyRegenSubmitBtn').addEventListener('click', requestStoryRegeneration);
+
+document.getElementById('storyRegenRetryBtn').addEventListener('click', () => {
+    document.getElementById('storyRegenResultModal').style.display = 'none';
+    document.getElementById('storyRegenReasonModal').style.display = 'flex';
+});
+
+document.getElementById('storyRegenAcceptBtn').addEventListener('click', () => {
+    pendingNewDesignStory = document.getElementById('storyRegenResultText').value.trim();
+    document.getElementById('storyRegenResultModal').style.display = 'none';
+    proceedAfterFontDecision();
+});
 
 document.getElementById('mainConfirmBtn').addEventListener('click', () => {
     proceedFromMainPanel();
@@ -1102,10 +1516,12 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
         try {
             const tasksPayload = {};
             batchTasks.forEach(t => { tasksPayload[t.id] = batchCollectedUpdates[t.id] || {}; });
+            const batchBody = { tasks: tasksPayload };
+            if (pendingNewDesignStory) batchBody.newDesignStory = pendingNewDesignStory;
             const res = await fetch(`${window.BACKEND_URL}/api/consent/confirm-revision-batch/${batchToken}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tasks: tasksPayload })
+                body: JSON.stringify(batchBody)
             });
             const data = await res.json();
             if (data.success) {
@@ -1131,6 +1547,7 @@ document.getElementById('submitDesignBtn').addEventListener('click', async () =>
         chainLength: currentChainValue ? currentChainValue.chainLength : item.chainLength,
         threeViews: currentCapturedViews,
     };
+    if (pendingNewDesignStory) payload.newDesignStory = pendingNewDesignStory;
 
     try {
         let res;

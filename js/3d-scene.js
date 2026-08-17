@@ -114,10 +114,11 @@ export function initScene() {
     directionalLight.position.set(5, 5, 10);
     scene.add(directionalLight);
 
-    // HDR 載入備援機制（GitHub Raw 優先，jsdelivr 備援）
+    // HDR 從 Supabase Storage 讀取，不要再用 raw.githubusercontent.com/jsdelivr——
+    // GitHub 官方不允許把 raw.githubusercontent.com 當網站的 CDN/資產主機用，即使流量不大也會被判定成這種用法而限流（429），
+    // 2026-08 正式環境就因此整個 3D 預覽全黑（詳見 CHANGELOG 或 git log 這行的異動說明）
     const hdrUrls = [
-        'https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/duet_studio.hdr',
-        'https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/duet_studio.hdr'
+        'https://nwaylnzaminszyuvcrng.supabase.co/storage/v1/object/public/gallery/1786979227_ede4cab3.hdr'
     ];
 
     let currentHdrIndex = 0;
@@ -134,7 +135,7 @@ export function initScene() {
         }
 
         const hdrUrl = hdrUrls[currentHdrIndex];
-        const sourceName = hdrUrls[currentHdrIndex]?.includes('raw.githubusercontent') ? 'GitHub Raw' : 'jsdelivr CDN';
+        const sourceName = hdrUrl?.includes('supabase.co') ? 'Supabase Storage' : (hdrUrl?.includes('raw.githubusercontent') ? 'GitHub Raw' : 'jsdelivr CDN');
         console.log(`🔄 嘗試載入 HDR (${sourceName}):`, hdrUrl);
 
         hdrLoadTimeout = setTimeout(() => {

@@ -2489,6 +2489,7 @@
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
                     <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${order.orderId}')">🔄 重新生成 STL</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${order.estimatedShipDate || '-'}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -2647,17 +2648,43 @@
                 </div>`;
             }
 
+            const buyerName = u.buyerName || '';
+            const buyerPhone = u.buyerPhone || '';
+            const buyerEmail = u.buyerEmail || u.email || '';
+            const recipientName = u.recipientName || u.name || '';
+            const recipientPhone = u.recipientPhone || u.phone || '';
+            const shippingAddress = u.shippingAddress || u.address || '';
+            const postalCode = u.postalCode || '';
+            const sameAsRecipient = !buyerName || (buyerName === recipientName && buyerPhone === recipientPhone);
+            const isCvs = u.shippingMethod === 'cvs';
+            const cvsNote = isCvs ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#fbbf24;font-size:13px;">⚠ 超商店到店：${u.cvsChain || ''} ${u.cvsStoreName || ''}${u.cvsStoreCode ? `（店號 ${u.cvsStoreCode}）` : ''}</div>` : '';
+
             content += `
                 <div class="detail-section">
                     <h3 style="display:flex;align-items:center;justify-content:space-between;">
                         <span>客戶資訊</span>
                         <button class="btn btn-secondary btn-sm" id="shippingEditBtn-${order.orderId}" onclick="toggleShippingEdit('${order.orderId}')">編輯收件資訊</button>
                     </h3>
-                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${u.email || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">收件人</span><span class="detail-value" id="shippingView-recipientName-${order.orderId}">${u.recipientName || u.name || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${order.orderId}">${u.recipientPhone || u.phone || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${order.orderId}">${u.postalCode || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${order.orderId}">${u.shippingAddress || u.address || '-'}</span></div>
+                    ${!sameAsRecipient ? `
+                    <div style="margin-bottom:10px;padding:8px 10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px;font-weight:600;">
+                        ⚠️ 訂購人與收件人不同，出貨請務必核對收件人資訊
+                    </div>` : ''}
+                    <div style="border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+                        <div style="font-size:11px;color:var(--primary);letter-spacing:1px;margin-bottom:6px;">🚚 收件人（出貨請用此資訊）</div>
+                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value" id="shippingView-recipientName-${order.orderId}">${recipientName || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${order.orderId}">${recipientPhone || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${order.orderId}">${postalCode || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${order.orderId}">${shippingAddress || '-'}</span></div>
+                        ${cvsNote}
+                    </div>
+                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${buyerEmail || '-'}</span></div>
+                    ${sameAsRecipient ? `
+                    <div class="detail-row"><span class="detail-label">購買人</span><span class="detail-value" style="color:var(--text-muted);">同收件人</span></div>` : `
+                    <div style="opacity:0.75;">
+                        <div style="font-size:11px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px;">購買人</div>
+                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${buyerName || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${buyerPhone || '-'}</span></div>
+                    </div>`}
                     <div class="detail-row"><span class="detail-label">發票類型</span><span class="detail-value">${u.invoiceType === 'company' ? '公司發票（三聯式）' : '個人發票（二聯式）'}</span></div>
                     ${u.invoiceType === 'company' ? `
                     <div class="detail-row"><span class="detail-label">統一編號</span><span class="detail-value">${u.companyTaxId || '-'}</span></div>
@@ -2691,6 +2718,7 @@
                             ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
                             : '—';
                         const fmtChain = (o) => o ? (CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
+                        const fmtFont = (o) => o ? `${o.font1 || '?'} / ${o.font2 || '?'}` : '—';
                         const revisionHtml = itemRevs.length ? `
                         <div style="margin-top:10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
                             <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
@@ -2723,12 +2751,14 @@
                                         ${viewCell(findOld('top'), '俯視圖')}
                                         ${viewCell(findOld('hero'), 'Hero 45°')}
                                     </div>` : '';
+                                const ipLine = r.confirmed_ip ? `<br>來源 IP：${r.confirmed_ip}` : '';
                                 return `
                                 <div style="margin-bottom:10px;">
                                     <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
                                     <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
                                         圓環：${fmtRing(original)} → ${fmtRing(revised)}<br>
-                                        項鍊：${fmtChain(original)} → ${fmtChain(revised)}
+                                        項鍊：${fmtChain(original)} → ${fmtChain(revised)}<br>
+                                        字體：${fmtFont(original)} → ${fmtFont(revised)}${ipLine}
                                     </div>
                                     ${oldViewsBtn}
                                 </div>`;
@@ -2749,7 +2779,8 @@
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx})">客服先調整外觀</button>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'ring')">客服先調墜頭</button>
+                            <button class="btn btn-secondary btn-sm" style="font-size:11px;opacity:0.75;" title="客服直接在編輯頁重選字體組合（字母不變），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'font')">客服先調字體</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2771,13 +2802,18 @@
                     </div>
                     <div id="logisticsFields" style="display:${order.status==='shipped'||order.status==='delivered'?'block':'none'}">
                         <div class="form-group">
-                            <select id="logisticsType">
-                                <option value="tcat" ${order.logistics==='tcat'?'selected':''}>黑貓宅急便</option>
-                                <option value="7-11" ${order.logistics==='7-11'?'selected':''}>7-11店到店</option>
-                                <option value="family" ${order.logistics==='family'?'selected':''}>全家店到店</option>
-                                <option value="hilife" ${order.logistics==='hilife'?'selected':''}>萊爾富店到店</option>
-                                <option value="post" ${order.logistics==='post'?'selected':''}>郵局包裹</option>
-                            </select>
+                            ${(() => {
+                                // 尚未出貨的訂單沒有 order.logistics，若是超商店到店則依「超商」欄位精準比對自動預選對應門市，其餘情況維持不選（預設落在清單第一項＝郵局）
+                                const CVS_CHAIN_TO_LOGISTICS = { '7-11': '7-11', '全家': 'family', '萊爾富': 'hilife' };
+                                const suggested = order.logistics || (isCvs ? (CVS_CHAIN_TO_LOGISTICS[u.cvsChain] || '') : '');
+                                return `<select id="logisticsType">
+                                <option value="post" ${suggested==='post'?'selected':''}>郵局包裹</option>
+                                <option value="7-11" ${suggested==='7-11'?'selected':''}>7-11店到店</option>
+                                <option value="family" ${suggested==='family'?'selected':''}>全家店到店</option>
+                                <option value="hilife" ${suggested==='hilife'?'selected':''}>萊爾富店到店</option>
+                                <option value="tcat" ${suggested==='tcat'?'selected':''}>黑貓宅急便</option>
+                            </select>`;
+                            })()}
                         </div>
                         <div class="form-group">
                             <input type="text" id="trackingNumber" value="${order.trackingNumber||''}" placeholder="貨運編號">
@@ -2847,9 +2883,9 @@
 
         // 客服直接在編輯頁調整這件作品的墜頭位置，調完在編輯頁按「送出給顧客確認」直接寄送——
         // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）
-        function openStaffItemRevisionEditor(orderId, itemIndex) {
+        function openStaffItemRevisionEditor(orderId, itemIndex, category) {
             const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=ring&message=`;
+                + `&unlockedFields=${encodeURIComponent(category || 'ring')}&message=`;
             window.open(url, '_blank');
         }
 
@@ -2874,6 +2910,10 @@
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="chain" style="width:16px;height:16px;">
                             請顧客重新選擇項鍊材質
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="font" style="width:16px;height:16px;">
+                            請顧客重新選擇字體組合（字母不變）
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ack" style="width:16px;height:16px;">

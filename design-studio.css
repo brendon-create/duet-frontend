@@ -7,8 +7,9 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
             background-color: #000;
-            /* 先設定黑色背景，避免白色閃爍 */
-            background-image: url('https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png');
+            /* 先設定黑色背景，避免白色閃爍；改用 Supabase Storage，raw.githubusercontent.com 不能拿來當網站 CDN 用，
+               會被限流（2026-08 曾導致正式環境全黑） */
+            background-image: url('https://nwaylnzaminszyuvcrng.supabase.co/storage/v1/object/public/gallery/1786979239_49f7954e.png');
             background-position: center 14%;
             background-size: cover;
             background-repeat: no-repeat;
