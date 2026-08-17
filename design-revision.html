@@ -88,7 +88,25 @@
                 max-height: 40vh; border-radius: 20px 20px 0 0;
             }
             #viewport { bottom: 42vh; top: 0; left: 0; right: 0; }
+            #fontCandidateSlots { position: fixed; top: 10px; left: 10px; right: 10px; width: auto; justify-content: flex-start; }
+            .font-candidate-slot { width: calc((100% - 10px) / 2); height: 0; padding-bottom: 42.5%; min-height: 0; max-height: none; }
         }
+
+        /* ── 重選字體：候選版本比較（照抄 design-studio.html 的縮圖渲染，已修過偏移/消失/模糊等問題，不要重新踩坑） ── */
+        #fontCandidateSlots { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 10px; z-index: 100; }
+        .font-candidate-slot {
+            width: 120px; height: 120px; border-radius: 14px; cursor: pointer; position: relative; overflow: hidden;
+            background: rgba(255,255,255,0.02); backdrop-filter: blur(10px) saturate(100%); -webkit-backdrop-filter: blur(10px) saturate(100%);
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37), inset 0 1px 0 0 rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+        .font-candidate-slot:hover { transform: scale(1.15); z-index: 200; }
+        /* canvas 內部繪製解析度固定，靠這條規則撐滿容器實際尺寸；手機版容器是 height:0+padding-bottom 撐出來的正方形，
+           content box 高度是 0，一般文件流的 width/height:100% 會算成 0（完全不顯示），改用 absolute 四邊貼齊 padding box 才會撐滿 */
+        .font-candidate-slot canvas { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+        .font-candidate-slot.empty { display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.6); }
+        .font-candidate-hint { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 0 10px; text-align: center; line-height: 1.5; }
+        .font-candidate-label { position: absolute; bottom: 0; left: 0; right: 0; padding: 6px; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); font-size: 9.5px; text-align: center; color: #d4af37; line-height: 1.4; }
 
         /* ── Modal 共用 ── */
         .modal-overlay {
@@ -157,6 +175,16 @@
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=2611432972696612&ev=PageView&noscript=1" /></noscript>
 
 <div id="viewport"></div>
+
+<!-- 重選字體時比較候選版本用：只在 fontControls 開放時才顯示（JS 控制） -->
+<div id="fontCandidateSlots" style="display:none;">
+    <div class="font-candidate-slot empty" data-slot="1">
+        <div class="font-candidate-hint">點擊暫存目前版本</div>
+    </div>
+    <div class="font-candidate-slot empty" data-slot="2">
+        <div class="font-candidate-hint">點擊暫存目前版本</div>
+    </div>
+</div>
 
 <div id="viewLoading" class="center-card">
     <div class="card">
@@ -727,6 +755,7 @@ function applyPanelTexts() {
     const confirmBtn = document.getElementById('mainConfirmBtn');
 
     fontControls.style.display = hasFont ? 'block' : 'none';
+    document.getElementById('fontCandidateSlots').style.display = hasFont ? 'flex' : 'none';
     if (hasFont) {
         document.getElementById('font1LetterLabel').textContent = `字母「${item.letter1}」的字體`;
         document.getElementById('font2LetterLabel').textContent = `字母「${item.letter2}」的字體`;
@@ -836,11 +865,22 @@ async function selectBatchTask(taskId) {
     orderId = batchOrderId;
     unlockedFields = task.category === 'ack' ? [] : [task.category];
 
+    resetFontSlots(); // 換到別的 task（可能是別件作品）時，候選格是上一個 font 任務留下的，不清掉會顯示錯的比較對象
     updateItemSummary();
     applyPanelTexts();
     renderBatchStatusList();
 
     await buildScene();
+}
+
+function resetFontSlots() {
+    [window.slot1Renderer, window.slot2Renderer].forEach(r => r?.dispose());
+    window.slot1Renderer = window.slot2Renderer = null;
+    fontSlotRecipes = [null, null];
+    document.querySelectorAll('.font-candidate-slot').forEach(el => {
+        el.classList.add('empty');
+        el.innerHTML = '<div class="font-candidate-hint">點擊暫存目前版本</div>';
+    });
 }
 
 function onItemFieldTouched(category) {
@@ -1290,6 +1330,122 @@ function buildFinalSummaryHtml(itemData, chainSel, views, ringParams) {
         ${viewCell(topImg, '俯視')}
     </div>`;
 }
+
+// ============ 重選字體：候選版本比較 ============
+// 縮圖渲染邏輯照抄 design-studio.html 的 saveToSlot()（已修過偏移/手機版消失/模糊等問題，見該檔案註解），
+// 但這裡不需要「召回繼續編輯」，所以不做 modelGeneration/bailLoadId 那套非同步保護、也不存完整可還原資料，
+// 只存 { font1, font2 } 這組「套用」需要的最小資訊——點候選格直接重跑正常的換字體流程，安全性沿用既有機制
+let fontSlotRecipes = [null, null];
+
+function saveToFontSlot(slotIndex) {
+    if (!window.mainMesh) return;
+    const slotElement = document.querySelector(`.font-candidate-slot[data-slot="${slotIndex + 1}"]`);
+    slotElement.classList.remove('empty');
+    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2 };
+
+    // 覆蓋舊版本時先釋放舊的 WebGL context，避免使用者反覆換來換去存同一格時，
+    // 瀏覽器同時存在的 WebGL context 數量超過上限（design-studio.html 目前也還沒補這個，順手修掉）
+    const oldRenderer = slotIndex === 0 ? window.slot1Renderer : window.slot2Renderer;
+    if (oldRenderer) oldRenderer.dispose();
+
+    slotElement.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    slotElement.appendChild(canvas);
+
+    const slotDisplaySize = Math.max(120, Math.round(slotElement.getBoundingClientRect().width));
+    const slotRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    slotRenderer.setPixelRatio(window.devicePixelRatio || 1);
+    slotRenderer.setSize(slotDisplaySize, slotDisplaySize, false); // false：不寫入 inline style，讓 CSS 的 width/height:100% 能撐滿容器
+    slotRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    slotRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const slotScene = new THREE.Scene();
+    const slotCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+    slotCamera.up.set(0, 0, 1);
+
+    const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+    const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+    light2.position.set(5, 5, 10);
+    slotScene.add(light1);
+    slotScene.add(light2);
+    slotScene.environment = window.envMap;
+
+    const meshClone = window.mainMesh.clone();
+    slotScene.add(meshClone);
+    let ringClone = null, bailClone = null;
+    if (ringMesh) { ringClone = ringMesh.clone(); slotScene.add(ringClone); }
+    if (bailMesh) { bailClone = bailMesh.clone(); slotScene.add(bailClone); }
+
+    // 準心只用主體字母本身的外框中心（不含 Bail/Ring），跟主畫面邏輯一致；
+    // 若準心改用「字母+Bail+Ring」合併後的中心，Bail 會把準心往上拉，縮放時字母會被推出畫面
+    const meshBBox = new THREE.Box3();
+    meshBBox.expandByObject(meshClone);
+    const previewCenter = meshBBox.getCenter(new THREE.Vector3());
+
+    // 縮放距離：仍把 Bail/Ring 一起算進去以免被裁到
+    const combinedBBox = new THREE.Box3();
+    combinedBBox.expandByObject(meshClone);
+    if (ringClone) combinedBBox.expandByObject(ringClone);
+    if (bailClone) combinedBBox.expandByObject(bailClone);
+    const farCorner = new THREE.Vector3(
+        Math.max(Math.abs(combinedBBox.max.x - previewCenter.x), Math.abs(combinedBBox.min.x - previewCenter.x)),
+        Math.max(Math.abs(combinedBBox.max.y - previewCenter.y), Math.abs(combinedBBox.min.y - previewCenter.y)),
+        Math.max(Math.abs(combinedBBox.max.z - previewCenter.z), Math.abs(combinedBBox.min.z - previewCenter.z))
+    );
+    const previewDist = farCorner.length() * 2.6;
+
+    const initialDir = window.camera ? window.camera.position.clone().normalize() : new THREE.Vector3(0.71, -0.71, 0.28);
+    slotCamera.position.copy(previewCenter).addScaledVector(initialDir, previewDist);
+    slotCamera.lookAt(previewCenter);
+
+    slotRenderer.render(slotScene, slotCamera);
+
+    // 縮放同步的共同基準是 window.initialCameraDist（3d-scene.js 已設好），兩個候選格共用，不各自記錄存檔當下距離，
+    // 否則不同時機存的兩格會顯示成不同大小；旋轉/縮放同步完全交給既有的 animate() 迴圈處理，這裡不用碰
+    if (slotIndex === 0) {
+        window.slot1Renderer = slotRenderer;
+        window.slot1Scene = slotScene;
+        window.slot1Camera = slotCamera;
+        window.slot1Target = previewCenter;
+        window.slot1Dist = previewDist;
+    } else {
+        window.slot2Renderer = slotRenderer;
+        window.slot2Scene = slotScene;
+        window.slot2Camera = slotCamera;
+        window.slot2Target = previewCenter;
+        window.slot2Dist = previewDist;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'font-candidate-label';
+    label.textContent = `${item.font1} / ${item.font2}`;
+    slotElement.appendChild(label);
+}
+
+async function applyFontSlot(slotIndex) {
+    const recipe = fontSlotRecipes[slotIndex];
+    if (!recipe) { saveToFontSlot(slotIndex); return; }
+    item.font1 = recipe.font1;
+    item.font2 = recipe.font2;
+    // 若目前候選字體下拉選單裡剛好有這個字體，順便同步顯示值（不強求，不在清單裡也沒關係，畫面照樣正確）
+    ['font1', 'font2'].forEach(target => {
+        const select = document.getElementById(`${target}-select`);
+        if (select && Array.from(select.options).some(o => o.value === item[target])) {
+            select.value = item[target];
+            select.style.fontFamily = `"${item[target]}", sans-serif`;
+        }
+    });
+    updateItemSummary();
+    onItemFieldTouched('font');
+    await buildScene();
+}
+
+document.querySelectorAll('.font-candidate-slot').forEach(el => {
+    el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.slot, 10) - 1;
+        if (fontSlotRecipes[idx]) applyFontSlot(idx); else saveToFontSlot(idx);
+    });
+});
 
 function captureCurrentRingParams() {
     return {
