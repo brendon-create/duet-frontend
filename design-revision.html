@@ -980,6 +980,12 @@ async function loadData() {
                 showView('viewAlreadyConfirmed');
                 return;
             }
+            // 後台取消掉的項目不會出現在 data.tasks 裡；如果這批裡的項目全部被取消，
+            // tasks 會是空陣列，這個連結已經沒有任何東西需要顧客處理了
+            if (!data.tasks.length) {
+                showView('viewError');
+                return;
+            }
 
             batchOrderId = data.order_id;
             batchMessage = data.message || DEFAULT_REVISION_BATCH_MESSAGE_FALLBACK;

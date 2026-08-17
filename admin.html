@@ -2728,10 +2728,9 @@
                                     return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送，後來手動取消，不算顧客確認</div>`;
                                 }
                                 if (r.status !== 'confirmed') {
-                                    // 只有舊版單獨送出（非批次）的確認要求才能手動取消；批次的中途取消會跟「全部一起送出」的機制打架，先不開放
-                                    const cancelBtn = !r.batch_id
-                                        ? ` <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`
-                                        : '';
+                                    // 單獨送出或批次裡的項目都能取消；取消批次裡的單一項目後端會自動把它從該批次的
+                                    // 顧客清單與送出驗證裡排除，不影響同批次其他還在等待的項目
+                                    const cancelBtn = ` <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`;
                                     return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認${cancelBtn}</div>`;
                                 }
                                 const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
