@@ -2647,17 +2647,43 @@
                 </div>`;
             }
 
+            const buyerName = u.buyerName || '';
+            const buyerPhone = u.buyerPhone || '';
+            const buyerEmail = u.buyerEmail || u.email || '';
+            const recipientName = u.recipientName || u.name || '';
+            const recipientPhone = u.recipientPhone || u.phone || '';
+            const shippingAddress = u.shippingAddress || u.address || '';
+            const postalCode = u.postalCode || '';
+            const sameAsRecipient = !buyerName || (buyerName === recipientName && buyerPhone === recipientPhone);
+            const isCvs = u.shippingMethod === 'cvs';
+            const cvsNote = isCvs ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#fbbf24;font-size:13px;">⚠ 超商店到店：${u.cvsChain || ''} ${u.cvsStoreName || ''}${u.cvsStoreCode ? `（店號 ${u.cvsStoreCode}）` : ''}</div>` : '';
+
             content += `
                 <div class="detail-section">
                     <h3 style="display:flex;align-items:center;justify-content:space-between;">
                         <span>客戶資訊</span>
                         <button class="btn btn-secondary btn-sm" id="shippingEditBtn-${order.orderId}" onclick="toggleShippingEdit('${order.orderId}')">編輯收件資訊</button>
                     </h3>
-                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${u.email || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">收件人</span><span class="detail-value" id="shippingView-recipientName-${order.orderId}">${u.recipientName || u.name || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${order.orderId}">${u.recipientPhone || u.phone || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${order.orderId}">${u.postalCode || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${order.orderId}">${u.shippingAddress || u.address || '-'}</span></div>
+                    ${!sameAsRecipient ? `
+                    <div style="margin-bottom:10px;padding:8px 10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px;font-weight:600;">
+                        ⚠️ 訂購人與收件人不同，出貨請務必核對收件人資訊
+                    </div>` : ''}
+                    <div style="border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+                        <div style="font-size:11px;color:var(--primary);letter-spacing:1px;margin-bottom:6px;">🚚 收件人（出貨請用此資訊）</div>
+                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value" id="shippingView-recipientName-${order.orderId}">${recipientName || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${order.orderId}">${recipientPhone || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${order.orderId}">${postalCode || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${order.orderId}">${shippingAddress || '-'}</span></div>
+                        ${cvsNote}
+                    </div>
+                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${buyerEmail || '-'}</span></div>
+                    ${sameAsRecipient ? `
+                    <div class="detail-row"><span class="detail-label">購買人</span><span class="detail-value" style="color:var(--text-muted);">同收件人</span></div>` : `
+                    <div style="opacity:0.75;">
+                        <div style="font-size:11px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px;">購買人</div>
+                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${buyerName || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${buyerPhone || '-'}</span></div>
+                    </div>`}
                     <div class="detail-row"><span class="detail-label">發票類型</span><span class="detail-value">${u.invoiceType === 'company' ? '公司發票（三聯式）' : '個人發票（二聯式）'}</span></div>
                     ${u.invoiceType === 'company' ? `
                     <div class="detail-row"><span class="detail-label">統一編號</span><span class="detail-value">${u.companyTaxId || '-'}</span></div>
@@ -2771,13 +2797,18 @@
                     </div>
                     <div id="logisticsFields" style="display:${order.status==='shipped'||order.status==='delivered'?'block':'none'}">
                         <div class="form-group">
-                            <select id="logisticsType">
-                                <option value="tcat" ${order.logistics==='tcat'?'selected':''}>黑貓宅急便</option>
-                                <option value="7-11" ${order.logistics==='7-11'?'selected':''}>7-11店到店</option>
-                                <option value="family" ${order.logistics==='family'?'selected':''}>全家店到店</option>
-                                <option value="hilife" ${order.logistics==='hilife'?'selected':''}>萊爾富店到店</option>
-                                <option value="post" ${order.logistics==='post'?'selected':''}>郵局包裹</option>
-                            </select>
+                            ${(() => {
+                                // 尚未出貨的訂單沒有 order.logistics，若是超商店到店則依「超商」欄位精準比對自動預選對應門市，其餘情況維持不選（預設落在清單第一項＝郵局）
+                                const CVS_CHAIN_TO_LOGISTICS = { '7-11': '7-11', '全家': 'family', '萊爾富': 'hilife' };
+                                const suggested = order.logistics || (isCvs ? (CVS_CHAIN_TO_LOGISTICS[u.cvsChain] || '') : '');
+                                return `<select id="logisticsType">
+                                <option value="post" ${suggested==='post'?'selected':''}>郵局包裹</option>
+                                <option value="7-11" ${suggested==='7-11'?'selected':''}>7-11店到店</option>
+                                <option value="family" ${suggested==='family'?'selected':''}>全家店到店</option>
+                                <option value="hilife" ${suggested==='hilife'?'selected':''}>萊爾富店到店</option>
+                                <option value="tcat" ${suggested==='tcat'?'selected':''}>黑貓宅急便</option>
+                            </select>`;
+                            })()}
                         </div>
                         <div class="form-group">
                             <input type="text" id="trackingNumber" value="${order.trackingNumber||''}" placeholder="貨運編號">
