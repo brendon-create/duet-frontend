@@ -2718,6 +2718,7 @@
                             ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
                             : '—';
                         const fmtChain = (o) => o ? (CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
+                        const fmtFont = (o) => o ? `${o.font1 || '?'} / ${o.font2 || '?'}` : '—';
                         const revisionHtml = itemRevs.length ? `
                         <div style="margin-top:10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
                             <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
@@ -2750,12 +2751,14 @@
                                         ${viewCell(findOld('top'), '俯視圖')}
                                         ${viewCell(findOld('hero'), 'Hero 45°')}
                                     </div>` : '';
+                                const ipLine = r.confirmed_ip ? `<br>來源 IP：${r.confirmed_ip}` : '';
                                 return `
                                 <div style="margin-bottom:10px;">
                                     <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
                                     <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
                                         圓環：${fmtRing(original)} → ${fmtRing(revised)}<br>
-                                        項鍊：${fmtChain(original)} → ${fmtChain(revised)}
+                                        項鍊：${fmtChain(original)} → ${fmtChain(revised)}<br>
+                                        字體：${fmtFont(original)} → ${fmtFont(revised)}${ipLine}
                                     </div>
                                     ${oldViewsBtn}
                                 </div>`;
@@ -2776,7 +2779,8 @@
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx})">客服先調整外觀</button>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'ring')">客服先調墜頭</button>
+                            <button class="btn btn-secondary btn-sm" style="font-size:11px;opacity:0.75;" title="客服直接在編輯頁重選字體組合（字母不變），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'font')">客服先調字體</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2879,9 +2883,9 @@
 
         // 客服直接在編輯頁調整這件作品的墜頭位置，調完在編輯頁按「送出給顧客確認」直接寄送——
         // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）
-        function openStaffItemRevisionEditor(orderId, itemIndex) {
+        function openStaffItemRevisionEditor(orderId, itemIndex, category) {
             const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=ring&message=`;
+                + `&unlockedFields=${encodeURIComponent(category || 'ring')}&message=`;
             window.open(url, '_blank');
         }
 
@@ -2906,6 +2910,10 @@
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="chain" style="width:16px;height:16px;">
                             請顧客重新選擇項鍊材質
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="font" style="width:16px;height:16px;">
+                            請顧客重新選擇字體組合（字母不變）
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ack" style="width:16px;height:16px;">
