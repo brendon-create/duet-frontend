@@ -1352,7 +1352,10 @@ function saveToFontSlot(slotIndex) {
     if (!window.mainMesh) return;
     const slotElement = document.querySelector(`.font-candidate-slot[data-slot="${slotIndex + 1}"]`);
     slotElement.classList.remove('empty');
-    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2 };
+    // 圓環位置一起存：滑桿拖曳當下並不會即時寫回 item.ringRelativeX 等欄位（那些欄位只在送出時
+    // 才用 captureCurrentRingParams() 讀取現值寫入），所以套用候選版本時若不一併存讀，圓環位置
+    // 會被 buildScene() 重新讀回 item 上舊的（甚至是歸零的預設）數值，滑桿看起來像被重置
+    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2, ring: captureCurrentRingParams() };
 
     // 覆蓋舊版本時先釋放舊的 WebGL context，避免使用者反覆換來換去存同一格時，
     // 瀏覽器同時存在的 WebGL context 數量超過上限（design-studio.html 目前也還沒補這個，順手修掉）
@@ -1438,6 +1441,7 @@ async function applyFontSlot(slotIndex) {
     if (!recipe) { saveToFontSlot(slotIndex); return; }
     item.font1 = recipe.font1;
     item.font2 = recipe.font2;
+    Object.assign(item, recipe.ring); // 還原存這個候選版本當下的圓環位置，不然 buildScene() 會讀到舊值、滑桿看起來被歸零
     // 若目前候選字體下拉選單裡剛好有這個字體，順便同步顯示值（不強求，不在清單裡也沒關係，畫面照樣正確）
     ['font1', 'font2'].forEach(target => {
         const select = document.getElementById(`${target}-select`);
