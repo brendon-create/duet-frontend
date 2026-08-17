@@ -2489,6 +2489,7 @@
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
                     <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${order.orderId}')">🔄 重新生成 STL</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${order.estimatedShipDate || '-'}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
