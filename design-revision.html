@@ -1073,12 +1073,9 @@ async function loadData() {
 function clearPreviousItemFromScene() {
     resetRingState();
     resetBailState();
-    if (window.mainMesh) {
-        if (window.scene) window.scene.remove(window.mainMesh);
-        window.mainMesh.geometry?.dispose();
-        window.mainMesh.material?.dispose();
-        window.mainMesh = null;
-    }
+    // 主體字母 mesh 刻意不在這裡先移除——比照 design-studio.html 的 generateModel()，
+    // 舊的要留著顯示，等新的字母幾何體算完、加進場景之後才移除舊的（見 buildScene() 尾端），
+    // 讓畫面感覺像「舊作品直接變成新作品」，不會有中間一片空白的瞬間
 }
 
 // 手機版 #viewport 被 CSS 壓成畫面上方一小塊（下方留給操作面板抽屜），
@@ -1095,6 +1092,7 @@ function fitCameraToViewport() {
 window.addEventListener('resize', fitCameraToViewport);
 
 async function buildScene() {
+    const oldMainMesh = window.mainMesh; // 留著參照，等新的 mesh 加進場景後才移除，避免中間一片空白
     clearPreviousItemFromScene();
     fitCameraToViewport();
 
@@ -1159,6 +1157,13 @@ async function buildScene() {
     window.mainMesh = result;
     window.scene.add(result);
     removeAllPlaceholderSpheres();
+
+    // 新物件已經加進場景了，現在才安全移除舊的（跟 design-studio.html 的 generateModel() 同一套做法）
+    if (oldMainMesh) {
+        window.scene.remove(oldMainMesh);
+        oldMainMesh.geometry?.dispose();
+        oldMainMesh.material?.dispose();
+    }
 
     // 圓環滑桿：從真正的權威欄位 ringRelativeX/Y/Z/ringRotation 反推滑桿數值，
     // 不能用 ringSliderX/Y/Z（那只是下單當時的參考快照，調整後不會被更新，會跟實際位置對不上）。
