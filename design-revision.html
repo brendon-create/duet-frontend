@@ -1468,6 +1468,14 @@ function captureCurrentRingParams() {
         ringRelativeY: ringMesh.position.y - window.modelCenter.y,
         ringRelativeZ: ringMesh.position.z - window.modelCenter.z,
         ringRotation: ringMesh.rotation.z * 180 / Math.PI,
+        // 滑桿快照（跟 design-studio.html 下單時存的 ringSliderX/Y/Z/Rotation 是同一組欄位）：
+        // ringRelativeZ 是絕對值，換算回滑桿數字需要知道這件作品的模型頂部高度，沒辦法直接照打；
+        // 這裡直接讀滑桿 DOM 現值，讓調整後訂單存的滑桿快照可以跟著更新，不會卡在下單當時的舊數字，
+        // 才能保證「訂單存的參數 = 可以直接照打回四個滑桿重現當下設計」
+        ringSliderX: parseFloat(document.getElementById('ringX').value),
+        ringSliderY: parseFloat(document.getElementById('ringY').value),
+        ringSliderZ: parseFloat(document.getElementById('ringZ').value),
+        ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
     };
 }
 

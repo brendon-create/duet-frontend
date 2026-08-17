@@ -2333,6 +2333,19 @@
             updateStats(filtered);
         }
 
+        // 圓環位置顯示：優先用「滑桿快照」（ringSliderX/Y/Z/Rotation）——這組數字可以直接照打回
+        // Design Studio 的四個滑桿重現當下設計；ringRelativeZ 是絕對位置，換算回滑桿值需要知道
+        // 這件作品的模型頂部高度，不能直接照打。舊訂單（2026-07-29 前）沒有滑桿快照欄位，退回顯示絕對位置。
+        function formatRingSliderPos(item) {
+            if (item.ringSliderX !== undefined && item.ringSliderX !== null) {
+                return `X=${Number(item.ringSliderX).toFixed(2)} Y=${Number(item.ringSliderY).toFixed(2)} Z=${Number(item.ringSliderZ).toFixed(2)} 旋轉=${Number(item.ringSliderRotation || 0).toFixed(1)}°`;
+            }
+            if (item.ringRelativeX !== undefined && item.ringRelativeX !== null) {
+                return `X=${Number(item.ringRelativeX).toFixed(2)} Y=${Number(item.ringRelativeY).toFixed(2)} Z=${Number(item.ringRelativeZ).toFixed(2)} 旋轉=${Number(item.ringRotation || 0).toFixed(1)}°（舊訂單，無滑桿快照）`;
+            }
+            return '未記錄';
+        }
+
         function exportOrders() {
             // 使用目前篩選後的訂單
             const orders = filteredOrders.length > 0 ? filteredOrders : allOrders;
@@ -2343,9 +2356,7 @@
 
             // 多商品訂單：同一欄位把每個商品的值用「 / 」串起來對齊，避免變成不定寬的多欄
             const joinItems = (items, fn) => items.map(fn).join(' / ');
-            const ringPos = (i) => (i.ringRelativeX !== undefined && i.ringRelativeX !== null)
-                ? `X=${Number(i.ringRelativeX).toFixed(2)} Y=${Number(i.ringRelativeY).toFixed(2)} Z=${Number(i.ringRelativeZ).toFixed(2)} 旋轉=${Number(i.ringRotation || 0).toFixed(1)}°`
-                : '未記錄';
+            const ringPos = formatRingSliderPos;
             const confirmationText = { pending: '待確認', confirmed: '已確認' };
 
             // CSV 標題：除了圖片，「查看詳情」裡看得到的欄位都包含進去；修改紀錄只取目前最新版本，不含歷史紀錄
@@ -2764,9 +2775,7 @@
                             }).join('')}
                         </div>` : '';
 
-                        const ringPosStr = (item.ringRelativeX !== undefined && item.ringRelativeX !== null)
-                            ? `X=${Number(item.ringRelativeX).toFixed(2)} Y=${Number(item.ringRelativeY).toFixed(2)} Z=${Number(item.ringRelativeZ).toFixed(2)} 旋轉=${Number(item.ringRotation || 0).toFixed(1)}°`
-                            : '未記錄';
+                        const ringPosStr = formatRingSliderPos(item);
 
                         return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
