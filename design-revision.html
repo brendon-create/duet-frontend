@@ -142,7 +142,11 @@
             width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
             color: #fff; border-radius: 8px; font-size: 14px; cursor: pointer;
         }
-        .font-reselect-link { display:block; text-align:right; font-size: 11px; color: #d4af37; margin-top: 4px; cursor: pointer; }
+        .font-reselect-btn {
+            width: 100%; padding: 10px; margin-top: 4px; background: transparent; border: 1px solid rgba(212,175,55,0.5);
+            border-radius: 8px; color: #d4af37; font-size: 13px; font-weight: 500; cursor: pointer;
+        }
+        .font-reselect-btn:hover { background: rgba(212,175,55,0.1); }
         #fontSelectorModal .modal-box { max-width: 900px; max-height: 88vh; display: flex; flex-direction: column; }
         .font-modal-layout { display: flex; gap: 0; flex: 1; min-height: 0; margin-top: 10px; }
         .font-sidebar {
@@ -243,13 +247,12 @@
             <div class="font-current-row">
                 <label id="font1LetterLabel">字母 1</label>
                 <button type="button" class="font-select-btn" id="font1Btn"></button>
-                <span class="font-reselect-link" id="font1ReselectLink">重新選擇字體</span>
             </div>
             <div class="font-current-row">
                 <label id="font2LetterLabel">字母 2</label>
                 <button type="button" class="font-select-btn" id="font2Btn"></button>
-                <span class="font-reselect-link" id="font2ReselectLink">重新選擇字體</span>
             </div>
+            <button type="button" class="font-reselect-btn" id="fontReselectBtn" style="display:none;">＋ 重選字體</button>
         </div>
 
         <div id="ringControls">
@@ -676,16 +679,18 @@ document.getElementById('fontSelectAllCheckbox').addEventListener('change', (e) 
 document.getElementById('fontSelectorCancelBtn').addEventListener('click', () => {
     document.getElementById('fontSelectorModal').style.display = 'none';
 });
-document.getElementById('font1ReselectLink').addEventListener('click', openFontSelectorModal);
-document.getElementById('font2ReselectLink').addEventListener('click', openFontSelectorModal);
-// 顯示目前字體的按鈕本身（尚未選過候選清單前那個看起來像下拉選單的按鈕）也要能點開，
-// 不能只靠底下那行小小的「重新選擇字體」文字連結，不然使用者容易找不到入口
+// 尚未選過候選清單前：兩個字母各自的按鈕本身就能點開（比照 design-studio.html 選字體前的狀態）
 document.getElementById('font1Btn').addEventListener('click', openFontSelectorModal);
 document.getElementById('font2Btn').addEventListener('click', openFontSelectorModal);
+// 選過一輪之後：改成一個獨立的「＋ 重選字體」按鈕（比照 design-studio.html），不要兩個字母各自一個小連結
+document.getElementById('fontReselectBtn').addEventListener('click', openFontSelectorModal);
 
 function applyFontSelectOptions(selectEl, fonts, currentValue) {
     selectEl.innerHTML = '';
     const sizeMm = parseInt(item.size);
+    // 目前正在用的字體一定要出現在選單裡並且被選中，不能因為候選清單這次剛好沒勾到它，
+    // 就靜默改顯示成清單裡隨便第一個字體——那樣使用者會覺得畫面「跳回上一輪的字體」，對不上實際狀態
+    if (currentValue && !fonts.includes(currentValue)) fonts = [currentValue, ...fonts];
     fonts.forEach(font => {
         const opt = document.createElement('option');
         opt.value = font;
@@ -741,6 +746,7 @@ document.getElementById('fontSelectorConfirmBtn').addEventListener('click', () =
         applyFontSelectOptions(select, shortlist, item[target]);
         select.onchange = onFontSelectionChanged;
     });
+    document.getElementById('fontReselectBtn').style.display = 'block';
 
     onFontSelectionChanged();
 });
