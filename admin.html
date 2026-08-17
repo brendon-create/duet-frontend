@@ -2445,7 +2445,16 @@
                         if (itemRevData.success) itemRevisions = itemRevData.revisions;
                     } catch (e) { /* 靜默失敗，不影響主流程 */ }
 
-                    showOrderModal(data.order, storyRevision, itemRevisions);
+                    let orderNotes = [];
+                    try {
+                        const notesRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/notes`, {
+                            headers: { 'Authorization': adminAuthHeader() }
+                        });
+                        const notesData = await notesRes.json();
+                        if (notesData.success) orderNotes = notesData.notes;
+                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
+
+                    showOrderModal(data.order, storyRevision, itemRevisions, orderNotes);
                 }
             } catch (err) { 
                 orderDetailContent.innerHTML = `
@@ -2458,7 +2467,7 @@
             }
         }
         
-        function showOrderModal(order, storyRevision, itemRevisions = []) {
+        function showOrderModal(order, storyRevision, itemRevisions = [], orderNotes = []) {
             const u = order.userInfo || {};
             const items = order.items || [];
             const status = statusMap[order.status] || { text: order.status, class: '' };
@@ -2495,8 +2504,22 @@
                         <span class="detail-label" style="color:#f59e0b;">⚠ 不在 DB 清單</span>
                         <button class="btn btn-secondary btn-sm" id="migrateBtn-${order.orderId}" onclick="migrateOrderToDb('${order.orderId}')">補寫入資料庫</button>
                     </div>` : ''}
+                </div>
+                <div class="detail-section">
+                    <h3>備注</h3>
+                    <div id="orderNotesList-${order.orderId}" style="margin-bottom:10px;max-height:240px;overflow-y:auto;">
+                        ${orderNotes.length ? orderNotes.map(n => `
+                        <div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
+                            <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${(n.note || '').replace(/</g, '&lt;')}</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${n.created_by || '?'} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                        </div>`).join('') : '<div class="no-notes-placeholder" style="color:var(--text-muted);font-size:13px;">尚無備注</div>'}
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="orderNoteInput-${order.orderId}" placeholder="新增備注..." style="flex:1;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;" onkeydown="if(event.key==='Enter') addOrderNote('${order.orderId}')">
+                        <button class="btn btn-primary btn-sm" onclick="addOrderNote('${order.orderId}')">新增</button>
+                    </div>
                 </div>`;
-            
+
             // 如果有設計理念，顯示在基本資訊下方（含修改功能）
             if (designStory || originalStory) {
                 const hasDiff = originalStory && finalStory && originalStory !== finalStory;
@@ -2978,6 +3001,37 @@
                     document.getElementById('orderDetailContent').innerHTML += `<div class="detail-section"><h3>操作日誌</h3>${logsHtml}</div>`;
                 }
             } catch (e) { console.log('無日誌'); }
+        }
+
+        async function addOrderNote(orderId) {
+            const input = document.getElementById(`orderNoteInput-${orderId}`);
+            const note = input.value.trim();
+            if (!note) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ note })
+                });
+                const data = await res.json();
+                if (!data.success) { alert('新增備注失敗：' + (data.error || '')); return; }
+
+                const listEl = document.getElementById(`orderNotesList-${orderId}`);
+                const n = data.note;
+                const noteHtml = `<div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
+                    <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${(n.note || '').replace(/</g, '&lt;')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${n.created_by || '?'} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                </div>`;
+                const placeholder = listEl.querySelector('.no-notes-placeholder');
+                if (placeholder) {
+                    listEl.innerHTML = noteHtml;
+                } else {
+                    listEl.insertAdjacentHTML('afterbegin', noteHtml);
+                }
+                input.value = '';
+            } catch (e) {
+                alert('新增備注失敗：網路錯誤');
+            }
         }
         
         function showLogisticsFields() {
