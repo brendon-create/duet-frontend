@@ -15,9 +15,10 @@
             width: 100%; height: 100%; overflow: hidden;
             font-family: 'Outfit', 'Microsoft JhengHei', Arial, sans-serif;
             color: #eee;
-            /* 跟 design-studio.html 用同一張背景圖，維持一致的視覺體驗 */
+            /* 跟 design-studio.html 用同一張背景圖，維持一致的視覺體驗；
+               改用 Supabase Storage，raw.githubusercontent.com 不能拿來當網站 CDN 用，會被限流（2026-08 曾導致正式環境全黑） */
             background-color: #000;
-            background-image: url('https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png');
+            background-image: url('https://nwaylnzaminszyuvcrng.supabase.co/storage/v1/object/public/gallery/1786979239_49f7954e.png');
             background-position: center 14%;
             background-size: cover;
             background-repeat: no-repeat;

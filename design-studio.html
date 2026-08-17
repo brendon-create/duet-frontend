@@ -6254,7 +6254,8 @@
             const img = new Image();
             img.onload = resolve;
             img.onerror = resolve;
-            img.src = 'https://raw.githubusercontent.com/brendon-create/duet-frontend/main/assets/images/backgrounds/Toscana.png';
+            // 改用 Supabase Storage，raw.githubusercontent.com 不能拿來當網站 CDN 用，會被限流（2026-08 曾導致正式環境全黑）
+            img.src = 'https://nwaylnzaminszyuvcrng.supabase.co/storage/v1/object/public/gallery/1786979239_49f7954e.png';
         });
         Promise.all([sceneReadyPromise, _bgReady]).then(() => {
             document.getElementById('loader').classList.add('fade-out');
