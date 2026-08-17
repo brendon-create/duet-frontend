@@ -252,7 +252,7 @@
                 <label id="font2LetterLabel">字母 2</label>
                 <button type="button" class="font-select-btn" id="font2Btn"></button>
             </div>
-            <button type="button" class="font-reselect-btn" id="fontReselectBtn" style="display:none;">＋ 重選字體</button>
+            <button type="button" class="font-reselect-btn" id="fontReselectBtn">選擇字體</button>
         </div>
 
         <div id="ringControls">
@@ -716,8 +716,14 @@ function applyFontSelectOptions(selectEl, fonts, currentValue) {
 }
 
 async function onFontSelectionChanged() {
-    item.font1 = document.getElementById('font1-select').value;
-    item.font2 = document.getElementById('font2-select').value;
+    const sel1 = document.getElementById('font1-select');
+    const sel2 = document.getElementById('font2-select');
+    item.font1 = sel1.value;
+    item.font2 = sel2.value;
+    // 選單「收合後顯示的文字」用的是 select 元素本身的 font-family，不是被選中那個 <option> 的樣式，
+    // 換字體後如果沒有同步更新，收合狀態顯示的字型會停留在上一次套用的字體（比照 design-studio.html 的做法）
+    sel1.style.fontFamily = `"${item.font1}", sans-serif`;
+    sel2.style.fontFamily = `"${item.font2}", sans-serif`;
     updateItemSummary();
     onItemFieldTouched('font');
     await buildScene();
@@ -746,7 +752,7 @@ document.getElementById('fontSelectorConfirmBtn').addEventListener('click', () =
         applyFontSelectOptions(select, shortlist, item[target]);
         select.onchange = onFontSelectionChanged;
     });
-    document.getElementById('fontReselectBtn').style.display = 'block';
+    document.getElementById('fontReselectBtn').textContent = '＋ 重選字體';
 
     onFontSelectionChanged();
 });
@@ -778,6 +784,10 @@ function applyPanelTexts() {
                 select.style.fontFamily = `"${item[target]}", sans-serif`;
             }
         });
+        // 兩個字母都還沒選過候選清單時顯示「選擇字體」，任一個已經選過就顯示「＋ 重選字體」
+        // （批次模式下切到別的任務時，這顆按鈕的文字也要跟著這個任務目前的狀態同步）
+        const anySelectExists = document.getElementById('font1-select') || document.getElementById('font2-select');
+        document.getElementById('fontReselectBtn').textContent = anySelectExists ? '＋ 重選字體' : '選擇字體';
     }
 
     // 面板一律顯示（讓客戶能核對作品參數，確認是要重選項鍊的那一件——
