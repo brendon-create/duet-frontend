@@ -649,6 +649,10 @@ document.getElementById('fontSelectorCancelBtn').addEventListener('click', () =>
 });
 document.getElementById('font1ReselectLink').addEventListener('click', openFontSelectorModal);
 document.getElementById('font2ReselectLink').addEventListener('click', openFontSelectorModal);
+// 顯示目前字體的按鈕本身（尚未選過候選清單前那個看起來像下拉選單的按鈕）也要能點開，
+// 不能只靠底下那行小小的「重新選擇字體」文字連結，不然使用者容易找不到入口
+document.getElementById('font1Btn').addEventListener('click', openFontSelectorModal);
+document.getElementById('font2Btn').addEventListener('click', openFontSelectorModal);
 
 function applyFontSelectOptions(selectEl, fonts, currentValue) {
     selectEl.innerHTML = '';
