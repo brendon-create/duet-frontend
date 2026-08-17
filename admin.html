@@ -946,6 +946,7 @@
                                 <th>兌換碼</th>
                                 <th>折扣</th>
                                 <th>批次</th>
+                                <th>客戶</th>
                                 <th>有效期</th>
                                 <th>狀態</th>
                                 <th>使用訂單</th>
@@ -953,7 +954,7 @@
                             </tr>
                         </thead>
                         <tbody id="redeemTableBody">
-                            <tr><td colspan="7" class="loading">載入中...</td></tr>
+                            <tr><td colspan="8" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -3395,7 +3396,7 @@
         let _redeemCodes = [];
 
         async function loadRedeemCodes() {
-            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
+            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="8" class="loading">載入中...</td></tr>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes`, {
                     headers: { 'Authorization': adminAuthHeader() }
@@ -3405,7 +3406,7 @@
                 _redeemCodes = data.redeem_codes || [];
                 renderRedeemTable();
             } catch (e) {
-                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="7" class="loading">載入失敗：${e.message}</td></tr>`;
+                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="8" class="loading">載入失敗：${e.message}</td></tr>`;
             }
         }
 
@@ -3446,7 +3447,7 @@
             document.getElementById('redeemUnused').textContent = total - used;
 
             if (!filtered.length) {
-                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="7" class="loading">無資料</td></tr>';
+                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="8" class="loading">無資料</td></tr>';
                 return;
             }
             document.getElementById('redeemTableBody').innerHTML = filtered.map(c => {
@@ -3464,10 +3465,14 @@
                 const orderCell = c.order_id
                     ? `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" onclick="goToOrder('${c.order_id}')">${c.order_id}</button>`
                     : '-';
+                const customerCell = c.customerName
+                    ? `${c.customerName}${c.zeczecBackerName ? `<div style="font-size:11px;color:var(--text-muted);">嘖嘖：${c.zeczecBackerName}</div>` : ''}`
+                    : '-';
                 return `<tr data-redeem-code="${c.code}">
                     <td style="font-family:monospace;">${c.code}</td>
                     <td>${discount}</td>
                     <td>${batch} <button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-size:11px;" onclick="editRedeemBatch('${c.code}', '${tier.replace(/'/g, "\\'")}')">編輯</button></td>
+                    <td>${customerCell}</td>
                     <td>${validUntil}</td>
                     <td>${statusBadge}</td>
                     <td>${orderCell}</td>
