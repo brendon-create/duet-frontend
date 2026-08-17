@@ -4448,6 +4448,24 @@
                 return;
             }
 
+            // 把這次補訪的完整對話存回訂單（比照一般諮詢流程），供日後重新生成設計理念使用；
+            // 不等待、不擋流程，存失敗也不影響顧客繼續往下走
+            if (window.lastOrderId) {
+                try {
+                    const stored = JSON.parse(localStorage.getItem('duet_ai_consultation') || '{}');
+                    if (stored.conversationHistory) {
+                        fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/ai-consultation`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                conversationHistory: stored.conversationHistory,
+                                summary: stored.summary || ''
+                            })
+                        }).catch(() => {});
+                    }
+                } catch (e) { /* 存對話紀錄失敗不影響主流程 */ }
+            }
+
             const combinations = getUniqueDesignCombinations(items);
             const concepts = [];
 
