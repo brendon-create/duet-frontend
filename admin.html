@@ -2823,9 +2823,7 @@
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'ring')">客服先調墜頭</button>
-                            <button class="btn btn-secondary btn-sm" style="font-size:11px;opacity:0.75;" title="客服直接在編輯頁重選字體組合（字母不變），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'font')">客服先調字體</button>
-                            <button class="btn btn-secondary btn-sm" style="font-size:11px;opacity:0.75;" title="客服直接在編輯頁選好建議的項鍊材質，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'chain')">客服先選項鍊</button>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置/項鍊/字體（可複選），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffPreAdjustModal('${order.orderId}', ${idx})">客服先調整外觀</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2926,20 +2924,58 @@
             }
         }
 
-        // 客服直接在編輯頁調整這件作品，調完在編輯頁按「送出給顧客確認」直接寄送——
+        // 客服直接在編輯頁調整這件作品（墜頭位置/項鍊/字體，可複選），調完在編輯頁按「送出給顧客確認」直接寄送——
         // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）。
-        // 依類別預先帶入對應的說明文字（design-revision.html 本身沒有讓客服編輯訊息的欄位，是直接照 URL 帶入的內容送出）
+        // 依勾選的類別組合預先帶入對應的說明文字（design-revision.html 本身沒有讓客服編輯訊息的欄位，是直接照 URL 帶入的內容送出）
         const STAFF_PRE_ADJUSTED_MSG = {
             ring: '您好，我們發現您的作品本體與墜頭沒有相連，已先為您調整成我們認為適合的位置，讓墜頭確實與本體相連。請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做微調，也可以在頁面中自行調整後再送出。謝謝！',
             font: '您好，由於各種字體的排列組合有超過 1 億種可能性，這次您原本選擇的字體組合在結構上會過於脆弱，珠寶金工師在修整作品時可能會讓它扭曲變形，日後佩戴也不容易維護作品的完整性。我們已先為您挑選一組視覺相近、且結構更穩固的替代字體組合，請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中重新選擇字體組合後再送出。謝謝！',
             chain: '您好，在比較適合男性佩戴的項鍊選項上，我們已先為您將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細，我們測試後發現這款項鍊更能配合身體的曲線與動作，較為舒適、也比較不會有悶熱感）。請點擊下方按鈕查看變更後的選項，若沒問題可以直接確認送出；若您想改選其他項鍊材質，也可以在頁面中重新選擇後再送出。謝謝！',
         };
-        function openStaffItemRevisionEditor(orderId, itemIndex, category) {
-            const cat = category || 'ring';
-            const message = STAFF_PRE_ADJUSTED_MSG[cat] || '';
+        const STAFF_PRE_ADJUSTED_MSG_REASON = {
+            ring: '墜頭位置：我們發現您的作品本體與墜頭沒有相連，已先為您調整成我們認為適合的位置，讓墜頭確實與本體相連。',
+            chain: '項鍊材質：在比較適合男性佩戴的項鍊選項上，我們已先為您將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），這款項鍊更能配合身體的曲線與動作，較為舒適、也比較不會有悶熱感。',
+            font: '字體組合：由於各種字體的排列組合有超過 1 億種可能性，這次您原本選擇的字體組合在結構上會過於脆弱，珠寶金工師在修整時可能會讓它扭曲變形，日後佩戴也不容易維護作品的完整性，我們已先為您挑選一組視覺相近、且結構更穩固的替代字體組合。',
+        };
+        function computeStaffPreAdjustMessage(categories) {
+            const order = ['ring', 'chain', 'font'];
+            const sorted = order.filter(c => categories.includes(c));
+            if (sorted.length === 0) return '';
+            if (sorted.length === 1) return STAFF_PRE_ADJUSTED_MSG[sorted[0]];
+            const reasons = sorted.map((c, i) => `${i + 1}. ${STAFF_PRE_ADJUSTED_MSG_REASON[c]}`).join('\n\n');
+            const countLabel = sorted.length === 2 ? '兩' : '三';
+            return `您好，這次為您先調整了以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中自行調整後再送出。謝謝！`;
+        }
+        function openStaffItemRevisionEditor(orderId, itemIndex, categories) {
+            const cats = Array.isArray(categories) ? categories : [categories || 'ring'];
+            const message = computeStaffPreAdjustMessage(cats);
             const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=${encodeURIComponent(cat)}&message=${encodeURIComponent(message)}`;
+                + `&unlockedFields=${encodeURIComponent(cats.join(','))}&message=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
+        }
+
+        // 「客服先調整外觀」按鈕：跳出勾選視窗（比照「與客戶確認」的類別勾選），選好要調整的項目後才開編輯頁
+        let staffPreAdjustTarget = null; // { orderId, itemIndex }
+        function openStaffPreAdjustModal(orderId, itemIndex) {
+            staffPreAdjustTarget = { orderId, itemIndex };
+            ['ring', 'chain', 'font'].forEach(c => { document.getElementById(`staffPreAdjust-${c}`).checked = false; });
+            document.getElementById('staffPreAdjustMsg').textContent = '';
+            document.getElementById('staffPreAdjustModal').style.display = 'flex';
+        }
+        function closeStaffPreAdjustModal() {
+            document.getElementById('staffPreAdjustModal').style.display = 'none';
+            staffPreAdjustTarget = null;
+        }
+        function submitStaffPreAdjust() {
+            if (!staffPreAdjustTarget) return;
+            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            if (checked.length === 0) {
+                document.getElementById('staffPreAdjustMsg').textContent = '至少要勾選一個項目';
+                return;
+            }
+            const { orderId, itemIndex } = staffPreAdjustTarget;
+            closeStaffPreAdjustModal();
+            openStaffItemRevisionEditor(orderId, itemIndex, checked);
         }
 
         // ── 批次確認：一次寄送同一張訂單裡多件作品/多個項目，顧客在同一個連結裡逐項完成 ──
@@ -5491,6 +5527,32 @@
             <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
                 <button onclick="closeRevisionBatchModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
                 <button id="revisionBatchSendBtn" onclick="submitRevisionBatch()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送確認信</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="staffPreAdjustModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:420px;max-width:92vw;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">客服先調整外觀</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">勾選要先幫這件作品調整的項目（可複選），接著會開啟編輯頁，調整完成後直接寄送確認信給顧客。</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-ring" style="width:16px;height:16px;">
+                    墜頭位置
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-chain" style="width:16px;height:16px;">
+                    項鍊材質
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-font" style="width:16px;height:16px;">
+                    字體組合
+                </label>
+            </div>
+            <div id="staffPreAdjustMsg" style="font-size:13px;margin-bottom:12px;color:#ef4444;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeStaffPreAdjustModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button onclick="submitStaffPreAdjust()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">前往調整</button>
             </div>
         </div>
     </div>
