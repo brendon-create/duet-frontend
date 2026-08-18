@@ -830,11 +830,12 @@ function splitStoryToPanels(text) {
     const mRight = document.getElementById('measure-right');
     const sigTopPx = getSigTopPx();
 
-    // 依字級算出右欄該留的底部間距（簽名線頂端 + 一行文字），套用到量測元素上
+    // 依字級算出右欄該留的底部間距（簽名線頂端 + 半行文字），套用到量測元素上；
+    // 半行是留白跟塞滿字級的折衷值——整行太空、緊貼簽名線頂端又太近
     const applyRightBottom = fontSize => {
         mRight.style.fontSize = fontSize + 'mm';
         const lineHeightPx = parseFloat(getComputedStyle(mRight).lineHeight) || 0;
-        const bottomPx = sigTopPx + lineHeightPx;
+        const bottomPx = sigTopPx + lineHeightPx * 0.5;
         mRight.style.bottom = bottomPx + 'px';
         return bottomPx;
     };
