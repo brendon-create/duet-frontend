@@ -2736,7 +2736,7 @@
                             ${itemRevs.map((r, rIdx) => {
                                 const created = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
                                 if (r.status === 'cancelled') {
-                                    return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送，後來手動取消，不算顧客確認</div>`;
+                                    return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送，後來被取消或被新的確認要求取代，不算顧客確認</div>`;
                                 }
                                 if (r.status !== 'confirmed') {
                                     // 單獨送出或批次裡的項目都能取消；取消批次裡的單一項目後端會自動把它從該批次的
