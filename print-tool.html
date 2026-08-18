@@ -779,11 +779,17 @@ const STORY_FONT_SIZES = [4.5, 4.2, 3.9, 3.6, 3.3];
 
 /* ── 共用：把故事文字切成左右欄 HTML，確保左右都不溢出（single + batch 共用）
    量測一律用隱形的 #measure-left / #measure-right（與正式面板同 CSS）。
-   斷點以「字」為最小單位（一般書籍換頁也不是照標點斷，字數滿了就換），
-   在「左右皆不爆版」的可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行；
-   預設字級放不下時，依 STORY_FONT_SIZES 逐階縮小字級重試；
-   若縮到最小字級仍放不下，回傳 overflow:true 供呼叫端顯示警示，
-   絕不再靜默用 overflow:hidden 裁掉沒被發現的文字。 */
+   斷點以「字」為最小單位（一般書籍換頁也不是照標點斷，字數滿了就換）。
+
+   版面優先順序：
+   1. 只要單面（右欄，簽名所在那面）放得下，一律只用右欄——即使要縮小字級也一樣，
+      這樣設計理念文字才會跟簽名連在同一面，不會被拆到看不到內容的左欄、右欄只剩
+      孤零零一條簽名線。所以會先把 STORY_FONT_SIZES 由大到小整輪試過「單面放右欄」，
+      全部失敗才進入第 2 步。
+   2. 單面真的放不下，才啟用左右兩欄（wide），一樣由大字級往小字級試，
+      在「左右皆不爆版」的可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行；
+      縮到最小字級仍放不下，回傳 overflow:true 供呼叫端顯示警示，
+      絕不再靜默用 overflow:hidden 裁掉沒被發現的文字。 */
 function splitStoryToPanels(text) {
     const paras = text.trim() ? text.trim().split(/\n+/).filter(p => p.trim()) : [];
     if (paras.length === 0) return { leftHTML: '', rightHTML: '', wide: false, overflow: false, fontSize: STORY_FONT_SIZES[0] };
@@ -810,15 +816,24 @@ function splitStoryToPanels(text) {
     const mLeft = document.getElementById('measure-left');
     const mRight = document.getElementById('measure-right');
 
+    // 第 1 步：優先嘗試整篇只用右欄（各字級都試過）
+    for (const fontSize of STORY_FONT_SIZES) {
+        mRight.style.fontSize = fontSize + 'mm';
+        mRight.innerHTML = buildHTML(atoms);
+        if (mRight.scrollHeight <= mRight.clientHeight + 2) {
+            mRight.style.fontSize = '';
+            return { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false, fontSize };
+        }
+    }
+    mRight.style.fontSize = '';
+
+    // 第 2 步：單面放不下，改用左右兩欄
     let result = null;
     for (const fontSize of STORY_FONT_SIZES) {
         mLeft.style.fontSize = fontSize + 'mm';
         mRight.style.fontSize = fontSize + 'mm';
         const fitsLeft = list => { mLeft.innerHTML = buildHTML(list); return mLeft.scrollHeight <= mLeft.clientHeight + 2; };
         const fitsRight = list => { mRight.innerHTML = buildHTML(list); return mRight.scrollHeight <= mRight.clientHeight + 2; };
-
-        // 短文：整篇塞右欄就放得下
-        if (fitsRight(atoms)) { result = { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false, fontSize }; break; }
 
         // 找出左欄能放的最大字數（越多字越可能爆版，具單調性，可二分搜尋）
         let lo = 0, hi = atoms.length;
