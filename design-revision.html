@@ -303,9 +303,10 @@
      點畫面任何地方都會關閉放大圖，不會像之前一樣「穿透」誤點到後面別的項鍊選項 -->
 <div id="chain-img-preview-backdrop" style="display:none;position:fixed;inset:0;z-index:599;background:transparent;"></div>
 
-<!-- 項鍊 hover 放大預覽：寬度用 min(640px, 92vw)，手機螢幕比 640px 窄時會等比縮小，避免邊框超出螢幕範圍 -->
+<!-- 項鍊 hover 放大預覽：尺寸縮小、比例改成跟縮圖一致的正方形，並且固定顯示在被 hover 的選項「上方」，
+     不會蓋住下面的其他選項；寬度用 min(260px, 55vw)，手機螢幕較窄時會等比縮小 -->
 <div id="chain-img-preview" style="display:none;position:fixed;z-index:600;pointer-events:none;
-     width:min(640px, 92vw);aspect-ratio:4/3;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+     width:min(260px, 55vw);aspect-ratio:1;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
     <img id="chain-img-preview-img" style="position:absolute;width:200%;height:200%;top:-50%;left:-50%;object-fit:cover;display:block;">
 </div>
 
@@ -826,25 +827,46 @@ function applyPanelTexts() {
 
 const CATEGORY_LABELS = { ring: '調整墜頭位置', chain: '重新選擇項鍊材質', font: '重新選擇字體組合', ack: '確認閱覽' };
 
+// 完成一個 task 之後，把客戶剛剛選的結果換成一句簡短文字，讓確認清單上看得到「選了什麼」，
+// 而不是只有一個「✔ 已完成」卻不知道完成的內容是什麼
+function taskResultLabel(t) {
+    const upd = batchCollectedUpdates[t.id];
+    if (!upd) return '';
+    if (t.category === 'chain') {
+        const opt = CHAIN_OPTIONS.find(o => o.value === upd.chainType);
+        return opt ? opt.label : (upd.chainType || '');
+    }
+    if (t.category === 'font') {
+        return `${upd.font1 || '?'} / ${upd.font2 || '?'}`;
+    }
+    if (t.category === 'ring') {
+        return `X=${Number(upd.ringRelativeX ?? 0).toFixed(2)} Y=${Number(upd.ringRelativeY ?? 0).toFixed(2)} Z=${Number(upd.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(upd.ringRotation ?? 0).toFixed(1)}°`;
+    }
+    return '';
+}
+
 function renderBatchStatusList() {
     const list = document.getElementById('batchStatusList');
     list.innerHTML = batchTasks.map(t => {
         const it = batchItemsByIndex[t.item_index];
         const done = !!batchLocalDone[t.id];
         const active = t.id === activeTaskId;
+        const resultLabel = done ? taskResultLabel(t) : '';
         return `
         <div class="batch-task-row" data-task-id="${t.id}" style="
-            display:flex;align-items:center;justify-content:space-between;gap:10px;
             padding:10px 12px;margin-bottom:6px;border-radius:10px;cursor:pointer;
             border:1px solid ${active ? '#d4af37' : 'rgba(255,255,255,0.1)'};
             background:${active ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)'};">
-            <div style="font-size:12.5px;color:#ddd;">
-                <span style="color:#d4af37;">${it.letter1}${it.letter2}</span>
-                　${CATEGORY_LABELS[t.category] || t.category}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <div style="font-size:12.5px;color:#ddd;">
+                    <span style="color:#d4af37;">${it.letter1}${it.letter2}</span>
+                    　${CATEGORY_LABELS[t.category] || t.category}
+                </div>
+                <div style="font-size:12px;color:${done ? '#7ed67e' : '#999'};white-space:nowrap;">
+                    ${done ? '✔ 已完成' : '待確認'}
+                </div>
             </div>
-            <div style="font-size:12px;color:${done ? '#7ed67e' : '#999'};white-space:nowrap;">
-                ${done ? '✔ 已完成' : '待確認'}
-            </div>
+            ${resultLabel ? `<div style="font-size:11.5px;color:#d4af37;margin-top:4px;">已選擇：${resultLabel}</div>` : ''}
         </div>`;
     }).join('');
 
@@ -1257,12 +1279,16 @@ function renderChainGrid() {
         const showPreview = (img) => {
             previewImg.onerror = null;
             previewImg.src = img.src;
-            preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度是響應式的（min(640px,92vw)），不能用寫死的數字
+            preview.style.display = 'block'; // 要先顯示才能量到實際尺寸，寬度是響應式的（min(260px,55vw)），不能用寫死的數字
             if (isTouchDevice) previewBackdrop.style.display = 'block';
             const pw = preview.offsetWidth, ph = preview.offsetHeight;
             const imgRect = img.getBoundingClientRect();
+            const gap = 10;
             let left = imgRect.left + imgRect.width / 2 - pw / 2;
-            let top  = imgRect.bottom - ph;
+            // 固定顯示在被 hover 的選項「上方」，不會蓋住下面的其他選項；
+            // 上方空間不夠時（例如第一排）才退而求其次改貼在選項下方
+            let top = imgRect.top - gap - ph;
+            if (top < 8) top = imgRect.bottom + gap;
             left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
             top  = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
             preview.style.left = left + 'px';
