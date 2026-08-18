@@ -239,7 +239,8 @@ body {
     left: 96mm;    /* start at 90mm (left half) + 6mm padding */
     right: 8mm;
     top: 8mm;
-    bottom: 22mm;  /* leave room for signature */
+    bottom: 21.5mm;  /* 預設值（對應預設字級 4.5mm 時「簽名線頂端 + 約一行文字高度」的間距）；
+                        JS 會依實際套用的字級動態覆寫這個值，字級縮小時間距也會跟著縮小 */
     font-family: 'TW-Kai', serif;
     font-size: 4.5mm;
     line-height: 1.65;
@@ -743,6 +744,7 @@ body {
     <div class="card-inner wide" id="measure-card">
         <div class="text-panel-left" id="measure-left"></div>
         <div class="text-panel" id="measure-right"></div>
+        <div class="card-sig" id="measure-sig" style="display:block"><span class="sig-line"></span></div>
     </div>
 </div>
 
@@ -777,16 +779,33 @@ async function importOrder() {
 /* 字級退階清單：預設 4.5mm 放不下時，依序縮小字級重試 */
 const STORY_FONT_SIZES = [4.5, 4.2, 3.9, 3.6, 3.3];
 
+/* 簽名線頂端距離卡片底部多遠（px）：這個距離不受故事字級影響，只量一次即可 */
+function getSigTopPx() {
+    const card = document.getElementById('measure-card');
+    const sig = document.getElementById('measure-sig');
+    return card.getBoundingClientRect().bottom - sig.getBoundingClientRect().top;
+}
+
 /* ── 共用：把故事文字切成左右欄 HTML，確保左右都不溢出（single + batch 共用）
    量測一律用隱形的 #measure-left / #measure-right（與正式面板同 CSS）。
-   斷點以「字」為最小單位（一般書籍換頁也不是照標點斷，字數滿了就換），
-   在「左右皆不爆版」的可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行；
-   預設字級放不下時，依 STORY_FONT_SIZES 逐階縮小字級重試；
-   若縮到最小字級仍放不下，回傳 overflow:true 供呼叫端顯示警示，
-   絕不再靜默用 overflow:hidden 裁掉沒被發現的文字。 */
+   斷點以「字」為最小單位（一般書籍換頁也不是照標點斷，字數滿了就換）。
+
+   右欄底部保留給簽名的間距是動態算出來的，不是固定 mm 值：
+   間距 = 簽名線頂端距卡片底部的高度 + 目前字級的一行文字高度，
+   這樣字級縮小時間距也會跟著等比縮小，簽名欄位大小永遠跟目前字級相稱。
+
+   版面優先順序：
+   1. 只要單面（右欄，簽名所在那面）放得下，一律只用右欄——即使要縮小字級也一樣，
+      這樣設計理念文字才會跟簽名連在同一面，不會被拆到看不到內容的左欄、右欄只剩
+      孤零零一條簽名線。所以會先把 STORY_FONT_SIZES 由大到小整輪試過「單面放右欄」，
+      全部失敗才進入第 2 步。
+   2. 單面真的放不下，才啟用左右兩欄（wide），一樣由大字級往小字級試，
+      在「左右皆不爆版」的可行範圍內盡量塞滿左欄，但避免右欄被擠到不到 2 行；
+      縮到最小字級仍放不下，回傳 overflow:true 供呼叫端顯示警示，
+      絕不再靜默用 overflow:hidden 裁掉沒被發現的文字。 */
 function splitStoryToPanels(text) {
     const paras = text.trim() ? text.trim().split(/\n+/).filter(p => p.trim()) : [];
-    if (paras.length === 0) return { leftHTML: '', rightHTML: '', wide: false, overflow: false, fontSize: STORY_FONT_SIZES[0] };
+    if (paras.length === 0) return { leftHTML: '', rightHTML: '', wide: false, overflow: false, fontSize: STORY_FONT_SIZES[0], rightBottomPx: 0 };
 
     const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const toP = s => `<p>${esc(s)}</p>`;
@@ -809,16 +828,38 @@ function splitStoryToPanels(text) {
 
     const mLeft = document.getElementById('measure-left');
     const mRight = document.getElementById('measure-right');
+    const sigTopPx = getSigTopPx();
 
+    // 依字級算出右欄該留的底部間距（簽名線頂端 + 半行文字），套用到量測元素上；
+    // 半行是留白跟塞滿字級的折衷值——整行太空、緊貼簽名線頂端又太近
+    const applyRightBottom = fontSize => {
+        mRight.style.fontSize = fontSize + 'mm';
+        const lineHeightPx = parseFloat(getComputedStyle(mRight).lineHeight) || 0;
+        const bottomPx = sigTopPx + lineHeightPx * 0.5;
+        mRight.style.bottom = bottomPx + 'px';
+        return bottomPx;
+    };
+
+    // 第 1 步：優先嘗試整篇只用右欄（各字級都試過）
+    for (const fontSize of STORY_FONT_SIZES) {
+        const rightBottomPx = applyRightBottom(fontSize);
+        mRight.innerHTML = buildHTML(atoms);
+        if (mRight.scrollHeight <= mRight.clientHeight + 2) {
+            mRight.style.fontSize = '';
+            mRight.style.bottom = '';
+            return { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false, fontSize, rightBottomPx };
+        }
+    }
+    mRight.style.fontSize = '';
+    mRight.style.bottom = '';
+
+    // 第 2 步：單面放不下，改用左右兩欄
     let result = null;
     for (const fontSize of STORY_FONT_SIZES) {
         mLeft.style.fontSize = fontSize + 'mm';
-        mRight.style.fontSize = fontSize + 'mm';
+        const rightBottomPx = applyRightBottom(fontSize);
         const fitsLeft = list => { mLeft.innerHTML = buildHTML(list); return mLeft.scrollHeight <= mLeft.clientHeight + 2; };
         const fitsRight = list => { mRight.innerHTML = buildHTML(list); return mRight.scrollHeight <= mRight.clientHeight + 2; };
-
-        // 短文：整篇塞右欄就放得下
-        if (fitsRight(atoms)) { result = { leftHTML: '', rightHTML: buildHTML(atoms), wide: false, overflow: false, fontSize }; break; }
 
         // 找出左欄能放的最大字數（越多字越可能爆版，具單調性，可二分搜尋）
         let lo = 0, hi = atoms.length;
@@ -838,7 +879,7 @@ function splitStoryToPanels(text) {
 
         if (minRightCut > maxLeftCut) {
             // 這個字級仍放不下：先記住這階的最佳結果，換更小字級再試
-            result = { leftHTML: buildHTML(atoms.slice(0, maxLeftCut)), rightHTML: buildHTML(atoms.slice(maxLeftCut)), wide: true, overflow: true, fontSize };
+            result = { leftHTML: buildHTML(atoms.slice(0, maxLeftCut)), rightHTML: buildHTML(atoms.slice(maxLeftCut)), wide: true, overflow: true, fontSize, rightBottomPx };
             continue;
         }
 
@@ -850,12 +891,13 @@ function splitStoryToPanels(text) {
             mRight.innerHTML = buildHTML(rightList);
             if (rightList.length > 0 && mRight.scrollHeight < minRightHeightPx) cut--; else break;
         }
-        result = { leftHTML: buildHTML(atoms.slice(0, cut)), rightHTML: buildHTML(atoms.slice(cut)), wide: true, overflow: false, fontSize };
+        result = { leftHTML: buildHTML(atoms.slice(0, cut)), rightHTML: buildHTML(atoms.slice(cut)), wide: true, overflow: false, fontSize, rightBottomPx };
         break;
     }
 
     mLeft.style.fontSize = '';
     mRight.style.fontSize = '';
+    mRight.style.bottom = '';
     return result;
 }
 
@@ -872,7 +914,7 @@ function updateCards() {
     // Clear all panels
     ['preview-left-1','preview-right-1','preview-right-2'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) { el.innerHTML = ''; el.style.fontSize = ''; }
+        if (el) { el.innerHTML = ''; el.style.fontSize = ''; el.style.bottom = ''; }
     });
     ['preview-sig-1','preview-sig-2'].forEach(id => {
         const el = document.getElementById(id);
@@ -884,13 +926,14 @@ function updateCards() {
         return;
     }
 
-    const { leftHTML, rightHTML, wide, overflow, fontSize } = splitStoryToPanels(text);
+    const { leftHTML, rightHTML, wide, overflow, fontSize, rightBottomPx } = splitStoryToPanels(text);
 
     if (wide) document.querySelector('.card-inner.card-1').classList.add('wide');
     const pLeft = document.getElementById('preview-left-1');
     const pRight = document.getElementById('preview-right-1');
     pLeft.innerHTML = leftHTML;
     pRight.innerHTML = rightHTML;
+    pRight.style.bottom = rightBottomPx + 'px';
     if (fontSize < STORY_FONT_SIZES[0]) {
         pLeft.style.fontSize = pRight.style.fontSize = fontSize + 'mm';
     }
@@ -1062,20 +1105,24 @@ function buildBatchCardInner(result, num) {
     const story = order.finalDesignStory || order.design_story ||
         item.designStory || item.design_story || '';
 
-    let leftHTML = '', rightHTML = '', wide = false, overflow = false, fontSize = STORY_FONT_SIZES[0];
+    let leftHTML = '', rightHTML = '', wide = false, overflow = false, fontSize = STORY_FONT_SIZES[0], rightBottomPx = 0;
 
     if (!story.trim()) {
         rightHTML = '<p style="color:#aaa;">（尚無設計理念）</p>';
     } else {
-        ({ leftHTML, rightHTML, wide, overflow, fontSize } = splitStoryToPanels(story));
+        ({ leftHTML, rightHTML, wide, overflow, fontSize, rightBottomPx } = splitStoryToPanels(story));
     }
 
-    const fontStyle = fontSize < STORY_FONT_SIZES[0] ? ` style="font-size:${fontSize}mm;"` : '';
+    const leftStyle = fontSize < STORY_FONT_SIZES[0] ? ` style="font-size:${fontSize}mm;"` : '';
+    const rightStyleParts = [];
+    if (fontSize < STORY_FONT_SIZES[0]) rightStyleParts.push(`font-size:${fontSize}mm`);
+    if (rightBottomPx > 0) rightStyleParts.push(`bottom:${rightBottomPx}px`);
+    const rightStyle = rightStyleParts.length ? ` style="${rightStyleParts.join(';')}"` : '';
 
     const html = `
         <div class="card-inner card-${num}${wide ? ' wide' : ''}">
-            <div class="text-panel-left"${fontStyle}>${leftHTML}</div>
-            <div class="text-panel"${fontStyle}>${rightHTML}</div>
+            <div class="text-panel-left"${leftStyle}>${leftHTML}</div>
+            <div class="text-panel"${rightStyle}>${rightHTML}</div>
             <div class="card-sig" style="display:block"><span class="sig-line"></span></div>
         </div>
         <div class="card-marks marks-${num}">

@@ -623,11 +623,12 @@
                                 <th>兌換碼</th>
                                 <th>狀態</th>
                                 <th>日期</th>
+                                <th>預計出貨</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTableBody">
-                            <tr><td colspan="9" class="loading">載入中...</td></tr>
+                            <tr><td colspan="10" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1578,6 +1579,9 @@
             return CHAIN_LABELS[item.chainType] + (item.chainType === 'black_rubber' && item.chainLength ? `・${item.chainLength}` : '');
         }
 
+        // 作品修改紀錄裡的類別顯示名稱（跟批次確認勾選視窗的項目用語一致）
+        const REVISION_CATEGORY_LABELS = { ring: '墜頭位置', chain: '項鍊材質', font: '字體組合', ack: '確認閱覽' };
+
         // Check login on load
         document.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('adminUser');
@@ -1806,7 +1810,7 @@
                     }
                 }
             } catch (err) {
-                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入失敗</td></tr>';
+                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="10" class="loading">載入失敗</td></tr>';
             }
         }
         
@@ -2055,7 +2059,7 @@
 
             const tbody = document.getElementById('ordersTableBody');
             if (!pageOrders.length) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">尚無訂單</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
             
@@ -2100,6 +2104,7 @@
                             : ''
                     }</td>
                     <td>${date}</td>
+                    <td>${order.estimatedShipDate || '-'}</td>
                     <td><button class="btn btn-secondary btn-sm" onclick="viewOrder('${order.orderId}')">查看</button></td>
                 </tr>`;
             }).join('');
@@ -2333,6 +2338,19 @@
             updateStats(filtered);
         }
 
+        // 圓環位置顯示：優先用「滑桿快照」（ringSliderX/Y/Z/Rotation）——這組數字可以直接照打回
+        // Design Studio 的四個滑桿重現當下設計；ringRelativeZ 是絕對位置，換算回滑桿值需要知道
+        // 這件作品的模型頂部高度，不能直接照打。舊訂單（2026-07-29 前）沒有滑桿快照欄位，退回顯示絕對位置。
+        function formatRingSliderPos(item) {
+            if (item.ringSliderX !== undefined && item.ringSliderX !== null) {
+                return `X=${Number(item.ringSliderX).toFixed(2)} Y=${Number(item.ringSliderY).toFixed(2)} Z=${Number(item.ringSliderZ).toFixed(2)} 旋轉=${Number(item.ringSliderRotation || 0).toFixed(1)}°`;
+            }
+            if (item.ringRelativeX !== undefined && item.ringRelativeX !== null) {
+                return `X=${Number(item.ringRelativeX).toFixed(2)} Y=${Number(item.ringRelativeY).toFixed(2)} Z=${Number(item.ringRelativeZ).toFixed(2)} 旋轉=${Number(item.ringRotation || 0).toFixed(1)}°（舊訂單，無滑桿快照）`;
+            }
+            return '未記錄';
+        }
+
         function exportOrders() {
             // 使用目前篩選後的訂單
             const orders = filteredOrders.length > 0 ? filteredOrders : allOrders;
@@ -2343,9 +2361,7 @@
 
             // 多商品訂單：同一欄位把每個商品的值用「 / 」串起來對齊，避免變成不定寬的多欄
             const joinItems = (items, fn) => items.map(fn).join(' / ');
-            const ringPos = (i) => (i.ringRelativeX !== undefined && i.ringRelativeX !== null)
-                ? `X=${Number(i.ringRelativeX).toFixed(2)} Y=${Number(i.ringRelativeY).toFixed(2)} Z=${Number(i.ringRelativeZ).toFixed(2)} 旋轉=${Number(i.ringRotation || 0).toFixed(1)}°`
-                : '未記錄';
+            const ringPos = formatRingSliderPos;
             const confirmationText = { pending: '待確認', confirmed: '已確認' };
 
             // CSV 標題：除了圖片，「查看詳情」裡看得到的欄位都包含進去；修改紀錄只取目前最新版本，不含歷史紀錄
@@ -2714,30 +2730,62 @@
                         const chainLabel = chainLabelFor(item);
 
                         const itemRevs = itemRevisions.filter(r => r.item_index === idx);
-                        const fmtRing = (o) => o
-                            ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
-                            : '—';
+                        // 用滑桿快照（ringSliderX/Y/Z/Rotation），不要用 ringRelativeX/Y/Z——
+                        // Z 軸換算後跟滑桿數字差了 modelTopZ+1.2，顯示 ringRelativeZ 會讓人以為存錯了
+                        const fmtRing = (o) => o ? formatRingSliderPos(o) : '—';
                         const fmtChain = (o) => o ? (CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
                         const fmtFont = (o) => o ? `${o.font1 || '?'} / ${o.font2 || '?'}` : '—';
-                        const revisionHtml = itemRevs.length ? `
+
+                        // 同一個 batch 裡勾選多個項目（例如墜頭位置+字體組合）一起送出，客戶端本來就是要
+                        // 全部完成才能一次送出、一次確認的，不會出現「只確認其中一項」的狀況。這裡把同一個
+                        // batch、同一個狀態的多筆紀錄合併成一行顯示，避免看起來像不明所以的重複
+                        const revGroups = [];
+                        const revGroupIndex = {};
+                        itemRevs.forEach(r => {
+                            const key = r.batch_id != null ? `b${r.batch_id}:${r.status}` : `r${r.id}`;
+                            if (!(key in revGroupIndex)) {
+                                revGroupIndex[key] = revGroups.length;
+                                revGroups.push([]);
+                            }
+                            revGroups[revGroupIndex[key]].push(r);
+                        });
+
+                        const revisionHtml = revGroups.length ? `
                         <div style="margin-top:10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
                             <div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">📋 修改紀錄</div>
-                            ${itemRevs.map((r, rIdx) => {
-                                const created = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
-                                if (r.status === 'cancelled') {
-                                    return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送，後來手動取消，不算顧客確認</div>`;
+                            ${revGroups.map((rows, rIdx) => {
+                                const sorted = [...rows].sort((a, b) => a.id - b.id);
+                                const first = sorted[0], last = sorted[sorted.length - 1];
+                                const created = first.created_at ? new Date(first.created_at).toLocaleString('zh-TW') : '';
+                                const categories = [...new Set(sorted.flatMap(r => (r.unlocked_fields || '').split(',')))].filter(Boolean);
+                                const categoryLabel = categories.map(c => REVISION_CATEGORY_LABELS[c] || c).join('、') || '確認閱覽';
+
+                                if (first.status === 'cancelled') {
+                                    return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送（${categoryLabel}），後來被取消或被新的確認要求取代，不算顧客確認</div>`;
                                 }
-                                if (r.status !== 'confirmed') {
-                                    // 只有舊版單獨送出（非批次）的確認要求才能手動取消；批次的中途取消會跟「全部一起送出」的機制打架，先不開放
-                                    const cancelBtn = !r.batch_id
-                                        ? ` <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`
-                                        : '';
-                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:4px;">⏳ ${created} 已寄送，等待顧客確認${cancelBtn}</div>`;
+                                if (first.status !== 'confirmed') {
+                                    // 單獨送出或批次裡的項目都能取消；取消批次裡的單一項目後端會自動把它從該批次的
+                                    // 顧客清單與送出驗證裡排除，不影響同批次其他還在等待的項目
+                                    const cancelBtns = sorted.map(r => `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`).join(' ');
+                                    let snapshot = null;
+                                    for (const r of sorted) { try { if (!snapshot && r.original_item) snapshot = JSON.parse(r.original_item); } catch (e) {} }
+                                    let snapshotLine = '';
+                                    if (snapshot) {
+                                        const parts = [];
+                                        if (categories.includes('ring')) parts.push(`圓環：${fmtRing(snapshot)}`);
+                                        if (categories.includes('chain')) parts.push(`項鍊：${fmtChain(snapshot)}`);
+                                        if (categories.includes('font')) parts.push(`字體：${fmtFont(snapshot)}`);
+                                        if (parts.length) snapshotLine = `<div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 6px;">寄出當下：${parts.join('　')}</div>`;
+                                    }
+                                    return `<div style="font-size:12px;color:#fbbf24;margin-bottom:2px;">⏳ ${created} 已寄送（${categoryLabel}），等待顧客確認 ${cancelBtns}</div>${snapshotLine}`;
                                 }
-                                const confirmed = r.confirmed_at ? new Date(r.confirmed_at).toLocaleString('zh-TW') : '';
+
+                                const confirmed = last.confirmed_at ? new Date(last.confirmed_at).toLocaleString('zh-TW') : '';
+                                // original 取這組裡最早那筆（batch 送出前的真正原始狀態），revised 取最晚那筆
+                                // （後端逐筆處理同一件作品的多個 task 時，每一筆的 items[] 是累加的，最後一筆才反映全部變更）
                                 let original = null, revised = null;
-                                try { original = r.original_item ? JSON.parse(r.original_item) : null; } catch (e) {}
-                                try { revised = r.revised_item ? JSON.parse(r.revised_item) : null; } catch (e) {}
+                                for (const r of sorted) { try { if (!original && r.original_item) original = JSON.parse(r.original_item); } catch (e) {} }
+                                for (let i = sorted.length - 1; i >= 0; i--) { try { if (!revised && sorted[i].revised_item) revised = JSON.parse(sorted[i].revised_item); } catch (e) {} }
                                 const oldViews = (original && original.threeViews) || [];
                                 const findOld = (key) => oldViews.find(v => v.name && v.name.includes(key));
                                 const oldViewsId = `oldViews-${order.orderId}-${idx}-${rIdx}`;
@@ -2751,10 +2799,10 @@
                                         ${viewCell(findOld('top'), '俯視圖')}
                                         ${viewCell(findOld('hero'), 'Hero 45°')}
                                     </div>` : '';
-                                const ipLine = r.confirmed_ip ? `<br>來源 IP：${r.confirmed_ip}` : '';
+                                const ipLine = last.confirmed_ip ? `<br>來源 IP：${last.confirmed_ip}` : '';
                                 return `
                                 <div style="margin-bottom:10px;">
-                                    <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送，顧客已於 ${confirmed} 確認調整</div>
+                                    <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送（${categoryLabel}），顧客已於 ${confirmed} 確認調整</div>
                                     <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
                                         圓環：${fmtRing(original)} → ${fmtRing(revised)}<br>
                                         項鍊：${fmtChain(original)} → ${fmtChain(revised)}<br>
@@ -2765,9 +2813,7 @@
                             }).join('')}
                         </div>` : '';
 
-                        const ringPosStr = (item.ringRelativeX !== undefined && item.ringRelativeX !== null)
-                            ? `X=${Number(item.ringRelativeX).toFixed(2)} Y=${Number(item.ringRelativeY).toFixed(2)} Z=${Number(item.ringRelativeZ).toFixed(2)} 旋轉=${Number(item.ringRotation || 0).toFixed(1)}°`
-                            : '未記錄';
+                        const ringPosStr = formatRingSliderPos(item);
 
                         return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                         <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
@@ -2779,8 +2825,7 @@
                             <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
                             <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
                             <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置，調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'ring')">客服先調墜頭</button>
-                            <button class="btn btn-secondary btn-sm" style="font-size:11px;opacity:0.75;" title="客服直接在編輯頁重選字體組合（字母不變），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffItemRevisionEditor('${order.orderId}', ${idx}, 'font')">客服先調字體</button>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置/項鍊/字體（可複選），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffPreAdjustModal('${order.orderId}', ${idx})">客服先調整外觀</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2881,20 +2926,121 @@
             }
         }
 
-        // 客服直接在編輯頁調整這件作品的墜頭位置，調完在編輯頁按「送出給顧客確認」直接寄送——
-        // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）
-        function openStaffItemRevisionEditor(orderId, itemIndex, category) {
+        // 客服直接在編輯頁調整這件作品（墜頭位置/項鍊/字體，可複選），調完在編輯頁按「送出給顧客確認」直接寄送——
+        // 維持原本單品項、立即送出的方式，不併進下面的批次確認（客服本來就是在 3D 編輯器裡一件一件調）。
+        // 依勾選的類別組合預先帶入對應的說明文字（design-revision.html 本身沒有讓客服編輯訊息的欄位，是直接照 URL 帶入的內容送出）
+        const STAFF_PRE_ADJUSTED_MSG = {
+            ring: '您好，我們發現您的作品本體與墜頭沒有相連，已先為您調整成我們認為適合的位置，讓墜頭確實與本體相連。請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做微調，也可以在頁面中自行調整後再送出。謝謝！',
+            font: '您好，由於各種字體的排列組合有超過 1 億種可能性，這次您原本選擇的字體組合在結構上會過於脆弱，珠寶金工師在修整作品時可能會讓它扭曲變形，日後佩戴也不容易維護作品的完整性。我們已先為您挑選一組視覺相近、且結構更穩固的替代字體組合，請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中重新選擇字體組合後再送出。謝謝！',
+            chain: '您好，在比較適合男性佩戴的項鍊選項上，我們已先為您將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細，我們測試後發現這款項鍊更能配合身體的曲線與動作，較為舒適、也比較不會有悶熱感）。請點擊下方按鈕查看變更後的選項，若沒問題可以直接確認送出；若您想改選其他項鍊材質，也可以在頁面中重新選擇後再送出。謝謝！',
+        };
+        const STAFF_PRE_ADJUSTED_MSG_REASON = {
+            ring: '墜頭位置：我們發現您的作品本體與墜頭沒有相連，已先為您調整成我們認為適合的位置，讓墜頭確實與本體相連。',
+            chain: '項鍊材質：在比較適合男性佩戴的項鍊選項上，我們已先為您將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），這款項鍊更能配合身體的曲線與動作，較為舒適、也比較不會有悶熱感。',
+            font: '字體組合：由於各種字體的排列組合有超過 1 億種可能性，這次您原本選擇的字體組合在結構上會過於脆弱，珠寶金工師在修整時可能會讓它扭曲變形，日後佩戴也不容易維護作品的完整性，我們已先為您挑選一組視覺相近、且結構更穩固的替代字體組合。',
+        };
+        function computeStaffPreAdjustMessage(categories) {
+            const order = ['ring', 'chain', 'font'];
+            const sorted = order.filter(c => categories.includes(c));
+            if (sorted.length === 0) return '';
+            if (sorted.length === 1) return STAFF_PRE_ADJUSTED_MSG[sorted[0]];
+            const reasons = sorted.map((c, i) => `${i + 1}. ${STAFF_PRE_ADJUSTED_MSG_REASON[c]}`).join('\n\n');
+            const countLabel = sorted.length === 2 ? '兩' : '三';
+            return `您好，這次為您先調整了以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中自行調整後再送出。謝謝！`;
+        }
+        // message 由呼叫端（submitStaffPreAdjust）決定，這裡不再自己重新計算——
+        // 客服在勾選視窗裡可能已經手動改過預設文字，不能又蓋回去
+        function openStaffItemRevisionEditor(orderId, itemIndex, categories, message) {
+            const cats = Array.isArray(categories) ? categories : [categories || 'ring'];
             const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=${encodeURIComponent(category || 'ring')}&message=`;
+                + `&unlockedFields=${encodeURIComponent(cats.join(','))}&message=${encodeURIComponent(message || '')}`;
             window.open(url, '_blank');
+        }
+
+        // 「客服先調整外觀」按鈕：跳出勾選視窗（比照「與客戶確認」的類別勾選），選好要調整的項目、
+        // 確認過（可編輯）要寄給顧客的訊息內容後，才開編輯頁——原本訊息是勾完就直接照預設文字寄出，
+        // 客服完全沒有機會先看過或調整內容，這裡補上這一步
+        let staffPreAdjustTarget = null; // { orderId, itemIndex }
+        let staffPreAdjustLastAutoMessage = '';
+        function syncStaffPreAdjustMessage() {
+            const textarea = document.getElementById('staffPreAdjustMessage');
+            // 客服如果已經手動改過內容（不等於上一次自動帶入的文字），就不要覆蓋
+            if (textarea.value !== staffPreAdjustLastAutoMessage) return;
+            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            const next = computeStaffPreAdjustMessage(checked);
+            textarea.value = next;
+            staffPreAdjustLastAutoMessage = next;
+        }
+        function openStaffPreAdjustModal(orderId, itemIndex) {
+            staffPreAdjustTarget = { orderId, itemIndex };
+            ['ring', 'chain', 'font'].forEach(c => { document.getElementById(`staffPreAdjust-${c}`).checked = false; });
+            document.getElementById('staffPreAdjustMessage').value = '';
+            staffPreAdjustLastAutoMessage = '';
+            document.getElementById('staffPreAdjustMsg').textContent = '';
+            document.getElementById('staffPreAdjustModal').style.display = 'flex';
+        }
+        function closeStaffPreAdjustModal() {
+            document.getElementById('staffPreAdjustModal').style.display = 'none';
+            staffPreAdjustTarget = null;
+        }
+        function submitStaffPreAdjust() {
+            if (!staffPreAdjustTarget) return;
+            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            if (checked.length === 0) {
+                document.getElementById('staffPreAdjustMsg').textContent = '至少要勾選一個項目';
+                return;
+            }
+            const message = document.getElementById('staffPreAdjustMessage').value.trim();
+            if (!message) {
+                document.getElementById('staffPreAdjustMsg').textContent = '請填寫給顧客的訊息內容';
+                return;
+            }
+            const { orderId, itemIndex } = staffPreAdjustTarget;
+            closeStaffPreAdjustModal();
+            openStaffItemRevisionEditor(orderId, itemIndex, checked, message);
         }
 
         // ── 批次確認：一次寄送同一張訂單裡多件作品/多個項目，顧客在同一個連結裡逐項完成 ──
         const DEFAULT_REVISION_BATCH_MESSAGE = '您好，請點擊下方按鈕，逐一確認以下作品的調整項目。全部確認完成後才算完成，謝謝！';
+
+        // 依勾選的類別自動帶入預設訊息：單一類別用完整版文案；多類別勾選時改用精簡過的原因＋合併成一則訊息。
+        // 「僅供確認閱覽」（ack）沒有調整原因可講，不參與這裡的組合邏輯
+        const REVISION_MSG = {
+            ring: '您好，我們發現，您的作品本體與墜頭沒有相連，邀請您點擊下方的「前往確認設計」按鈕到設計頁面中，重新調整墜頭位置，選擇一個您希望墜頭與本體相連的位置，確認後送出即可。',
+            chain: '您好，在比較適合男性佩戴的項鍊選項上，我們將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），有銀色與黑色兩種選項，因為我們測試後發現這款項鍊更能配合身體的曲線與動作，不僅較為舒適、也比較不會有悶熱感。請您點擊下方按鈕，前往確認您希望變更的項鍊選項後送出即可。謝謝！',
+            font: '您好，由於各種字體的排列組合有超過 1 億種可能性，DUET雖然已經建置了一定程度的機制，避免技術上無法製作的作品產生，但是有些排列組合還是很難預期。這次您的作品剛好在結構上會過於脆弱，珠寶金工師在修整作品的時候，極可能會讓它扭曲變形，日後的佩戴也不容易維護作品的完整性。\n\n再麻煩您點擊下方的「前往確認設計」按鈕，到設計頁面中重新選擇您喜歡的字體組合。確認後送出即可。',
+        };
+        const REVISION_MSG_REASON = {
+            ring: '墜頭位置：我們發現您的作品本體與墜頭沒有相連，請重新調整墜頭位置，選擇一個您希望墜頭與本體相連的位置。',
+            chain: '項鍊材質：在比較適合男性佩戴的項鍊選項上，我們將原本的黑色橡膠繩，變更為比較適合台灣氣候的2mm不鏽鋼鍊（與原本的橡膠繩同樣粗細），這款項鍊更能配合身體的曲線與動作，較為舒適、也比較不會有悶熱感，請您重新選擇項鍊材質。',
+            font: '字體組合：由於各種字體的排列組合有超過 1 億種可能性，這次您的作品剛好在結構上會過於脆弱，珠寶金工師在修整時極可能讓它扭曲變形，日後佩戴也不容易維護作品的完整性，請重新選擇字體組合。',
+        };
+        function computeRevisionBatchDefaultMessage() {
+            const order = ['ring', 'chain', 'font'];
+            const checked = order.filter(c =>
+                Array.from(document.querySelectorAll(`.rb-task[data-category="${c}"]`)).some(el => el.checked)
+            );
+            if (checked.length === 0) return DEFAULT_REVISION_BATCH_MESSAGE;
+            if (checked.length === 1) return REVISION_MSG[checked[0]];
+            const reasons = checked.map((c, i) => `${i + 1}. ${REVISION_MSG_REASON[c]}`).join('\n\n');
+            const countLabel = checked.length === 2 ? '兩' : '三';
+            return `您好，這次需要麻煩您協助確認以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕，前往確認頁面依序完成以上項目後一併送出即可，謝謝！`;
+        }
+        let revisionBatchLastAutoMessage = DEFAULT_REVISION_BATCH_MESSAGE;
+        function syncRevisionBatchDefaultMessage() {
+            const textarea = document.getElementById('revisionBatchMessage');
+            // 客服如果已經手動改過內容（不等於上一次自動帶入的文字），就不要覆蓋
+            if (textarea.value !== revisionBatchLastAutoMessage) return;
+            const next = computeRevisionBatchDefaultMessage();
+            textarea.value = next;
+            revisionBatchLastAutoMessage = next;
+        }
+
         let revisionBatchOrderId = null;
 
         function openRevisionBatchModal(orderId, items) {
             revisionBatchOrderId = orderId;
+            revisionBatchLastAutoMessage = DEFAULT_REVISION_BATCH_MESSAGE;
             document.getElementById('revisionBatchMessage').value = DEFAULT_REVISION_BATCH_MESSAGE;
             document.getElementById('revisionBatchMsg').textContent = '';
             document.getElementById('revisionBatchSendBtn').disabled = false;
@@ -2921,6 +3067,13 @@
                         </label>
                     </div>
                 </div>`).join('');
+
+            if (!window._revisionBatchChangeListenerAdded) {
+                window._revisionBatchChangeListenerAdded = true;
+                document.getElementById('revisionBatchItemsList').addEventListener('change', (e) => {
+                    if (e.target.classList.contains('rb-task')) syncRevisionBatchDefaultMessage();
+                });
+            }
 
             document.getElementById('revisionBatchModal').style.display = 'flex';
         }
@@ -5396,6 +5549,34 @@
             <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
                 <button onclick="closeRevisionBatchModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
                 <button id="revisionBatchSendBtn" onclick="submitRevisionBatch()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送確認信</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="staffPreAdjustModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:480px;max-width:92vw;max-height:85vh;overflow-y:auto;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">客服先調整外觀</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">勾選要先幫這件作品調整的項目（可複選），接著會開啟編輯頁，調整完成後直接寄送確認信給顧客。</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-ring" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
+                    墜頭位置
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-chain" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
+                    項鍊材質
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-font" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
+                    字體組合
+                </label>
+            </div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">給顧客的訊息（勾選項目後會自動帶入預設文字，可自行修改）</label>
+            <textarea id="staffPreAdjustMessage" rows="6" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
+            <div id="staffPreAdjustMsg" style="font-size:13px;margin-bottom:12px;color:#ef4444;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeStaffPreAdjustModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button onclick="submitStaffPreAdjust()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">前往調整</button>
             </div>
         </div>
     </div>
