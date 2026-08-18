@@ -2948,19 +2948,34 @@
             const countLabel = sorted.length === 2 ? '兩' : '三';
             return `您好，這次為您先調整了以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中自行調整後再送出。謝謝！`;
         }
-        function openStaffItemRevisionEditor(orderId, itemIndex, categories) {
+        // message 由呼叫端（submitStaffPreAdjust）決定，這裡不再自己重新計算——
+        // 客服在勾選視窗裡可能已經手動改過預設文字，不能又蓋回去
+        function openStaffItemRevisionEditor(orderId, itemIndex, categories, message) {
             const cats = Array.isArray(categories) ? categories : [categories || 'ring'];
-            const message = computeStaffPreAdjustMessage(cats);
             const url = `design-revision.html?admin=1&orderId=${encodeURIComponent(orderId)}&itemIndex=${itemIndex}`
-                + `&unlockedFields=${encodeURIComponent(cats.join(','))}&message=${encodeURIComponent(message)}`;
+                + `&unlockedFields=${encodeURIComponent(cats.join(','))}&message=${encodeURIComponent(message || '')}`;
             window.open(url, '_blank');
         }
 
-        // 「客服先調整外觀」按鈕：跳出勾選視窗（比照「與客戶確認」的類別勾選），選好要調整的項目後才開編輯頁
+        // 「客服先調整外觀」按鈕：跳出勾選視窗（比照「與客戶確認」的類別勾選），選好要調整的項目、
+        // 確認過（可編輯）要寄給顧客的訊息內容後，才開編輯頁——原本訊息是勾完就直接照預設文字寄出，
+        // 客服完全沒有機會先看過或調整內容，這裡補上這一步
         let staffPreAdjustTarget = null; // { orderId, itemIndex }
+        let staffPreAdjustLastAutoMessage = '';
+        function syncStaffPreAdjustMessage() {
+            const textarea = document.getElementById('staffPreAdjustMessage');
+            // 客服如果已經手動改過內容（不等於上一次自動帶入的文字），就不要覆蓋
+            if (textarea.value !== staffPreAdjustLastAutoMessage) return;
+            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            const next = computeStaffPreAdjustMessage(checked);
+            textarea.value = next;
+            staffPreAdjustLastAutoMessage = next;
+        }
         function openStaffPreAdjustModal(orderId, itemIndex) {
             staffPreAdjustTarget = { orderId, itemIndex };
             ['ring', 'chain', 'font'].forEach(c => { document.getElementById(`staffPreAdjust-${c}`).checked = false; });
+            document.getElementById('staffPreAdjustMessage').value = '';
+            staffPreAdjustLastAutoMessage = '';
             document.getElementById('staffPreAdjustMsg').textContent = '';
             document.getElementById('staffPreAdjustModal').style.display = 'flex';
         }
@@ -2975,9 +2990,14 @@
                 document.getElementById('staffPreAdjustMsg').textContent = '至少要勾選一個項目';
                 return;
             }
+            const message = document.getElementById('staffPreAdjustMessage').value.trim();
+            if (!message) {
+                document.getElementById('staffPreAdjustMsg').textContent = '請填寫給顧客的訊息內容';
+                return;
+            }
             const { orderId, itemIndex } = staffPreAdjustTarget;
             closeStaffPreAdjustModal();
-            openStaffItemRevisionEditor(orderId, itemIndex, checked);
+            openStaffItemRevisionEditor(orderId, itemIndex, checked, message);
         }
 
         // ── 批次確認：一次寄送同一張訂單裡多件作品/多個項目，顧客在同一個連結裡逐項完成 ──
@@ -5534,23 +5554,25 @@
     </div>
 
     <div id="staffPreAdjustModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
-        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:420px;max-width:92vw;position:relative;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:480px;max-width:92vw;max-height:85vh;overflow-y:auto;position:relative;">
             <h3 style="color:var(--text-primary);margin:0 0 6px 0;">客服先調整外觀</h3>
             <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">勾選要先幫這件作品調整的項目（可複選），接著會開啟編輯頁，調整完成後直接寄送確認信給顧客。</p>
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="staffPreAdjust-ring" style="width:16px;height:16px;">
+                    <input type="checkbox" id="staffPreAdjust-ring" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
                     墜頭位置
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="staffPreAdjust-chain" style="width:16px;height:16px;">
+                    <input type="checkbox" id="staffPreAdjust-chain" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
                     項鍊材質
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="staffPreAdjust-font" style="width:16px;height:16px;">
+                    <input type="checkbox" id="staffPreAdjust-font" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
                     字體組合
                 </label>
             </div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">給顧客的訊息（勾選項目後會自動帶入預設文字，可自行修改）</label>
+            <textarea id="staffPreAdjustMessage" rows="6" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"></textarea>
             <div id="staffPreAdjustMsg" style="font-size:13px;margin-bottom:12px;color:#ef4444;"></div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button onclick="closeStaffPreAdjustModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
