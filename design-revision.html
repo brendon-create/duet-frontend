@@ -194,7 +194,7 @@
 <div id="viewLoading" class="center-card">
     <div class="card">
         <h1>DUET</h1>
-        <div class="sub">BCAG JEWELRY</div>
+        <div class="sub">BY BCAG</div>
         <div class="spinner"></div>
         <p>載入中...</p>
     </div>
@@ -966,10 +966,10 @@ function buildBatchFinalSummaryHtml() {
         const ringSource = fontUpdate || ringUpdate;
 
         const ringParams = ringSource ? {
-            ringRelativeX: ringSource.ringRelativeX,
-            ringRelativeY: ringSource.ringRelativeY,
-            ringRelativeZ: ringSource.ringRelativeZ,
-            ringRotation: ringSource.ringRotation,
+            ringSliderX: ringSource.ringSliderX,
+            ringSliderY: ringSource.ringSliderY,
+            ringSliderZ: ringSource.ringSliderZ,
+            ringSliderRotation: ringSource.ringSliderRotation,
         } : null;
         const chainSel = chainUpdate ? { chainType: chainUpdate.chainType, chainLength: chainUpdate.chainLength } : null;
         // 沒有重新截圖過的話，退回顯示這件作品原本（建立這批確認要求當下）的照片
@@ -1365,8 +1365,11 @@ function buildFinalSummaryHtml(itemData, chainSel, views, ringParams) {
         const chainLabel = CHAIN_OPTIONS.find(o => o.value === chainSel.chainType)?.label || '未選擇';
         chainLine = `<span style="color:rgba(255,255,255,0.3);">項鍊　</span>${chainLabel}<br>`;
     }
+    // 顯示滑桿數值（ringSliderX/Y/Z/Rotation），不要顯示 ringRelativeX/Y/Z——
+    // X/Y 沒有偏移量所以兩者數字剛好一樣，但 Z 軸換算後跟滑桿數字差了 modelTopZ+1.2，
+    // 如果顯示 ringRelativeZ，使用者對照自己剛剛拖的滑桿數字會覺得對不起來、以為存錯了
     const ringLine = ringParams
-        ? `<span style="color:rgba(255,255,255,0.3);">圓環　</span>X=${ringParams.ringRelativeX.toFixed(2)} Y=${ringParams.ringRelativeY.toFixed(2)} Z=${ringParams.ringRelativeZ.toFixed(2)} 旋轉=${ringParams.ringRotation.toFixed(1)}°<br>`
+        ? `<span style="color:rgba(255,255,255,0.3);">圓環　</span>X=${ringParams.ringSliderX.toFixed(2)} Y=${ringParams.ringSliderY.toFixed(2)} Z=${ringParams.ringSliderZ.toFixed(2)} 旋轉=${ringParams.ringSliderRotation.toFixed(1)}°<br>`
         : '';
 
     return `
