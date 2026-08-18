@@ -690,9 +690,10 @@ document.getElementById('fontReselectBtn').addEventListener('click', openFontSel
 function applyFontSelectOptions(selectEl, fonts, currentValue) {
     selectEl.innerHTML = '';
     const sizeMm = parseInt(item.size);
-    // 目前正在用的字體一定要出現在選單裡並且被選中，不能因為候選清單這次剛好沒勾到它，
-    // 就靜默改顯示成清單裡隨便第一個字體——那樣使用者會覺得畫面「跳回上一輪的字體」，對不上實際狀態
-    if (currentValue && !fonts.includes(currentValue)) fonts = [currentValue, ...fonts];
+    // 不強制把目前的字體塞回清單——候選清單是使用者剛剛重新勾選過的結果，如果目前這個字體
+    // 這次沒被勾選到（甚至是使用者刻意取消勾選），就應該真的從清單裡消失，改用清單裡第一個
+    // 候選字體（下面呼叫端緊接著會呼叫 onFontSelectionChanged() 把這個新選到的字體同步回
+    // item.font1/font2 並重新產生模型，不會有畫面跟資料對不上的問題）
     fonts.forEach(font => {
         const opt = document.createElement('option');
         opt.value = font;
