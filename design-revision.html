@@ -58,6 +58,7 @@
         #panel .msg-box {
             background: rgba(212,175,55,0.07); border-left: 3px solid #d4af37; border-radius: 8px;
             padding: 12px 14px; font-size: 13px; color: #ddd; line-height: 1.7; margin-bottom: 16px; white-space: pre-wrap;
+            max-height: 140px; overflow-y: auto;
         }
         #panel .item-summary { font-size: 12px; color: #999; line-height: 1.7; margin-bottom: 18px; }
         .control-group { margin-bottom: 14px; }
@@ -441,7 +442,7 @@ import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } fr
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import {
     createRing, createBail, updateRingPosition,
-    resetRingState, resetBailState,
+    resetBailInitFlag,
     ringMesh, bailMesh
 } from './js/ring-bail.js';
 
@@ -1105,15 +1106,20 @@ async function loadData() {
 
 // initScene()/animate() 只能呼叫一次（重複呼叫等於疊加第二個 renderer/render loop），
 // 移到呼叫端（loadData）在最外層只執行一次；buildScene() 改成純粹「把目前的 item 建成 3D 場景」，
-// 批次模式下客戶切換作品/項目時會重複呼叫，所以一開始要先清掉上一次留下的 mesh，避免場景裡疊了好幾件作品。
-// ring/bail 有各自的模組內部狀態（bailInitialized 等），不能只是把 window.ringMesh/bailMesh 設 null 了事，
-// 否則下次 createBail() 會誤判成「已初始化過，只更新位置」而不重建，導致舊 mesh 已被移除但沒有新的補上。
+// 批次模式下客戶切換作品/項目時會重複呼叫。
+//
+// 主體字母 mesh、圓環、墜頭環扣三者都刻意不在這裡先移除——比照 design-studio.html 的
+// generateModel()，舊的要留著顯示，等新的算完、加進場景之後才移除舊的（分別見 buildScene() 尾端、
+// createRing()、createBail()），讓畫面感覺像「舊作品直接變成新作品」，不會有中間一段時間憑空消失。
+// 早期版本在這裡呼叫 resetRingState()/resetBailState() 會立刻把舊 mesh 挖掉，導致換作品/切換
+// 批次任務時圓環和墜頭會先消失、等新的算完（含墜頭 STL 非同步載入）才重新出現，體感很卡。
+//
+// 圓環不需要在這裡做任何事——createRing() 本身就是同步的，內部會自己「先移除舊的、再建新的」，
+// 兩者發生在同一次呼叫裡，畫面上不會有空白的一瞬間。
+// 墜頭環扣則只需要重置 bailInitialized 旗標，強制 createBail() 換作品時重新計算相對位移
+// （不同作品的 modelTopZ 不同，舊的偏移量不能沿用），不需要也不應該在這裡先把舊 mesh 移除。
 function clearPreviousItemFromScene() {
-    resetRingState();
-    resetBailState();
-    // 主體字母 mesh 刻意不在這裡先移除——比照 design-studio.html 的 generateModel()，
-    // 舊的要留著顯示，等新的字母幾何體算完、加進場景之後才移除舊的（見 buildScene() 尾端），
-    // 讓畫面感覺像「舊作品直接變成新作品」，不會有中間一片空白的瞬間
+    resetBailInitFlag();
 }
 
 // 手機版 #viewport 被 CSS 壓成畫面上方一小塊（下方留給操作面板抽屜），

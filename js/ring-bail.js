@@ -86,14 +86,9 @@ export function createBail() {
         return;
     }
 
-    // 先移除舊的 bailMesh（只有在第一次或需要重建時）
-    if (bailMesh) {
-        window.scene.remove(bailMesh);
-        bailMesh.geometry?.dispose();
-        bailMesh.material?.dispose();
-        bailMesh = null;
-        window.bailMesh = null;
-    }
+    // 舊的 bailMesh 留著參照，等新的載入、加進場景後才移除，避免換作品時墜頭環扣中間有一段時間憑空消失
+    // （STL 是非同步載入，若在這裡就先移除，畫面會空白直到載入完成）
+    const oldBailMesh = bailMesh;
 
     if (!window.mainMesh) return;
 
@@ -195,6 +190,13 @@ export function createBail() {
 
             console.log('✅ Bail 已添加到場景');
 
+            // 新的 bail 已經加進場景，現在才安全移除舊的（比照主體字母 mesh 的處理方式）
+            if (oldBailMesh) {
+                window.scene.remove(oldBailMesh);
+                oldBailMesh.geometry?.dispose();
+                oldBailMesh.material?.dispose();
+            }
+
             // 更新佩戴模擬
             if (typeof window.updateWearingPreview === 'function') {
                 window.updateWearingPreview();
@@ -206,6 +208,7 @@ export function createBail() {
         (error) => {
             console.error('❌ Bail STL 載入失敗:', error);
             console.log('⚠️ 繼續使用，不使用 Bail');
+            // 新的載入失敗，舊的 bail（如果有）維持留在場景上，總比什麼都沒有好
         }
     );
 }
@@ -229,6 +232,13 @@ export function resetBailState() {
         bailMesh = null;
         window.bailMesh = null;
     }
+    bailInitialized = false;
+}
+
+// 只重置「已初始化」旗標，強制下次 createBail() 走完整重建（換作品後 modelTopZ 不同，
+// 舊的 bailRelativeOffset 不能沿用），但刻意不在這裡把舊 bailMesh 從場景移除——
+// 留給 createBail() 自己在真正建好新的之後才移除舊的，避免換作品時墜頭環扣中間有一段時間憑空消失
+export function resetBailInitFlag() {
     bailInitialized = false;
 }
 
