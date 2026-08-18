@@ -2730,9 +2730,9 @@
                         const chainLabel = chainLabelFor(item);
 
                         const itemRevs = itemRevisions.filter(r => r.item_index === idx);
-                        const fmtRing = (o) => o
-                            ? `X=${Number(o.ringRelativeX ?? 0).toFixed(2)} Y=${Number(o.ringRelativeY ?? 0).toFixed(2)} Z=${Number(o.ringRelativeZ ?? 0).toFixed(2)} 旋轉=${Number(o.ringRotation ?? 0).toFixed(1)}°`
-                            : '—';
+                        // 用滑桿快照（ringSliderX/Y/Z/Rotation），不要用 ringRelativeX/Y/Z——
+                        // Z 軸換算後跟滑桿數字差了 modelTopZ+1.2，顯示 ringRelativeZ 會讓人以為存錯了
+                        const fmtRing = (o) => o ? formatRingSliderPos(o) : '—';
                         const fmtChain = (o) => o ? (CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
                         const fmtFont = (o) => o ? `${o.font1 || '?'} / ${o.font2 || '?'}` : '—';
 
