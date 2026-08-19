@@ -280,6 +280,17 @@
     </div>
 </div>
 
+<!-- 進入字體重選畫面時的小提醒：換字體後模型幾何形狀會變，順便提醒要確認墜頭與本體是否還連接在一起。
+     不擋互動（沒有全螢幕背景），會自動消失，也可以手動關掉 -->
+<div id="fontRingReminderToast" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+     z-index:800;background:rgba(20,18,12,0.97);border:1px solid rgba(212,175,55,0.4);border-radius:14px;
+     padding:20px 24px;max-width:min(320px,84vw);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+    <div style="font-size:26px;margin-bottom:8px;">🔗</div>
+    <div style="font-size:13px;color:#eee;line-height:1.6;">選好新字體後，別忘了順便確認墜頭是否還與作品本體確實相連。</div>
+    <button onclick="document.getElementById('fontRingReminderToast').style.display='none';"
+            style="margin-top:14px;padding:6px 20px;background:#d4af37;color:#000;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;">知道了</button>
+</div>
+
 <!-- 項鍊材質選擇 -->
 <div id="chainModal" class="modal-overlay">
     <div class="modal-box">
@@ -760,6 +771,16 @@ document.getElementById('fontSelectorConfirmBtn').addEventListener('click', () =
     onFontSelectionChanged();
 });
 
+// 進入字體重選畫面時跳一下小提醒，5 秒後自動消失（也能手動關掉）；換到其他任務時先隱藏，
+// 避免上一個任務留下的提醒卡在畫面上
+let fontRingReminderTimer = null;
+function showFontRingReminder() {
+    const toast = document.getElementById('fontRingReminderToast');
+    toast.style.display = 'block';
+    clearTimeout(fontRingReminderTimer);
+    fontRingReminderTimer = setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
+
 function applyPanelTexts() {
     const hasFont = unlockedFields.includes('font');
     // 換字體後模型幾何形狀會變，圓環位置需要一併重新確認，所以 font 類別自動連帶解鎖圓環控制項
@@ -772,6 +793,7 @@ function applyPanelTexts() {
     fontControls.style.display = hasFont ? 'block' : 'none';
     document.getElementById('fontCandidateSlots').style.display = hasFont ? 'flex' : 'none';
     if (hasFont) {
+        showFontRingReminder();
         document.getElementById('font1LetterLabel').textContent = `字母「${item.letter1}」的字體`;
         document.getElementById('font2LetterLabel').textContent = `字母「${item.letter2}」的字體`;
         // 尚未打開過候選字體清單時，先用按鈕顯示目前的字體（唯讀），選過候選清單後才會換成下拉選單；
@@ -791,6 +813,9 @@ function applyPanelTexts() {
         // （批次模式下切到別的任務時，這顆按鈕的文字也要跟著這個任務目前的狀態同步）
         const anySelectExists = document.getElementById('font1-select') || document.getElementById('font2-select');
         document.getElementById('fontReselectBtn').textContent = anySelectExists ? '＋ 重選字體' : '選擇字體';
+    } else {
+        clearTimeout(fontRingReminderTimer);
+        document.getElementById('fontRingReminderToast').style.display = 'none';
     }
 
     // 面板一律顯示（讓客戶能核對作品參數，確認是要重選項鍊的那一件——
