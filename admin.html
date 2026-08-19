@@ -2707,9 +2707,12 @@
                     <div class="detail-row"><span class="detail-label">公司抬頭</span><span class="detail-value">${u.companyName || '-'}</span></div>` : ''}
                 </div>
                 <div class="detail-section">
-                    <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                    <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                         <span>訂單內容</span>
-                        <button class="btn btn-primary btn-sm" onclick='openRevisionBatchModal(${JSON.stringify(order.orderId)}, ${JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2})))})'>與客戶確認</button>
+                        <span style="display:flex;gap:8px;">
+                            <button class="btn btn-secondary btn-sm" onclick='openNotificationModal(${JSON.stringify(order.orderId)})'>寄送通知信</button>
+                            <button class="btn btn-primary btn-sm" onclick='openRevisionBatchModal(${JSON.stringify(order.orderId)}, ${JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2})))})'>與客戶確認</button>
+                        </span>
                     </h3>
                     ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${order.manufacturer_name}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
                     ${items.map((item, idx) => {
@@ -3062,6 +3065,58 @@
                 label.style.cursor = fontCb.checked ? 'not-allowed' : 'pointer';
             }
         }
+        // ── 寄送通知信：單純告知（例如提醒取件），不牽涉「與客戶確認」那套需要顧客做選擇的批次流程 ──
+        let notificationOrderId = null;
+        function openNotificationModal(orderId) {
+            notificationOrderId = orderId;
+            document.getElementById('notificationMessage').value = '';
+            document.getElementById('notificationIncludeLink').checked = false;
+            document.getElementById('notificationMsg').textContent = '';
+            document.getElementById('notificationSendBtn').disabled = false;
+            document.getElementById('notificationModal').style.display = 'flex';
+        }
+        function closeNotificationModal() {
+            document.getElementById('notificationModal').style.display = 'none';
+            notificationOrderId = null;
+        }
+        async function submitNotification() {
+            if (!notificationOrderId) return;
+            const orderId = notificationOrderId;
+            const message = document.getElementById('notificationMessage').value.trim();
+            const includeLink = document.getElementById('notificationIncludeLink').checked;
+            const msgEl = document.getElementById('notificationMsg');
+            const btn = document.getElementById('notificationSendBtn');
+            if (!message) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '請填寫通知內容';
+                return;
+            }
+            btn.disabled = true;
+            msgEl.style.color = 'var(--text-muted)';
+            msgEl.textContent = '寄送中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/send-notification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ message, include_order_link: includeLink })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.style.color = '#86efac';
+                    msgEl.textContent = '✅ 通知信已寄送';
+                    setTimeout(closeNotificationModal, 1200);
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = data.error || '寄送失敗';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '網路錯誤';
+                btn.disabled = false;
+            }
+        }
+
         let revisionBatchLastAutoMessage = DEFAULT_REVISION_BATCH_MESSAGE;
         function syncRevisionBatchDefaultMessage() {
             const textarea = document.getElementById('revisionBatchMessage');
@@ -5617,6 +5672,24 @@
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button onclick="closeStaffPreAdjustModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
                 <button onclick="submitStaffPreAdjust()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">前往調整</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:32px;width:480px;max-width:92vw;position:relative;">
+            <h3 style="color:var(--text-primary);margin:0 0 6px 0;">寄送通知信</h3>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">單純告知顧客（例如提醒取件），不牽涉確認流程，套用品牌樣式信件外殼直接寄出。</p>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">通知內容</label>
+            <textarea id="notificationMessage" rows="6" placeholder="例如：您的包裹已送達 7-11 XX 門市，請於 7 天內完成取件，謝謝！" style="width:100%;padding:9px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-light);font-size:13px;line-height:1.7;resize:vertical;margin-bottom:12px;box-sizing:border-box;font-family:inherit;"></textarea>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;margin-bottom:16px;">
+                <input type="checkbox" id="notificationIncludeLink" style="width:16px;height:16px;">
+                附上「查看訂單」按鈕（連到訂單查詢頁面）
+            </label>
+            <div id="notificationMsg" style="font-size:13px;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeNotificationModal()" style="padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-size:13px;">取消</button>
+                <button id="notificationSendBtn" onclick="submitNotification()" style="padding:9px 18px;background:var(--primary);color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">寄送</button>
             </div>
         </div>
     </div>

@@ -5293,6 +5293,7 @@
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
                         designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
+                        // marketingConsent 不特別傳，後端 /api/checkout 預設視為同意（不在結帳頁另外詢問）
                         returnUrl: window.location.origin + '/payment-success.html',
                         renderCount: renderCount,       // 本次 session 的 render 次數（後台統計用）
                         lang: localStorage.getItem('duet_language') || 'zh'
