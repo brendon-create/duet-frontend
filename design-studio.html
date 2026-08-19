@@ -706,14 +706,6 @@
                 </span>
             </label>
 
-            <!-- 行銷同意勾選框：獨立於上方必要條款，預設打勾但不影響「確認，前往付款」按鈕是否可按 -->
-            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:24px;margin-top:-14px;padding:0 4px;">
-                <input type="checkbox" id="design-confirm-marketing-checkbox" checked style="margin-top:2px;width:14px;height:14px;accent-color:rgba(212,175,55,0.6);cursor:pointer;flex-shrink:0;">
-                <span data-i18n="checkout.confirm.marketingCheckbox" style="font-size:11.5px;color:rgba(255,255,255,0.4);line-height:1.6;">
-                    我願意收到 DUET 的優惠活動與新品資訊通知
-                </span>
-            </label>
-
             <!-- 按鈕組 -->
             <div style="display:flex;gap:10px;">
                 <button id="design-confirm-cancel-btn" data-i18n="checkout.confirm.cancel" style="
@@ -5130,7 +5122,6 @@
                 confirmBtn.disabled = true;
                 confirmBtn.style.opacity = '0.4';
                 confirmBtn.style.cursor = 'not-allowed';
-                document.getElementById('design-confirm-marketing-checkbox').checked = true;
 
                 // 生成商品區塊
                 container.innerHTML = '';
@@ -5207,7 +5198,6 @@
                         statement_version: _DESIGN_STATEMENT_VERSION,
                         confirmed_at: new Date().toISOString()
                     };
-                    window._marketingConsent = document.getElementById('design-confirm-marketing-checkbox').checked;
                     modal.style.display = 'none';
                     cleanup();
                     resolve();
@@ -5303,7 +5293,7 @@
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
                         designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
-                        marketingConsent: window._marketingConsent !== false, // 是否同意接收行銷訊息（用於同步 Brevo 名單）
+                        // marketingConsent 不特別傳，後端 /api/checkout 預設視為同意（不在結帳頁另外詢問）
                         returnUrl: window.location.origin + '/payment-success.html',
                         renderCount: renderCount,       // 本次 session 的 render 次數（後台統計用）
                         lang: localStorage.getItem('duet_language') || 'zh'
