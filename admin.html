@@ -2972,6 +2972,11 @@
             ringCb.disabled = fontCb.checked;
             if (fontCb.checked) ringCb.checked = false;
             ringNote.style.display = fontCb.checked ? 'inline' : 'none';
+            const label = ringCb.closest('label');
+            if (label) {
+                label.style.opacity = fontCb.checked ? '0.4' : '1';
+                label.style.cursor = fontCb.checked ? 'not-allowed' : 'pointer';
+            }
         }
         function syncStaffPreAdjustMessage() {
             const textarea = document.getElementById('staffPreAdjustMessage');
@@ -2985,8 +2990,7 @@
         function openStaffPreAdjustModal(orderId, itemIndex) {
             staffPreAdjustTarget = { orderId, itemIndex };
             ['ring', 'chain', 'font'].forEach(c => { document.getElementById(`staffPreAdjust-${c}`).checked = false; });
-            document.getElementById('staffPreAdjust-ring').disabled = false;
-            document.getElementById('staffPreAdjust-ring-note').style.display = 'none';
+            syncStaffPreAdjustRingCheckbox();
             document.getElementById('staffPreAdjustMessage').value = '';
             staffPreAdjustLastAutoMessage = '';
             document.getElementById('staffPreAdjustMsg').textContent = '';
@@ -3052,6 +3056,11 @@
             ringCb.disabled = fontCb.checked;
             if (fontCb.checked) ringCb.checked = false;
             if (ringNote) ringNote.style.display = fontCb.checked ? 'inline' : 'none';
+            const label = ringCb.closest('label');
+            if (label) {
+                label.style.opacity = fontCb.checked ? '0.4' : '1';
+                label.style.cursor = fontCb.checked ? 'not-allowed' : 'pointer';
+            }
         }
         let revisionBatchLastAutoMessage = DEFAULT_REVISION_BATCH_MESSAGE;
         function syncRevisionBatchDefaultMessage() {
