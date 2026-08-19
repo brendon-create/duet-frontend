@@ -2940,13 +2940,14 @@
             font: '字體組合：由於各種字體的排列組合有超過 1 億種可能性，這次您原本選擇的字體組合在結構上會過於脆弱，珠寶金工師在修整時可能會讓它扭曲變形，日後佩戴也不容易維護作品的完整性，我們已先為您挑選一組視覺相近、且結構更穩固的替代字體組合。',
         };
         function computeStaffPreAdjustMessage(categories) {
-            const order = ['ring', 'chain', 'font'];
+            // 字體→墜頭→項鍊：字體跟墜頭在勾選視窗裡互斥（見 syncStaffPreAdjustRingCheckbox()），
+            // 所以這裡最多只會同時出現 2 個類別
+            const order = ['font', 'ring', 'chain'];
             const sorted = order.filter(c => categories.includes(c));
             if (sorted.length === 0) return '';
             if (sorted.length === 1) return STAFF_PRE_ADJUSTED_MSG[sorted[0]];
             const reasons = sorted.map((c, i) => `${i + 1}. ${STAFF_PRE_ADJUSTED_MSG_REASON[c]}`).join('\n\n');
-            const countLabel = sorted.length === 2 ? '兩' : '三';
-            return `您好，這次為您先調整了以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中自行調整後再送出。謝謝！`;
+            return `您好，這次為您先調整了以下兩個項目：\n\n${reasons}\n\n請點擊下方按鈕查看調整後的樣子，若沒問題可以直接確認送出；若您想再做調整，也可以在頁面中自行調整後再送出。謝謝！`;
         }
         // message 由呼叫端（submitStaffPreAdjust）決定，這裡不再自己重新計算——
         // 客服在勾選視窗裡可能已經手動改過預設文字，不能又蓋回去
@@ -2962,11 +2963,21 @@
         // 客服完全沒有機會先看過或調整內容，這裡補上這一步
         let staffPreAdjustTarget = null; // { orderId, itemIndex }
         let staffPreAdjustLastAutoMessage = '';
+        // 重選字體組合時換字體會讓模型幾何形狀改變，墜頭位置本來就要一併重新確認，
+        // 所以字體組合勾選時墜頭位置改成反灰、不能再獨立勾選；取消字體組合時恢復可選
+        function syncStaffPreAdjustRingCheckbox() {
+            const fontCb = document.getElementById('staffPreAdjust-font');
+            const ringCb = document.getElementById('staffPreAdjust-ring');
+            const ringNote = document.getElementById('staffPreAdjust-ring-note');
+            ringCb.disabled = fontCb.checked;
+            if (fontCb.checked) ringCb.checked = false;
+            ringNote.style.display = fontCb.checked ? 'inline' : 'none';
+        }
         function syncStaffPreAdjustMessage() {
             const textarea = document.getElementById('staffPreAdjustMessage');
             // 客服如果已經手動改過內容（不等於上一次自動帶入的文字），就不要覆蓋
             if (textarea.value !== staffPreAdjustLastAutoMessage) return;
-            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            const checked = ['font', 'ring', 'chain'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
             const next = computeStaffPreAdjustMessage(checked);
             textarea.value = next;
             staffPreAdjustLastAutoMessage = next;
@@ -2974,6 +2985,8 @@
         function openStaffPreAdjustModal(orderId, itemIndex) {
             staffPreAdjustTarget = { orderId, itemIndex };
             ['ring', 'chain', 'font'].forEach(c => { document.getElementById(`staffPreAdjust-${c}`).checked = false; });
+            document.getElementById('staffPreAdjust-ring').disabled = false;
+            document.getElementById('staffPreAdjust-ring-note').style.display = 'none';
             document.getElementById('staffPreAdjustMessage').value = '';
             staffPreAdjustLastAutoMessage = '';
             document.getElementById('staffPreAdjustMsg').textContent = '';
@@ -2985,7 +2998,7 @@
         }
         function submitStaffPreAdjust() {
             if (!staffPreAdjustTarget) return;
-            const checked = ['ring', 'chain', 'font'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
+            const checked = ['font', 'ring', 'chain'].filter(c => document.getElementById(`staffPreAdjust-${c}`).checked);
             if (checked.length === 0) {
                 document.getElementById('staffPreAdjustMsg').textContent = '至少要勾選一個項目';
                 return;
@@ -3016,15 +3029,29 @@
             font: '字體組合：由於各種字體的排列組合有超過 1 億種可能性，這次您的作品剛好在結構上會過於脆弱，珠寶金工師在修整時極可能讓它扭曲變形，日後佩戴也不容易維護作品的完整性，請重新選擇字體組合。',
         };
         function computeRevisionBatchDefaultMessage() {
-            const order = ['ring', 'chain', 'font'];
+            // 字體→墜頭→項鍊：跟其他地方的流程順序一致（先重選字體，換字體後模型幾何形狀會變，
+            // 順便一併確認墜頭位置；最後才是項鍊，跟外觀調整無關）。字體跟墜頭在勾選視窗裡互斥
+            // （見 syncRingCheckboxForFont()），所以這裡最多只會同時出現 2 個類別，不會有 3 個都勾到的情況
+            const order = ['font', 'ring', 'chain'];
             const checked = order.filter(c =>
                 Array.from(document.querySelectorAll(`.rb-task[data-category="${c}"]`)).some(el => el.checked)
             );
             if (checked.length === 0) return DEFAULT_REVISION_BATCH_MESSAGE;
             if (checked.length === 1) return REVISION_MSG[checked[0]];
             const reasons = checked.map((c, i) => `${i + 1}. ${REVISION_MSG_REASON[c]}`).join('\n\n');
-            const countLabel = checked.length === 2 ? '兩' : '三';
-            return `您好，這次需要麻煩您協助確認以下${countLabel}個項目：\n\n${reasons}\n\n請點擊下方按鈕，前往確認頁面依序完成以上項目後一併送出即可，謝謝！`;
+            return `您好，這次需要麻煩您協助確認以下兩個項目：\n\n${reasons}\n\n請點擊下方按鈕，前往確認頁面依序完成以上項目後一併送出即可，謝謝！`;
+        }
+        // 重選字體組合時，換字體會讓模型幾何形狀改變，墜頭位置本來就要一併重新確認
+        // （後端 ITEM_REVISION_FIELD_CATEGORIES 的 font 類別本來就包含所有墜頭欄位），
+        // 所以字體組合勾選時，同一件作品的墜頭位置改成反灰、不能再獨立勾選；取消字體組合時恢復可選
+        function syncRingCheckboxForFont(itemIndex) {
+            const fontCb = document.querySelector(`.rb-task[data-item-index="${itemIndex}"][data-category="font"]`);
+            const ringCb = document.querySelector(`.rb-task[data-item-index="${itemIndex}"][data-category="ring"]`);
+            const ringNote = document.querySelector(`[data-ring-note="${itemIndex}"]`);
+            if (!fontCb || !ringCb) return;
+            ringCb.disabled = fontCb.checked;
+            if (fontCb.checked) ringCb.checked = false;
+            if (ringNote) ringNote.style.display = fontCb.checked ? 'inline' : 'none';
         }
         let revisionBatchLastAutoMessage = DEFAULT_REVISION_BATCH_MESSAGE;
         function syncRevisionBatchDefaultMessage() {
@@ -3050,16 +3077,17 @@
                     <div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:8px;">作品 ${idx + 1}：${item.letter1}${item.letter2}</div>
                     <div style="display:flex;flex-direction:column;gap:6px;">
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="font" style="width:16px;height:16px;">
+                            請顧客重新選擇字體組合（字母不變）
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ring" style="width:16px;height:16px;">
                             請顧客調整墜頭位置
+                            <span data-ring-note="${idx}" style="display:none;color:var(--text-muted);font-size:11px;">（已包含在字體組合中）</span>
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="chain" style="width:16px;height:16px;">
                             請顧客重新選擇項鍊材質
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                            <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="font" style="width:16px;height:16px;">
-                            請顧客重新選擇字體組合（字母不變）
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="ack" style="width:16px;height:16px;">
@@ -3071,7 +3099,9 @@
             if (!window._revisionBatchChangeListenerAdded) {
                 window._revisionBatchChangeListenerAdded = true;
                 document.getElementById('revisionBatchItemsList').addEventListener('change', (e) => {
-                    if (e.target.classList.contains('rb-task')) syncRevisionBatchDefaultMessage();
+                    if (!e.target.classList.contains('rb-task')) return;
+                    if (e.target.dataset.category === 'font') syncRingCheckboxForFont(e.target.dataset.itemIndex);
+                    syncRevisionBatchDefaultMessage();
                 });
             }
 
@@ -5559,16 +5589,17 @@
             <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;">勾選要先幫這件作品調整的項目（可複選），接著會開啟編輯頁，調整完成後直接寄送確認信給顧客。</p>
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
+                    <input type="checkbox" id="staffPreAdjust-font" onchange="syncStaffPreAdjustRingCheckbox();syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
+                    字體組合
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                     <input type="checkbox" id="staffPreAdjust-ring" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
                     墜頭位置
+                    <span id="staffPreAdjust-ring-note" style="display:none;color:var(--text-muted);font-size:11px;">（已包含在字體組合中）</span>
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                     <input type="checkbox" id="staffPreAdjust-chain" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
                     項鍊材質
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
-                    <input type="checkbox" id="staffPreAdjust-font" onchange="syncStaffPreAdjustMessage()" style="width:16px;height:16px;">
-                    字體組合
                 </label>
             </div>
             <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.05em;">給顧客的訊息（勾選項目後會自動帶入預設文字，可自行修改）</label>
