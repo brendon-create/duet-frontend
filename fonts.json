@@ -70,7 +70,7 @@
     { "name": "Marko One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Marvel", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
     { "name": "Mochiy Pop One", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Mr Dafoe", "weight": 400, "offset_r": 0, "is_bold_required": false },
+    { "name": "Mr Dafoe", "weight": 400, "offset_r": 0.15, "is_bold_required": false },
     { "name": "Mrs Sheppards", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Norican", "weight": 400, "offset_r": 0.15, "is_bold_required": false },
     { "name": "Notable", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
