@@ -3,7 +3,7 @@
     { "name": "Aclonica", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Aladin", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Aldrich", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Alex Brush", "weight": 400, "offset_r": 0.175, "is_bold_required": false },
+    { "name": "Alex Brush", "weight": 400, "offset_r": 0.2, "is_bold_required": false },
     { "name": "Allan", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Allura", "weight": 400, "offset_r": 0.175, "is_bold_required": false },
     { "name": "Abril Fatface", "weight": 400, "offset_r": 0.175, "is_bold_required": false },
