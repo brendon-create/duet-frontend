@@ -1504,6 +1504,21 @@
             return 'Bearer ' + (localStorage.getItem('adminToken') || '');
         }
 
+        // ── XSS 防護 ──────────────────────────────────────────────────────────
+        // 任何要塞進 innerHTML 的「外來資料」（訂單、顧客、評論、對話、字母、字體、
+        // 優惠碼、廠商資料…）都必須先經過 esc()。可同時安全用於 HTML 內文與被引號
+        // 包住的屬性值。null/undefined → 空字串；數字 → 字串化。
+        function esc(v) {
+            if (v === null || v === undefined) return '';
+            return String(v)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        const escAttr = esc;  // 語意別名：放進屬性值時使用
+
         // Session 過期自動登出：攔截所有帶 admin Bearer token 的請求，收到 401 時清 token 並導回登入畫面
         // （後台多處會同時併發呼叫多支 API，用 sessionExpiredHandled 避免重複跳出提示/重複處理）
         (function () {
@@ -1768,7 +1783,7 @@
                     
                     tbody.innerHTML = data.stats.map(stat => `
                         <tr>
-                            <td>${stat.order_id || '-'}</td>
+                            <td>${esc(stat.order_id || '-')}</td>
                             <td>${stat.memory_mb ? stat.memory_mb.toFixed(1) : '-'}</td>
                             <td>${stat.cpu_percent ? stat.cpu_percent.toFixed(1) : '-'}</td>
                             <td>${stat.created_at ? new Date(stat.created_at).toLocaleString('zh-TW') : '-'}</td>
@@ -1872,10 +1887,10 @@
             document.getElementById('topProduct').textContent = topCombos[0] ? topCombos[0][0] : '-';
 
             document.getElementById('topLetterCombos').innerHTML = topCombos.length > 0
-                ? topCombos.map(([combo, count], i) => `${i+1}. ${combo}: ${count} 筆`).join('<br>')
+                ? topCombos.map(([combo, count], i) => `${i+1}. ${esc(combo)}: ${esc(count)} 筆`).join('<br>')
                 : '無資料';
             document.getElementById('topFonts').innerHTML = topFontList.length > 0
-                ? topFontList.map(([font, count], i) => `${i+1}. ${font}: ${count} 次`).join('<br>')
+                ? topFontList.map(([font, count], i) => `${i+1}. ${esc(font)}: ${esc(count)} 次`).join('<br>')
                 : '無資料';
         }
 
@@ -1998,10 +2013,10 @@
             const tbody = document.getElementById('customersTableBody');
             tbody.innerHTML = customerList.slice(0, 20).map(c => `
                 <tr>
-                    <td>${c.name}</td>
-                    <td><a href="#" onclick="showCustomerDetail('${c.email}'); return false;" style="color: var(--primary); text-decoration: underline;">${c.email}</a></td>
-                    <td>${c.phone || '-'}</td>
-                    <td>${c.orderCount}</td>
+                    <td>${esc(c.name)}</td>
+                    <td><a href="#" data-email="${escAttr(c.email)}" onclick="showCustomerDetail(this.dataset.email); return false;" style="color: var(--primary); text-decoration: underline;">${esc(c.email)}</a></td>
+                    <td>${esc(c.phone || '-')}</td>
+                    <td>${esc(c.orderCount)}</td>
                     <td>NT$ ${c.totalSpent.toLocaleString()}</td>
                     <td>${c.lastOrder ? new Date(c.lastOrder).toLocaleDateString('zh-TW') : '-'}</td>
                 </tr>
@@ -2076,23 +2091,24 @@
                 const isChecked = selectedOrders.includes(order.orderId) ? 'checked' : '';
                 const rowStyle = order.isInvalid ? 'opacity: 0.5; text-decoration: line-through;' : (order.isTest ? 'opacity: 0.7;' : '');
                 const redeemCodes = order.redeemCodes || [];
+                const oidAttr = escAttr(order.orderId);
                 const redeemCodesHtml = redeemCodes.length
-                    ? redeemCodes.map(c => `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" onclick="goToCode('${c}')">${c}</button>`).join('<br>')
+                    ? redeemCodes.map(c => `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" data-code="${escAttr(c)}" onclick="goToCode(this.dataset.code)">${esc(c)}</button>`).join('<br>')
                     : '-';
 
                 return `<tr style="${rowStyle}">
-                    <td><input type="checkbox" ${isChecked} onchange="toggleOrderSelection('${order.orderId}')" style="width: 18px; height: 18px; cursor: pointer;"></td>
+                    <td><input type="checkbox" ${isChecked} data-oid="${oidAttr}" onchange="toggleOrderSelection(this.dataset.oid)" style="width: 18px; height: 18px; cursor: pointer;"></td>
                     <td>
-                        <strong>${order.orderId}</strong>
+                        <strong>${esc(order.orderId)}</strong>
                         ${order.isTest ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試</span>' : ''}
                         ${order.isInvalid ? '<span style="color:#ef4444;font-size:10px;margin-left:4px;">無效</span>' : ''}
-                        ${order.distributor_region ? `<span style="background:rgba(100,160,255,0.15);color:#60a5fa;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:4px;">${order.distributor_region}</span>` : ''}
+                        ${order.distributor_region ? `<span style="background:rgba(100,160,255,0.15);color:#60a5fa;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:4px;">${esc(order.distributor_region)}</span>` : ''}
                     </td>
-                    <td>${u.name || '-'}<br><small style="color:var(--text-muted)">${u.email || '-'}</small></td>
-                    <td>${items.map(i => i.letter1 + i.letter2).join(', ') || '-'}</td>
+                    <td>${esc(u.name || '-')}<br><small style="color:var(--text-muted)">${esc(u.email || '-')}</small></td>
+                    <td>${esc(items.map(i => i.letter1 + i.letter2).join(', ')) || '-'}</td>
                     <td>NT$ ${total.toLocaleString()}</td>
                     <td>${redeemCodesHtml}</td>
-                    <td><span class="status-badge ${status.class}">${status.text}</span>${
+                    <td><span class="status-badge ${status.class}">${esc(status.text)}</span>${
                         order.confirmationStatus === 'pending'
                             ? '<span title="已寄送確認信，等待顧客確認" style="margin-left:6px;color:#fbbf24;font-weight:700;cursor:default;">❓</span>'
                             : order.confirmationStatus === 'confirmed'
@@ -2100,12 +2116,12 @@
                                 : ''
                     }${
                         (order.hasNotes || order.shippingEdited)
-                            ? `<span title="${[order.hasNotes ? '有備注' : '', order.shippingEdited ? '收件資訊已修改' : ''].filter(Boolean).join('、')}" style="margin-left:6px;color:#c9a96e;cursor:pointer;" onclick="viewOrder('${order.orderId}')">📌</span>`
+                            ? `<span title="${[order.hasNotes ? '有備注' : '', order.shippingEdited ? '收件資訊已修改' : ''].filter(Boolean).join('、')}" style="margin-left:6px;color:#c9a96e;cursor:pointer;" data-oid="${oidAttr}" onclick="viewOrder(this.dataset.oid)">📌</span>`
                             : ''
                     }</td>
                     <td>${date}</td>
-                    <td>${order.estimatedShipDate || '-'}</td>
-                    <td><button class="btn btn-secondary btn-sm" onclick="viewOrder('${order.orderId}')">查看</button></td>
+                    <td>${esc(order.estimatedShipDate || '-')}</td>
+                    <td><button class="btn btn-secondary btn-sm" data-oid="${oidAttr}" onclick="viewOrder(this.dataset.oid)">查看</button></td>
                 </tr>`;
             }).join('');
 
@@ -2498,46 +2514,48 @@
             const finalStory = order.finalDesignStory || order.design_story || '';
             const originalStory = order.aiDesignStory || items[0]?.designStory || '';
             const designStory = finalStory;
+            // XSS: orderId 會被塞進大量 onclick/id 內插點，先收斂成安全字元集（真實訂單編號皆為英數）
+            const oid = String(order.orderId || '').replace(/[^A-Za-z0-9._-]/g, '');
 
             let content = `
                 <div class="detail-section">
                     <h3>基本資訊</h3>
-                    <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${order.orderId}</span></div>
-                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${status.text}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${order.orderId}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${order.orderId}')">🔄 重新生成 STL</button>` : ''}</div>
+                    <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${esc(order.orderId)}</span></div>
+                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${esc(status.text)}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${oid}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${oid}')">🔄 重新生成 STL</button>` : ''}</div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${order.estimatedShipDate || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${esc(order.estimatedShipDate || '-')}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" ${isTest} onchange="updateOrderTag('${order.orderId}', 'test', this.checked)" style="width:18px;height:18px;">
+                            <input type="checkbox" ${isTest} onchange="updateOrderTag('${oid}', 'test', this.checked)" style="width:18px;height:18px;">
                             <span style="color:var(--text-muted);font-size:12px;">勾選表示此為測試訂單</span>
                         </label>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">無效訂單</span>
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" ${isInvalid} onchange="updateOrderTag('${order.orderId}', 'invalid', this.checked)" style="width:18px;height:18px;">
+                            <input type="checkbox" ${isInvalid} onchange="updateOrderTag('${oid}', 'invalid', this.checked)" style="width:18px;height:18px;">
                             <span style="color:var(--text-muted);font-size:12px;">勾選表示此為無效訂單</span>
                         </label>
                     </div>
                     ${!allOrders.some(o => o.orderId === order.orderId || o.order_id === order.orderId) ? `
                     <div class="detail-row" style="margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
                         <span class="detail-label" style="color:#f59e0b;">⚠ 不在 DB 清單</span>
-                        <button class="btn btn-secondary btn-sm" id="migrateBtn-${order.orderId}" onclick="migrateOrderToDb('${order.orderId}')">補寫入資料庫</button>
+                        <button class="btn btn-secondary btn-sm" id="migrateBtn-${oid}" onclick="migrateOrderToDb('${oid}')">補寫入資料庫</button>
                     </div>` : ''}
                 </div>
                 <div class="detail-section">
                     <h3>備注</h3>
-                    <div id="orderNotesList-${order.orderId}" style="margin-bottom:10px;max-height:240px;overflow-y:auto;">
+                    <div id="orderNotesList-${oid}" style="margin-bottom:10px;max-height:240px;overflow-y:auto;">
                         ${orderNotes.length ? orderNotes.map(n => `
                         <div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
-                            <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${(n.note || '').replace(/</g, '&lt;')}</div>
-                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${n.created_by || '?'} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                            <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${esc(n.note || '')}</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
                         </div>`).join('') : '<div class="no-notes-placeholder" style="color:var(--text-muted);font-size:13px;">尚無備注</div>'}
                     </div>
                     <div style="display:flex;gap:8px;">
-                        <input type="text" id="orderNoteInput-${order.orderId}" placeholder="新增備注..." style="flex:1;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;" onkeydown="if(event.key==='Enter') addOrderNote('${order.orderId}')">
-                        <button class="btn btn-primary btn-sm" onclick="addOrderNote('${order.orderId}')">新增</button>
+                        <input type="text" id="orderNoteInput-${oid}" placeholder="新增備注..." style="flex:1;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;" onkeydown="if(event.key==='Enter') addOrderNote('${oid}')">
+                        <button class="btn btn-primary btn-sm" onclick="addOrderNote('${oid}')">新增</button>
                     </div>
                 </div>`;
 
@@ -2548,7 +2566,7 @@
                     <div style="margin-top:12px;">
                         <div style="font-size:11px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px;">原始 AI 生成版本</div>
                         <div style="background:rgba(255,255,255,0.04);padding:12px;border-radius:6px;border-left:3px solid rgba(255,255,255,0.2);">
-                            <p style="line-height:1.8;font-size:13px;color:var(--text-muted);white-space:pre-wrap;margin:0;">${originalStory}</p>
+                            <p style="line-height:1.8;font-size:13px;color:var(--text-muted);white-space:pre-wrap;margin:0;">${esc(originalStory)}</p>
                         </div>
                     </div>` : '';
 
@@ -2564,20 +2582,20 @@
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
                             <div>
                                 <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">原版本</div>
-                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${(storyRevision.original||'').replace(/</g,'&lt;')}</div>
+                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${esc(storyRevision.original || '')}</div>
                             </div>
                             <div>
                                 <div style="font-size:11px;color:rgba(212,175,55,0.8);margin-bottom:4px;">修改版本</div>
-                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${(storyRevision.revised||'').replace(/</g,'&lt;')}</div>
+                                <div style="font-size:13px;color:var(--text-light);line-height:1.7;white-space:pre-wrap;">${esc(storyRevision.revised || '')}</div>
                             </div>
                         </div>
                         <div style="font-size:12px;color:var(--text-muted);">發送確認信：${reqAt}</div>
                         ${confAt
-                            ? `<div style="font-size:12px;color:#86efac;margin-top:4px;">✅ 顧客已確認：${confAt}（IP: ${confIp}）</div>`
+                            ? `<div style="font-size:12px;color:#86efac;margin-top:4px;">✅ 顧客已確認：${confAt}（IP: ${esc(confIp)}）</div>`
                             : `<div style="font-size:12px;color:#fbbf24;margin-top:4px;">⏳ 等待顧客確認中</div>`
                         }
                         <div style="margin-top:10px;">
-                            <button onclick="revertStoryRevision('${order.orderId}')" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid rgba(239,68,68,0.5);background:transparent;color:#ef4444;cursor:pointer;">恢復原版</button>
+                            <button onclick="revertStoryRevision('${oid}')" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid rgba(239,68,68,0.5);background:transparent;color:#ef4444;cursor:pointer;">恢復原版</button>
                         </div>
                     </div>`;
                 }
@@ -2586,19 +2604,19 @@
                 <div class="detail-section">
                     <h3 style="display:flex;align-items:center;justify-content:space-between;">
                         <span>設計理念${hasDiff ? ' <span style="font-size:12px;font-weight:400;color:var(--text-muted);">（顧客有修改）</span>' : ''}</span>
-                        <button onclick="toggleStoryEdit('${order.orderId}')" id="storyEditBtn-${order.orderId}" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;">編輯理念</button>
+                        <button onclick="toggleStoryEdit('${oid}')" id="storyEditBtn-${oid}" style="font-size:12px;padding:4px 12px;border-radius:16px;border:1px solid var(--primary);background:transparent;color:var(--primary);cursor:pointer;">編輯理念</button>
                     </h3>
-                    <div id="storyViewBlock-${order.orderId}" style="background:rgba(212,175,55,0.1);padding:16px;border-radius:8px;border-left:3px solid var(--primary);">
+                    <div id="storyViewBlock-${oid}" style="background:rgba(212,175,55,0.1);padding:16px;border-radius:8px;border-left:3px solid var(--primary);">
                         <div style="font-size:11px;color:rgba(212,175,55,0.7);letter-spacing:1px;margin-bottom:8px;">${hasDiff ? '最終確認版本' : '設計理念'}</div>
-                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;margin:0;">${(designStory || originalStory).replace(/</g,'&lt;')}</p>
+                        <p style="line-height:1.8;font-size:14px;color:var(--text-light);white-space:pre-wrap;margin:0;">${esc(designStory || originalStory)}</p>
                     </div>
-                    <div id="storyEditBlock-${order.orderId}" style="display:none;margin-top:10px;">
-                        <textarea id="storyEditArea-${order.orderId}" style="width:100%;min-height:120px;padding:12px;border-radius:8px;border:1px solid rgba(212,175,55,0.4);background:rgba(255,255,255,0.06);color:var(--text-light);font-size:14px;line-height:1.7;resize:vertical;font-family:inherit;">${(designStory || originalStory).replace(/</g,'&lt;')}</textarea>
+                    <div id="storyEditBlock-${oid}" style="display:none;margin-top:10px;">
+                        <textarea id="storyEditArea-${oid}" style="width:100%;min-height:120px;padding:12px;border-radius:8px;border:1px solid rgba(212,175,55,0.4);background:rgba(255,255,255,0.06);color:var(--text-light);font-size:14px;line-height:1.7;resize:vertical;font-family:inherit;">${esc(designStory || originalStory)}</textarea>
                         <div style="display:flex;gap:8px;margin-top:8px;">
-                            <button onclick="submitStoryRevision('${order.orderId}')" style="flex:1;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">確認修改並寄送確認信</button>
-                            <button onclick="toggleStoryEdit('${order.orderId}')" style="padding:10px 16px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--text-muted);border-radius:8px;cursor:pointer;font-size:14px;">取消</button>
+                            <button onclick="submitStoryRevision('${oid}')" style="flex:1;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">確認修改並寄送確認信</button>
+                            <button onclick="toggleStoryEdit('${oid}')" style="padding:10px 16px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--text-muted);border-radius:8px;cursor:pointer;font-size:14px;">取消</button>
                         </div>
-                        <div id="storyRevisionMsg-${order.orderId}" style="font-size:13px;margin-top:8px;"></div>
+                        <div id="storyRevisionMsg-${oid}" style="font-size:13px;margin-top:8px;"></div>
                     </div>
                     ${diffHtml}
                     ${revisionHtml}
@@ -2614,19 +2632,19 @@
                 const selLetters = aiC.selectedLetters || {};
                 const selFont1 = aiC.selectedFont1 || '';
                 const selFont2 = aiC.selectedFont2 || '';
-                const blockId = `ai-conv-${order.orderId}`;
+                const blockId = `ai-conv-${oid}`;
 
                 let fontsHtml = '';
                 if (recFonts) {
                     fontsHtml = `
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
                             <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:6px;">
-                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">字母 ${selLetters.letter1 || '1'} 推薦字體</div>
-                                ${(recFonts.letter1 || []).map(f => `<div style="font-size:13px;color:${f===selFont1?'#d4af37':'var(--text-light)'};padding:2px 0;">${f===selFont1?'✓ ':''}${f}</div>`).join('')}
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">字母 ${esc(selLetters.letter1 || '1')} 推薦字體</div>
+                                ${(recFonts.letter1 || []).map(f => `<div style="font-size:13px;color:${f===selFont1?'#d4af37':'var(--text-light)'};padding:2px 0;">${f===selFont1?'✓ ':''}${esc(f)}</div>`).join('')}
                             </div>
                             <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:6px;">
-                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">字母 ${selLetters.letter2 || '2'} 推薦字體</div>
-                                ${(recFonts.letter2 || []).map(f => `<div style="font-size:13px;color:${f===selFont2?'#d4af37':'var(--text-light)'};padding:2px 0;">${f===selFont2?'✓ ':''}${f}</div>`).join('')}
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">字母 ${esc(selLetters.letter2 || '2')} 推薦字體</div>
+                                ${(recFonts.letter2 || []).map(f => `<div style="font-size:13px;color:${f===selFont2?'#d4af37':'var(--text-light)'};padding:2px 0;">${f===selFont2?'✓ ':''}${esc(f)}</div>`).join('')}
                             </div>
                         </div>`;
                 }
@@ -2640,7 +2658,7 @@
                                 background:${isUser?'rgba(255,255,255,0.12)':'rgba(212,175,55,0.12)'};
                                 border:1px solid ${isUser?'rgba(255,255,255,0.2)':'rgba(212,175,55,0.3)'};
                                 font-size:13px;line-height:1.6;color:var(--text-light);text-align:left;">
-                                ${msg.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+                                ${esc(msg.content).replace(/\n/g,'<br>')}
                             </div>
                         </div>`;
                     }).join('');
@@ -2655,7 +2673,7 @@
                         <span style="font-size:12px;color:var(--primary);">展開 / 收合</span>
                     </h3>
                     <div id="${blockId}" style="display:none;">
-                        ${summary ? `<div style="background:rgba(212,175,55,0.08);padding:12px;border-radius:8px;border-left:3px solid var(--primary);margin-bottom:14px;font-size:13px;color:var(--text-light);line-height:1.7;">${summary}</div>` : ''}
+                        ${summary ? `<div style="background:rgba(212,175,55,0.08);padding:12px;border-radius:8px;border-left:3px solid var(--primary);margin-bottom:14px;font-size:13px;color:var(--text-light);line-height:1.7;">${esc(summary)}</div>` : ''}
                         ${fontsHtml}
                         <div style="max-height:420px;overflow-y:auto;padding:4px 0;">
                             ${chatHtml}
@@ -2664,22 +2682,23 @@
                 </div>`;
             }
 
-            const buyerName = u.buyerName || '';
-            const buyerPhone = u.buyerPhone || '';
-            const buyerEmail = u.buyerEmail || u.email || '';
-            const recipientName = u.recipientName || u.name || '';
-            const recipientPhone = u.recipientPhone || u.phone || '';
-            const shippingAddress = u.shippingAddress || u.address || '';
-            const postalCode = u.postalCode || '';
+            // 個資欄位在定義處就跳脫一次，後面所有顯示點沿用（僅用於顯示與「訂購人 vs 收件人是否相同」比較）
+            const buyerName = esc(u.buyerName || '');
+            const buyerPhone = esc(u.buyerPhone || '');
+            const buyerEmail = esc(u.buyerEmail || u.email || '');
+            const recipientName = esc(u.recipientName || u.name || '');
+            const recipientPhone = esc(u.recipientPhone || u.phone || '');
+            const shippingAddress = esc(u.shippingAddress || u.address || '');
+            const postalCode = esc(u.postalCode || '');
             const sameAsRecipient = !buyerName || (buyerName === recipientName && buyerPhone === recipientPhone);
             const isCvs = u.shippingMethod === 'cvs';
-            const cvsNote = isCvs ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#fbbf24;font-size:13px;">⚠ 超商店到店：${u.cvsChain || ''} ${u.cvsStoreName || ''}${u.cvsStoreCode ? `（店號 ${u.cvsStoreCode}）` : ''}</div>` : '';
+            const cvsNote = isCvs ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#fbbf24;font-size:13px;">⚠ 超商店到店：${esc(u.cvsChain || '')} ${esc(u.cvsStoreName || '')}${u.cvsStoreCode ? `（店號 ${esc(u.cvsStoreCode)}）` : ''}</div>` : '';
 
             content += `
                 <div class="detail-section">
                     <h3 style="display:flex;align-items:center;justify-content:space-between;">
                         <span>客戶資訊</span>
-                        <button class="btn btn-secondary btn-sm" id="shippingEditBtn-${order.orderId}" onclick="toggleShippingEdit('${order.orderId}')">編輯收件資訊</button>
+                        <button class="btn btn-secondary btn-sm" id="shippingEditBtn-${oid}" onclick="toggleShippingEdit('${oid}')">編輯收件資訊</button>
                     </h3>
                     ${!sameAsRecipient ? `
                     <div style="margin-bottom:10px;padding:8px 10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px;font-weight:600;">
@@ -2687,10 +2706,10 @@
                     </div>` : ''}
                     <div style="border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
                         <div style="font-size:11px;color:var(--primary);letter-spacing:1px;margin-bottom:6px;">🚚 收件人（出貨請用此資訊）</div>
-                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value" id="shippingView-recipientName-${order.orderId}">${recipientName || '-'}</span></div>
-                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${order.orderId}">${recipientPhone || '-'}</span></div>
-                        <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${order.orderId}">${postalCode || '-'}</span></div>
-                        <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${order.orderId}">${shippingAddress || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value" id="shippingView-recipientName-${oid}">${recipientName || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value" id="shippingView-recipientPhone-${oid}">${recipientPhone || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">郵遞區號</span><span class="detail-value" id="shippingView-postalCode-${oid}">${postalCode || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">地址</span><span class="detail-value" id="shippingView-shippingAddress-${oid}">${shippingAddress || '-'}</span></div>
                         ${cvsNote}
                     </div>
                     <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${buyerEmail || '-'}</span></div>
@@ -2703,25 +2722,25 @@
                     </div>`}
                     <div class="detail-row"><span class="detail-label">發票類型</span><span class="detail-value">${u.invoiceType === 'company' ? '公司發票（三聯式）' : '個人發票（二聯式）'}</span></div>
                     ${u.invoiceType === 'company' ? `
-                    <div class="detail-row"><span class="detail-label">統一編號</span><span class="detail-value">${u.companyTaxId || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">公司抬頭</span><span class="detail-value">${u.companyName || '-'}</span></div>` : ''}
+                    <div class="detail-row"><span class="detail-label">統一編號</span><span class="detail-value">${esc(u.companyTaxId || '-')}</span></div>
+                    <div class="detail-row"><span class="detail-label">公司抬頭</span><span class="detail-value">${esc(u.companyName || '-')}</span></div>` : ''}
                 </div>
                 <div class="detail-section">
                     <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                         <span>訂單內容</span>
                         <span style="display:flex;gap:8px;">
-                            <button class="btn btn-secondary btn-sm" onclick='openNotificationModal(${JSON.stringify(order.orderId)})'>寄送通知信</button>
-                            <button class="btn btn-primary btn-sm" onclick='openRevisionBatchModal(${JSON.stringify(order.orderId)}, ${JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2})))})'>與客戶確認</button>
+                            <button class="btn btn-secondary btn-sm" data-oid="${escAttr(order.orderId)}" onclick="openNotificationModal(this.dataset.oid)">寄送通知信</button>
+                            <button class="btn btn-primary btn-sm" data-oid="${escAttr(order.orderId)}" data-items='${escAttr(JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2}))))}' onclick="openRevisionBatchModal(this.dataset.oid, JSON.parse(this.dataset.items))">與客戶確認</button>
                         </span>
                     </h3>
-                    ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${order.manufacturer_name}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
+                    ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${esc(order.manufacturer_name)}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
                     ${items.map((item, idx) => {
                         const views = item.threeViews || [];
                         const findView = (key) => views.find(v => v.name && v.name.includes(key));
                         const viewCell = (view, label) => `<div style="text-align:center;">
                             <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${label}</div>
                             ${view && view.dataURL
-                                ? `<img src="${view.dataURL}" style="width:100%;max-width:130px;border-radius:6px;border:1px solid var(--border);background:#111;">`
+                                ? `<img src="${escAttr(view.dataURL)}" style="width:100%;max-width:130px;border-radius:6px;border:1px solid var(--border);background:#111;">`
                                 : `<div style="width:100%;max-width:130px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px dashed var(--border);color:var(--text-muted);font-size:11px;margin:0 auto;">未提供</div>`}
                         </div>`;
                         const viewsHtml = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
@@ -2735,9 +2754,9 @@
                         const itemRevs = itemRevisions.filter(r => r.item_index === idx);
                         // 用滑桿快照（ringSliderX/Y/Z/Rotation），不要用 ringRelativeX/Y/Z——
                         // Z 軸換算後跟滑桿數字差了 modelTopZ+1.2，顯示 ringRelativeZ 會讓人以為存錯了
-                        const fmtRing = (o) => o ? formatRingSliderPos(o) : '—';
-                        const fmtChain = (o) => o ? (CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
-                        const fmtFont = (o) => o ? `${o.font1 || '?'} / ${o.font2 || '?'}` : '—';
+                        const fmtRing = (o) => o ? esc(formatRingSliderPos(o)) : '—';
+                        const fmtChain = (o) => o ? esc(CHAIN_LABELS[o.chainType] || o.chainType || '未選擇') : '—';
+                        const fmtFont = (o) => o ? `${esc(o.font1 || '?')} / ${esc(o.font2 || '?')}` : '—';
 
                         // 同一個 batch 裡勾選多個項目（例如墜頭位置+字體組合）一起送出，客戶端本來就是要
                         // 全部完成才能一次送出、一次確認的，不會出現「只確認其中一項」的狀況。這裡把同一個
@@ -2761,7 +2780,7 @@
                                 const first = sorted[0], last = sorted[sorted.length - 1];
                                 const created = first.created_at ? new Date(first.created_at).toLocaleString('zh-TW') : '';
                                 const categories = [...new Set(sorted.flatMap(r => (r.unlocked_fields || '').split(',')))].filter(Boolean);
-                                const categoryLabel = categories.map(c => REVISION_CATEGORY_LABELS[c] || c).join('、') || '確認閱覽';
+                                const categoryLabel = esc(categories.map(c => REVISION_CATEGORY_LABELS[c] || c).join('、')) || '確認閱覽';
 
                                 if (first.status === 'cancelled') {
                                     return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🚫 ${created} 已寄送（${categoryLabel}），後來被取消或被新的確認要求取代，不算顧客確認</div>`;
@@ -2769,7 +2788,7 @@
                                 if (first.status !== 'confirmed') {
                                     // 單獨送出或批次裡的項目都能取消；取消批次裡的單一項目後端會自動把它從該批次的
                                     // 顧客清單與送出驗證裡排除，不影響同批次其他還在等待的項目
-                                    const cancelBtns = sorted.map(r => `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${order.orderId}', ${r.id})">取消此項確認要求</button>`).join(' ');
+                                    const cancelBtns = sorted.map(r => `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="cancelItemRevision('${oid}', ${r.id})">取消此項確認要求</button>`).join(' ');
                                     let snapshot = null;
                                     for (const r of sorted) { try { if (!snapshot && r.original_item) snapshot = JSON.parse(r.original_item); } catch (e) {} }
                                     let snapshotLine = '';
@@ -2791,7 +2810,7 @@
                                 for (let i = sorted.length - 1; i >= 0; i--) { try { if (!revised && sorted[i].revised_item) revised = JSON.parse(sorted[i].revised_item); } catch (e) {} }
                                 const oldViews = (original && original.threeViews) || [];
                                 const findOld = (key) => oldViews.find(v => v.name && v.name.includes(key));
-                                const oldViewsId = `oldViews-${order.orderId}-${idx}-${rIdx}`;
+                                const oldViewsId = `oldViews-${oid}-${idx}-${rIdx}`;
                                 // 只有這件作品「第一筆」修改紀錄才有留底截圖（節省空間，見後端 _is_first_revision_for_item），
                                 // 之後每一輪只有文字異動，沒有圖可以看，就不顯示這顆按鈕，避免點了只看到一排空白框
                                 const oldViewsBtn = oldViews.length ? `
@@ -2802,7 +2821,7 @@
                                         ${viewCell(findOld('top'), '俯視圖')}
                                         ${viewCell(findOld('hero'), 'Hero 45°')}
                                     </div>` : '';
-                                const ipLine = last.confirmed_ip ? `<br>來源 IP：${last.confirmed_ip}` : '';
+                                const ipLine = last.confirmed_ip ? `<br>來源 IP：${esc(last.confirmed_ip)}` : '';
                                 return `
                                 <div style="margin-bottom:10px;">
                                     <div style="font-size:12px;color:#86efac;margin-bottom:4px;">✅ ${created} 寄送（${categoryLabel}），顧客已於 ${confirmed} 確認調整</div>
@@ -2819,16 +2838,16 @@
                         const ringPosStr = formatRingSliderPos(item);
 
                         return `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
-                        <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${item.letter1} + ${item.letter2}</div>
-                        <div style="font-size:12px;color:var(--text-muted)">字體: ${item.font1}/${item.font2} | 尺寸: ${item.size}mm | 材質: ${item.material} | 鍍膜: ${item.plating} | 表面: ${item.finish} | 項鍊: ${chainLabel}</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">圓環位置: ${ringPosStr}</div>
+                        <div style="font-size:18px;color:var(--primary);font-weight:600;margin-bottom:4px;">${esc(item.letter1)} + ${esc(item.letter2)}</div>
+                        <div style="font-size:12px;color:var(--text-muted)">字體: ${esc(item.font1)}/${esc(item.font2)} | 尺寸: ${esc(item.size)}mm | 材質: ${esc(item.material)} | 鍍膜: ${esc(item.plating)} | 表面: ${esc(item.finish)} | 項鍊: ${esc(chainLabel)}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">圓環位置: ${esc(ringPosStr)}</div>
                         ${viewsHtml}
                         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
-                            <input type="number" min="0" step="1" id="mfrQuote-${order.orderId}-${idx}" value="${item.manufacturerQuote ?? ''}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
-                            <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${order.orderId}', ${idx})">儲存</button>
-                            <span id="mfrQuoteMsg-${order.orderId}-${idx}" style="font-size:12px;"></span>
-                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置/項鍊/字體（可複選），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffPreAdjustModal('${order.orderId}', ${idx})">客服先調整外觀</button>
+                            <input type="number" min="0" step="1" id="mfrQuote-${oid}-${idx}" value="${escAttr(item.manufacturerQuote ?? '')}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
+                            <button class="btn btn-secondary btn-sm" onclick="saveItemQuote('${oid}', ${idx})">儲存</button>
+                            <span id="mfrQuoteMsg-${oid}-${idx}" style="font-size:12px;"></span>
+                            <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:11px;opacity:0.75;" title="客服直接在編輯頁調整墜頭位置/項鍊/字體（可複選），調完直接寄送確認信給顧客（只送這一件）" onclick="openStaffPreAdjustModal('${oid}', ${idx})">客服先調整外觀</button>
                         </div>
                         ${revisionHtml}
                     </div>`;
@@ -2864,10 +2883,10 @@
                             })()}
                         </div>
                         <div class="form-group">
-                            <input type="text" id="trackingNumber" value="${order.trackingNumber||''}" placeholder="貨運編號">
+                            <input type="text" id="trackingNumber" value="${escAttr(order.trackingNumber||'')}" placeholder="貨運編號">
                         </div>
                     </div>
-                    <button class="btn btn-primary" style="width:100%" onclick="updateOrderStatus('${order.orderId}')">更新狀態</button>
+                    <button class="btn btn-primary" style="width:100%" onclick="updateOrderStatus('${oid}')">更新狀態</button>
                 </div>`;
             
             document.getElementById('orderDetailContent').innerHTML = content;
@@ -3138,7 +3157,7 @@
 
             document.getElementById('revisionBatchItemsList').innerHTML = items.map((item, idx) => `
                 <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-                    <div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:8px;">作品 ${idx + 1}：${item.letter1}${item.letter2}</div>
+                    <div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:8px;">作品 ${idx + 1}：${esc(item.letter1)}${esc(item.letter2)}</div>
                     <div style="display:flex;flex-direction:column;gap:6px;">
                         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);cursor:pointer;">
                             <input type="checkbox" class="rb-task" data-item-index="${idx}" data-category="font" style="width:16px;height:16px;">
@@ -3290,8 +3309,8 @@
                 const data = await res.json();
                 if (data.success && data.logs.length) {
                     const logsHtml = data.logs.map(log => `<div class="log-item">
-                        <div class="log-header"><span class="log-user">${log.admin_user}</span><span class="log-time">${new Date(log.created_at).toLocaleString('zh-TW')}</span></div>
-                        <div class="log-action">${log.action}: ${log.details || ''}</div>
+                        <div class="log-header"><span class="log-user">${esc(log.admin_user)}</span><span class="log-time">${new Date(log.created_at).toLocaleString('zh-TW')}</span></div>
+                        <div class="log-action">${esc(log.action)}: ${esc(log.details || '')}</div>
                     </div>`).join('');
                     document.getElementById('orderDetailContent').innerHTML += `<div class="detail-section"><h3>操作日誌</h3>${logsHtml}</div>`;
                 }
@@ -3314,8 +3333,8 @@
                 const listEl = document.getElementById(`orderNotesList-${orderId}`);
                 const n = data.note;
                 const noteHtml = `<div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
-                    <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${(n.note || '').replace(/</g, '&lt;')}</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${n.created_by || '?'} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                    <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${esc(n.note || '')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
                 </div>`;
                 const placeholder = listEl.querySelector('.no-notes-placeholder');
                 if (placeholder) {
@@ -3336,7 +3355,7 @@
             fields.forEach(f => {
                 const el = document.getElementById(`shippingView-${f}-${orderId}`);
                 const currentValue = el.textContent === '-' ? '' : el.textContent;
-                el.innerHTML = `<input type="text" id="shippingInput-${f}-${orderId}" value="${currentValue.replace(/"/g, '&quot;')}" style="width:100%;padding:4px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">`;
+                el.innerHTML = `<input type="text" id="shippingInput-${f}-${orderId}" value="${escAttr(currentValue)}" style="width:100%;padding:4px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">`;
             });
             btn.textContent = '儲存';
             btn.dataset.editing = 'true';
@@ -3419,8 +3438,8 @@
                 if (data.success) {
                     document.getElementById('usersList').innerHTML = data.users.map(u => `<div class="user-card">
                         <div class="user-info">
-                            <div class="user-name">${u.name || u.username}</div>
-                            <div class="user-meta">${u.username} | 建立於 ${new Date(u.created_at).toLocaleDateString('zh-TW')}</div>
+                            <div class="user-name">${esc(u.name || u.username)}</div>
+                            <div class="user-meta">${esc(u.username)} | 建立於 ${new Date(u.created_at).toLocaleDateString('zh-TW')}</div>
                         </div>
                         ${u.username !== 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="deleteUser(${u.id})">刪除</button>` : ''}
                     </div>`).join('');
@@ -3537,17 +3556,18 @@
                         ? '<span class="status-badge exhausted">已使用</span>'
                         : '<span class="status-badge paid">啟用</span>';
 
-                return `<tr data-promo-code="${p.code}">
-                    <td><strong>${p.code}</strong><br><small style="color:var(--text-muted)">${p.description || ''}</small></td>
-                    <td>${typeLabel}</td>
-                    <td>${discount}</td>
+                const pcode = String(p.code || '').replace(/[^A-Za-z0-9_-]/g, '');
+                return `<tr data-promo-code="${escAttr(p.code)}">
+                    <td><strong>${esc(p.code)}</strong><br><small style="color:var(--text-muted)">${esc(p.description || '')}</small></td>
+                    <td>${esc(typeLabel)}</td>
+                    <td>${esc(discount)}</td>
                     <td>NT$ ${p.min_amount || 0}</td>
-                    <td>${validUntil}</td>
-                    <td>${p.usage_count || 0} / ${usageLimit}</td>
+                    <td>${esc(validUntil)}</td>
+                    <td>${p.usage_count || 0} / ${esc(usageLimit)}</td>
                     <td>${status}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="togglePromo('${p.code}', ${p.active ? 0 : 1})">${p.active ? '停用' : '啟用'}</button>
-                        <button class="btn btn-secondary btn-sm" onclick="deletePromo('${p.code}')">刪除</button>
+                        <button class="btn btn-secondary btn-sm" onclick="togglePromo('${pcode}', ${p.active ? 0 : 1})">${p.active ? '停用' : '啟用'}</button>
+                        <button class="btn btn-secondary btn-sm" onclick="deletePromo('${pcode}')">刪除</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -3673,9 +3693,9 @@
             let content = `
                 <div class="detail-section">
                     <h3>基本資訊</h3>
-                    <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${name}</span></div>
-                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${email}</span></div>
-                    <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${phone}</span></div>
+                    <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${esc(name)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${esc(email)}</span></div>
+                    <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${esc(phone)}</span></div>
                     <div class="detail-row"><span class="detail-label">首次購買</span><span class="detail-value">${firstOrder?.timestamp ? new Date(firstOrder.timestamp).toLocaleDateString('zh-TW') : '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">訂單數</span><span class="detail-value">${customerOrders.length}</span></div>
                     <div class="detail-row"><span class="detail-label">總消費</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${totalSpent.toLocaleString()}</span></div>
@@ -3686,13 +3706,13 @@
                         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:8px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                                 <div style="display:flex;align-items:center;gap:10px;">
-                                    <strong>${o.orderId}</strong>
-                                    <span class="status-badge ${statusMap[o.status]?.class || ''}">${statusMap[o.status]?.text || o.status}</span>
+                                    <strong>${esc(o.orderId)}</strong>
+                                    <span class="status-badge ${statusMap[o.status]?.class || ''}">${esc(statusMap[o.status]?.text || o.status)}</span>
                                 </div>
-                                <button class="btn btn-secondary btn-sm" onclick="closeCustomerDetailModal(); viewOrder('${o.orderId}')">查看詳情</button>
+                                <button class="btn btn-secondary btn-sm" data-oid="${escAttr(o.orderId)}" onclick="closeCustomerDetailModal(); viewOrder(this.dataset.oid)">查看詳情</button>
                             </div>
                             <div style="font-size:12px;color:var(--text-muted)">
-                                ${(o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ') || '-'} |
+                                ${esc((o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ')) || '-'} |
                                 NT$ ${(o.total || 0).toLocaleString()} |
                                 ${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : '-'}
                             </div>
@@ -3789,7 +3809,7 @@
                 _redeemCodes = data.redeem_codes || [];
                 renderRedeemTable();
             } catch (e) {
-                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="8" class="loading">載入失敗：${e.message}</td></tr>`;
+                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="8" class="loading">載入失敗：${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -3845,25 +3865,26 @@
                 const statusBadge = isUsed
                     ? '<span style="color:#ef4444;font-size:12px;">已使用</span>'
                     : '<span style="color:#4ade80;font-size:12px;">未使用</span>';
+                const rcode = String(c.code || '').replace(/[^A-Za-z0-9_-]/g, '');
                 const orderCell = c.order_id
-                    ? `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" onclick="goToOrder('${c.order_id}')">${c.order_id}</button>`
+                    ? `<button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-family:monospace;font-size:12px;" data-oid="${escAttr(c.order_id)}" onclick="goToOrder(this.dataset.oid)">${esc(c.order_id)}</button>`
                     : '-';
                 const customerCell = c.customerName
-                    ? `${c.customerName}${c.zeczecBackerName ? `<div style="font-size:11px;color:var(--text-muted);">嘖嘖：${c.zeczecBackerName}</div>` : ''}`
+                    ? `${esc(c.customerName)}${c.zeczecBackerName ? `<div style="font-size:11px;color:var(--text-muted);">嘖嘖：${esc(c.zeczecBackerName)}</div>` : ''}`
                     : '-';
-                return `<tr data-redeem-code="${c.code}">
-                    <td style="font-family:monospace;">${c.code}</td>
-                    <td>${discount}</td>
-                    <td>${batch} <button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-size:11px;" onclick="editRedeemBatch('${c.code}', '${tier.replace(/'/g, "\\'")}')">編輯</button></td>
+                return `<tr data-redeem-code="${escAttr(c.code)}">
+                    <td style="font-family:monospace;">${esc(c.code)}</td>
+                    <td>${esc(discount)}</td>
+                    <td>${esc(batch)} <button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-size:11px;" data-code="${escAttr(c.code)}" data-tier="${escAttr(tier)}" onclick="editRedeemBatch(this.dataset.code, this.dataset.tier)">編輯</button></td>
                     <td>${customerCell}</td>
-                    <td>${validUntil}</td>
+                    <td>${esc(validUntil)}</td>
                     <td>${statusBadge}</td>
                     <td>${orderCell}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="toggleRedeemCode('${c.code}', ${c.active})">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleRedeemCode('${rcode}', ${c.active})">
                             ${c.active ? '停用' : '啟用'}
                         </button>
-                        <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="deleteRedeemCode('${c.code}')">刪除</button>
+                        <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="deleteRedeemCode('${rcode}')">刪除</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -4154,7 +4175,7 @@
                 tbody.innerHTML = data.batches.map(b => `
                     <tr>
                         <td>第 ${b.batch_no} 批</td>
-                        <td>${b.tier || '-'}</td>
+                        <td>${esc(b.tier || '-')}</td>
                         <td>${b.total_rows_in_file}</td>
                         <td>${b.new_orders_count}</td>
                         <td>${b.new_codes_count}</td>
@@ -4163,7 +4184,7 @@
                     </tr>
                 `).join('');
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">載入失敗：${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">載入失敗：${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -4448,19 +4469,20 @@
                 return;
             }
             
-            tbody.innerHTML = feedbackList.map(f => `
+            window._feedbackRows = feedbackList;  // 供按鈕以索引取回原始物件，避免把資料塞進 onclick 屬性
+            tbody.innerHTML = feedbackList.map((f, fi) => `
                 <tr>
-                    <td>${f.order_id || '-'}</td>
-                    <td><span style="color:#d4af37;">${'★'.repeat(f.rating||0)}</span></td>
-                    <td style="max-width:220px;white-space:pre-wrap;">${f.comment || '-'}</td>
-                    <td>${f.customer_email || '-'}</td>
+                    <td>${esc(f.order_id || '-')}</td>
+                    <td><span style="color:#d4af37;">${'★'.repeat(Math.max(0, Math.min(5, parseInt(f.rating) || 0)))}</span></td>
+                    <td style="max-width:220px;white-space:pre-wrap;">${esc(f.comment || '-')}</td>
+                    <td>${esc(f.customer_email || '-')}</td>
                     <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
                     <td>
                         ${f.replied_at
                             ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#4ade80;border-color:#4ade80;"
-                                onclick='openReplyModal(${JSON.stringify(f)}, true)'>✓ 已回覆</button>`
+                                onclick="openReplyModal(window._feedbackRows[${fi}], true)">✓ 已回覆</button>`
                             : `<button class="btn btn-primary" style="font-size:12px;padding:4px 10px;"
-                                onclick='openReplyModal(${JSON.stringify(f)}, false)'>回覆</button>`
+                                onclick="openReplyModal(window._feedbackRows[${fi}], false)">回覆</button>`
                         }
                     </td>
                     <td style="text-align:center;">
@@ -4501,8 +4523,8 @@
 
             const previewHtml = cfg.url
                 ? (cfg.type === 'video'
-                    ? `<video src="${cfg.url}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`
-                    : `<img src="${cfg.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`)
+                    ? `<video src="${escAttr(cfg.url)}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`
+                    : `<img src="${escAttr(cfg.url)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`)
                 : `<div style="width:100%;aspect-ratio:1;background:#2a2a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#555;font-size:13px;">尚未設定</div>`;
 
             card.innerHTML = `
@@ -4514,9 +4536,9 @@
                     <span id="galleryUploadStatus${slot}" style="font-size:12px;color:#999;"></span>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    <input id="galleryUrl${slot}" value="${cfg.url || ''}" placeholder="或直接貼上 URL" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
-                    <input id="galleryTitle${slot}" value="${cfg.title || ''}" placeholder="標題（如 B × R）" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
-                    <input id="galleryDesc${slot}" value="${cfg.description || ''}" placeholder="說明文字" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <input id="galleryUrl${slot}" value="${escAttr(cfg.url || '')}" placeholder="或直接貼上 URL" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <input id="galleryTitle${slot}" value="${escAttr(cfg.title || '')}" placeholder="標題（如 B × R）" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
+                    <input id="galleryDesc${slot}" value="${escAttr(cfg.description || '')}" placeholder="說明文字" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;" />
                     <select id="galleryType${slot}" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;font-size:13px;">
                         <option value="image" ${cfg.type !== 'video' ? 'selected' : ''}>圖片</option>
                         <option value="video" ${cfg.type === 'video' ? 'selected' : ''}>影片</option>
@@ -4555,9 +4577,9 @@
                     // 即時更新預覽
                     const preview = document.getElementById(`galleryPreview${slot}`);
                     if (data.type === 'video') {
-                        preview.innerHTML = `<video src="${data.url}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`;
+                        preview.innerHTML = `<video src="${escAttr(data.url)}" autoplay loop muted playsinline style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;"></video>`;
                     } else {
-                        preview.innerHTML = `<img src="${data.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`;
+                        preview.innerHTML = `<img src="${escAttr(data.url)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" />`;
                     }
                 } else {
                     statusEl.textContent = '上傳失敗：' + (data.error || '未知錯誤');
@@ -4618,7 +4640,7 @@
                 allManufacturers = data.manufacturers || [];
                 renderManufacturers();
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">載入失敗：${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">載入失敗：${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -4630,15 +4652,15 @@
             }
             tbody.innerHTML = allManufacturers.map(m => `
                 <tr>
-                    <td><strong>${m.company_name}</strong>${m.is_internal_test ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試信箱</span>' : ''}</td>
-                    <td>${m.process || '-'}</td>
-                    <td>${m.contact_person || '-'}</td>
-                    <td>${m.phone || '-'}</td>
-                    <td>${m.email}</td>
+                    <td><strong>${esc(m.company_name)}</strong>${m.is_internal_test ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">測試信箱</span>' : ''}</td>
+                    <td>${esc(m.process || '-')}</td>
+                    <td>${esc(m.contact_person || '-')}</td>
+                    <td>${esc(m.phone || '-')}</td>
+                    <td>${esc(m.email)}</td>
                     <td><span style="color:${m.is_active ? '#4ade80' : '#888'}">${m.is_active ? '啟用' : '停用'}</span></td>
                     <td style="display:flex;gap:6px;">
                         <button class="btn btn-secondary btn-sm" onclick="editManufacturer(${m.id})">編輯</button>
-                        <button class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;" onclick="deleteManufacturerConfirm(${m.id}, '${m.company_name.replace(/'/g, "\\'")}')">刪除</button>
+                        <button class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;" data-mfr-name="${escAttr(m.company_name)}" onclick="deleteManufacturerConfirm(${m.id}, this.dataset.mfrName)">刪除</button>
                     </td>
                 </tr>`).join('');
         }
@@ -4777,7 +4799,7 @@
             const maxBucketCount = Math.max(...stats.price_distribution.map(b => b.count), 1);
             document.getElementById('qsDistribution').innerHTML = stats.price_distribution.map(b => `
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:100px; font-size:13px; color:var(--text-muted);">NT$ ${b.bucket}</div>
+                    <div style="width:100px; font-size:13px; color:var(--text-muted);">NT$ ${esc(b.bucket)}</div>
                     <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
                         <div style="width:${(b.count / maxBucketCount * 100).toFixed(0)}%; background:#c9a96e; height:18px;"></div>
                     </div>
@@ -4786,9 +4808,9 @@
 
             const rowHtml = (row) => `
                 <tr${row.count < 3 ? ' style="opacity:0.6;"' : ''}>
-                    <td>${row.key}</td>
+                    <td>${esc(row.key)}</td>
                     <td>${row.count}${row.count < 3 ? ' ⚠️' : ''}</td>
-                    <td>NT$ ${row.avg_quote}</td>
+                    <td>NT$ ${esc(row.avg_quote)}</td>
                 </tr>`;
             document.getElementById('qsComboTableBody').innerHTML =
                 stats.letter_combo_stats.length ? stats.letter_combo_stats.map(rowHtml).join('') : '<tr><td colspan="3" class="empty-state">尚無資料</td></tr>';
@@ -5115,9 +5137,9 @@
             // 訂單預覽清單
             const preview = selectedOrders.map(id => {
                 const order = (allOrders || []).find(o => o.orderId === id);
-                if (!order) return `<li>${id}</li>`;
+                if (!order) return `<li>${esc(id)}</li>`;
                 const letters = (order.items || []).map(i => i.letter1 + i.letter2).join(', ');
-                return `<li><strong>${id}</strong> — ${letters} | ${order.userInfo?.name || '-'}</li>`;
+                return `<li><strong>${esc(id)}</strong> — ${esc(letters)} | ${esc(order.userInfo?.name || '-')}</li>`;
             }).join('');
             document.getElementById('emailMfrOrderList').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--text-muted);">${preview}</ul>`;
         }
@@ -5216,8 +5238,8 @@
                         const willSkip = o.is_test && !o.has_story_diff;
                         return `
                         <div style="display:flex;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;${willSkip ? 'opacity:0.4;' : ''}">
-                            <span style="color:var(--text-muted);min-width:100px;">${o.orderId}</span>
-                            <span style="color:var(--text-light);min-width:40px;">${o.letters || '-'}</span>
+                            <span style="color:var(--text-muted);min-width:100px;">${esc(o.orderId)}</span>
+                            <span style="color:var(--text-light);min-width:40px;">${esc(o.letters || '-')}</span>
                             ${o.is_test ? '<span style="color:#f59e0b;font-size:10px;padding:1px 5px;border:1px solid #f59e0b;border-radius:4px;">測試</span>' : ''}
                             <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
                             ${willSkip ? '<span style="color:#9ca3af;font-size:10px;">自動排除</span>' : ''}
@@ -5310,8 +5332,8 @@
                 listEl.innerHTML = items.map(item => `
                     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                            <span style="font-size:11px;color:${statusColor[item.status] || '#888'};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px;">${statusLabel[item.status] || item.status}</span>
-                            <span style="font-size:11px;color:var(--text-muted);">${item.date_from || '?'} ~ ${item.date_to || '?'} · ${item.order_count || 0} 筆</span>
+                            <span style="font-size:11px;color:${statusColor[item.status] || '#888'};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px;">${esc(statusLabel[item.status] || item.status)}</span>
+                            <span style="font-size:11px;color:var(--text-muted);">${esc(item.date_from || '?')} ~ ${esc(item.date_to || '?')} · ${item.order_count || 0} 筆</span>
                             <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-TW') : ''}</span>
                         </div>
                         <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}"></div>
@@ -5328,7 +5350,7 @@
                     if (bodyEl) bodyEl.textContent = item.suggestion_text || '';
                 });
             } catch(e) {
-                listEl.innerHTML = `<div style="color:#f87171;font-size:13px;">載入失敗：${e.message}</div>`;
+                listEl.innerHTML = `<div style="color:#f87171;font-size:13px;">載入失敗：${esc(e.message)}</div>`;
             }
         }
 
@@ -5426,17 +5448,17 @@
                     const label = DIST_STATUS_LABELS[ds] || ds;
                     const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
                     return `<tr>
-                        <td style="font-family:monospace;font-size:12px;">${o.order_id}</td>
-                        <td><span style="background:rgba(100,160,255,0.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">${o.distributor_region || '—'}</span></td>
-                        <td>${name}</td>
+                        <td style="font-family:monospace;font-size:12px;">${esc(o.order_id)}</td>
+                        <td><span style="background:rgba(100,160,255,0.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">${esc(o.distributor_region || '—')}</span></td>
+                        <td>${esc(name)}</td>
                         <td>${total !== '—' ? 'NT$ ' + Number(total).toLocaleString() : '—'}</td>
-                        <td>${(statusMap[o.status] || {text: o.status}).text || o.status}</td>
-                        <td><span style="color:${color};font-weight:500;">${label}</span></td>
+                        <td>${esc((statusMap[o.status] || {text: o.status}).text || o.status)}</td>
+                        <td><span style="color:${color};font-weight:500;">${esc(label)}</span></td>
                         <td>${dateStr}</td>
                     </tr>`;
                 }).join('');
             } catch(e) {
-                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -5462,21 +5484,22 @@
                         : '<span style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 8px;border-radius:4px;font-size:12px;">停用</span>';
                     const dateStr = d.created_at ? new Date(d.created_at).toLocaleDateString('zh-TW') : '—';
                     const toggleLabel = d.is_active ? '停用' : '啟用';
+                    const dregion = String(d.region || '').replace(/[^A-Za-z0-9_-]/g, '');
                     return `<tr>
-                        <td><strong style="color:#c9a96e;">${d.region}</strong></td>
-                        <td>${d.display_name}</td>
-                        <td>${d.email}</td>
-                        <td>${d.platform_fee}%</td>
+                        <td><strong style="color:#c9a96e;">${esc(d.region)}</strong></td>
+                        <td>${esc(d.display_name)}</td>
+                        <td>${esc(d.email)}</td>
+                        <td>${esc(d.platform_fee)}%</td>
                         <td>${statusBadge}</td>
                         <td>${dateStr}</td>
                         <td style="display:flex;gap:6px;">
-                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="toggleDistributor('${d.region}', ${!d.is_active})">${toggleLabel}</button>
-                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="resetDistributorPassword('${d.region}')">重置密碼</button>
+                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="toggleDistributor('${dregion}', ${!d.is_active})">${toggleLabel}</button>
+                            <button class="btn" style="font-size:12px;padding:4px 10px;" onclick="resetDistributorPassword('${dregion}')">重置密碼</button>
                         </td>
                     </tr>`;
                 }).join('');
             } catch(e) {
-                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;">${esc(e.message)}</td></tr>`;
             }
         }
 
