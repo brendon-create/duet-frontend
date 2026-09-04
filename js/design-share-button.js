@@ -12,6 +12,13 @@
  * 所以這裡刻意不做「等影片生成好」的完整體驗（不呈現一個轉不停但永遠不會
  * 完成的假進度）。按下去現在只代表「把目前的設計資料分享出去」，環形進度條
  * 用來反映這次網路請求本身的等待，不是影片生成進度。
+ *
+ * 故事完成後的分享提醒：完整版設計理念要送出作品、問完字體選擇原因、使用者
+ * 確認過才會生成，通常晚於按鈕第一次出現的時間點——早期分享的人 99% 沒有故事
+ * 可以放進影片。如果使用者「之前已經分享過」、現在才確認故事，代表他錯過了
+ * 讓故事進到分享內容的機會，這裡在故事確認的當下（使用者剛完成一件事、不是
+ * 打斷設計流程）給一個低調的提醒 + 按鈕短暫強調光暈，邀請他更新分享。沒分享
+ * 過的人不會看到這個提醒（按鈕本身就是邀請，不需要重複講）。
  */
 (function () {
     'use strict';
@@ -25,12 +32,15 @@
     var INITIAL_SETTLE_DELAY_MS = 3000;
     var EXPLAINER_HOLD_MS = 4500; // 說明框顯示後停留多久才開始收攏
     var CONFIRM_HOLD_MS = 2200; // 分享完成後「已分享」文字停留多久
+    var RESTORY_HINT_HOLD_MS = 5000; // 故事完成後的提醒停留多久
 
     var btn = null;
     var labelEl = null;
     var explainer = null;
+    var restoryHint = null;
     var shown = false;
     var busy = false;
+    var hasSharedOnce = false;
     var originalLabelHTML = '';
 
     function isDesignComplete() {
@@ -126,6 +136,7 @@
             .then(function (res) { return res.json(); })
             .then(function () {
                 setBusy(false);
+                hasSharedOnce = true;
                 showTemporaryLabel('已分享<br>✓');
             })
             .catch(function (err) {
@@ -135,14 +146,33 @@
             });
     }
 
+    function onStoryConfirmedNudge() {
+        // 只在「之前已經分享過」的情況才提醒——沒分享過的人，按鈕本身
+        // 就已經是邀請了，不需要另外講。完全不打斷設計流程，純粹是
+        // 低調的提示 + 按鈕短暫的強調光暈。
+        if (!hasSharedOnce || !restoryHint) return;
+        restoryHint.classList.add('visible');
+        btn.classList.add('nudge');
+        setTimeout(function () {
+            restoryHint.classList.remove('visible');
+            btn.classList.remove('nudge');
+        }, RESTORY_HINT_HOLD_MS);
+    }
+
     function init() {
         btn = document.getElementById('share-my-design-btn');
         explainer = document.getElementById('share-explainer');
+        restoryHint = document.getElementById('share-restory-hint');
         if (!btn || !explainer) return;
         labelEl = btn.querySelector('.share-btn-label');
         originalLabelHTML = labelEl.innerHTML;
 
         btn.addEventListener('click', handleClick);
+
+        // 附加在既有的故事確認按鈕上（不動它原本的 handler，跟 Recorder
+        // 監聽同一個按鈕的模式一致）。
+        var storyBtn = document.getElementById('confirm-story-card');
+        if (storyBtn) storyBtn.addEventListener('click', onStoryConfirmedNudge);
 
         // 用輪詢判斷「作品是否已成形」，不掛在任何既有函式上（不動既有 code）。
         var checkInterval = setInterval(function () {

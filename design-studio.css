@@ -1469,6 +1469,45 @@
     transition: opacity 1s ease, transform 1s cubic-bezier(0.25,0.1,0.25,1);
 }
 
+/* ── 故事完成後的分享提醒：只在「之前已分享過」時出現，貼著按鈕左側。 ── */
+#share-restory-hint {
+    position: fixed;
+    top: 50%;
+    right: 100px;
+    transform: translateY(-50%) translateX(8px);
+    max-width: 210px;
+    padding: 10px 16px;
+    background: rgba(16, 14, 10, 0.9);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12.5px;
+    line-height: 1.6;
+    text-align: right;
+    z-index: 150;
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+#share-restory-hint.visible {
+    display: block;
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+#share-my-design-btn.nudge {
+    animation: shareBtnNudge 1.3s ease-in-out infinite;
+}
+
+@keyframes shareBtnNudge {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(212,175,55,0.35), 0 0 16px rgba(212,175,55,0.4); }
+    50%      { box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 28px rgba(212,175,55,0.7); }
+}
+
 .bg-dot.active {
     background: rgba(212,175,55,0.85);
     border-color: rgba(212,175,55,1);
