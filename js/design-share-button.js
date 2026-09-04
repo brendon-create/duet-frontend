@@ -18,11 +18,12 @@
 
     if (!window.DUET_FEATURE_RECORDER) return; // 跟 Recorder 共用同一個開關
 
-    var ENTER_DELAY_MS = 3000; // 出現後停留多久才開始飛
+    var EXPLAINER_HOLD_MS = 4500; // 說明框停留多久才開始收攏
     var CONFIRM_HOLD_MS = 2200; // 分享完成後「已分享」文字停留多久
 
     var btn = null;
     var labelEl = null;
+    var explainer = null;
     var shown = false;
     var busy = false;
     var originalLabelHTML = '';
@@ -38,10 +39,15 @@
     function showButton() {
         if (shown) return;
         shown = true;
-        btn.classList.add('entering');
+
+        // 先出現說明框，解釋按下去會做什麼；停留幾秒後收攏淡出，
+        // 同時按鈕在自己的定位淡入——兩個獨立元素交叉淡出/淡入，
+        // 製造「說明框收攏成按鈕」的錯覺。
+        explainer.classList.add('visible');
         setTimeout(function () {
-            btn.classList.add('flying');
-        }, ENTER_DELAY_MS);
+            explainer.classList.add('collapsing');
+            btn.classList.add('entering', 'settled');
+        }, EXPLAINER_HOLD_MS);
     }
 
     function currentFont(slot) {
@@ -124,7 +130,8 @@
 
     function init() {
         btn = document.getElementById('share-my-design-btn');
-        if (!btn) return;
+        explainer = document.getElementById('share-explainer');
+        if (!btn || !explainer) return;
         labelEl = btn.querySelector('.share-btn-label');
         originalLabelHTML = labelEl.innerHTML;
 
