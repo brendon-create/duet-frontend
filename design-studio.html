@@ -894,6 +894,94 @@
         window.ringMesh = ringMesh;
         window.bailMesh = bailMesh;
         window.bailRelativeOffset = bailRelativeOffset;
+
+        // ============================================================
+        // Content Pipeline Phase 4a：瀏覽器算圖效能實測（benchmark spike）
+        // 規格對應：DUET_內容管線_定案規格_v2.md §5 Phase 4a。
+        //
+        // 用法：設計完成後，瀏覽器 console 呼叫 window.__benchmarkTurntable()。
+        // 離屏渲染一段轉檯（用獨立的 renderer/canvas，不影響畫面），量測耗時
+        // 與記憶體，結果印在 console。不寫進任何 UI，純粹測量用，跟正式的
+        // Phase 4 商品照/轉檯擷取邏輯是分開的兩件事（那個等這裡量出來的數字
+        // 過關才會照這個做法做）。
+        // ============================================================
+        window.__benchmarkTurntable = async function (frameCount) {
+            frameCount = frameCount || 150;
+            if (!mainMesh) {
+                console.warn('[benchmark] 還沒有作品可以測，先完成一個設計（兩個字母 + 至少一次字體）');
+                return null;
+            }
+
+            const w = 1080, h = 1440; // 3:4，對應規格 §5 Phase 4 的 turntable 尺寸
+            const canvas = document.createElement('canvas');
+            const bRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            bRenderer.setSize(w, h, false);
+            bRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            bRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const bScene = new THREE.Scene();
+            const bCamera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+            bCamera.up.set(0, 0, 1);
+
+            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+            light2.position.set(5, 5, 10);
+            bScene.add(light1, light2);
+            if (window.envMap) bScene.environment = window.envMap;
+
+            const meshClone = mainMesh.clone();
+            meshClone.geometry = mainMesh.geometry.clone();
+            meshClone.material = mainMesh.material.clone();
+            bScene.add(meshClone);
+            if (ringMesh) {
+                const r = ringMesh.clone();
+                r.geometry = ringMesh.geometry.clone();
+                r.material = ringMesh.material.clone();
+                bScene.add(r);
+            }
+            if (bailMesh) {
+                const b = bailMesh.clone();
+                b.geometry = bailMesh.geometry.clone();
+                b.material = bailMesh.material.clone();
+                bScene.add(b);
+            }
+
+            const radius = 20;
+            const memBefore = (performance.memory && performance.memory.usedJSHeapSize) || null;
+            const t0 = performance.now();
+            let failures = 0;
+
+            for (let i = 0; i < frameCount; i++) {
+                const angle = (i / frameCount) * Math.PI * 2;
+                bCamera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5);
+                bCamera.lookAt(0, 0, 0);
+                try {
+                    bRenderer.render(bScene, bCamera);
+                } catch (e) {
+                    failures++;
+                }
+                // 每 20 格讓出主執行緒一次，避免長時間佔滿被系統判定沒回應
+                if (i % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+            }
+
+            const t1 = performance.now();
+            const memAfter = (performance.memory && performance.memory.usedJSHeapSize) || null;
+
+            const result = {
+                frameCount,
+                resolution: `${w}x${h}`,
+                totalMs: Math.round(t1 - t0),
+                avgMsPerFrame: +((t1 - t0) / frameCount).toFixed(2),
+                failures,
+                memBeforeMB: memBefore ? +(memBefore / 1048576).toFixed(1) : 'n/a（此瀏覽器不支援 performance.memory）',
+                memAfterMB: memAfter ? +(memAfter / 1048576).toFixed(1) : 'n/a',
+                userAgent: navigator.userAgent,
+            };
+            console.log('[benchmark] 轉檯算圖結果：', result);
+            bRenderer.dispose();
+            return result;
+        };
+        console.log('[benchmark] Content Pipeline Phase 4a 已就緒：設計完成後 console 呼叫 window.__benchmarkTurntable() 開始測試');
         window.bailInitialized = bailInitialized;
 
         // 暴露給全域（供其他模組和 inline script 使用）
