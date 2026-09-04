@@ -235,10 +235,10 @@
         if (!raw) return { present: false, turnCount: 0 };
         try {
             var parsed = JSON.parse(raw);
-            var turns = Array.isArray(parsed.conversation) ? parsed.conversation
-                : Array.isArray(parsed.messages) ? parsed.messages
-                : [];
-            return { present: true, turnCount: turns.length };
+            // 實際欄位是 conversationHistory（見 ai-consultant.html 存 localStorage 那段），
+            // 不是原本猜的 conversation/messages。
+            var turns = Array.isArray(parsed.conversationHistory) ? parsed.conversationHistory : [];
+            return { present: turns.length > 0, turnCount: turns.length };
         } catch (e) {
             // 解析失敗不擋 export，當作沒有諮詢資料
             return { present: false, turnCount: 0 };

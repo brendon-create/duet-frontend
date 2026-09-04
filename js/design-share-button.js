@@ -18,7 +18,12 @@
 
     if (!window.DUET_FEATURE_RECORDER) return; // 跟 Recorder 共用同一個開關
 
-    var EXPLAINER_HOLD_MS = 4500; // 說明框停留多久才開始收攏
+    // AI 諮詢完成回到 design-studio 時，字母/字體/模型是頁面載入當下就用程式
+    // 直接還原好的，「作品完整」這個條件幾乎立刻成立——如果說明框在那個當下
+    // 馬上跳出來，使用者的眼睛根本還沒對焦到頁面上，會完全錯過。所以條件滿足
+    // 後先等一段時間，確保使用者已經看得到自己的作品，才開始顯示說明框。
+    var INITIAL_SETTLE_DELAY_MS = 3000;
+    var EXPLAINER_HOLD_MS = 4500; // 說明框顯示後停留多久才開始收攏
     var CONFIRM_HOLD_MS = 2200; // 分享完成後「已分享」文字停留多久
 
     var btn = null;
@@ -40,14 +45,16 @@
         if (shown) return;
         shown = true;
 
-        // 先出現說明框，解釋按下去會做什麼；停留幾秒後收攏淡出，
+        // 先等使用者把焦點放到作品上，才顯示說明框；停留幾秒後收攏淡出，
         // 同時按鈕在自己的定位淡入——兩個獨立元素交叉淡出/淡入，
         // 製造「說明框收攏成按鈕」的錯覺。
-        explainer.classList.add('visible');
         setTimeout(function () {
-            explainer.classList.add('collapsing');
-            btn.classList.add('entering', 'settled');
-        }, EXPLAINER_HOLD_MS);
+            explainer.classList.add('visible');
+            setTimeout(function () {
+                explainer.classList.add('collapsing');
+                btn.classList.add('entering', 'settled');
+            }, EXPLAINER_HOLD_MS);
+        }, INITIAL_SETTLE_DELAY_MS);
     }
 
     function currentFont(slot) {
