@@ -146,6 +146,22 @@
         }, BAIL_DEBOUNCE_MS);
     }
 
+    function onFontConfirmClick() {
+        // 字體選擇器的「確認」按鈕背後是直接用 JS 設定 letter1/letter2/font1/
+        // font2 的值（不是使用者操作下拉選單），不會觸發原生 change 事件，onLettersChange
+        // /onFontChange 都不會被叫到。延後一輪事件迴圈，等確認流程真正把值設定完
+        // （含它自己呼叫的 generateModel）之後，主動比對目前值有沒有變化。
+        setTimeout(function () {
+            onLettersChange();
+            [1, 2].forEach(function (slot) {
+                var font = currentFont(slot);
+                if (lastFonts[slot] === font) return;
+                record('FONT_CHANGED', { slot: slot, font: lastFonts[slot] }, { slot: slot, font: font });
+                lastFonts[slot] = font;
+            });
+        }, 0);
+    }
+
     function onStoryConfirmed() {
         hasStory = true;
         record('STORY_SET', null, null);
@@ -179,6 +195,7 @@
         addListener('ringZ', 'input', onBailInput);
         addListener('ringRotation', 'input', onBailInput);
         addListener('confirm-story-card', 'click', onStoryConfirmed);
+        addListener('confirm-btn', 'click', onFontConfirmClick);
 
         // 字體選單是動態建立、onchange 會被重新賦值的元素，用事件代理。
         document.addEventListener('change', onFontChange);
