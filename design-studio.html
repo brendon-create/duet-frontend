@@ -326,6 +326,20 @@
         </div>
     </div>
 
+    <!-- Content Pipeline Phase 6：分享我的作品 -->
+    <button id="share-my-design-btn" type="button">
+        <svg class="share-ring" viewBox="0 0 66 66">
+            <defs>
+                <linearGradient id="shareRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f0d98a" />
+                    <stop offset="100%" stop-color="#d4af37" />
+                </linearGradient>
+            </defs>
+            <circle cx="33" cy="33" r="29" />
+        </svg>
+        <span class="share-btn-label" data-i18n-html="studio.share.btn">分享我的<br>作品</span>
+    </button>
+
     <!-- 佩戴模擬預覽 -->
     <!-- Wearing Preview - Temporarily Disabled -->
     <!-- 
@@ -815,6 +829,8 @@
 
     <!-- Content Pipeline Phase 1：獨立模組，開關由 window.DUET_FEATURE_RECORDER 控制（見 assets/js/config.js） -->
     <script src="js/design-recorder.js"></script>
+    <!-- Content Pipeline Phase 6：分享我的作品 按鈕，同一個開關控制 -->
+    <script src="js/design-share-button.js"></script>
 
     <script type="module">
         // ==========================================
@@ -860,6 +876,8 @@
 
         // 3D 場景系統
         import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres, sceneReadyPromise } from './js/3d-scene.js';
+        // Content Pipeline Phase 6：getCamera 橋接到 window，供 classic script（design-share-button.js）讀取視角
+        window.getCamera = getCamera;
 
         // V3 幾何引擎
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';

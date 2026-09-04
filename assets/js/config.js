@@ -8,6 +8,11 @@ const PRODUCTION_BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
 const STAGING_BACKEND_URL = 'https://duet-backend-staging-ye5v.onrender.com';
 const ENV_STORAGE_KEY = 'duet_deploy_env';
 
+// Content Pipeline 網址（目前只有 staging 版本存在，production 版本要等正式
+// 上線那天才會建立；production 環境下 window.DUET_FEATURE_RECORDER 本來就是
+// false，不會真的用到這個值）
+const STAGING_CONTENT_URL = 'https://duet-content-pipeline-staging.onrender.com';
+
 /**
  * 取得當前環境（優先順序：URL > localStorage > 預設）
  *
@@ -54,6 +59,7 @@ window.CURRENT_ENV = currentEnv;
 
 // Content Pipeline — Design Event Recorder 開關（Phase 1）：staging 開、正式關
 window.DUET_FEATURE_RECORDER = (currentEnv === 'staging');
+window.CONTENT_URL = (currentEnv === 'staging') ? STAGING_CONTENT_URL : '';
 
 console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
 
