@@ -52,6 +52,9 @@ const backendUrl = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_B
 window.BACKEND_URL = backendUrl;
 window.CURRENT_ENV = currentEnv;
 
+// Content Pipeline — Design Event Recorder 開關（Phase 1）：staging 開、正式關
+window.DUET_FEATURE_RECORDER = (currentEnv === 'staging');
+
 console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
 
 // ==========================================

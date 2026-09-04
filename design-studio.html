@@ -813,6 +813,9 @@
     }
     </script>
 
+    <!-- Content Pipeline Phase 1：獨立模組，開關由 window.DUET_FEATURE_RECORDER 控制（見 assets/js/config.js） -->
+    <script src="js/design-recorder.js"></script>
+
     <script type="module">
         // ==========================================
         // 🔧 開發者功能初始化
@@ -3720,6 +3723,9 @@
 
             const item = {
                 id: Date.now(),
+                // Content Pipeline Phase 1：設計過程時間軸（新增欄位，開關關閉時為 null，不影響結帳契約）
+                designId: window.DesignRecorder?.designId ?? null,
+                designTimeline: window.DesignRecorder?.export({ camera: getCamera() }) ?? null,
                 letter1: document.getElementById('letter1').value,
                 letter2: document.getElementById('letter2').value,
                 font1: font1Name,
