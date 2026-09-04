@@ -982,6 +982,124 @@
             return result;
         };
         console.log('[benchmark] Content Pipeline Phase 4a 已就緒：設計完成後 console 呼叫 window.__benchmarkTurntable() 開始測試');
+
+        // ============================================================
+        // Content Pipeline Phase 4：商品照 + 轉檯短片擷取
+        // 規格對應：DUET_內容管線_定案規格_v2.md §5 Phase 4（商品照規格：
+        // hero 4:5 1600x2000、front 1:1 1600x1600、detail 4:5 1600x2000、
+        // turntable 3:4 1080p）。
+        //
+        // 供 classic script（design-share-button.js）呼叫，因為 mainMesh/
+        // ringMesh/bailMesh/envMap 都是這個 module script 內部的東西，跟
+        // getCamera 需要橋接是同一個原因。回傳 {hero, front, detail, turntable}
+        // 的 Blob（turntable 可能是 undefined——瀏覽器不支援錄影時就略過，
+        // 不擋其他三張圖）。
+        // ============================================================
+        function _captureScene(camPos, w, h) {
+            const canvas = document.createElement('canvas');
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(w, h, false);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+            camera.up.set(0, 0, 1);
+            camera.position.set(camPos.x, camPos.y, camPos.z);
+            camera.lookAt(0, 0, 0);
+
+            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+            light2.position.set(5, 5, 10);
+            scene.add(light1, light2);
+            if (window.envMap) scene.environment = window.envMap;
+
+            const meshClone = mainMesh.clone();
+            meshClone.geometry = mainMesh.geometry.clone();
+            meshClone.material = mainMesh.material.clone();
+            scene.add(meshClone);
+            if (ringMesh) {
+                const r = ringMesh.clone();
+                r.geometry = ringMesh.geometry.clone();
+                r.material = ringMesh.material.clone();
+                scene.add(r);
+            }
+            if (bailMesh) {
+                const b = bailMesh.clone();
+                b.geometry = bailMesh.geometry.clone();
+                b.material = bailMesh.material.clone();
+                scene.add(b);
+            }
+            return { renderer, scene, camera };
+        }
+
+        function _canvasToBlob(canvas, mime, quality) {
+            return new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+        }
+
+        window.__captureProductAssets = async function () {
+            if (!mainMesh) return null;
+            const radius = 20;
+            const results = {};
+
+            // hero：4:5，3/4 角度
+            let s = _captureScene({ x: radius * 0.7, y: -radius * 0.7, z: 6 }, 1600, 2000);
+            s.renderer.render(s.scene, s.camera);
+            results.hero = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.dispose();
+
+            // front：1:1，正面
+            s = _captureScene({ x: 0, y: -radius, z: 4 }, 1600, 1600);
+            s.renderer.render(s.scene, s.camera);
+            results.front = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.dispose();
+
+            // detail：4:5，拉近一點，交集處微距
+            s = _captureScene({ x: radius * 0.35, y: -radius * 0.35, z: 3 }, 1600, 2000);
+            s.renderer.render(s.scene, s.camera);
+            results.detail = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.dispose();
+
+            // turntable：3:4，1080p，30fps，5 秒 360°——只在瀏覽器支援錄影時做，
+            // 不支援就略過（不擋前面三張已經算好的圖）。
+            if (typeof MediaRecorder !== 'undefined' &&
+                HTMLCanvasElement.prototype.captureStream) {
+                try {
+                    const w = 1080, h = 1440, fps = 30, seconds = 5;
+                    s = _captureScene({ x: radius, y: 0, z: 5 }, w, h);
+                    const stream = s.renderer.domElement.captureStream(fps);
+                    const mimeType = MediaRecorder.isTypeSupported('video/mp4')
+                        ? 'video/mp4'
+                        : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                            ? 'video/webm;codecs=vp9' : 'video/webm');
+                    const recorder = new MediaRecorder(stream, { mimeType });
+                    const chunks = [];
+                    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                    const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+                    recorder.start();
+
+                    const totalFrames = fps * seconds;
+                    for (let i = 0; i < totalFrames; i++) {
+                        const angle = (i / totalFrames) * Math.PI * 2;
+                        s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5);
+                        s.camera.lookAt(0, 0, 0);
+                        s.renderer.render(s.scene, s.camera);
+                        await new Promise((r) => setTimeout(r, 1000 / fps));
+                    }
+                    recorder.stop();
+                    await recordingDone;
+                    s.renderer.dispose();
+                    results.turntable = new Blob(chunks, { type: mimeType });
+                } catch (e) {
+                    console.warn('[capture] 轉檯錄影失敗，略過：', e);
+                }
+            } else {
+                console.warn('[capture] 這個瀏覽器不支援錄影，略過轉檯短片');
+            }
+
+            return results;
+        };
+
         window.bailInitialized = bailInitialized;
 
         // 暴露給全域（供其他模組和 inline script 使用）

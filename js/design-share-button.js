@@ -19,6 +19,12 @@
  * 讓故事進到分享內容的機會，這裡在故事確認的當下（使用者剛完成一件事、不是
  * 打斷設計流程）給一個低調的提醒 + 按鈕短暫強調光暈，邀請他更新分享。沒分享
  * 過的人不會看到這個提醒（按鈕本身就是邀請，不需要重複講）。
+ *
+ * Phase 4：ingest 成功後，在背景呼叫 window.__captureProductAssets()
+ * （定義在 design-studio.html 的 module script 裡，因為需要直接存取
+ * mainMesh/ringMesh/bailMesh，跟 getCamera 要橋接是同一個原因），把商品照
+ * + 轉檯短片上傳到 CONTENT。不影響按鈕本身的狀態（不讓使用者等錄影的
+ * 幾秒鐘），失敗只記 console，不影響分享本身已經成功這件事。
  */
 (function () {
     'use strict';
@@ -111,18 +117,52 @@
         }, CONFIRM_HOLD_MS);
     }
 
+    function uploadOneAsset(designId, assetType, blob) {
+        if (!blob) return Promise.resolve();
+        var ext = blob.type.indexOf('mp4') !== -1 ? 'mp4' : (assetType === 'turntable' ? 'webm' : 'jpg');
+        var form = new FormData();
+        form.append('assetType', assetType);
+        form.append('pipelineVersion', '1.0');
+        form.append('file', blob, assetType + '.' + ext);
+        return fetch(window.CONTENT_URL + '/assets/' + designId, { method: 'POST', body: form })
+            .then(function (res) { return res.json(); })
+            .catch(function (err) {
+                console.warn('[share-button] ' + assetType + ' 上傳失敗:', err);
+            });
+    }
+
+    function captureAndUploadAssets(designId) {
+        // 商品照/轉檯短片的擷取跟上傳不影響分享按鈕本身的狀態（不讓使用者
+        // 等這個——擷取轉檯短片要花幾秒錄影時間），在背景默默進行就好。
+        if (typeof window.__captureProductAssets !== 'function') return;
+        window.__captureProductAssets()
+            .then(function (assets) {
+                if (!assets) return;
+                return Promise.all([
+                    uploadOneAsset(designId, 'hero', assets.hero),
+                    uploadOneAsset(designId, 'front', assets.front),
+                    uploadOneAsset(designId, 'detail', assets.detail),
+                    uploadOneAsset(designId, 'turntable', assets.turntable),
+                ]);
+            })
+            .catch(function (err) {
+                console.warn('[share-button] 商品照/轉檯擷取失敗:', err);
+            });
+    }
+
     function handleClick() {
         if (busy) return;
         if (!window.DesignRecorder || !window.CONTENT_URL) return;
 
         setBusy(true);
 
+        var designId = window.DesignRecorder.designId;
         var timeline = window.DesignRecorder.export({
             camera: (typeof getCamera === 'function') ? getCamera() : undefined,
         });
 
         var payload = {
-            designId: window.DesignRecorder.designId,
+            designId: designId,
             snapshot: buildSnapshot(),
             timeline: timeline,
             story: window.finalDesignStory || null,
@@ -138,6 +178,7 @@
                 setBusy(false);
                 hasSharedOnce = true;
                 showTemporaryLabel('已分享<br>✓');
+                captureAndUploadAssets(designId);
             })
             .catch(function (err) {
                 console.warn('[share-button] ingest 失敗:', err);
