@@ -156,14 +156,30 @@
             for (var i = 0; i < states.length; i++) {
                 await win.__applyReplayState(states[i]);
                 await new Promise(function (r) { setTimeout(r, SETTLE_DELAY_MS); });
-                var canvas = await window.html2canvas(win.document.body, {
+
+                // html2canvas-pro 讀不到 WebGL 畫布內容（實測背景/面板都對，3D 模型
+                // 整個空白），改成：面板+背景照片交給 html2canvas 截，3D 模型直接從
+                // renderer.domElement 本人截圖（跟現有 __captureProductAssets 用的
+                // 是同一種、已經驗證過可靠的方式），兩張圖疊在一起。3D 畫布本身是
+                // alpha 透明背景（只有模型本體不透明），疊在最上層不會蓋住旁邊的
+                // 面板，不需要處理精確的圖層順序。
+                var domCanvas = await window.html2canvas(win.document.body, {
                     width: win.innerWidth,
                     height: win.innerHeight,
                     backgroundColor: null,
                     useCORS: true,
                 });
+                var outCanvas = document.createElement('canvas');
+                outCanvas.width = domCanvas.width;
+                outCanvas.height = domCanvas.height;
+                var ctx = outCanvas.getContext('2d');
+                ctx.drawImage(domCanvas, 0, 0);
+                if (win.renderer && win.renderer.domElement) {
+                    ctx.drawImage(win.renderer.domElement, 0, 0, outCanvas.width, outCanvas.height);
+                }
+
                 var blob = await new Promise(function (resolve) {
-                    canvas.toBlob(resolve, 'image/jpeg', 0.9);
+                    outCanvas.toBlob(resolve, 'image/jpeg', 0.9);
                 });
                 if (blob) images.push(blob);
             }
