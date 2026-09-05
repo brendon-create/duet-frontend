@@ -731,12 +731,15 @@
                 <div class="filter-bar">
                     <button class="btn btn-primary" onclick="showAddPromoModal()">+ 新增優惠碼</button>
                     <button class="btn btn-secondary" onclick="loadPromoCodes()">重新整理</button>
+                    <button class="btn btn-secondary" id="promoBulkDeleteBtn" disabled onclick="openBulkDeleteConfirm('promo')">刪除已勾選 (0)</button>
+                    <button class="btn btn-secondary" onclick="openDeletedCodesModal()">已刪除</button>
                 </div>
-                
+
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
+                                <th><input type="checkbox" id="promoSelectAll" onchange="toggleSelectAll('promo', this.checked)"></th>
                                 <th>優惠碼</th>
                                 <th>類型</th>
                                 <th>折扣</th>
@@ -748,7 +751,7 @@
                             </tr>
                         </thead>
                         <tbody id="promoTableBody">
-                            <tr><td colspan="8" class="loading">載入中...</td></tr>
+                            <tr><td colspan="9" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -935,6 +938,8 @@
                             <option value="used">已使用</option>
                         </select>
                         <button class="btn btn-secondary" onclick="loadRedeemCodes()">重新整理</button>
+                        <button class="btn btn-secondary" id="redeemBulkDeleteBtn" disabled onclick="openBulkDeleteConfirm('redeem')">刪除已勾選 (0)</button>
+                        <button class="btn btn-secondary" onclick="openDeletedCodesModal()">已刪除</button>
                     </div>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
@@ -944,6 +949,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th><input type="checkbox" id="redeemSelectAll" onchange="toggleSelectAll('redeem', this.checked)"></th>
                                 <th>兌換碼</th>
                                 <th>折扣</th>
                                 <th>批次</th>
@@ -955,7 +961,7 @@
                             </tr>
                         </thead>
                         <tbody id="redeemTableBody">
-                            <tr><td colspan="8" class="loading">載入中...</td></tr>
+                            <tr><td colspan="9" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1484,7 +1490,36 @@
             </form>
         </div>
     </div>
-    
+
+    <!-- Bulk Delete Confirm Modal -->
+    <div class="modal-overlay" id="bulkDeleteConfirmModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">確認刪除</h2>
+                <button class="modal-close" onclick="closeBulkDeleteConfirm()">&times;</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">
+                以下項目將被刪除（軟刪除，之後可在「已刪除」裡復原）：
+            </p>
+            <ul id="bulkDeleteList" style="max-height: 300px; overflow-y: auto; padding-left: 20px; margin-bottom: 16px;"></ul>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeBulkDeleteConfirm()">取消</button>
+                <button class="btn btn-primary" style="flex:1; background:#ef4444;" onclick="confirmBulkDelete()">確認刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deleted Codes Modal -->
+    <div class="modal-overlay" id="deletedCodesModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">已刪除的優惠碼／兌換碼</h2>
+                <button class="modal-close" onclick="closeDeletedCodesModal()">&times;</button>
+            </div>
+            <div id="deletedCodesList"><p class="loading">載入中...</p></div>
+        </div>
+    </div>
+
     <!-- Customer Detail Modal -->
     <div class="modal-overlay" id="customerDetailModal">
         <div class="modal" style="max-width: 700px;">
@@ -3514,7 +3549,7 @@
                     loadPromoStats();
                 }
             } catch (err) {
-                document.getElementById('promoTableBody').innerHTML = '<tr><td colspan="8" class="loading">載入失敗</td></tr>';
+                document.getElementById('promoTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入失敗</td></tr>';
             }
         }
         
@@ -3539,7 +3574,7 @@
         function renderPromoCodes(promos) {
             const tbody = document.getElementById('promoTableBody');
             if (!promos || !promos.length) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無優惠碼</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">尚無優惠碼</td></tr>';
                 return;
             }
             
@@ -3558,6 +3593,7 @@
 
                 const pcode = String(p.code || '').replace(/[^A-Za-z0-9_-]/g, '');
                 return `<tr data-promo-code="${escAttr(p.code)}">
+                    <td><input type="checkbox" class="promo-select" data-code="${escAttr(p.code)}" data-desc="${escAttr(p.description || '')}" onchange="onRowSelectChange('promo')"></td>
                     <td><strong>${esc(p.code)}</strong><br><small style="color:var(--text-muted)">${esc(p.description || '')}</small></td>
                     <td>${esc(typeLabel)}</td>
                     <td>${esc(discount)}</td>
@@ -3664,7 +3700,150 @@
                 }
             } catch (err) { alert('網路錯誤'); }
         }
-        
+
+        // ========== 優惠碼/兌換碼 批次刪除 + 已刪除清單/復原 ==========
+        // 優惠碼、兌換碼在後端其實是同一張表（兌換碼只是說明欄位有特定前綴
+        // 的優惠碼），所以批次刪除/已刪除清單/復原共用同一組 API 跟這裡的
+        // function，只是 kind 參數決定要刷新哪個分頁的列表跟哪組 checkbox。
+
+        function onRowSelectChange(kind) {
+            const selector = kind === 'promo' ? '.promo-select' : '.redeem-select';
+            const all = document.querySelectorAll(selector);
+            const checked = document.querySelectorAll(selector + ':checked');
+            const btn = document.getElementById(kind + 'BulkDeleteBtn');
+            btn.textContent = `刪除已勾選 (${checked.length})`;
+            btn.disabled = checked.length === 0;
+            // 部分勾選時「全選」不打勾，避免誤導操作者以為全部都選了
+            document.getElementById(kind + 'SelectAll').checked =
+                all.length > 0 && checked.length === all.length;
+        }
+
+        function toggleSelectAll(kind, checked) {
+            const selector = kind === 'promo' ? '.promo-select' : '.redeem-select';
+            document.querySelectorAll(selector).forEach(cb => { cb.checked = checked; });
+            onRowSelectChange(kind);
+        }
+
+        var _bulkDeleteKind = null;
+
+        // 判斷「看起來像不像測試碼」純粹是命名習慣的判斷（目前唯一區分方式，
+        // 沒有正式欄位標記），不是保證——命中就不特別標，沒命中就用醒目樣式
+        // 提醒操作者再確認一次，不阻擋刪除。
+        function looksLikeTestCode(code, desc) {
+            return /test/i.test(code || '') || /test/i.test(desc || '');
+        }
+
+        function openBulkDeleteConfirm(kind) {
+            const selector = kind === 'promo' ? '.promo-select:checked' : '.redeem-select:checked';
+            const rows = Array.from(document.querySelectorAll(selector)).map(cb => ({
+                code: cb.dataset.code,
+                desc: cb.dataset.desc || '',
+            }));
+            if (!rows.length) return;
+            _bulkDeleteKind = kind;
+
+            document.getElementById('bulkDeleteList').innerHTML = rows.map(r => {
+                const isTest = looksLikeTestCode(r.code, r.desc);
+                const style = isTest ? '' : ' style="color:#ef4444;font-weight:600;"';
+                const warn = isTest ? '' : ' ⚠️ 看起來不是測試用的，請再確認';
+                return `<li${style}>${esc(r.code)}${r.desc ? '（' + esc(r.desc) + '）' : ''}${warn}</li>`;
+            }).join('');
+            document.getElementById('bulkDeleteConfirmModal').classList.add('active');
+        }
+
+        function closeBulkDeleteConfirm() {
+            document.getElementById('bulkDeleteConfirmModal').classList.remove('active');
+            _bulkDeleteKind = null;
+        }
+
+        async function confirmBulkDelete() {
+            const kind = _bulkDeleteKind;
+            if (!kind) return;
+            const selector = kind === 'promo' ? '.promo-select:checked' : '.redeem-select:checked';
+            const codes = Array.from(document.querySelectorAll(selector)).map(cb => cb.dataset.code);
+            if (!codes.length) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/bulk-delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ codes })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeBulkDeleteConfirm();
+                    alert(`已刪除 ${data.deletedCount} 筆（軟刪除，可在「已刪除」裡復原）`);
+                    if (kind === 'promo') loadPromoCodes(); else loadRedeemCodes();
+                } else {
+                    alert(data.error || '刪除失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+
+        async function openDeletedCodesModal() {
+            document.getElementById('deletedCodesModal').classList.add('active');
+            document.getElementById('deletedCodesList').innerHTML = '<p class="loading">載入中...</p>';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/deleted`, {
+                    headers: { 'Authorization': adminAuthHeader() }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || '載入失敗');
+                renderDeletedCodesList(data.codes || []);
+            } catch (err) {
+                document.getElementById('deletedCodesList').innerHTML = `<p class="loading">載入失敗：${esc(err.message)}</p>`;
+            }
+        }
+
+        function closeDeletedCodesModal() {
+            document.getElementById('deletedCodesModal').classList.remove('active');
+        }
+
+        function renderDeletedCodesList(codes) {
+            const container = document.getElementById('deletedCodesList');
+            if (!codes.length) {
+                container.innerHTML = '<p class="loading">目前沒有已刪除的優惠碼／兌換碼</p>';
+                return;
+            }
+            container.innerHTML = `
+                <table>
+                    <thead><tr>
+                        <th><input type="checkbox" onchange="document.querySelectorAll('.deleted-select').forEach(cb=>cb.checked=this.checked)"></th>
+                        <th>代碼</th><th>說明</th><th>刪除時間</th>
+                    </tr></thead>
+                    <tbody>
+                        ${codes.map(c => `<tr>
+                            <td><input type="checkbox" class="deleted-select" data-code="${escAttr(c.code)}"></td>
+                            <td>${esc(c.code)}</td>
+                            <td>${esc(c.description || '')}</td>
+                            <td>${esc(c.deleted_at ? new Date(c.deleted_at).toLocaleString('zh-TW') : '')}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="restoreSelectedCodes()">復原已勾選</button>
+            `;
+        }
+
+        async function restoreSelectedCodes() {
+            const codes = Array.from(document.querySelectorAll('.deleted-select:checked')).map(cb => cb.dataset.code);
+            if (!codes.length) return;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/restore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ codes })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`已復原 ${data.restoredCount} 筆`);
+                    openDeletedCodesModal();
+                    loadPromoCodes();
+                    loadRedeemCodes();
+                } else {
+                    alert(data.error || '復原失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+
         // ========== 客戶詳情 ==========
         function showCustomerDetail(email) {
             // 找出該客戶的所有訂單（排除測試訂單；無效訂單保留顯示但不計入金額）
@@ -3799,7 +3978,7 @@
         let _redeemCodes = [];
 
         async function loadRedeemCodes() {
-            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="8" class="loading">載入中...</td></tr>';
+            document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入中...</td></tr>';
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/redeem-codes`, {
                     headers: { 'Authorization': adminAuthHeader() }
@@ -3809,7 +3988,7 @@
                 _redeemCodes = data.redeem_codes || [];
                 renderRedeemTable();
             } catch (e) {
-                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="8" class="loading">載入失敗：${esc(e.message)}</td></tr>`;
+                document.getElementById('redeemTableBody').innerHTML = `<tr><td colspan="9" class="loading">載入失敗：${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -3850,7 +4029,7 @@
             document.getElementById('redeemUnused').textContent = total - used;
 
             if (!filtered.length) {
-                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="8" class="loading">無資料</td></tr>';
+                document.getElementById('redeemTableBody').innerHTML = '<tr><td colspan="9" class="loading">無資料</td></tr>';
                 return;
             }
             document.getElementById('redeemTableBody').innerHTML = filtered.map(c => {
@@ -3873,6 +4052,7 @@
                     ? `${esc(c.customerName)}${c.zeczecBackerName ? `<div style="font-size:11px;color:var(--text-muted);">嘖嘖：${esc(c.zeczecBackerName)}</div>` : ''}`
                     : '-';
                 return `<tr data-redeem-code="${escAttr(c.code)}">
+                    <td><input type="checkbox" class="redeem-select" data-code="${escAttr(c.code)}" data-desc="${escAttr(batch)}" onchange="onRowSelectChange('redeem')"></td>
                     <td style="font-family:monospace;">${esc(c.code)}</td>
                     <td>${esc(discount)}</td>
                     <td>${esc(batch)} <button class="btn-link" style="background:none;border:none;padding:0;color:#c9a96e;text-decoration:underline;cursor:pointer;font-size:11px;" data-code="${escAttr(c.code)}" data-tier="${escAttr(tier)}" onclick="editRedeemBatch(this.dataset.code, this.dataset.tier)">編輯</button></td>
