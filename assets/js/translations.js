@@ -163,7 +163,7 @@ window.translations = {
         'studio.slot.1':           '版本 1',
         'studio.slot.2':           '版本 2',
         'studio.slot.hint':        '點擊暫存作品',
-        'studio.share.btn':        '分享我的<br>作品',
+        'studio.share.btn':        '分享<br>我的作品',
         'studio.share.explainer':  '在任何對作品樣貌感到滿意的時刻，都可以按下按鈕，分享目前的樣貌與創作過程。',
         'studio.share.restoryHint':'設計理念已經可以放進短片了，要不要更新分享？',
         'studio.promo.title':      '🎁 優惠碼',
