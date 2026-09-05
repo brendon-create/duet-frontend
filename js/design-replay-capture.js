@@ -186,6 +186,19 @@
         } catch (e) {
             console.warn('[replay-capture] 參數面板重播失敗，略過這段:', e);
         } finally {
+            // 只把 iframe 從畫面上移除，不保證瀏覽器會立刻釋放裡面渲染器佔用的
+            // WebGL context（垃圾回收時機不保證）。瀏覽器對同一分頁能同時開啟
+            // 的 WebGL context 數量有上限，重複分享幾次沒有主動釋放的話會慢慢
+            // 洩漏，最後逼得瀏覽器搶主畫面那個 context 的資源、把主畫面的 3D
+            // 渲染搞壞——用 WEBGL_lose_context 明確要求立刻釋放，不要等 GC。
+            try {
+                var iframeWin = iframe.contentWindow;
+                if (iframeWin && iframeWin.renderer && typeof iframeWin.renderer.forceContextLoss === 'function') {
+                    iframeWin.renderer.forceContextLoss();
+                }
+            } catch (e) {
+                // iframe 可能已經在逾時/失敗的情況下被瀏覽器提早清掉，忽略
+            }
             iframe.remove();
         }
         return images;
