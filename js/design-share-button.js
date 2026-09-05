@@ -30,8 +30,6 @@
     'use strict';
 
     if (!window.DUET_FEATURE_RECORDER) return; // 跟 Recorder 共用同一個開關
-    // replayMode：隱藏 iframe 重播用的分身頁面，不該出現分享按鈕
-    if (new URLSearchParams(location.search).get('replayMode') === '1') return;
 
     // AI 諮詢完成回到 design-studio 時，字母/字體/模型是頁面載入當下就用程式
     // 直接還原好的，「作品完整」這個條件幾乎立刻成立——如果說明框在那個當下
@@ -133,45 +131,26 @@
             });
     }
 
-    function uploadReplayStates(designId, timeline) {
-        // 參數面板重播（隱藏 iframe，見 design-replay-capture.js）比轉檯短片更慢
-        // （每個狀態都要重新跑一次模型運算），一樣是背景默默進行，不影響按鈕
-        // 本身的狀態、失敗也不影響分享本身已經成功這件事。
-        if (typeof window.__captureReplayStates !== 'function') return;
-        window.__captureReplayStates(timeline)
-            .then(function (images) {
-                if (!images || !images.length) return;
-                return Promise.all(images.map(function (blob, i) {
-                    return uploadOneAsset(designId, 'state_' + i, blob);
-                }));
-            })
-            .catch(function (err) {
-                console.warn('[share-button] 參數面板重播擷取失敗:', err);
-            });
-    }
-
-    function captureAndUploadAssets(designId, timeline) {
+    function captureAndUploadAssets(designId) {
         // 商品照/轉檯短片的擷取跟上傳不影響分享按鈕本身的狀態（不讓使用者
         // 等這個——擷取轉檯短片要花幾秒錄影時間），在背景默默進行就好。
-        if (typeof window.__captureProductAssets === 'function') {
-            window.__captureProductAssets()
-                .then(function (assets) {
-                    if (!assets) {
-                        console.warn('[share-button] __captureProductAssets 回傳空值，略過商品照/轉檯上傳');
-                        return;
-                    }
-                    return Promise.all([
-                        uploadOneAsset(designId, 'hero', assets.hero),
-                        uploadOneAsset(designId, 'front', assets.front),
-                        uploadOneAsset(designId, 'detail', assets.detail),
-                        uploadOneAsset(designId, 'turntable', assets.turntable),
-                    ]);
-                })
-                .catch(function (err) {
-                    console.warn('[share-button] 商品照/轉檯擷取失敗:', err);
-                });
-        }
-        uploadReplayStates(designId, timeline);
+        if (typeof window.__captureProductAssets !== 'function') return;
+        window.__captureProductAssets()
+            .then(function (assets) {
+                if (!assets) {
+                    console.warn('[share-button] __captureProductAssets 回傳空值，略過商品照/轉檯上傳');
+                    return;
+                }
+                return Promise.all([
+                    uploadOneAsset(designId, 'hero', assets.hero),
+                    uploadOneAsset(designId, 'front', assets.front),
+                    uploadOneAsset(designId, 'detail', assets.detail),
+                    uploadOneAsset(designId, 'turntable', assets.turntable),
+                ]);
+            })
+            .catch(function (err) {
+                console.warn('[share-button] 商品照/轉檯擷取失敗:', err);
+            });
     }
 
     function handleClick() {
@@ -202,7 +181,7 @@
                 setBusy(false);
                 hasSharedOnce = true;
                 showTemporaryLabel('已分享<br>✓');
-                captureAndUploadAssets(designId, timeline);
+                captureAndUploadAssets(designId);
             })
             .catch(function (err) {
                 console.warn('[share-button] ingest 失敗:', err);

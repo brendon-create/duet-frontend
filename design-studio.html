@@ -833,15 +833,6 @@
     <script src="js/design-recorder.js"></script>
     <!-- Content Pipeline Phase 6：分享我的作品 按鈕，同一個開關控制 -->
     <script src="js/design-share-button.js"></script>
-    <!-- Content Pipeline：參數面板重播擷取，需要把隱藏 iframe 的整個畫面拍下來。
-         用 html2canvas-pro 不是原版 html2canvas——原版的 CSS 顏色解析器不認得
-         Safari 等瀏覽器新版 getComputedStyle 吐出來的 color() 語法，遇到就直接
-         拋錯讓整次截圖失敗，pro 版本是社群維護、修過這個相容性問題的分支，
-         API 完全相同（一樣掛在 window.html2canvas，drop-in 替換）。用 jsdelivr
-         不是 cdnjs——這頁的 CSP（見上方 <head>）script-src 白名單只放行
-         cdn.jsdelivr.net。 -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js"></script>
-    <script src="js/design-replay-capture.js"></script>
 
     <script type="module">
         // ==========================================
@@ -1111,43 +1102,6 @@
             }
 
             return results;
-        };
-
-        // ============================================================
-        // Content Pipeline — 參數面板重播（隱藏 iframe 專用）
-        // 給 design-replay-capture.js 在隱藏 iframe 裡驅動這份頁面，依序套用
-        // 時間軸重建出來的狀態。不模擬點擊字體選擇彈窗/拖曳滑軌的過程——
-        // 直接設定表單值 + 呼叫跟使用者操作時同一段真實函式（generateModel、
-        // updateRingPosition），這樣模型和面板永遠是同步的真實狀態，跳轉
-        // 不需要動畫。
-        // ============================================================
-        window.generateModel = generateModel;
-        window.__applyReplayState = async function (state) {
-            if (!state) return;
-            document.getElementById('letter1').value = state.letter1 || '';
-            document.getElementById('letter2').value = state.letter2 || '';
-            if (state.font1) {
-                const f1 = document.getElementById('font1-select');
-                if (f1) f1.value = state.font1;
-            }
-            if (state.font2) {
-                const f2 = document.getElementById('font2-select');
-                if (f2) f2.value = state.font2;
-            }
-            if (state.size) document.getElementById('size').value = state.size;
-            if (state.material) document.getElementById('material').value = state.material;
-            if (state.plating) document.getElementById('plating').value = state.plating;
-            if (state.finish) document.getElementById('finish').value = state.finish;
-
-            await generateModel();
-
-            if (state.bail) {
-                document.getElementById('ringX').value = state.bail.x;
-                document.getElementById('ringY').value = state.bail.y;
-                document.getElementById('ringZ').value = state.bail.z;
-                document.getElementById('ringRotation').value = state.bail.rotation;
-                updateRingPosition();
-            }
         };
 
         window.bailInitialized = bailInitialized;
