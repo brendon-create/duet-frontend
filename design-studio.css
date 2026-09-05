@@ -1456,7 +1456,7 @@
 }
 
 #share-my-design-btn .share-btn-label {
-    font-size: 9.5px;
+    font-size: 11.5px;
     letter-spacing: 0.5px;
     color: rgba(255, 255, 255, 0.88);
     text-align: center;
@@ -1498,11 +1498,11 @@
 }
 
 #share-explainer.collapsing {
-    /* 往右上方（大致朝按鈕新位置的方向）飄走並縮小淡出，取代原地縮小消失，
-       跟 #share-my-design-btn 同時間淡入的動畫銜接起來才有「收攏成按鈕」
-       的錯覺。用 vw/vh 而不是固定 px，寬度不同的螢幕飄移的比例才一致。 */
+    /* 純往右飄走並縮小淡出（不往上），取代原地縮小消失，跟
+       #share-my-design-btn 同時間淡入的動畫銜接起來才有「收攏成按鈕」
+       的錯覺。用 vw 而不是固定 px，寬度不同的螢幕飄移的比例才一致。 */
     opacity: 0;
-    transform: translate(calc(-50% + 34vw), -10vh) scale(0.45);
+    transform: translate(calc(-50% + 34vw), 0) scale(0.45);
     transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.25,0.1,0.25,1);
 }
 

@@ -117,14 +117,44 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
         : (heroUrl ? `<img src="${heroUrl}" class="poster-img" alt="">` : '')}
     <h1>${letters}</h1>
-    <a class="cta-primary" href="/design-studio.html">設計你自己的 DUET</a>
+    <a class="cta-primary" href="/">設計你自己的 DUET</a>
     <div class="secondary-row">
-      <a class="cta-secondary" id="download-btn" href="${videoUrl || heroUrl}" download>下載影片</a>
+      <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
       <button class="cta-secondary" id="share-page-btn" type="button">分享這個頁面</button>
     </div>
     <a class="revoke-link" id="revoke-link" href="#">這是你的設計？想撤下 →</a>
   </div>
   <script>
+    // 影片存在跟這個頁面不同網域（Supabase），純用 <a download> 在跨網域
+    // 情況下不保證會真的跳出存檔對話框，很多瀏覽器會直接當成一般連結
+    // 開啟播放。改成用 fetch 把檔案抓成 blob，再用「同網域」的 blob: 網址
+    // 觸發下載——瀏覽器對 blob: 網址的 download 屬性才會確實遵守。
+    document.getElementById('download-btn').addEventListener('click', function () {
+      var btn = this;
+      var original = btn.textContent;
+      var url = btn.getAttribute('data-url');
+      var ext = btn.getAttribute('data-ext');
+      if (!url) return;
+      btn.textContent = '下載中…';
+      fetch(url)
+        .then(function (res) { return res.blob(); })
+        .then(function (blob) {
+          var blobUrl = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = 'duet.' + ext;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+          btn.textContent = original;
+        })
+        .catch(function () {
+          btn.textContent = '下載失敗，請重試';
+          setTimeout(function () { btn.textContent = original; }, 2200);
+        });
+    });
+
     document.getElementById('share-page-btn').addEventListener('click', function () {
       var btn = this;
       var original = btn.textContent;
