@@ -137,7 +137,10 @@
         if (typeof window.__captureProductAssets !== 'function') return;
         window.__captureProductAssets()
             .then(function (assets) {
-                if (!assets) return;
+                if (!assets) {
+                    console.warn('[share-button] __captureProductAssets 回傳空值，略過商品照/轉檯上傳');
+                    return;
+                }
                 return Promise.all([
                     uploadOneAsset(designId, 'hero', assets.hero),
                     uploadOneAsset(designId, 'front', assets.front),

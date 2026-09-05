@@ -1038,7 +1038,11 @@
         }
 
         window.__captureProductAssets = async function () {
-            if (!mainMesh) return null;
+            if (!mainMesh && window.mainMesh) mainMesh = window.mainMesh; // 防呆備援，見 window.mainMesh 賦值處的註解
+            if (!mainMesh) {
+                console.warn('[capture] mainMesh 不存在，無法擷取商品照/轉檯短片');
+                return null;
+            }
             const radius = 20;
             const results = {};
 
@@ -2730,6 +2734,7 @@
             );
 
             mainMesh = result;
+            window.mainMesh = mainMesh; // 橋接給 __captureProductAssets 等使用（跟 slot 召回路徑一致的做法）
             window.scene.add(mainMesh);
 
             // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
