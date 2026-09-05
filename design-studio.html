@@ -833,8 +833,10 @@
     <script src="js/design-recorder.js"></script>
     <!-- Content Pipeline Phase 6：分享我的作品 按鈕，同一個開關控制 -->
     <script src="js/design-share-button.js"></script>
-    <!-- Content Pipeline：參數面板重播擷取，需要 html2canvas 把隱藏 iframe 的整個畫面拍下來 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Content Pipeline：參數面板重播擷取，需要 html2canvas 把隱藏 iframe 的整個畫面拍下來。
+         用 jsdelivr 不是 cdnjs——這頁的 CSP（見上方 <head>）script-src 白名單只放行
+         cdn.jsdelivr.net，cdnjs.cloudflare.com 會被瀏覽器直接擋掉。 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="js/design-replay-capture.js"></script>
 
     <script type="module">
