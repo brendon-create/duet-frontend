@@ -100,7 +100,10 @@
 
     function createHiddenIframe() {
         var iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;visibility:hidden;';
+        // 只能靠定位挪到畫面外，不能用 visibility:hidden——瀏覽器對 visibility:hidden
+        // 的元素通常會直接暫停裡面的渲染迴圈（3D 動畫用的 requestAnimationFrame），
+        // WebGL 畫布會整個沒有畫出任何一幀，preserveDrawingBuffer 也救不回來。
+        iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;';
         iframe.style.width = window.innerWidth + 'px';
         iframe.style.height = window.innerHeight + 'px';
         var url = new URL(location.href);
