@@ -89,6 +89,10 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     font-size: 28px; font-weight: 500; letter-spacing: 2px; margin: 20px 0 8px;
     color: #fff;
   }
+  .tagline {
+    font-size: 14px; color: rgba(255,255,255,0.65); margin: 0 0 4px;
+    letter-spacing: 0.3px;
+  }
   .cta-primary {
     display: block; width: 100%; margin-top: 20px; padding: 14px 20px;
     background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
@@ -117,6 +121,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
         : (heroUrl ? `<img src="${heroUrl}" class="poster-img" alt="">` : '')}
     <h1>${letters}</h1>
+    <p class="tagline">兩個字母，一段獨一無二的故事</p>
     <a class="cta-primary" href="/">設計你自己的 DUET</a>
     <div class="secondary-row">
       <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
