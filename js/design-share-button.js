@@ -36,7 +36,6 @@
     // 馬上跳出來，使用者的眼睛根本還沒對焦到頁面上，會完全錯過。所以條件滿足
     // 後先等一段時間，確保使用者已經看得到自己的作品，才開始顯示說明框。
     var INITIAL_SETTLE_DELAY_MS = 3000;
-    var EXPLAINER_HOLD_MS = 4500; // 說明框顯示後停留多久才開始收攏
     var RESTORY_HINT_HOLD_MS = 5000; // 故事完成後的提醒停留多久
     var STATUS_POLL_INTERVAL_MS = 4000; // 輪詢影片是否生成完成的間隔
     var READY_PULSE_MS = 1600; // 生成完成時「明顯變化」快閃提示要跑多久（對應 CSS ready-pulse 動畫時長）
@@ -67,16 +66,17 @@
         if (shown) return;
         shown = true;
 
-        // 先等使用者把焦點放到作品上，才顯示說明框；停留幾秒後收攏淡出，
-        // 同時按鈕在自己的定位淡入——兩個獨立元素交叉淡出/淡入，
-        // 製造「說明框收攏成按鈕」的錯覺。
+        // 先等使用者把焦點放到作品上，才顯示說明框；使用者按下框裡的
+        // 「知道了」才收攏淡出、按鈕在自己的定位淡入（見 dismissExplainer）
+        // ——不是自動計時消失，讓使用者自己決定看完了沒。
         setTimeout(function () {
             explainer.classList.add('visible');
-            setTimeout(function () {
-                explainer.classList.add('collapsing');
-                btn.classList.add('entering', 'settled');
-            }, EXPLAINER_HOLD_MS);
         }, INITIAL_SETTLE_DELAY_MS);
+    }
+
+    function dismissExplainer() {
+        explainer.classList.add('collapsing');
+        btn.classList.add('entering', 'settled');
     }
 
     function currentFont(slot) {
@@ -263,6 +263,9 @@
         originalLabelHTML = labelEl.innerHTML;
 
         btn.addEventListener('click', handleClick);
+
+        var explainerOkBtn = document.getElementById('share-explainer-ok');
+        if (explainerOkBtn) explainerOkBtn.addEventListener('click', dismissExplainer);
 
         // 附加在既有的故事確認按鈕上（不動它原本的 handler，跟 Recorder
         // 監聽同一個按鈕的模式一致）。
