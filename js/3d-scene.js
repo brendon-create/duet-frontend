@@ -34,7 +34,12 @@ export function initScene() {
     camera.position.set(40, -57, 12);
     camera.lookAt(0, 0, 0);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // replayMode（Content Pipeline 參數面板重播功能）需要事後用 html2canvas 讀取
+    // 這個畫布當下畫了什麼，WebGL 預設每幀畫完就可能被清掉，讀取時間點沒抓準會
+    // 抓到空的——只在 replayMode 開 preserveDrawingBuffer（有效能代價，一般使用者
+    // 不需要付這個代價，所以照網址參數決定，不是永遠開著）。
+    const isReplayMode = new URLSearchParams(location.search).get('replayMode') === '1';
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: isReplayMode });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

@@ -23,6 +23,8 @@
 
     if (!window.DUET_FEATURE_RECORDER) return; // 開關關閉：完全不建立、不掛任何東西
     if (window.DesignRecorder) return; // 避免重複載入時互相覆蓋
+    // replayMode：隱藏 iframe 重播用的分身頁面，不需要（也不該）自己再記錄一份時間軸
+    if (new URLSearchParams(location.search).get('replayMode') === '1') return;
 
     var SCHEMA_VERSION = '1.1';
     var RECORDER_VERSION = '1.0.0';
