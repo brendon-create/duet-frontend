@@ -833,10 +833,14 @@
     <script src="js/design-recorder.js"></script>
     <!-- Content Pipeline Phase 6：分享我的作品 按鈕，同一個開關控制 -->
     <script src="js/design-share-button.js"></script>
-    <!-- Content Pipeline：參數面板重播擷取，需要 html2canvas 把隱藏 iframe 的整個畫面拍下來。
-         用 jsdelivr 不是 cdnjs——這頁的 CSP（見上方 <head>）script-src 白名單只放行
-         cdn.jsdelivr.net，cdnjs.cloudflare.com 會被瀏覽器直接擋掉。 -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- Content Pipeline：參數面板重播擷取，需要把隱藏 iframe 的整個畫面拍下來。
+         用 html2canvas-pro 不是原版 html2canvas——原版的 CSS 顏色解析器不認得
+         Safari 等瀏覽器新版 getComputedStyle 吐出來的 color() 語法，遇到就直接
+         拋錯讓整次截圖失敗，pro 版本是社群維護、修過這個相容性問題的分支，
+         API 完全相同（一樣掛在 window.html2canvas，drop-in 替換）。用 jsdelivr
+         不是 cdnjs——這頁的 CSP（見上方 <head>）script-src 白名單只放行
+         cdn.jsdelivr.net。 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js"></script>
     <script src="js/design-replay-capture.js"></script>
 
     <script type="module">
