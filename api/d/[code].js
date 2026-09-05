@@ -45,10 +45,13 @@ function notFoundPage() {
 </div></body></html>`;
 }
 
+const DEFAULT_TAGLINE = '這是我設計的作品，你也想試試看嗎？';
+
 function sharePage(data, code) {
     const letters = `${escapeHtml(data.letter1 || '').toUpperCase()} &amp; ${escapeHtml(data.letter2 || '').toUpperCase()}`;
     const heroUrl = escapeHtml(data.heroUrl || '');
     const videoUrl = escapeHtml(data.videoUrl || '');
+    const tagline = escapeHtml(data.message || DEFAULT_TAGLINE);
     const pageTitle = `${letters} — DUET`;
     const ogDescription = '自選字母、字型、材質，設計專屬你的 DUET 客製墜飾。';
 
@@ -89,9 +92,24 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     font-size: 28px; font-weight: 500; letter-spacing: 2px; margin: 20px 0 8px;
     color: #fff;
   }
+  .tagline-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin: 0 0 4px;
+  }
   .tagline {
-    font-size: 14px; color: rgba(255,255,255,0.65); margin: 0 0 4px;
-    letter-spacing: 0.3px;
+    font-size: 14px; color: rgba(255,255,255,0.65);
+    letter-spacing: 0.3px; margin: 0;
+  }
+  .tagline-edit-btn {
+    background: none; border: none; color: rgba(255,255,255,0.4);
+    font-size: 13px; cursor: pointer; padding: 2px 4px; line-height: 1;
+  }
+  .tagline-edit-btn:hover { color: rgba(212,175,55,0.9); }
+  .tagline-input {
+    width: 100%; font-size: 14px; color: #fff; letter-spacing: 0.3px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(212,175,55,0.5);
+    border-radius: 8px; padding: 6px 10px; text-align: center;
+    font-family: inherit;
   }
   .cta-primary {
     display: block; width: 100%; margin-top: 20px; padding: 14px 20px;
@@ -121,7 +139,10 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
         : (heroUrl ? `<img src="${heroUrl}" class="poster-img" alt="">` : '')}
     <h1>${letters}</h1>
-    <p class="tagline">這是我設計的作品，你也想試試看嗎？</p>
+    <div class="tagline-row">
+      <p class="tagline" id="tagline">${tagline}</p>
+      <button class="tagline-edit-btn" id="tagline-edit-btn" type="button" title="編輯這句話">✎</button>
+    </div>
     <a class="cta-primary" href="/">設計你自己的 DUET</a>
     <div class="secondary-row">
       <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
@@ -158,6 +179,47 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
           btn.textContent = '下載失敗，請重試';
           setTimeout(function () { btn.textContent = original; }, 2200);
         });
+    });
+
+    // 分享者自己編輯 tagline 那句話：點鉛筆變成輸入框，Enter/失焦存檔，
+    // Esc 取消。存檔用的是 code 本身當驗證（跟撤下同一個信任模型），
+    // 誰都能改，但只有拿到連結的人知道 code。
+    document.getElementById('tagline-edit-btn').addEventListener('click', function () {
+      var p = document.getElementById('tagline');
+      var row = p.parentElement;
+      var currentText = p.textContent;
+      var input = document.createElement('input');
+      input.className = 'tagline-input';
+      input.value = currentText;
+      input.maxLength = 80;
+      row.replaceChild(input, p);
+      this.style.display = 'none';
+      var editBtn = this;
+
+      function finishEdit(save) {
+        var newText = input.value.trim();
+        var newP = document.createElement('p');
+        newP.className = 'tagline';
+        newP.id = 'tagline';
+        newP.textContent = save && newText ? newText : currentText;
+        row.replaceChild(newP, input);
+        editBtn.style.display = '';
+        if (save && newText && newText !== currentText) {
+          fetch('${CONTENT_URL}/share/${escapeHtml(code)}/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: newText }),
+          }).catch(function () {});
+        }
+      }
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
+        if (e.key === 'Escape') { finishEdit(false); }
+      });
+      input.addEventListener('blur', function () { finishEdit(true); });
+      input.focus();
+      input.select();
     });
 
     document.getElementById('share-page-btn').addEventListener('click', function () {
