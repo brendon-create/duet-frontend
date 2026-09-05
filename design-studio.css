@@ -1399,6 +1399,33 @@
     50%      { box-shadow: 0 0 0 1px rgba(212,175,55,0.55), 0 0 24px rgba(212,175,55,0.6); }
 }
 
+/* 背景生成中（20-40 秒，沒有真實進度可回報）：疊在 .busy 之上，用比較慢、
+   偏「呼吸/閃爍」的透明度變化取代 .busy 原本的光暈脈動，跟環形進度條的
+   持續填滿一起，讓使用者感覺到「還在動、還沒結束」。放在 .busy 規則之後，
+   同一個 box-shadow 屬性後面定義的贏，等於是覆蓋掉 .busy 的動畫。 */
+#share-my-design-btn.preparing {
+    animation: shareBtnPreparing 2.2s ease-in-out infinite;
+}
+
+@keyframes shareBtnPreparing {
+    0%, 100% { opacity: 0.55; box-shadow: 0 0 0 1px rgba(212,175,55,0.22), 0 0 10px rgba(212,175,55,0.22); }
+    50%      { opacity: 1;    box-shadow: 0 0 0 1px rgba(212,175,55,0.5),  0 0 18px rgba(212,175,55,0.5); }
+}
+
+/* 生成完成的明顯提示：快速跳動幾下再穩定下來，跟 .preparing 的緩慢閃爍
+   形成對比，讓使用者一眼看出「狀態變了」。transform 要保留 translateY(-50%)
+   ——那是按鈕自己的垂直定位，不是單純的縮放特效，蓋掉會讓按鈕跳位置。 */
+#share-my-design-btn.ready-pulse {
+    animation: shareBtnReadyPulse 0.35s ease-in-out 4;
+}
+
+@keyframes shareBtnReadyPulse {
+    0%, 100% { transform: translateY(-50%) scale(1);
+               box-shadow: 0 0 0 1px rgba(212,175,55,0.3), 0 0 14px rgba(212,175,55,0.35); }
+    50%      { transform: translateY(-50%) scale(1.12);
+               box-shadow: 0 0 0 3px rgba(212,175,55,0.85), 0 0 32px rgba(212,175,55,0.9); }
+}
+
 #share-my-design-btn svg.share-ring {
     position: absolute;
     top: -1px;
@@ -1421,7 +1448,11 @@
 
 #share-my-design-btn.busy svg.share-ring circle {
     stroke-dashoffset: 0;
-    transition: stroke-dashoffset 20s linear;
+    /* 35s 是實測背景生成（含上傳）大約會花的時間抓的預估值，不是真實進度
+       （ffmpeg 沒辦法回報精確百分比）。實際完成得比這個快，環形會提前
+       走完停在滿格，看起來只是「快好了」，不算破圖；比這個慢的話，圈已經
+       走完了但還在等，跟 .preparing 的閃爍動畫一起看還是感覺得出「還在動」。 */
+    transition: stroke-dashoffset 35s linear;
 }
 
 #share-my-design-btn .share-btn-label {

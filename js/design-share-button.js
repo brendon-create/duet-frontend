@@ -37,17 +37,23 @@
     // 後先等一段時間，確保使用者已經看得到自己的作品，才開始顯示說明框。
     var INITIAL_SETTLE_DELAY_MS = 3000;
     var EXPLAINER_HOLD_MS = 4500; // 說明框顯示後停留多久才開始收攏
-    var CONFIRM_HOLD_MS = 2200; // 分享完成後「已分享」文字停留多久
     var RESTORY_HINT_HOLD_MS = 5000; // 故事完成後的提醒停留多久
+    var STATUS_POLL_INTERVAL_MS = 4000; // 輪詢影片是否生成完成的間隔
+    var READY_PULSE_MS = 1600; // 生成完成時「明顯變化」快閃提示要跑多久（對應 CSS ready-pulse 動畫時長）
 
     var btn = null;
     var labelEl = null;
     var explainer = null;
     var restoryHint = null;
     var shown = false;
-    var busy = false;
     var hasSharedOnce = false;
     var originalLabelHTML = '';
+
+    // idle：還沒按過或上一輪已經看過分享頁；preparing：ingest+背景生成/上傳
+    // 進行中，輪詢 /status；ready：影片跟分享頁都好了，按鈕改成入口。
+    var state = 'idle';
+    var shareCode = null;
+    var pollTimer = null;
 
     function isDesignComplete() {
         var letter1 = document.getElementById('letter1');
@@ -99,22 +105,65 @@
         };
     }
 
-    function setBusy(isBusy) {
-        busy = isBusy;
-        if (isBusy) {
-            btn.classList.add('busy');
-            btn.disabled = true;
-        } else {
-            btn.classList.remove('busy');
-            btn.disabled = false;
+    function stopPolling() {
+        if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
         }
     }
 
-    function showTemporaryLabel(html) {
-        labelEl.innerHTML = html;
+    // 影片組裝沒有真實進度可回報（ffmpeg 沒辦法給精確百分比），這裡只能
+    // 每隔幾秒問一次「好了沒」，不是即時推播。輪詢的是 design_id 不是
+    // shareCode——分享頁 code 在 ingest 當下就建好了，但影片本身還沒。
+    function pollStatus(designId) {
+        fetch(window.CONTENT_URL + '/status/' + designId)
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (state !== 'preparing') return; // 使用者可能已經離開這個狀態，別再誤觸發
+                if (data && data.success && data.ready && data.shareCode) {
+                    shareCode = data.shareCode;
+                    enterReadyState();
+                    return;
+                }
+                pollTimer = setTimeout(function () { pollStatus(designId); }, STATUS_POLL_INTERVAL_MS);
+            })
+            .catch(function () {
+                // 查詢本身失敗（網路瞬斷之類）不代表生成失敗，過一輪再試，
+                // 不要讓使用者卡在「製作中」但其實已經好了卻不知道。
+                pollTimer = setTimeout(function () { pollStatus(designId); }, STATUS_POLL_INTERVAL_MS);
+            });
+    }
+
+    function enterPreparingState() {
+        state = 'preparing';
+        btn.classList.remove('ready-pulse');
+        btn.classList.add('busy', 'preparing');
+        btn.disabled = true;
+        labelEl.innerHTML = '分享內容<br>製作中';
+    }
+
+    function enterReadyState() {
+        stopPolling();
+        state = 'ready';
+        btn.classList.remove('busy', 'preparing');
+        btn.classList.add('ready-pulse');
+        btn.disabled = false;
+        labelEl.innerHTML = '前往<br>分享';
         setTimeout(function () {
-            labelEl.innerHTML = originalLabelHTML;
-        }, CONFIRM_HOLD_MS);
+            btn.classList.remove('ready-pulse');
+        }, READY_PULSE_MS);
+    }
+
+    function backToIdle() {
+        stopPolling();
+        state = 'idle';
+        btn.classList.remove('busy', 'preparing', 'ready-pulse');
+        btn.disabled = false;
+        labelEl.innerHTML = originalLabelHTML;
+    }
+
+    function openSharePage() {
+        window.open(location.origin + '/d/' + shareCode, '_blank');
     }
 
     function uploadOneAsset(designId, assetType, blob) {
@@ -154,10 +203,12 @@
     }
 
     function handleClick() {
-        if (busy) return;
+        if (state === 'preparing') return;
+        if (state === 'ready') {
+            openSharePage();
+            return;
+        }
         if (!window.DesignRecorder || !window.CONTENT_URL) return;
-
-        setBusy(true);
 
         var designId = window.DesignRecorder.designId;
         var timeline = window.DesignRecorder.export({
@@ -171,6 +222,8 @@
             story: window.finalDesignStory || null,
         };
 
+        enterPreparingState();
+
         fetch(window.CONTENT_URL + '/ingest/experience', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -178,15 +231,13 @@
         })
             .then(function (res) { return res.json(); })
             .then(function () {
-                setBusy(false);
                 hasSharedOnce = true;
-                showTemporaryLabel('已分享<br>✓');
                 captureAndUploadAssets(designId);
+                pollStatus(designId);
             })
             .catch(function (err) {
                 console.warn('[share-button] ingest 失敗:', err);
-                setBusy(false);
-                showTemporaryLabel('稍後<br>再試');
+                backToIdle();
             });
     }
 
