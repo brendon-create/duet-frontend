@@ -121,7 +121,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
         : (heroUrl ? `<img src="${heroUrl}" class="poster-img" alt="">` : '')}
     <h1>${letters}</h1>
-    <p class="tagline">這是我設計的作品，你也能為自己或在乎的人打造一件</p>
+    <p class="tagline">這是我設計的作品，你也想試試看嗎？</p>
     <a class="cta-primary" href="/">設計你自己的 DUET</a>
     <div class="secondary-row">
       <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
