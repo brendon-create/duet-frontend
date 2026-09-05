@@ -1343,15 +1343,17 @@
 }
 
 /* ── 分享我的作品 按鈕（Content Pipeline Phase 6）──
-   靜置位置：作品右側、垂直置中（避開右上角 slot 1/2、右下角背景切換器）。
+   靜置位置：slot 2（右上角暫存版本 2）正下方一點點，不是垂直置中。
    風格比照 .version-slot 的玻璃質感（低透明度背景 + 模糊 + 細邊），只是
    邊框改金色、文字白色、形狀改圓形，不做實心漸層球體。
    出場：跟 #share-explainer 說明框搭配——說明框淡出收攏的同時，這顆按鈕
-   在自己的定位淡入，不用再單獨飛一次。 */
+   在自己的定位淡入，不用再單獨飛一次。
+   top:240px 是 slot2 底部（20px+160px）再加一點間距後的垂直中心點，
+   right:68px 是 slot2（160px 寬、貼齊容器右緣 20px）的水平中心對齊。 */
 #share-my-design-btn {
     position: fixed;
-    top: 50%;
-    right: 24px;
+    top: 240px;
+    right: 68px;
     transform: translateY(-50%) scale(0.85);
     width: 64px;
     height: 64px;
@@ -1465,15 +1467,19 @@
 }
 
 #share-explainer.collapsing {
+    /* 往右上方（大致朝按鈕新位置的方向）飄走並縮小淡出，取代原地縮小消失，
+       跟 #share-my-design-btn 同時間淡入的動畫銜接起來才有「收攏成按鈕」
+       的錯覺。用 vw/vh 而不是固定 px，寬度不同的螢幕飄移的比例才一致。 */
     opacity: 0;
-    transform: translateX(-50%) scale(0.4);
-    transition: opacity 1s ease, transform 1s cubic-bezier(0.25,0.1,0.25,1);
+    transform: translate(calc(-50% + 34vw), -10vh) scale(0.45);
+    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.25,0.1,0.25,1);
 }
 
-/* ── 故事完成後的分享提醒：只在「之前已分享過」時出現，貼著按鈕左側。 ── */
+/* ── 故事完成後的分享提醒：只在「之前已分享過」時出現，貼著按鈕左側。
+   top 跟 #share-my-design-btn 同一個垂直中心點，位置才會對齊。 ── */
 #share-restory-hint {
     position: fixed;
-    top: 50%;
+    top: 240px;
     right: 100px;
     transform: translateY(-50%) translateX(8px);
     max-width: 210px;
@@ -1530,6 +1536,21 @@
     #bg-switcher {
         bottom: calc(36vh + 10px);
         right: 12px;
+    }
+
+    /* 手機版 slot2 的版面完全不同（#saved-versions 從 top:10px 起、橫向
+       平分寬度，不是桌機版那個右上角固定 160px 方塊），這裡估一個大概對齊
+       slot2 下方的位置——沒辦法在這裡實機驗證精準度，之後用手機看過再微調。 */
+    #share-my-design-btn {
+        top: 180px;
+        right: 16px;
+        transform: translateY(0) scale(0.85);
+    }
+    #share-my-design-btn.settled {
+        transform: translateY(0) scale(1);
+    }
+    #share-restory-hint {
+        top: 180px;
     }
 }
 
