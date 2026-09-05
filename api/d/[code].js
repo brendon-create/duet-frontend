@@ -101,8 +101,8 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     letter-spacing: 0.3px; margin: 0;
   }
   .tagline-edit-btn {
-    background: none; border: none; color: rgba(255,255,255,0.4);
-    font-size: 13px; cursor: pointer; padding: 2px 4px; line-height: 1;
+    background: none; border: none; color: rgba(255,255,255,0.55);
+    font-size: 19px; cursor: pointer; padding: 4px 6px; line-height: 1;
   }
   .tagline-edit-btn:hover { color: rgba(212,175,55,0.9); }
   .tagline-input {
@@ -126,11 +126,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     border: 1px solid rgba(212,175,55,0.4); border-radius: 10px;
     text-decoration: none; cursor: pointer;
   }
-  .revoke-link {
-    display: block; margin-top: 22px; font-size: 12px; color: rgba(255,255,255,0.4);
-    text-decoration: none;
-  }
-  .revoke-link:hover { color: rgba(255,255,255,0.6); }
+
 </style>
 </head>
 <body>
@@ -148,7 +144,6 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
       <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
       <button class="cta-secondary" id="share-page-btn" type="button">分享這個頁面</button>
     </div>
-    <a class="revoke-link" id="revoke-link" href="#">這是你的設計？想撤下 →</a>
   </div>
   <script>
     // 影片存在跟這個頁面不同網域（Supabase），純用 <a download> 在跨網域
@@ -229,14 +224,6 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         .then(function () { btn.textContent = '連結已複製'; })
         .catch(function () { btn.textContent = '複製失敗，請手動複製網址'; })
         .then(function () { setTimeout(function () { btn.textContent = original; }, 2200); });
-    });
-
-    document.getElementById('revoke-link').addEventListener('click', function (e) {
-      e.preventDefault();
-      if (!confirm('確定要撤下這個分享頁嗎？撤下後這個連結就再也打不開了。')) return;
-      fetch('${CONTENT_URL}/share/${escapeHtml(code)}/revoke', { method: 'POST' })
-        .then(function () { document.querySelector('.card').innerHTML = '<p>已撤下，這個連結不再公開。</p>'; })
-        .catch(function () { alert('撤下失敗，稍後再試一次。'); });
     });
   </script>
 </body></html>`;
