@@ -143,7 +143,6 @@
     }
 
     function enterPreparingState() {
-        stopReadyWatch();
         state = 'preparing';
         btn.classList.remove('ready-pulse');
         btn.classList.add('busy', 'preparing');
@@ -161,41 +160,26 @@
         setTimeout(function () {
             btn.classList.remove('ready-pulse');
         }, READY_PULSE_MS);
-        startReadyWatch();
     }
 
     // 分享期間（preparing）畫面被改了幾次都不管——反正真正決定內容的是
     // 使用者下次按下「分享」那一刻的畫面，中途改幾次都無所謂。但一旦進入
-    // 「前往分享」狀態（不管使用者當下有沒有真的點開分享頁），就要開始
-    // 定期比對「現在畫面」跟「當初按下分享這個作品時」是否還是同一版——
-    // 不然已經耐心等完製作、點過一次前往分享看過內容的客人，之後想再調整
-    // 設計，會被迫要「改完 → 先點一次前往分享（其實沒用）→ 再點一次分享」
-    // 這種不合理的兩次點擊，才能重新製作。純瀏覽器端 JSON 字串比對，不用
-    // 問後端，欄位跟 buildSnapshot() 完全一致，涵蓋所有會影響外觀的參數。
+    // 「前往分享」狀態，任何一次改動都要當下立刻觸發變回「分享這個作品」
+    // ——用事件觸發，不是定時輪詢：已經耐心等完製作、點過一次前往分享
+    // 看過內容的客人，之後想再調整設計，不該還要多按一次才會觸發。
+    // 純瀏覽器端 JSON 字串比對，不用問後端，欄位跟 buildSnapshot() 完全
+    // 一致，涵蓋所有會影響外觀的參數。
     var lastSharedSnapshotJSON = null;
-    var READY_WATCH_INTERVAL_MS = 2500;
-    var readyWatchTimer = null;
 
-    function startReadyWatch() {
-        stopReadyWatch();
-        readyWatchTimer = setInterval(function () {
-            if (state !== 'ready') { stopReadyWatch(); return; }
-            if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
-                backToIdle();
-            }
-        }, READY_WATCH_INTERVAL_MS);
-    }
-
-    function stopReadyWatch() {
-        if (readyWatchTimer) {
-            clearInterval(readyWatchTimer);
-            readyWatchTimer = null;
+    function checkVersionChanged() {
+        if (state !== 'ready') return;
+        if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
+            backToIdle();
         }
     }
 
     function backToIdle() {
         stopPolling();
-        stopReadyWatch();
         state = 'idle';
         btn.classList.remove('busy', 'preparing', 'ready-pulse');
         btn.disabled = false;
@@ -205,13 +189,8 @@
     function openSharePage() {
         // 一律照按下去的意思做——開啟已經做好的分享頁，不管內容新不新。
         window.open(location.origin + '/d/' + shareCode, '_blank');
-
-        // 開啟的同時（不影響開啟這個動作本身），順便立即比對一次，不用
-        // 等下一輪 startReadyWatch() 的定時檢查——避免點下去那一刻剛好卡在
-        // 兩次檢查中間的空窗。
-        if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
-            backToIdle();
-        }
+        // 開啟的同時，順便立即比對一次目前畫面版本。
+        checkVersionChanged();
     }
 
     function uploadOneAsset(designId, assetType, blob) {
@@ -346,6 +325,31 @@
         // 監聽同一個按鈕的模式一致）。
         var storyBtn = document.getElementById('confirm-story-card');
         if (storyBtn) storyBtn.addEventListener('click', onStoryConfirmedNudge);
+
+        // 「前往分享」狀態期間即時偵測作品變動：letter1/letter2/size/
+        // material/plating/finish/font1-select/font2-select 用代理監聽
+        // document 的 change（font-select 是重新選字型後才動態產生的
+        // <select>，用代理不用在建立當下另外加監聽器）；ringX/Y/Z/Rotation
+        // 用代理監聽 input（拖曳滑桿）。checkVersionChanged() 內部已經檢查
+        // state !== 'ready' 就直接跳過，preparing/idle 期間完全不受影響。
+        var CHANGE_WATCH_IDS = {
+            letter1: 1, letter2: 1, size: 1, material: 1, plating: 1, finish: 1,
+            'font1-select': 1, 'font2-select': 1,
+        };
+        var INPUT_WATCH_IDS = { ringX: 1, ringY: 1, ringZ: 1, ringRotation: 1 };
+        document.addEventListener('change', function (e) {
+            if (e.target && CHANGE_WATCH_IDS[e.target.id]) checkVersionChanged();
+        });
+        document.addEventListener('input', function (e) {
+            if (e.target && INPUT_WATCH_IDS[e.target.id]) checkVersionChanged();
+        });
+
+        // 字型選擇視窗的「確認」是另一條變更途徑：confirmFontSelection()
+        // 直接用程式碼設定 letter1/letter2/font1-select/font2-select 的
+        // .value，不會觸發原生 change 事件，上面那兩個代理監聽器看不到
+        // 這條路徑，額外在「確認」按鈕本身掛一個監聽器。
+        var fontConfirmBtn = document.getElementById('confirm-btn');
+        if (fontConfirmBtn) fontConfirmBtn.addEventListener('click', checkVersionChanged);
 
         // 用輪詢判斷「作品是否已成形」，不掛在任何既有函式上（不動既有 code）。
         var checkInterval = setInterval(function () {
