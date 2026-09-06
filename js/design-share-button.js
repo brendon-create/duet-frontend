@@ -154,6 +154,22 @@
         }, READY_PULSE_MS);
     }
 
+    // 分享完成後如果又改了作品（換字母/字型/材質/尺寸/墜頭位置），舊的分享
+    // 內容就跟現在的作品不一樣了——按鈕要變回「分享我的作品」，邀請使用者
+    // 重新分享一次。用事件代理監聽 document，不去改 design-studio.html 既有
+    // 的 change/input handler（那些才是真正決定模型/材質/墜頭位置的地方，
+    // 這裡完全不碰，只是額外多掛一個監聽器讀 target id）。
+    var CHANGE_WATCH_IDS = {
+        letter1: 1, letter2: 1, size: 1, material: 1, plating: 1, finish: 1,
+        'font1-select': 1, 'font2-select': 1,
+    };
+    var INPUT_WATCH_IDS = { ringX: 1, ringY: 1, ringZ: 1, ringRotation: 1 };
+
+    function onWatchedFieldChanged(e) {
+        if (state !== 'ready') return;
+        backToIdle();
+    }
+
     function backToIdle() {
         stopPolling();
         state = 'idle';
@@ -271,6 +287,15 @@
         // 監聽同一個按鈕的模式一致）。
         var storyBtn = document.getElementById('confirm-story-card');
         if (storyBtn) storyBtn.addEventListener('click', onStoryConfirmedNudge);
+
+        // font1-select/font2-select 是重新選字型後才動態產生的 <select>，掛在
+        // document 上用代理的方式監聽，不需要在它們建立的當下另外加監聽器。
+        document.addEventListener('change', function (e) {
+            if (e.target && CHANGE_WATCH_IDS[e.target.id]) onWatchedFieldChanged(e);
+        });
+        document.addEventListener('input', function (e) {
+            if (e.target && INPUT_WATCH_IDS[e.target.id]) onWatchedFieldChanged(e);
+        });
 
         // 用輪詢判斷「作品是否已成形」，不掛在任何既有函式上（不動既有 code）。
         var checkInterval = setInterval(function () {
