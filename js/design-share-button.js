@@ -144,6 +144,7 @@
 
     function enterPreparingState() {
         state = 'preparing';
+        watchArmed = false;
         btn.classList.remove('ready-pulse');
         btn.classList.add('busy', 'preparing');
         btn.disabled = true;
@@ -153,6 +154,7 @@
     function enterReadyState() {
         stopPolling();
         state = 'ready';
+        watchArmed = false; // 還沒被按過「前往分享」，先不要偵測變動（見下方說明）
         btn.classList.remove('busy', 'preparing');
         btn.classList.add('ready-pulse');
         btn.disabled = false;
@@ -163,16 +165,18 @@
     }
 
     // 分享期間（preparing）畫面被改了幾次都不管——反正真正決定內容的是
-    // 使用者下次按下「分享」那一刻的畫面，中途改幾次都無所謂。但一旦進入
-    // 「前往分享」狀態，任何一次改動都要當下立刻觸發變回「分享這個作品」
-    // ——用事件觸發，不是定時輪詢：已經耐心等完製作、點過一次前往分享
-    // 看過內容的客人，之後想再調整設計，不該還要多按一次才會觸發。
+    // 使用者下次按下「分享」那一刻的畫面，中途改幾次都無所謂。「前往分享」
+    // 狀態本身也還不開始偵測——一直要等到使用者真的按下「前往分享」那一刻
+    // （代表這版內容已經被看過/分享出去了），之後的改動才要當下立刻觸發
+    // 變回「分享這個作品」。不能一進入 ready 狀態就開始偵測：那樣會變成
+    // 使用者根本還沒點開分享頁看過剛做好的這版，就已經被判定「過時」。
     // 純瀏覽器端 JSON 字串比對，不用問後端，欄位跟 buildSnapshot() 完全
     // 一致，涵蓋所有會影響外觀的參數。
     var lastSharedSnapshotJSON = null;
+    var watchArmed = false;
 
     function checkVersionChanged() {
-        if (state !== 'ready') return;
+        if (state !== 'ready' || !watchArmed) return;
         if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
             backToIdle();
         }
@@ -181,6 +185,7 @@
     function backToIdle() {
         stopPolling();
         state = 'idle';
+        watchArmed = false;
         btn.classList.remove('busy', 'preparing', 'ready-pulse');
         btn.disabled = false;
         labelEl.innerHTML = originalLabelHTML;
@@ -189,8 +194,18 @@
     function openSharePage() {
         // 一律照按下去的意思做——開啟已經做好的分享頁，不管內容新不新。
         window.open(location.origin + '/d/' + shareCode, '_blank');
-        // 開啟的同時，順便立即比對一次目前畫面版本。
-        checkVersionChanged();
+
+        // 按下當下先直接比對一次（這時 watchArmed 還是 false，不能走
+        // checkVersionChanged() 那個有 guard 的路徑，這裡要無條件比對）
+        // ——涵蓋「使用者還沒點過前往分享、但這之前就已經改了設計」的
+        // 情況。不一樣就變回分享這個作品；一樣的話，從這一刻開始才武裝
+        // 變動偵測，在這之前的改動都不算數（使用者還沒看過/分享出去這
+        // 一版），之後任何一次改動才要當下立刻觸發變回。
+        if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
+            backToIdle();
+            return;
+        }
+        watchArmed = true;
     }
 
     function uploadOneAsset(designId, assetType, blob) {
