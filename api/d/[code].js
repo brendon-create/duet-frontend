@@ -118,6 +118,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
   .tagline-edit-btn {
     background: none; border: none; color: rgba(255,255,255,0.55);
     font-size: 19px; cursor: pointer; padding: 4px 6px; line-height: 1;
+    display: inline-block; transform: scaleX(-1); /* 筆尖預設朝右，鏡射成朝左 */
   }
   .tagline-edit-btn:hover { color: rgba(212,175,55,0.9); }
   .tagline-input {

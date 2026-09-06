@@ -1795,9 +1795,13 @@
 
                     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
                     recorder.onstop = () => {
+                        document.removeEventListener('visibilitychange', onVisibilityChange);
                         resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
                     };
-                    recorder.onerror = (e) => reject(e.error);
+                    recorder.onerror = (e) => {
+                        document.removeEventListener('visibilitychange', onVisibilityChange);
+                        reject(e.error);
+                    };
                     recorder.start(100); // 每 100ms emit 一個 chunk
 
                     // 動畫進度改用「實際經過時間」推進，而非每次 requestAnimationFrame 呼叫就前進一幀。
@@ -1807,8 +1811,38 @@
                     const startTime        = performance.now();
                     let lastProgressMs     = 0;
 
+                    // 分頁被切到背景時，瀏覽器會降頻/暫停 requestAnimationFrame（節能機制，
+                    // 網頁本身擋不掉），這段期間 captureStream 抓到的畫面可能是沒更新的殘影，
+                    // 錄進最終影片會變成一段卡住不動的畫面。用 visibilitychange 偵測到切走
+                    // 就真的呼叫 recorder.pause()，並且把「被暫停的時間」從經過時間裡扣掉
+                    // （不然切回來的當下 elapsedSec 會被真實時間一次算進去，直接跳過中間那段
+                    // 動畫），切回來才 resume、繼續正常推進——不管中途離開多久，錄進最終
+                    // 影片的每一格畫面都是沒被節流時拍的，不會有卡住不動的片段。
+                    let hiddenAccumMs = 0;
+                    let hiddenSince   = null;
+
+                    function onVisibilityChange() {
+                        if (document.hidden) {
+                            hiddenSince = performance.now();
+                            if (recorder.state === 'recording') recorder.pause();
+                        } else {
+                            if (hiddenSince !== null) {
+                                hiddenAccumMs += performance.now() - hiddenSince;
+                                hiddenSince = null;
+                            }
+                            if (recorder.state === 'paused') recorder.resume();
+                        }
+                    }
+                    document.addEventListener('visibilitychange', onVisibilityChange);
+
                     function tick() {
-                        const elapsedSec = (performance.now() - startTime) / 1000;
+                        if (document.hidden) {
+                            // 還在背景，先不要推進動畫/進度，等切回來再繼續。
+                            animFrameId = requestAnimationFrame(tick);
+                            return;
+                        }
+
+                        const elapsedSec = (performance.now() - startTime - hiddenAccumMs) / 1000;
 
                         if (elapsedSec >= totalDurationSec) {
                             renderFrame();
