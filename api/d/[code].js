@@ -65,6 +65,9 @@ function sharePage(data, code) {
 <meta property="og:description" content="${ogDescription}">
 ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cantata+One&family=Libre+Caslon+Text:ital@1&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   body {
@@ -72,6 +75,18 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
     background: #0a0908 url('/assets/images/backgrounds/Toscana.png') center/cover no-repeat fixed;
     display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .brand-logo {
+    position: fixed; top: 20px; left: 20px; z-index: 1;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .brand-logo .logo {
+    font-size: 16px; font-weight: 600; letter-spacing: 1.5px;
+    font-family: 'Cantata One', serif; color: rgba(255,255,255,0.92);
+  }
+  .brand-logo .logo-subtitle {
+    font-size: 9px; letter-spacing: 0.5px; color: rgba(255,255,255,0.5);
+    font-family: 'Libre Caslon Text', serif; font-style: italic;
   }
   .card {
     width: 100%; max-width: 420px;
@@ -130,6 +145,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
 </style>
 </head>
 <body>
+  <div class="brand-logo"><span class="logo">DUET</span><span class="logo-subtitle">by BCAG</span></div>
   <div class="card">
     ${videoUrl
         ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
