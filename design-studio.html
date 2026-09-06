@@ -1122,7 +1122,16 @@
             if (typeof MediaRecorder !== 'undefined' &&
                 HTMLCanvasElement.prototype.captureStream) {
                 try {
-                    const w = 1080, h = 1440, fps = 30, seconds = 5;
+                    const w = 1080, h = 1440, fps = 30, seconds = 7;
+                    // 目前這組鏡頭參數化下，angle=0（fraction=0）對應的是第二個字母
+                    // 的正面——實測真實素材＋比對使用者描述的畫面順序（A正面→d背面→
+                    // A背面→d正面，四個地標角度平均分布在一圈上）反推出來的：
+                    // 第一個字母的正面落在 270°（3π/2）。從這裡再往前推 30 度當
+                    // 起始點，讓觀眾一開始就有個「即將轉到第一個字母正面」的緩衝，
+                    // 而不是一開始就正對著看，才轉開。這個角度是兩個字母並排的
+                    // 結構性關係決定的，跟選了哪兩個字母無關，所有設計都適用。
+                    const LETTER1_FRONT_ANGLE = Math.PI * 1.5; // 270°
+                    const START_OFFSET = -Math.PI / 6; // -30°
                     s = _captureScene({ x: radius, y: 0, z: 5 * zoomScale }, w, h, lookAt, bgTexture);
                     const stream = s.renderer.domElement.captureStream(fps);
                     const mimeType = MediaRecorder.isTypeSupported('video/mp4')
@@ -1152,7 +1161,7 @@
                     document.addEventListener('visibilitychange', onVisibilityChange);
 
                     function renderAtAngle(fraction) {
-                        const angle = fraction * Math.PI * 2;
+                        const angle = LETTER1_FRONT_ANGLE + START_OFFSET + fraction * Math.PI * 2;
                         s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
                         s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
                         s.renderer.render(s.scene, s.camera);
