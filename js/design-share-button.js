@@ -1,5 +1,5 @@
 /**
- * DUET Content Pipeline — 「分享我的作品」按鈕（Phase 6）
+ * DUET Content Pipeline — 「分享這個作品」按鈕（Phase 6）
  *
  * 出現條件：兩個字母都已選定 + 至少選過一次字體 + generateModel() 成功完成過
  * 一次（用 window.letter1BBox 有值當代理判斷——BBox 只有模型算完才會被設定）。
@@ -115,8 +115,16 @@
     // 影片組裝沒有真實進度可回報（ffmpeg 沒辦法給精確百分比），這裡只能
     // 每隔幾秒問一次「好了沒」，不是即時推播。輪詢的是 design_id 不是
     // shareCode——分享頁 code 在 ingest 當下就建好了，但影片本身還沒。
-    function pollStatus(designId) {
-        fetch(window.CONTENT_URL + '/status/' + designId)
+    //
+    // designHash 是這次 ingest 當下算出的版本號：後端 content_assets 裡
+    // 「有沒有影片」這件事本身不能拿來判斷好了沒，因為重新分享時舊影片
+    // 本來就還在（新影片做好前，「有影片」這個條件從一開始就成立）。帶著
+    // 這次的 designHash 一起問，/status 才能正確分辨「有影片」是舊的還是
+    // 這次要的那一版（見 app.py /status 用檔名比對版本）。
+    function pollStatus(designId, designHash) {
+        var url = window.CONTENT_URL + '/status/' + designId;
+        if (designHash) url += '?hash=' + encodeURIComponent(designHash);
+        fetch(url)
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (state !== 'preparing') return; // 使用者可能已經離開這個狀態，別再誤觸發
@@ -125,12 +133,12 @@
                     enterReadyState();
                     return;
                 }
-                pollTimer = setTimeout(function () { pollStatus(designId); }, STATUS_POLL_INTERVAL_MS);
+                pollTimer = setTimeout(function () { pollStatus(designId, designHash); }, STATUS_POLL_INTERVAL_MS);
             })
             .catch(function () {
                 // 查詢本身失敗（網路瞬斷之類）不代表生成失敗，過一輪再試，
                 // 不要讓使用者卡在「製作中」但其實已經好了卻不知道。
-                pollTimer = setTimeout(function () { pollStatus(designId); }, STATUS_POLL_INTERVAL_MS);
+                pollTimer = setTimeout(function () { pollStatus(designId, designHash); }, STATUS_POLL_INTERVAL_MS);
             });
     }
 
@@ -154,21 +162,11 @@
         }, READY_PULSE_MS);
     }
 
-    // 分享完成後如果又改了作品（換字母/字型/材質/尺寸/墜頭位置），舊的分享
-    // 內容就跟現在的作品不一樣了——按鈕要變回「分享我的作品」，邀請使用者
-    // 重新分享一次。用事件代理監聽 document，不去改 design-studio.html 既有
-    // 的 change/input handler（那些才是真正決定模型/材質/墜頭位置的地方，
-    // 這裡完全不碰，只是額外多掛一個監聽器讀 target id）。
-    var CHANGE_WATCH_IDS = {
-        letter1: 1, letter2: 1, size: 1, material: 1, plating: 1, finish: 1,
-        'font1-select': 1, 'font2-select': 1,
-    };
-    var INPUT_WATCH_IDS = { ringX: 1, ringY: 1, ringZ: 1, ringRotation: 1 };
-
-    function onWatchedFieldChanged(e) {
-        if (state !== 'ready') return;
-        backToIdle();
-    }
+    // 分享期間（preparing）畫面被改了幾次都不管——只在使用者實際按下
+    // 「前往分享」的那一刻，才比對「現在畫面」跟「當初按下分享這個作品時」
+    // 是否還是同一版。純瀏覽器端 JSON 字串比對，不用問後端，反應即時；
+    // 欄位跟 buildSnapshot() 完全一致，涵蓋所有會影響外觀的參數。
+    var lastSharedSnapshotJSON = null;
 
     function backToIdle() {
         stopPolling();
@@ -179,7 +177,16 @@
     }
 
     function openSharePage() {
+        // 一律照按下去的意思做——開啟已經做好的分享頁，不管內容新不新。
         window.open(location.origin + '/d/' + shareCode, '_blank');
+
+        // 開啟的同時（不影響開啟這個動作本身），順便看看畫面版本是不是還
+        // 跟當初按下分享時一樣：一樣就維持「前往分享」，下次點還是開同一個
+        // 分享頁；不一樣就變回「分享這個作品」，讓使用者自己決定要不要
+        // 針對現在這版重新製作。
+        if (lastSharedSnapshotJSON !== null && JSON.stringify(buildSnapshot()) !== lastSharedSnapshotJSON) {
+            backToIdle();
+        }
     }
 
     function uploadOneAsset(designId, assetType, blob) {
@@ -253,13 +260,17 @@
         var timeline = window.DesignRecorder.export({
             camera: (typeof getCamera === 'function') ? getCamera() : undefined,
         });
+        var snapshot = buildSnapshot();
 
         var payload = {
             designId: designId,
-            snapshot: buildSnapshot(),
+            snapshot: snapshot,
             timeline: timeline,
             story: window.finalDesignStory || null,
         };
+
+        // 記下這次分享對應的版本，供「按下前往分享」那一刻比對畫面有沒有變過。
+        lastSharedSnapshotJSON = JSON.stringify(snapshot);
 
         enterPreparingState();
 
@@ -269,10 +280,10 @@
             body: JSON.stringify(payload),
         })
             .then(function (res) { return res.json(); })
-            .then(function () {
+            .then(function (data) {
                 hasSharedOnce = true;
                 captureAndUploadAssets(designId);
-                pollStatus(designId);
+                pollStatus(designId, data && data.designHash);
             })
             .catch(function (err) {
                 console.warn('[share-button] ingest 失敗:', err);
@@ -310,24 +321,6 @@
         // 監聽同一個按鈕的模式一致）。
         var storyBtn = document.getElementById('confirm-story-card');
         if (storyBtn) storyBtn.addEventListener('click', onStoryConfirmedNudge);
-
-        // font1-select/font2-select 是重新選字型後才動態產生的 <select>，掛在
-        // document 上用代理的方式監聽，不需要在它們建立的當下另外加監聽器。
-        document.addEventListener('change', function (e) {
-            if (e.target && CHANGE_WATCH_IDS[e.target.id]) onWatchedFieldChanged(e);
-        });
-        document.addEventListener('input', function (e) {
-            if (e.target && INPUT_WATCH_IDS[e.target.id]) onWatchedFieldChanged(e);
-        });
-
-        // 字型選擇視窗的「確認」是另一條變更途徑：confirmFontSelection() 直接
-        // 用程式碼設定 letter1/letter2/font1-select/font2-select 的 .value，
-        // 不會觸發原生 change 事件（瀏覽器對程式碼設值本來就不會自動派發
-        // change），上面那兩個代理監聽器完全看不到這條路徑，按鈕因此不會
-        // 每次都變回「分享我的作品」。改成跟故事確認按鈕一樣的做法：直接在
-        // 「確認」按鈕本身掛一個監聽器。
-        var fontConfirmBtn = document.getElementById('confirm-btn');
-        if (fontConfirmBtn) fontConfirmBtn.addEventListener('click', onWatchedFieldChanged);
 
         // 用輪詢判斷「作品是否已成形」，不掛在任何既有函式上（不動既有 code）。
         var checkInterval = setInterval(function () {

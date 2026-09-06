@@ -1342,7 +1342,7 @@
     flex-shrink: 0;
 }
 
-/* ── 分享我的作品 按鈕（Content Pipeline Phase 6）──
+/* ── 分享這個作品 按鈕（Content Pipeline Phase 6）──
    靜置位置：slot 2（右上角暫存版本 2）正下方一點點，不是垂直置中。
    風格比照 .version-slot 的玻璃質感（低透明度背景 + 模糊 + 細邊），只是
    邊框改金色、文字白色、形狀改圓形，不做實心漸層球體。
