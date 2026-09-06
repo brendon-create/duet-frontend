@@ -7316,9 +7316,11 @@
             turnCount++;
 
             const typingId = _ppAddTyping();
+            // 進度只是參考，訪談需要時對話次數本來就會增加；顯示封頂在 maxTurns，不硬性截斷對話
+            const shownTurn = Math.min(turnCount, maxTurns);
             progress.textContent = lang === 'en'
-                ? `Turn ${turnCount} / ${maxTurns}`
-                : `對話中 ${turnCount} / ${maxTurns}`;
+                ? `Turn ${shownTurn} / ${maxTurns}`
+                : `對話中 ${shownTurn} / ${maxTurns}`;
 
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/ai-consultant`, {
@@ -7329,10 +7331,10 @@
                 const data = await res.json();
                 _ppRemoveTyping(typingId);
 
-                if (data.completed) {
+                const finish = (payload) => {
                     localStorage.setItem('duet_ai_consultation', JSON.stringify({
                         conversationHistory: history,
-                        summary: data.summary,
+                        summary: payload.summary,
                         isPostPayment: true
                     }));
                     const done = lang === 'en'
@@ -7340,11 +7342,27 @@
                         : '感謝您的分享！正在為您生成設計理念…';
                     _ppAddMessage('assistant', done);
                     progress.textContent = lang === 'en' ? 'Completed ✓' : '諮詢完成 ✓';
-                    setTimeout(() => onComplete(data), 1500);
+                    setTimeout(() => onComplete(payload), 1500);
+                };
+
+                if (data.completed) {
+                    finish(data);
                 } else {
-                    const reply = data.message || (lang === 'en' ? 'Please try again.' : '請再試一次。');
-                    _ppAddMessage('assistant', reply);
-                    history.push({ role: 'assistant', content: reply });
+                    // 防線：後端沒判定完成時，訊息裡若其實夾著完成 JSON，就地觸發完成；
+                    // 且一律先把任何 JSON 片段清掉再顯示，確保 JSON 絕不進對話泡泡
+                    const embedded = _ppExtractCompletionJson(data.message || '');
+                    const lead = _ppStripJson(data.message || '');
+                    if (lead) {
+                        _ppAddMessage('assistant', lead);
+                        history.push({ role: 'assistant', content: lead });
+                    }
+                    if (embedded) {
+                        finish(embedded);
+                    } else if (!lead) {
+                        const fb = lang === 'en' ? 'Could you tell me a little more?' : '可以再多分享一點嗎？';
+                        _ppAddMessage('assistant', fb);
+                        history.push({ role: 'assistant', content: fb });
+                    }
                 }
             } catch (_) {
                 _ppRemoveTyping(typingId);
@@ -7363,6 +7381,32 @@
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
+    }
+
+    // 從一段文字裡找出「補訪完成」的 JSON（整段是 JSON、包在 ```json 裡、或夾在文字中間都能認）
+    function _ppExtractCompletionJson(text) {
+        if (!text || text.indexOf('{') === -1) return null;
+        const candidates = [];
+        const fenced = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (fenced) candidates.push(fenced[1]);
+        candidates.push(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        for (const c of candidates) {
+            try {
+                const p = JSON.parse(c);
+                if (p && ((p.letterReason && p.fontReason) || (p.recommendations && p.letters))) return p;
+            } catch (_) { /* 不是合法 JSON，換下一個候選 */ }
+        }
+        return null;
+    }
+
+    // 把任何 JSON 片段（圍欄區塊或裸露物件）從文字裡清掉，只留下給人看的內容
+    function _ppStripJson(text) {
+        if (!text) return '';
+        let out = text.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '');
+        if (out.indexOf('```') === -1 && out.indexOf('{') !== -1 && out.lastIndexOf('}') > out.indexOf('{')) {
+            out = out.slice(0, out.indexOf('{')) + out.slice(out.lastIndexOf('}') + 1);
+        }
+        return out.trim();
     }
 
     function _ppAddMessage(role, text) {

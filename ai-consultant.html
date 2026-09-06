@@ -1036,11 +1036,18 @@
                     }
 
                     // Continue conversation
-                    addMessage('assistant', message);
+                    // 防線：AI 若把 JSON 夾在對話裡但上面沒判定為完成，至少不要讓原始 JSON 進到泡泡
+                    let displayMessage = message.replace(/```json[\s\S]*?```/gi, '').trim();
+                    if (!displayMessage) {
+                        displayMessage = currentLang === 'en'
+                            ? "Got it — I have enough to work with. ✨"
+                            : '好的，我這邊的資訊夠了 ✨';
+                    }
+                    addMessage('assistant', displayMessage);
                     // 剝除 UI token，避免傳回 AI 時造成混淆
                     conversationHistory.push({
                         role: 'assistant',
-                        content: message.replace('[SHOW_LETTER_PICKER]', '').trim()
+                        content: displayMessage.replace('[SHOW_LETTER_PICKER]', '').trim()
                     });
                     
                     // 儲存更新後的對話
