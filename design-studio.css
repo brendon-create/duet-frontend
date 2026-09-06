@@ -1522,6 +1522,11 @@
     opacity: 0;
     transform: translate(calc(-50% + 34vw), 0) scale(0.45);
     transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.25,0.1,0.25,1);
+    /* 飄走終點剛好落在分享按鈕那個位置附近，z-index 又比按鈕高——
+       沒加這行的話，收合後雖然肉眼看不到，還是會擋掉底下按鈕的點擊
+       （手機上很容易踩到，桌機滑鼠點擊角度關係比較少踩到）。收合的
+       當下就該立刻失去互動性，不用等 0.9s 動畫轉場跑完。 */
+    pointer-events: none;
 }
 
 /* ── 故事完成後的分享提醒：只在「之前已分享過」時出現，貼著按鈕左側。
@@ -1600,6 +1605,14 @@
     }
     #share-restory-hint {
         top: 180px;
+    }
+
+    /* top:16%（桌機版用）在手機上實測會跟 slot1/2 重疊——手機瀏覽器的
+       工具列顯示/收起會讓 100% 視窗高度浮動，百分比定位本來就不可靠，
+       改用固定 px、抓在 slot 底部（約 90px 高）之後留出安全間距，跟
+       #share-my-design-btn 的做法一致（同一份 CSS 裡它也是改用固定 px）。 */
+    #share-explainer {
+        top: 210px;
     }
 }
 
