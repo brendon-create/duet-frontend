@@ -1084,21 +1084,32 @@
             const bgTexture = await _getFixedBgTexture();
 
             // hero：4:5，3/4 角度
+            //
+            // 每次擷取都會建立全新的 WebGLRenderer（_captureScene 內部），
+            // 只呼叫 dispose() 不保證瀏覽器會立刻真的回收底層 WebGL context
+            // （這個專案先前在別的功能上踩過同一個坑）——同一個分頁內累積
+            // 分享過幾次，context 沒有被積極釋放，到後面的擷取（尤其是最後
+            // 才做、又要撐好幾秒的轉檀短片）就可能因為資源不足而錄出空的
+            // 結果。額外呼叫 forceContextLoss() 強制立即釋放，不要等瀏覽器
+            // 自己的 GC 時機。
             let s = _captureScene({ x: radius * 0.7, y: -radius * 0.7, z: 6 * zoomScale }, 1600, 2000, lookAt, bgTexture);
             s.renderer.render(s.scene, s.camera);
             results.hero = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
             s.renderer.dispose();
 
             // front：1:1，正面
             s = _captureScene({ x: 0, y: -radius, z: 4 * zoomScale }, 1600, 1600, lookAt, bgTexture);
             s.renderer.render(s.scene, s.camera);
             results.front = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
             s.renderer.dispose();
 
             // detail：4:5，拉近一點，交集處微距
             s = _captureScene({ x: radius * 0.35, y: -radius * 0.35, z: 3 * zoomScale }, 1600, 2000, lookAt, bgTexture);
             s.renderer.render(s.scene, s.camera);
             results.detail = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
             s.renderer.dispose();
 
             // turntable：3:4，1080p，30fps，5 秒 360°——只在瀏覽器支援錄影時做，
@@ -1191,6 +1202,7 @@
                     recorder.stop();
                     await recordingDone;
                     document.removeEventListener('visibilitychange', onVisibilityChange);
+                    s.renderer.forceContextLoss();
                     s.renderer.dispose();
                     results.turntable = new Blob(chunks, { type: mimeType });
                 } catch (e) {
