@@ -180,27 +180,18 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
   </div>
   <script>
     // 自訂播放控制：手機沒有「滑鼠移開自動消失」這件事，原生 controls
-    // 的暫停鍵大部分時間都擋在畫面上。整段影片可點擊切換播放/暫停，
-    // 播放中一小段時間沒動作就把置中圖示淡出，暫停時常駐顯示（畫面上
-    // 隨時看得出目前是播放還是暫停狀態）。
+    // 的暫停鍵大部分時間都擋在畫面上。影片本來就只有幾秒，點一下暫停
+    // 是大家已經習慣的手勢，不需要圖示提示——播放中完全不顯示任何
+    // 圖示，只有暫停時才顯示一個置中的播放鍵，提示可以點擊繼續播放。
     (function () {
       var video = document.getElementById('hero-video');
       var toggle = document.getElementById('video-toggle');
       if (!video || !toggle) return;
-      var hideTimer = null;
-
-      function scheduleHide() {
-        clearTimeout(hideTimer);
-        hideTimer = setTimeout(function () { toggle.classList.add('hidden'); }, 1200);
-      }
 
       video.addEventListener('play', function () {
-        toggle.textContent = '❚❚';
-        scheduleHide();
+        toggle.classList.add('hidden');
       });
       video.addEventListener('pause', function () {
-        clearTimeout(hideTimer);
-        toggle.textContent = '▶';
         toggle.classList.remove('hidden');
       });
 
