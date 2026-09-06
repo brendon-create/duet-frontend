@@ -1607,6 +1607,21 @@
         top: 180px;
     }
 
+    /* shareBtnReadyPulse（見下方桌機版 keyframes）動畫本身寫死
+       translateY(-50%)——手機版按鈕改用 translateY(0) 當定位基準（用
+       top 頂邊定位，不是桌機那種置中定位），生成完成觸發這個動畫時會
+       突然套用 -50% 的位移，變成按鈕整個往上跳一下才閃爍。手機版另外
+       定義一組不含 translateY(-50%) 的 keyframes，改指到這組。 */
+    #share-my-design-btn.ready-pulse {
+        animation-name: shareBtnReadyPulseMobile;
+    }
+    @keyframes shareBtnReadyPulseMobile {
+        0%, 100% { transform: translateY(0) scale(1);
+                   box-shadow: 0 0 0 1px rgba(212,175,55,0.3), 0 0 14px rgba(212,175,55,0.35); }
+        50%      { transform: translateY(0) scale(1.12);
+                   box-shadow: 0 0 0 3px rgba(212,175,55,0.85), 0 0 32px rgba(212,175,55,0.9); }
+    }
+
     /* top:16%（桌機版用）在手機上實測會跟 slot1/2 重疊——手機瀏覽器的
        工具列顯示/收起會讓 100% 視窗高度浮動，百分比定位本來就不可靠，
        改用固定 px、抓在 slot 底部（約 90px 高）之後留出安全間距，跟

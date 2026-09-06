@@ -103,6 +103,19 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     width: 100%; border-radius: 14px; display: block; background: #000;
     aspect-ratio: 9 / 16; object-fit: cover;
   }
+  .video-wrap { position: relative; }
+  /* 原生 controls 手機上沒有滑鼠移開自動消失這件事，暫停鍵大部分時間
+     都擋在畫面上。改用自訂的最小控制：整段影片可點擊切換播放/暫停，
+     只有一個置中圖示，播放中一小段時間沒動作就淡出，暫停時常駐顯示。 */
+  .video-toggle {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.35);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 22px; cursor: pointer;
+    opacity: 1; transition: opacity 0.3s ease;
+  }
+  .video-toggle.hidden { opacity: 0; }
   h1 {
     font-size: 28px; font-weight: 500; letter-spacing: 2px; margin: 20px 0 8px;
     color: #fff;
@@ -149,7 +162,10 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
   <div class="brand-logo"><span class="logo">DUET</span><span class="logo-subtitle">by BCAG</span></div>
   <div class="card">
     ${videoUrl
-        ? `<video id="hero-video" poster="${heroUrl}" preload="none" controls playsinline src="${videoUrl}" class="poster-img"></video>`
+        ? `<div class="video-wrap">
+             <video id="hero-video" poster="${heroUrl}" preload="none" playsinline src="${videoUrl}" class="poster-img"></video>
+             <button class="video-toggle" id="video-toggle" type="button" aria-label="播放/暫停">▶</button>
+           </div>`
         : (heroUrl ? `<img src="${heroUrl}" class="poster-img" alt="">` : '')}
     <h1>${letters}</h1>
     <div class="tagline-row">
@@ -163,6 +179,40 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     </div>
   </div>
   <script>
+    // 自訂播放控制：手機沒有「滑鼠移開自動消失」這件事，原生 controls
+    // 的暫停鍵大部分時間都擋在畫面上。整段影片可點擊切換播放/暫停，
+    // 播放中一小段時間沒動作就把置中圖示淡出，暫停時常駐顯示（畫面上
+    // 隨時看得出目前是播放還是暫停狀態）。
+    (function () {
+      var video = document.getElementById('hero-video');
+      var toggle = document.getElementById('video-toggle');
+      if (!video || !toggle) return;
+      var hideTimer = null;
+
+      function scheduleHide() {
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () { toggle.classList.add('hidden'); }, 1200);
+      }
+
+      video.addEventListener('play', function () {
+        toggle.textContent = '❚❚';
+        scheduleHide();
+      });
+      video.addEventListener('pause', function () {
+        clearTimeout(hideTimer);
+        toggle.textContent = '▶';
+        toggle.classList.remove('hidden');
+      });
+
+      document.querySelector('.video-wrap').addEventListener('click', function () {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+    })();
+
     // 影片存在跟這個頁面不同網域（Supabase），純用 <a download> 在跨網域
     // 情況下不保證會真的跳出存檔對話框，很多瀏覽器會直接當成一般連結
     // 開啟播放。改成用 fetch 把檔案抓成 blob，再用「同網域」的 blob: 網址
