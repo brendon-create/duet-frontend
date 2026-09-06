@@ -1103,6 +1103,14 @@
 
             // turntable：3:4，1080p，30fps，5 秒 360°——只在瀏覽器支援錄影時做，
             // 不支援就略過（不擋前面三張已經算好的圖）。
+            //
+            // 分頁被切到背景時，瀏覽器會把 setTimeout 降頻（節能機制，網頁本身
+            // 擋不掉）——如果錄影迴圈不管三七二十一硬跑滿固定次數，就會被拖成
+            // 名義上 5 秒、實際上錄了一兩分鐘的破檔案（曾經實測遇過 115 秒的
+            // 案例）。改成偵測到分頁被切走就用 recorder.pause() 真的暫停錄影
+            // （迴圈本身也一起等），切回來才 resume——這樣不管中途離開多久，
+            // 錄進最終影片的每一格畫面永遠是「使用者看得到、沒被節流」時拍的，
+            // 不會有破碎畫面，代價只是「真正錄完」這件事在時間軸上會往後延。
             if (typeof MediaRecorder !== 'undefined' &&
                 HTMLCanvasElement.prototype.captureStream) {
                 try {
@@ -1117,10 +1125,36 @@
                     const chunks = [];
                     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
                     const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+
+                    function onVisibilityChange() {
+                        if (document.hidden) {
+                            if (recorder.state === 'recording') recorder.pause();
+                        } else if (recorder.state === 'paused') {
+                            recorder.resume();
+                        }
+                    }
+                    document.addEventListener('visibilitychange', onVisibilityChange);
+
+                    // 分頁還在背景時，迴圈卡在這裡等，不去 render 下一格、也不去
+                    // 推進計時——避免在暫停期間白做工。
+                    function waitWhileHidden() {
+                        if (!document.hidden) return Promise.resolve();
+                        return new Promise((resolve) => {
+                            function check() {
+                                if (!document.hidden) {
+                                    document.removeEventListener('visibilitychange', check);
+                                    resolve();
+                                }
+                            }
+                            document.addEventListener('visibilitychange', check);
+                        });
+                    }
+
                     recorder.start();
 
                     const totalFrames = fps * seconds;
                     for (let i = 0; i < totalFrames; i++) {
+                        await waitWhileHidden();
                         const angle = (i / totalFrames) * Math.PI * 2;
                         s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
                         s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
@@ -1129,6 +1163,7 @@
                     }
                     recorder.stop();
                     await recordingDone;
+                    document.removeEventListener('visibilitychange', onVisibilityChange);
                     s.renderer.dispose();
                     results.turntable = new Blob(chunks, { type: mimeType });
                 } catch (e) {
