@@ -4694,9 +4694,11 @@
         }
 
         // 使用者明確跳過所有設計理念詢問（不做完整諮詢、也不回答字體選擇
-        // 原因，只要作品）——後端不再於付款當下自動寄確認信（見
-        // process_order_after_payment 的異動），所以這裡一定要主動呼叫
-        // 一次，帶 noStory:true，確保這種人也會收到那唯一一次確認信。
+        // 原因，只要作品）——確認信/STL 佇列早在付款當下就已經觸發過了
+        // （見後端 process_order_after_payment → finalize_order_confirmation()，
+        // 唯一觸發點，不依賴這裡有沒有被呼叫到）。這裡純粹是留一筆「顧客
+        // 明確選擇不做設計理念」的紀錄，供後端 log 追溯用，不影響訂單本身
+        // 有沒有成立。
         function finalizeOrderWithoutStory() {
             if (!window.lastOrderId) {
                 console.error('❌ 沒有 lastOrderId，無法送出「不做設計理念」的確認');
@@ -4705,12 +4707,12 @@
             fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ noStory: true, sendEmail: true })
+                body: JSON.stringify({ noStory: true })
             })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('✅ 已確認不做設計理念，確認信已觸發:', window.lastOrderId);
+                        console.log('✅ 已記錄「不做設計理念」:', window.lastOrderId);
                     } else {
                         console.warn('⚠️ 確認「不做設計理念」失敗:', data.error);
                     }
@@ -6559,8 +6561,9 @@
                         body: JSON.stringify({
                             designStory: editedStory,
                             aiDesignStory: window.aiOriginalDesignStory || '',
-                            fontReason: window.lastFontReason || '',
-                            sendEmail: true  // ✅ 觸發發送確認郵件
+                            fontReason: window.lastFontReason || ''
+                            // 確認信/STL 佇列早在付款當下就已經觸發過了，這裡
+                            // 純粹是把理念內容存進訂單，不需要再帶 sendEmail
                         })
                     })
                     .then(res => res.json())
