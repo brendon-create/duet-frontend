@@ -4654,6 +4654,31 @@
             return Array.from(combinations.values());
         }
 
+        // 使用者明確跳過所有設計理念詢問（不做完整諮詢、也不回答字體選擇
+        // 原因，只要作品）——後端不再於付款當下自動寄確認信（見
+        // process_order_after_payment 的異動），所以這裡一定要主動呼叫
+        // 一次，帶 noStory:true，確保這種人也會收到那唯一一次確認信。
+        function finalizeOrderWithoutStory() {
+            if (!window.lastOrderId) {
+                console.error('❌ 沒有 lastOrderId，無法送出「不做設計理念」的確認');
+                return;
+            }
+            fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ noStory: true, sendEmail: true })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ 已確認不做設計理念，確認信已觸發:', window.lastOrderId);
+                    } else {
+                        console.warn('⚠️ 確認「不做設計理念」失敗:', data.error);
+                    }
+                })
+                .catch(err => console.error('❌ API 錯誤:', err));
+        }
+
         // 主流程：收集設計理念
         async function collectDesignStories() {
             // 使用 window.cartItems（付款後從後端載入的）
@@ -4708,7 +4733,8 @@
             if (concepts.length > 0) {
                 showDesignStoryCard(concepts[0].designStory);
             } else {
-                console.error('❌ 沒有設計理念可顯示');
+                console.log('ℹ️ 使用者未提供設計理念，觸發不含理念的確認信');
+                finalizeOrderWithoutStory();
             }
         }
 
@@ -4768,7 +4794,8 @@
             if (concepts.length > 0) {
                 showDesignStoryCard(concepts[0].designStory);
             } else {
-                console.error('❌ 沒有設計理念可顯示');
+                console.log('ℹ️ 使用者未提供設計理念，觸發不含理念的確認信');
+                finalizeOrderWithoutStory();
             }
         }
 
