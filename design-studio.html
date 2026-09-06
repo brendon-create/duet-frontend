@@ -1104,13 +1104,21 @@
             // turntable：3:4，1080p，30fps，5 秒 360°——只在瀏覽器支援錄影時做，
             // 不支援就略過（不擋前面三張已經算好的圖）。
             //
-            // 分頁被切到背景時，瀏覽器會把 setTimeout 降頻（節能機制，網頁本身
-            // 擋不掉）——如果錄影迴圈不管三七二十一硬跑滿固定次數，就會被拖成
-            // 名義上 5 秒、實際上錄了一兩分鐘的破檔案（曾經實測遇過 115 秒的
-            // 案例）。改成偵測到分頁被切走就用 recorder.pause() 真的暫停錄影
-            // （迴圈本身也一起等），切回來才 resume——這樣不管中途離開多久，
-            // 錄進最終影片的每一格畫面永遠是「使用者看得到、沒被節流」時拍的，
-            // 不會有破碎畫面，代價只是「真正錄完」這件事在時間軸上會往後延。
+            // 角度用「實際經過的真實時間」推進，不是每跑一輪迴圈就前進固定
+            // 一格（跟 hero-video-generator.html 錄製動畫同一套做法，那邊已經
+            // 驗證過可行）。原本是每格之間 setTimeout(1000/fps) 硬等，手機
+            // 硬體較弱、單格 render+encode 實際花的時間常常超過這個間隔，
+            // 累積下來錄出來的檔案會比 5 秒長（實測遇過 8.74 秒的案例）——
+            // 這會讓伺服器端的 5 秒長度上限（見 app.py normalize_clip）把
+            // 轉了一半的畫面攔腰截斷，看起來像是轉不滿一圈。改成算出「現在
+            // 該轉到幾度」而不是「這是第幾格該轉幾度」，不管每一格實際渲染
+            // 花多久，總長度都會準確落在 5 秒附近，才不會被截斷在轉到一半。
+            //
+            // 分頁被切到背景時，瀏覽器會把 requestAnimationFrame 降頻/暫停
+            // （節能機制，網頁本身擋不掉）——偵測到切走就用 recorder.pause()
+            // 真的暫停錄影，並把暫停的時間從經過時間裡扣掉，切回來才 resume、
+            // 繼續正常推進，不會錄到卡住不動的畫面，也不會讓暫停的時間被
+            // 誤算進「已經轉了多少度」。
             if (typeof MediaRecorder !== 'undefined' &&
                 HTMLCanvasElement.prototype.captureStream) {
                 try {
@@ -1126,41 +1134,51 @@
                     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
                     const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
 
+                    let hiddenAccumMs = 0;
+                    let hiddenSince = null;
+
                     function onVisibilityChange() {
                         if (document.hidden) {
+                            hiddenSince = performance.now();
                             if (recorder.state === 'recording') recorder.pause();
-                        } else if (recorder.state === 'paused') {
-                            recorder.resume();
+                        } else {
+                            if (hiddenSince !== null) {
+                                hiddenAccumMs += performance.now() - hiddenSince;
+                                hiddenSince = null;
+                            }
+                            if (recorder.state === 'paused') recorder.resume();
                         }
                     }
                     document.addEventListener('visibilitychange', onVisibilityChange);
 
-                    // 分頁還在背景時，迴圈卡在這裡等，不去 render 下一格、也不去
-                    // 推進計時——避免在暫停期間白做工。
-                    function waitWhileHidden() {
-                        if (!document.hidden) return Promise.resolve();
-                        return new Promise((resolve) => {
-                            function check() {
-                                if (!document.hidden) {
-                                    document.removeEventListener('visibilitychange', check);
-                                    resolve();
-                                }
-                            }
-                            document.addEventListener('visibilitychange', check);
-                        });
+                    function renderAtAngle(fraction) {
+                        const angle = fraction * Math.PI * 2;
+                        s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
+                        s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+                        s.renderer.render(s.scene, s.camera);
                     }
 
                     recorder.start();
 
-                    const totalFrames = fps * seconds;
-                    for (let i = 0; i < totalFrames; i++) {
-                        await waitWhileHidden();
-                        const angle = (i / totalFrames) * Math.PI * 2;
-                        s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
-                        s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
-                        s.renderer.render(s.scene, s.camera);
-                        await new Promise((r) => setTimeout(r, 1000 / fps));
-                    }
+                    const startTime = performance.now();
+                    await new Promise((resolve) => {
+                        function tick() {
+                            if (document.hidden) {
+                                requestAnimationFrame(tick);
+                                return;
+                            }
+                            const elapsedSec = (performance.now() - startTime - hiddenAccumMs) / 1000;
+                            if (elapsedSec >= seconds) {
+                                renderAtAngle(1); // 收在整整 360° 的位置，不要停在轉到一半的角度
+                                resolve();
+                                return;
+                            }
+                            renderAtAngle(elapsedSec / seconds);
+                            requestAnimationFrame(tick);
+                        }
+                        requestAnimationFrame(tick);
+                    });
+
                     recorder.stop();
                     await recordingDone;
                     document.removeEventListener('visibilitychange', onVisibilityChange);

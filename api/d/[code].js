@@ -48,7 +48,8 @@ function notFoundPage() {
 const DEFAULT_TAGLINE = '這是我設計的作品，你也想試試看嗎？';
 
 function sharePage(data, code) {
-    const letters = `${escapeHtml(data.letter1 || '').toUpperCase()} &amp; ${escapeHtml(data.letter2 || '').toUpperCase()}`;
+    // 大小寫是設計的一部分（例如「d & A」是刻意選的組合），不能強制轉大寫。
+    const letters = `${escapeHtml(data.letter1 || '')} &amp; ${escapeHtml(data.letter2 || '')}`;
     const heroUrl = escapeHtml(data.heroUrl || '');
     const videoUrl = escapeHtml(data.videoUrl || '');
     const tagline = escapeHtml(data.message || DEFAULT_TAGLINE);
