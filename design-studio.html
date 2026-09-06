@@ -2465,6 +2465,7 @@
         async function generateModel() {
             const myGeneration = ++modelGeneration;
             isModelGenerating = true;
+            window.isModelGenerating = true; // 橋接給分享按鈕等外部腳本讀取（跟 window.mainMesh 同一種做法）
             try {
             console.log('[V3 generateModel] 開始生成模型');
 
@@ -2906,7 +2907,10 @@
             }
             } finally {
                 // 只有「最新」這次呼叫才能解鎖，避免被更早、已過期的呼叫提前解鎖
-                if (myGeneration === modelGeneration) isModelGenerating = false;
+                if (myGeneration === modelGeneration) {
+                    isModelGenerating = false;
+                    window.isModelGenerating = false;
+                }
             }
         }
 

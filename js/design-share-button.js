@@ -196,11 +196,34 @@
             });
     }
 
+    var MODEL_SETTLE_POLL_MS = 150; // 等 generateModel() 跑完再擷取的輪詢間隔
+    var MODEL_SETTLE_MAX_WAIT_MS = 15000; // 保險上限，避免萬一卡住就永遠不擷取
+
+    // generateModel() 是非同步的（字體幾何運算要花時間），如果使用者剛改完
+    // 字母/字型就馬上按分享，畫面上的 mainMesh 可能還是重繪前的舊模型——這時
+    // 擷取到的商品照/轉檯短片會是上一版作品，不是使用者剛剛改完的這版。
+    // window.isModelGenerating 是 design-studio.html 橋接出來的旗標（跟
+    // window.mainMesh 同一種做法），這裡等它變 false 才真的開始擷取。
+    function waitForModelSettled() {
+        return new Promise(function (resolve) {
+            var waited = 0;
+            (function check() {
+                if (!window.isModelGenerating || waited >= MODEL_SETTLE_MAX_WAIT_MS) {
+                    resolve();
+                    return;
+                }
+                waited += MODEL_SETTLE_POLL_MS;
+                setTimeout(check, MODEL_SETTLE_POLL_MS);
+            })();
+        });
+    }
+
     function captureAndUploadAssets(designId) {
         // 商品照/轉檯短片的擷取跟上傳不影響分享按鈕本身的狀態（不讓使用者
         // 等這個——擷取轉檯短片要花幾秒錄影時間），在背景默默進行就好。
         if (typeof window.__captureProductAssets !== 'function') return;
-        window.__captureProductAssets()
+        waitForModelSettled()
+            .then(function () { return window.__captureProductAssets(); })
             .then(function (assets) {
                 if (!assets) {
                     console.warn('[share-button] __captureProductAssets 回傳空值，略過商品照/轉檯上傳');
@@ -296,6 +319,15 @@
         document.addEventListener('input', function (e) {
             if (e.target && INPUT_WATCH_IDS[e.target.id]) onWatchedFieldChanged(e);
         });
+
+        // 字型選擇視窗的「確認」是另一條變更途徑：confirmFontSelection() 直接
+        // 用程式碼設定 letter1/letter2/font1-select/font2-select 的 .value，
+        // 不會觸發原生 change 事件（瀏覽器對程式碼設值本來就不會自動派發
+        // change），上面那兩個代理監聽器完全看不到這條路徑，按鈕因此不會
+        // 每次都變回「分享我的作品」。改成跟故事確認按鈕一樣的做法：直接在
+        // 「確認」按鈕本身掛一個監聽器。
+        var fontConfirmBtn = document.getElementById('confirm-btn');
+        if (fontConfirmBtn) fontConfirmBtn.addEventListener('click', onWatchedFieldChanged);
 
         // 用輪詢判斷「作品是否已成形」，不掛在任何既有函式上（不動既有 code）。
         var checkInterval = setInterval(function () {
