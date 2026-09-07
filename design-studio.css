@@ -1448,14 +1448,11 @@
 
 #share-my-design-btn.busy svg.share-ring circle {
     stroke-dashoffset: 0;
-    /* 55s 是實測背景生成（含上傳）大約會花的時間抓的預估值，不是真實進度
-       （ffmpeg 沒辦法回報精確百分比）。原本抓 35s，但轉檀短片從 5 秒
-       延長到 7 秒、又多了淡出轉場這道濾鏡，實際生成時間變長，環形跑
-       太快、跟實際進度差太多，改成 55s。實際完成得比這個快，環形會
-       提前走完停在滿格，看起來只是「快好了」，不算破圖；比這個慢的話，
-       圈已經走完了但還在等，跟 .preparing 的閃爍動畫一起看還是感覺得出
-       「還在動」。 */
-    transition: stroke-dashoffset 55s linear;
+    /* 分享影片改成瀏覽器端一次錄完（不再上傳給伺服器跑 ffmpeg），總長度
+       是固定的（轉檀 6 秒 + CTA 卡 2.5 秒 ≈ 8.5 秒），不再是「ffmpeg
+       沒辦法回報精確進度」那種要用長時間預估值去猜的情況——12s 已經
+       包含錄製 + 上傳的合理緩衝，比之前準確很多。 */
+    transition: stroke-dashoffset 12s linear;
 }
 
 #share-my-design-btn .share-btn-label {
