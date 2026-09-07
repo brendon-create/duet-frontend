@@ -178,7 +178,7 @@ window.translations = {
         // ── 兌換碼結帳（嘖嘖募資）──
         'cart.redemption.notice':      '嘖嘖募資期間，僅開放持有兌換碼者訂製作品',
         'cart.redemption.zeczecCta':   '前往嘖嘖募資支持專案，取得兌換碼 →',
-        'cart.redeem.placeholder':     '輸入此件作品的兌換碼',
+        'cart.redeem.placeholder':     '輸入兌換碼',
         'cart.redeem.verifyBtn':       '驗證',
         'cart.redeem.verified':        '✅ 已驗證，此件作品可兌換',
         'cart.redeem.errorEmpty':      '請輸入兌換碼',
