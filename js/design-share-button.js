@@ -20,13 +20,11 @@
  * 打斷設計流程）給一個低調的提醒 + 按鈕短暫強調光暈，邀請他更新分享。沒分享
  * 過的人不會看到這個提醒（按鈕本身就是邀請，不需要重複講）。
  *
- * ingest 成功後，呼叫 window.__captureProductAssets()（定義在
- * design-studio.html 的 module script 裡，因為需要直接存取
- * mainMesh/ringMesh/bailMesh，跟 getCamera 要橋接是同一個原因）——
- * 這支函式在瀏覽器端把商品照 + 完整組裝好的分享影片（轉檀旋轉+浮水印+
- * 片尾淡出+CTA 卡，全部錄在一起）都算好，伺服器只負責存檔，不再需要
- * ffmpeg 重新組裝。「前往分享」狀態，就是這些檔案全部上傳成功的當下，
- * 不是等一個背景生成工作完成（那個環節已經整個拿掉）。
+ * Phase 4：ingest 成功後，在背景呼叫 window.__captureProductAssets()
+ * （定義在 design-studio.html 的 module script 裡，因為需要直接存取
+ * mainMesh/ringMesh/bailMesh，跟 getCamera 要橋接是同一個原因），把商品照
+ * + 轉檯短片上傳到 CONTENT。不影響按鈕本身的狀態（不讓使用者等錄影的
+ * 幾秒鐘），失敗只記 console，不影響分享本身已經成功這件事。
  */
 (function () {
     'use strict';
@@ -39,7 +37,8 @@
     // 後先等一段時間，確保使用者已經看得到自己的作品，才開始顯示說明框。
     var INITIAL_SETTLE_DELAY_MS = 3000;
     var RESTORY_HINT_HOLD_MS = 5000; // 故事完成後的提醒停留多久
-    var READY_PULSE_MS = 1600; // 上傳完成時「明顯變化」快閃提示要跑多久（對應 CSS ready-pulse 動畫時長）
+    var STATUS_POLL_INTERVAL_MS = 4000; // 輪詢影片是否生成完成的間隔
+    var READY_PULSE_MS = 1600; // 生成完成時「明顯變化」快閃提示要跑多久（對應 CSS ready-pulse 動畫時長）
 
     var btn = null;
     var labelEl = null;
@@ -49,10 +48,11 @@
     var hasSharedOnce = false;
     var originalLabelHTML = '';
 
-    // idle：還沒按過或上一輪已經看過分享頁；preparing：ingest+瀏覽器端錄製
-    // 影片+上傳進行中；ready：全部檔案上傳成功，按鈕改成入口。
+    // idle：還沒按過或上一輪已經看過分享頁；preparing：ingest+背景生成/上傳
+    // 進行中，輪詢 /status；ready：影片跟分享頁都好了，按鈕改成入口。
     var state = 'idle';
     var shareCode = null;
+    var pollTimer = null;
 
     function isDesignComplete() {
         var letter1 = document.getElementById('letter1');
@@ -105,6 +105,43 @@
         };
     }
 
+    function stopPolling() {
+        if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    // 影片組裝沒有真實進度可回報（ffmpeg 沒辦法給精確百分比），這裡只能
+    // 每隔幾秒問一次「好了沒」，不是即時推播。輪詢的是 design_id 不是
+    // shareCode——分享頁 code 在 ingest 當下就建好了，但影片本身還沒。
+    //
+    // designHash 是這次 ingest 當下算出的版本號：後端 content_assets 裡
+    // 「有沒有影片」這件事本身不能拿來判斷好了沒，因為重新分享時舊影片
+    // 本來就還在（新影片做好前，「有影片」這個條件從一開始就成立）。帶著
+    // 這次的 designHash 一起問，/status 才能正確分辨「有影片」是舊的還是
+    // 這次要的那一版（見 app.py /status 用檔名比對版本）。
+    function pollStatus(designId, designHash) {
+        var url = window.CONTENT_URL + '/status/' + designId;
+        if (designHash) url += '?hash=' + encodeURIComponent(designHash);
+        fetch(url)
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (state !== 'preparing') return; // 使用者可能已經離開這個狀態，別再誤觸發
+                if (data && data.success && data.ready && data.shareCode) {
+                    shareCode = data.shareCode;
+                    enterReadyState();
+                    return;
+                }
+                pollTimer = setTimeout(function () { pollStatus(designId, designHash); }, STATUS_POLL_INTERVAL_MS);
+            })
+            .catch(function () {
+                // 查詢本身失敗（網路瞬斷之類）不代表生成失敗，過一輪再試，
+                // 不要讓使用者卡在「製作中」但其實已經好了卻不知道。
+                pollTimer = setTimeout(function () { pollStatus(designId, designHash); }, STATUS_POLL_INTERVAL_MS);
+            });
+    }
+
     function enterPreparingState() {
         state = 'preparing';
         watchArmed = false;
@@ -115,6 +152,7 @@
     }
 
     function enterReadyState() {
+        stopPolling();
         state = 'ready';
         watchArmed = false; // 還沒被按過「前往分享」，先不要偵測變動（見下方說明）
         btn.classList.remove('busy', 'preparing');
@@ -145,6 +183,7 @@
     }
 
     function backToIdle() {
+        stopPolling();
         state = 'idle';
         watchArmed = false;
         btn.classList.remove('busy', 'preparing', 'ready-pulse');
@@ -169,34 +208,17 @@
         watchArmed = true;
     }
 
-    // 商品照（hero/front/detail）是盡力而為：失敗只記 console，不擋分享
-    // 本身——這三張是給日後「回來接續設計」那封信用的，不是分享頁的核心
-    // 內容（分享頁只顯示影片）。
     function uploadOneAsset(designId, assetType, blob) {
         if (!blob) return Promise.resolve();
+        var ext = blob.type.indexOf('mp4') !== -1 ? 'mp4' : (assetType === 'turntable' ? 'webm' : 'jpg');
         var form = new FormData();
         form.append('assetType', assetType);
         form.append('pipelineVersion', '1.0');
-        form.append('file', blob, assetType + '.jpg');
+        form.append('file', blob, assetType + '.' + ext);
         return fetch(window.CONTENT_URL + '/assets/' + designId, { method: 'POST', body: form })
             .then(function (res) { return res.json(); })
             .catch(function (err) {
                 console.warn('[share-button] ' + assetType + ' 上傳失敗:', err);
-            });
-    }
-
-    // 分享影片是「前往分享」狀態的必要條件（分享頁就是顯示這支影片），
-    // 上傳失敗要讓整個分享動作失敗、退回「分享這個作品」，不能默默吞掉。
-    function uploadVideoAsset(designId, blob) {
-        var ext = blob.type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-        var form = new FormData();
-        form.append('assetType', 'video');
-        form.append('pipelineVersion', '1.0');
-        form.append('file', blob, 'video.' + ext);
-        return fetch(window.CONTENT_URL + '/assets/' + designId, { method: 'POST', body: form })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (!data || !data.success) throw new Error('影片上傳失敗');
             });
     }
 
@@ -222,32 +244,26 @@
         });
     }
 
-    // 擷取商品照+分享影片、全部上傳完成，「前往分享」狀態才會出現——這裡
-    // 不再是「背景默默進行、不影響按鈕狀態」，因為現在沒有伺服器端的生成
-    // 工作了，影片本身就是在這裡錄好的，上傳完成就是真的完成了。
     function captureAndUploadAssets(designId) {
-        if (typeof window.__captureProductAssets !== 'function') {
-            console.warn('[share-button] __captureProductAssets 不存在，無法產生分享內容');
-            backToIdle();
-            return;
-        }
+        // 商品照/轉檯短片的擷取跟上傳不影響分享按鈕本身的狀態（不讓使用者
+        // 等這個——擷取轉檯短片要花幾秒錄影時間），在背景默默進行就好。
+        if (typeof window.__captureProductAssets !== 'function') return;
         waitForModelSettled()
             .then(function () { return window.__captureProductAssets(); })
             .then(function (assets) {
-                if (!assets || !assets.video) {
-                    throw new Error('沒有錄到分享影片（可能是瀏覽器不支援錄影）');
+                if (!assets) {
+                    console.warn('[share-button] __captureProductAssets 回傳空值，略過商品照/轉檯上傳');
+                    return;
                 }
-                uploadOneAsset(designId, 'hero', assets.hero);
-                uploadOneAsset(designId, 'front', assets.front);
-                uploadOneAsset(designId, 'detail', assets.detail);
-                return uploadVideoAsset(designId, assets.video);
-            })
-            .then(function () {
-                enterReadyState();
+                return Promise.all([
+                    uploadOneAsset(designId, 'hero', assets.hero),
+                    uploadOneAsset(designId, 'front', assets.front),
+                    uploadOneAsset(designId, 'detail', assets.detail),
+                    uploadOneAsset(designId, 'turntable', assets.turntable),
+                ]);
             })
             .catch(function (err) {
-                console.warn('[share-button] 擷取/上傳分享影片失敗:', err);
-                backToIdle();
+                console.warn('[share-button] 商品照/轉檯擷取失敗:', err);
             });
     }
 
@@ -284,10 +300,9 @@
         })
             .then(function (res) { return res.json(); })
             .then(function (data) {
-                if (!data || !data.shareCode) throw new Error('ingest 沒有回傳 shareCode');
                 hasSharedOnce = true;
-                shareCode = data.shareCode;
                 captureAndUploadAssets(designId);
+                pollStatus(designId, data && data.designHash);
             })
             .catch(function (err) {
                 console.warn('[share-button] ingest 失敗:', err);
