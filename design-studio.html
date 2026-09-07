@@ -1228,7 +1228,14 @@
         function _makeOverlayPlane(canvasSrc, x, y, w, h) {
             const tex = new THREE.CanvasTexture(canvasSrc);
             tex.colorSpace = THREE.SRGBColorSpace;
-            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false });
+            // 這個正交相機是 top=0/bottom=H（Y 向下的像素座標），跟 Three.js
+            // 慣例的 top>bottom 相反：這會讓內容位置是對的，但有兩個副作用
+            // 要一起修——(1) 投影矩陣手性翻轉，預設單面材質被背面剔除、整層
+            // 消失，要加 DoubleSide；(2) CanvasTexture 預設的 flipY 是配合
+            // 「標準」相機方向設計的，跟這裡反過來的 Y 軸對不上，畫面會整個
+            // 上下顛倒，要關掉 flipY 抵銷。兩個都試過、用實際內容驗證過。
+            tex.flipY = false;
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
             mesh.position.set(x + w / 2, y + h / 2, 0);
             mesh.renderOrder = 10;
@@ -1301,12 +1308,12 @@
             // 蓋滿轉檀內容區域、透明度漸強的純色平面）。正交相機用像素座標，
             // (0,0) 到 (_CARD_W, CONTENT_H) 剛好對應轉檀內容自己的那塊區域。
             const overlayScene = new THREE.Scene();
-            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, CONTENT_H, 0, -10, 10);
+            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, CONTENT_H, -10, 10);
             overlayCamera.position.z = 5;
             const watermarkPlane = _makeOverlayPlane(watermarkCanvas, 36, 30, watermarkCanvas.width, watermarkCanvas.height);
             overlayScene.add(watermarkPlane);
             const fadeGeo = new THREE.PlaneGeometry(_CARD_W, CONTENT_H);
-            const fadeMat = new THREE.MeshBasicMaterial({ color: _BG_CSS, transparent: true, opacity: 0, depthTest: false });
+            const fadeMat = new THREE.MeshBasicMaterial({ color: _BG_CSS, transparent: true, opacity: 0, depthTest: false, side: THREE.DoubleSide });
             const fadePlane = new THREE.Mesh(fadeGeo, fadeMat);
             fadePlane.position.set(_CARD_W / 2, CONTENT_H / 2, 1);
             fadePlane.renderOrder = 20;
@@ -1315,7 +1322,7 @@
             // CTA 卡場景：獨立、蓋滿整個 9:16 畫面，只在轉檀結束後才會被
             // render 到，時間上完全不跟前面兩層重疊，不需要處理疊加。
             const ctaScene = new THREE.Scene();
-            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, _CARD_H, 0, -10, 10);
+            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, _CARD_H, -10, 10);
             ctaCamera.position.z = 5;
             ctaScene.add(_makeOverlayPlane(ctaCanvas, 0, 0, _CARD_W, _CARD_H));
 
