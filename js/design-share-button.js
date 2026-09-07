@@ -54,6 +54,22 @@
     var state = 'idle';
     var shareCode = null;
 
+    // 分享頁下載前的 email 收集（Part C）只該擋「不是分享者本人」的訪客——
+    // 分享者本人在自己的分享頁下載自己的作品不該還要留 email。這裡在
+    // ingest 剛拿到 shareCode（這個瀏覽器剛把作品分享出去，一定是本人）
+    // 的當下記一個 localStorage 旗標，/d/<code> 那頁用同一把 key 檢查
+    // （同網域才讀得到，跨裝置/跨瀏覽器讀不到——讀不到一律當非本人處理，
+    // 不做「誰先點下載就當本人」這種猜測，避免把作品資訊誤發給其他人）。
+    function markAsShareOwner(code) {
+        try {
+            localStorage.setItem('duet_share_owner_' + code, '1');
+        } catch (e) {
+            // localStorage 被封鎖（無痕模式等）：這個瀏覽器之後在 /d/<code>
+            // 就會被當非本人處理，符合「讀不到就當非本人」的既定行為，
+            // 不需要額外處理。
+        }
+    }
+
     function isDesignComplete() {
         var letter1 = document.getElementById('letter1');
         var letter2 = document.getElementById('letter2');
@@ -287,6 +303,7 @@
                 if (!data || !data.shareCode) throw new Error('ingest 沒有回傳 shareCode');
                 hasSharedOnce = true;
                 shareCode = data.shareCode;
+                markAsShareOwner(shareCode);
                 captureAndUploadAssets(designId);
             })
             .catch(function (err) {

@@ -156,6 +156,30 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     border: 1px solid rgba(212,175,55,0.4); border-radius: 10px;
     text-decoration: none; cursor: pointer;
   }
+  .email-gate {
+    margin-top: 14px; text-align: left;
+  }
+  .email-gate-copy {
+    font-size: 12px; color: rgba(255,255,255,0.6);
+    line-height: 1.5; margin: 0 0 8px;
+  }
+  .email-gate-row {
+    display: flex; gap: 8px;
+  }
+  .email-gate-input {
+    flex: 1; min-width: 0; font-size: 14px; color: #fff;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(212,175,55,0.5);
+    border-radius: 8px; padding: 10px 12px; font-family: inherit;
+  }
+  .email-gate-input::placeholder { color: rgba(255,255,255,0.35); }
+  .email-gate-submit {
+    padding: 10px 16px; font-size: 13px; font-weight: 600; white-space: nowrap;
+    background: linear-gradient(135deg, #d4af37 0%, #aa8a2e 100%);
+    color: #0a0908; border: none; border-radius: 8px; cursor: pointer;
+  }
+  .email-gate-error {
+    font-size: 11px; color: #e08a8a; margin: 6px 0 0;
+  }
 
 </style>
 </head>
@@ -177,6 +201,14 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     <div class="secondary-row">
       <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
       <button class="cta-secondary" id="share-page-btn" type="button">分享這個頁面</button>
+    </div>
+    <div class="email-gate" id="email-gate" hidden>
+      <p class="email-gate-copy">留下您的e-mail即可下載，我們會不定期分享生活美學、關係經營、獨家優惠，不會用於其他用途。</p>
+      <div class="email-gate-row">
+        <input type="email" class="email-gate-input" id="email-gate-input" placeholder="your@email.com">
+        <button class="email-gate-submit" id="email-gate-submit" type="button">確認</button>
+      </div>
+      <p class="email-gate-error" id="email-gate-error" hidden>請輸入正確的 email 格式</p>
     </div>
   </div>
   <script>
@@ -209,31 +241,100 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     // 情況下不保證會真的跳出存檔對話框，很多瀏覽器會直接當成一般連結
     // 開啟播放。改成用 fetch 把檔案抓成 blob，再用「同網域」的 blob: 網址
     // 觸發下載——瀏覽器對 blob: 網址的 download 屬性才會確實遵守。
-    document.getElementById('download-btn').addEventListener('click', function () {
-      var btn = this;
-      var original = btn.textContent;
-      var url = btn.getAttribute('data-url');
-      var ext = btn.getAttribute('data-ext');
-      if (!url) return;
-      btn.textContent = '下載中…';
-      fetch(url)
-        .then(function (res) { return res.blob(); })
-        .then(function (blob) {
-          var blobUrl = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = 'duet.' + ext;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
-          btn.textContent = original;
+    (function () {
+      var downloadBtn = document.getElementById('download-btn');
+      var gate = document.getElementById('email-gate');
+      var gateInput = document.getElementById('email-gate-input');
+      var gateSubmit = document.getElementById('email-gate-submit');
+      var gateError = document.getElementById('email-gate-error');
+
+      // 分享者本人在自己的分享頁下載自己的作品不用留 email——design-studio
+      // 把作品分享出去的當下，會在這個瀏覽器記一個 localStorage 旗標（見
+      // design-share-button.js 的 markAsShareOwner()），這裡讀同一把 key。
+      // 讀不到（換瀏覽器/換裝置/無痕模式/旗標從沒被設過）一律當作不是
+      // 本人處理，不做「誰先點下載就當本人」之類的猜測——這樣才不會把
+      // 作品資訊誤發給其他人。
+      function isOwner() {
+        try {
+          return localStorage.getItem('duet_share_owner_${escapeHtml(code)}') === '1';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function runDownload() {
+        var original = downloadBtn.textContent;
+        var url = downloadBtn.getAttribute('data-url');
+        var ext = downloadBtn.getAttribute('data-ext');
+        if (!url) return;
+        downloadBtn.textContent = '下載中…';
+        fetch(url)
+          .then(function (res) { return res.blob(); })
+          .then(function (blob) {
+            var blobUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = 'duet.' + ext;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+            downloadBtn.textContent = original;
+          })
+          .catch(function () {
+            downloadBtn.textContent = '下載失敗，請重試';
+            setTimeout(function () { downloadBtn.textContent = original; }, 2200);
+          });
+      }
+
+      downloadBtn.addEventListener('click', function () {
+        if (isOwner()) {
+          runDownload();
+          return;
+        }
+        gate.hidden = false;
+        gateInput.focus();
+      });
+
+      gateSubmit.addEventListener('click', function () {
+        var email = gateInput.value.trim();
+        // 跟後端同一種簡單格式檢查（不寄驗證信，刻意輕量，避免使用者還要
+        // 去收信驗證增加摩擦力）。
+        if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+          gateError.hidden = false;
+          return;
+        }
+        gateError.hidden = true;
+        var original = gateSubmit.textContent;
+        gateSubmit.textContent = '確認中…';
+        gateSubmit.disabled = true;
+        fetch('${CONTENT_URL}/share/${escapeHtml(code)}/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
         })
-        .catch(function () {
-          btn.textContent = '下載失敗，請重試';
-          setTimeout(function () { btn.textContent = original; }, 2200);
-        });
-    });
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            gateSubmit.textContent = original;
+            gateSubmit.disabled = false;
+            if (!data || !data.success) {
+              gateError.hidden = false;
+              return;
+            }
+            gate.hidden = true;
+            runDownload();
+          })
+          .catch(function () {
+            gateSubmit.textContent = original;
+            gateSubmit.disabled = false;
+            gateError.hidden = false;
+          });
+      });
+
+      gateInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); gateSubmit.click(); }
+      });
+    })();
 
     // 分享者自己編輯 tagline 那句話：點鉛筆變成輸入框，Enter/失焦存檔，
     // Esc 取消。存檔用的是 code 本身當驗證（跟撤下同一個信任模型），
