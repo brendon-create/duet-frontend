@@ -1217,30 +1217,11 @@
             return c;
         }
 
-        // 用一張 2D canvas（文字/圖案內容）做一個「疊加平面」：正交相機、
-        // 像素座標（左上原點、Y 向下，跟 canvas 2D 一致），純粹把 2D 畫好
-        // 的內容當貼圖傳給 GPU（單向：CPU → GPU，這個方向沒有風險），不是
-        // 反過來用 2D API 去讀 WebGL 畫面內容（那個方向才是先前出事的
-        // 做法——drawImage() 讀 WebGL canvas、又沒開 preserveDrawingBuffer，
-        // 逼著瀏覽器用不穩定的方式管理 GPU 資源）。整支影片從頭到尾只有
-        // 一個 WebGLRenderer、一個 canvas，captureStream() 直接對它呼叫，
-        // 跟原本驗證過安全的轉檀短片擷取完全同一種模式。
-        function _makeOverlayPlane(canvasSrc, x, y, w, h) {
-            const tex = new THREE.CanvasTexture(canvasSrc);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false });
-            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-            mesh.position.set(x + w / 2, y + h / 2, 0);
-            mesh.renderOrder = 10;
-            return mesh;
-        }
-
         async function _recordShareVideo({ lookAt, bgTexture, radius, zoomScale }) {
             const ROTATE_SECONDS = 6;
             const FADE_SECONDS = 0.6; // 轉檀片段最後這段時間淡出到 _BG_CSS
             const CTA_SECONDS = 2.5;
             const fps = 30;
-            const CONTENT_H = 1440; // 轉檀內容本身的高度（3:4），見 _LETTERBOX_TOP
 
             // 目前這組鏡頭參數化下，angle=0（fraction=0）對應的是第二個字母
             // 的正面——實測真實素材反推出來的：第一個字母的正面落在 270°
@@ -1250,76 +1231,18 @@
             const LETTER1_FRONT_ANGLE = Math.PI * 1.5;
             const START_OFFSET = -Math.PI / 6;
 
+            const s = _captureScene({ x: radius, y: 0, z: 5 * zoomScale }, 1080, 1440, lookAt, bgTexture);
+            const watermark = await _buildWatermarkCanvas();
             const letter1 = document.getElementById('letter1').value || '';
             const letter2 = document.getElementById('letter2').value || '';
-            const [watermarkCanvas, ctaCanvas] = await Promise.all([
-                _buildWatermarkCanvas(),
-                _buildCtaCanvas(letter1, letter2),
-            ]);
+            const ctaCanvas = await _buildCtaCanvas(letter1, letter2);
 
-            // 單一 renderer、單一 canvas，開在最終 9:16 尺寸。autoClear 關掉，
-            // 自己控制每一幀什麼時候清畫面、疊幾層——3D 主場景只畫進轉檀
-            // 內容自己的那塊區域（scissor/viewport 限制），其餘（含浮水印/
-            // 淡出/CTA 卡那幾層）另外用像素座標的正交相機疊上去。
-            const canvas = document.createElement('canvas');
-            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            renderer.setSize(_CARD_W, _CARD_H, false);
-            renderer.autoClear = false;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            renderer.setClearColor(_BG_CSS, 1);
+            const compositor = document.createElement('canvas');
+            compositor.width = _CARD_W;
+            compositor.height = _CARD_H;
+            const cctx = compositor.getContext('2d');
 
-            // 主場景（跟 _captureScene 建置方式相同，這裡不能呼叫 _captureScene
-            // 本身——那個函式會自己另開一個 renderer，這裡要全程共用同一個）。
-            const scene = new THREE.Scene();
-            if (bgTexture) scene.background = bgTexture;
-            const camera = new THREE.PerspectiveCamera(50, _CARD_W / CONTENT_H, 0.1, 1000);
-            camera.up.set(0, 0, 1);
-            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
-            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
-            light2.position.set(5, 5, 10);
-            scene.add(light1, light2);
-            if (window.envMap) scene.environment = window.envMap;
-            const meshClone = mainMesh.clone();
-            meshClone.geometry = mainMesh.geometry.clone();
-            meshClone.material = mainMesh.material.clone();
-            scene.add(meshClone);
-            if (ringMesh) {
-                const r = ringMesh.clone();
-                r.geometry = ringMesh.geometry.clone();
-                r.material = ringMesh.material.clone();
-                scene.add(r);
-            }
-            if (bailMesh) {
-                const b = bailMesh.clone();
-                b.geometry = bailMesh.geometry.clone();
-                b.material = bailMesh.material.clone();
-                scene.add(b);
-            }
-
-            // 疊加場景：浮水印（貼在轉檀內容區域左上角）+ 片尾淡出遮罩（一塊
-            // 蓋滿轉檀內容區域、透明度漸強的純色平面）。正交相機用像素座標，
-            // (0,0) 到 (_CARD_W, CONTENT_H) 剛好對應轉檀內容自己的那塊區域。
-            const overlayScene = new THREE.Scene();
-            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, CONTENT_H, -10, 10);
-            overlayCamera.position.z = 5;
-            const watermarkPlane = _makeOverlayPlane(watermarkCanvas, 36, 30, watermarkCanvas.width, watermarkCanvas.height);
-            overlayScene.add(watermarkPlane);
-            const fadeGeo = new THREE.PlaneGeometry(_CARD_W, CONTENT_H);
-            const fadeMat = new THREE.MeshBasicMaterial({ color: _BG_CSS, transparent: true, opacity: 0, depthTest: false });
-            const fadePlane = new THREE.Mesh(fadeGeo, fadeMat);
-            fadePlane.position.set(_CARD_W / 2, CONTENT_H / 2, 1);
-            fadePlane.renderOrder = 20;
-            overlayScene.add(fadePlane);
-
-            // CTA 卡場景：獨立、蓋滿整個 9:16 畫面，只在轉檀結束後才會被
-            // render 到，時間上完全不跟前面兩層重疊，不需要處理疊加。
-            const ctaScene = new THREE.Scene();
-            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, _CARD_H, -10, 10);
-            ctaCamera.position.z = 5;
-            ctaScene.add(_makeOverlayPlane(ctaCanvas, 0, 0, _CARD_W, _CARD_H));
-
-            const stream = canvas.captureStream(fps);
+            const stream = compositor.captureStream(fps);
             const mimeType = MediaRecorder.isTypeSupported('video/mp4')
                 ? 'video/mp4'
                 : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
@@ -1348,33 +1271,27 @@
             function drawRotationFrame(elapsedSec) {
                 const fraction = Math.min(elapsedSec / ROTATE_SECONDS, 1);
                 const angle = LETTER1_FRONT_ANGLE + START_OFFSET + fraction * Math.PI * 2;
-                camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
-                camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+                s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
+                s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+                s.renderer.render(s.scene, s.camera);
+
+                cctx.fillStyle = _BG_CSS;
+                cctx.fillRect(0, 0, _CARD_W, _CARD_H);
+                cctx.drawImage(s.renderer.domElement, 0, _LETTERBOX_TOP, _CARD_W, 1440);
+                cctx.drawImage(watermark, 36, _LETTERBOX_TOP + 30);
 
                 const fadeStart = ROTATE_SECONDS - FADE_SECONDS;
-                fadeMat.opacity = elapsedSec > fadeStart
-                    ? Math.min((elapsedSec - fadeStart) / FADE_SECONDS, 1)
-                    : 0;
-
-                // 先清整個 9:16 畫布（含轉檀內容以外的黑邊留白區域），再把
-                // scissor/viewport 限制在轉檀內容自己的那塊區域畫 3D 場景 +
-                // 浮水印/淡出疊加層——外面那圈留白完全不會被這兩次 render 動到。
-                renderer.setScissorTest(false);
-                renderer.setViewport(0, 0, _CARD_W, _CARD_H);
-                renderer.clear();
-
-                renderer.setScissorTest(true);
-                renderer.setScissor(0, _CARD_H - _LETTERBOX_TOP - CONTENT_H, _CARD_W, CONTENT_H);
-                renderer.setViewport(0, _CARD_H - _LETTERBOX_TOP - CONTENT_H, _CARD_W, CONTENT_H);
-                renderer.render(scene, camera);
-                renderer.render(overlayScene, overlayCamera);
-                renderer.setScissorTest(false);
+                if (elapsedSec > fadeStart) {
+                    const t = Math.min((elapsedSec - fadeStart) / FADE_SECONDS, 1);
+                    cctx.fillStyle = _BG_CSS;
+                    cctx.globalAlpha = t;
+                    cctx.fillRect(0, 0, _CARD_W, _CARD_H);
+                    cctx.globalAlpha = 1;
+                }
             }
 
             function drawCtaFrame() {
-                renderer.setViewport(0, 0, _CARD_W, _CARD_H);
-                renderer.clear();
-                renderer.render(ctaScene, ctaCamera);
+                cctx.drawImage(ctaCanvas, 0, 0);
             }
 
             recorder.start();
@@ -1405,8 +1322,8 @@
             recorder.stop();
             await recordingDone;
             document.removeEventListener('visibilitychange', onVisibilityChange);
-            renderer.forceContextLoss();
-            renderer.dispose();
+            s.renderer.forceContextLoss();
+            s.renderer.dispose();
             return new Blob(chunks, { type: mimeType });
         }
 
