@@ -5054,7 +5054,7 @@
             for (let i = 0; i < combinations.length; i++) {
                 const c = combinations[i];
                 showDesignStoryGeneratingIndicator();
-                const designStory = await generateDesignStory(c, chatResult.fontReason || '');
+                const designStory = await generateDesignStory(c, chatResult.fontReason || '', chatResult.letterReason || '');
                 hideDesignStoryGeneratingIndicator();
 
                 if (designStory) {
@@ -5256,7 +5256,7 @@
         }
 
         // 呼叫後端生成設計理念
-        async function generateDesignStory(combination, fontReason) {
+        async function generateDesignStory(combination, fontReason, letterReason) {
             try {
                 // 優先使用付款後從後端載入的 AI 諮詢資料
                 let aiData = window.aiConsultationData;
@@ -5288,6 +5288,7 @@
                             font2: combination.fonts.font2
                         },
                         fontReason: fontReason,
+                        letterReason: letterReason || '',
                         lang: localStorage.getItem('duet_language') || 'zh'
                     })
                 });
