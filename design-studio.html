@@ -987,21 +987,21 @@
         console.log('[benchmark] Content Pipeline Phase 4a 已就緒：設計完成後 console 呼叫 window.__benchmarkTurntable() 開始測試');
 
         // ============================================================
-        // Content Pipeline Phase 4：商品照 + 轉檯短片擷取
-        // 規格對應：DUET_內容管線_定案規格_v2.md §5 Phase 4（商品照規格：
-        // hero 4:5 1600x2000、front 1:1 1600x1600、detail 4:5 1600x2000、
-        // turntable 3:4 1080p）。
+        // Content Pipeline：商品照 + 分享影片擷取
+        // 商品照規格：hero 4:5 1600x2000、front 1:1 1600x1600、detail 4:5
+        // 1600x2000。分享影片是轉檀旋轉+浮水印+片尾淡出+CTA 卡全部錄在
+        // 一起、瀏覽器端組裝好的最終成品（見 _recordShareVideo()）。
         //
         // 供 classic script（design-share-button.js）呼叫，因為 mainMesh/
         // ringMesh/bailMesh/envMap 都是這個 module script 內部的東西，跟
-        // getCamera 需要橋接是同一個原因。回傳 {hero, front, detail, turntable}
-        // 的 Blob（turntable 可能是 undefined——瀏覽器不支援錄影時就略過，
+        // getCamera 需要橋接是同一個原因。回傳 {hero, front, detail, video}
+        // 的 Blob（video 可能是 undefined——瀏覽器不支援錄影時就略過，
         // 不擋其他三張圖）。
         // ============================================================
-        // 商品照/轉檯短片用固定的背景照（Toscana，跟 Design Studio 預設背景
+        // 商品照/分享影片用固定的背景照（Toscana，跟 Design Studio 預設背景
         // 同一張），不是跟著使用者當下選的背景走——分享出去的內容應該每次
         // 看起來一致，不该因為使用者分享前恰好切到哪張背景而不一樣。只載入
-        // 一次、快取起來，四次擷取（hero/front/detail/turntable）共用。
+        // 一次、快取起來，四次擷取（hero/front/detail/影片）共用。
         let _fixedBgPromise = null;
         function _getFixedBgTexture() {
             if (!_fixedBgPromise) {
@@ -1112,108 +1112,220 @@
             s.renderer.forceContextLoss();
             s.renderer.dispose();
 
-            // turntable：3:4，1080p，30fps，5 秒 360°——只在瀏覽器支援錄影時做，
-            // 不支援就略過（不擋前面三張已經算好的圖）。
+            // 分享影片：轉檯旋轉 + 浮水印 + 片尾淡出 + CTA 卡，全部在瀏覽器端
+            // 一次錄完（跟 hero-video-generator.html 同一種做法），不再只錄
+            // 轉檯短片、丟給伺服器用 ffmpeg 組裝——伺服器那段組裝流程是今晚
+            // 一整串問題的根源（時長跑掉被攔腰截斷、ffmpeg 收到空檔案報錯、
+            // worker 處理太重的檔案被砍掉、CDN 快取到舊影片、狀態輪詢對不上
+            // 版本……），瀏覽器本來就已經把畫面算好了，不需要再上傳給伺服器
+            // 重新組裝一次。
             //
-            // 角度用「實際經過的真實時間」推進，不是每跑一輪迴圈就前進固定
-            // 一格（跟 hero-video-generator.html 錄製動畫同一套做法，那邊已經
-            // 驗證過可行）。原本是每格之間 setTimeout(1000/fps) 硬等，手機
-            // 硬體較弱、單格 render+encode 實際花的時間常常超過這個間隔，
-            // 累積下來錄出來的檔案會比 5 秒長（實測遇過 8.74 秒的案例）——
-            // 這會讓伺服器端的 5 秒長度上限（見 app.py normalize_clip）把
-            // 轉了一半的畫面攔腰截斷，看起來像是轉不滿一圈。改成算出「現在
-            // 該轉到幾度」而不是「這是第幾格該轉幾度」，不管每一格實際渲染
-            // 花多久，總長度都會準確落在 5 秒附近，才不會被截斷在轉到一半。
+            // 做法：WebGL 渲染轉檯畫面到一個獨立的 canvas，另外開一個 2D
+            // 「合成」canvas，每一幀把 WebGL 畫面貼上去、疊浮水印、片尾疊
+            // 漸強的深色遮罩做淡出；轉完換成純 2D 畫的 CTA 卡（文字用瀏覽器
+            // 本來就有載入的 Cantata One 字型）。全程只開一個 MediaRecorder
+            // 錄這個合成 canvas，錄完就是一支完整、組裝好的影片檔案。
             //
-            // 分頁被切到背景時，瀏覽器會把 requestAnimationFrame 降頻/暫停
-            // （節能機制，網頁本身擋不掉）——偵測到切走就用 recorder.pause()
-            // 真的暫停錄影，並把暫停的時間從經過時間裡扣掉，切回來才 resume、
-            // 繼續正常推進，不會錄到卡住不動的畫面，也不會讓暫停的時間被
-            // 誤算進「已經轉了多少度」。
+            // 角度／淡出都用「實際經過的真實時間」推進，不是每跑一輪迴圈就
+            // 前進固定一格——手機硬體較弱、單格 render 花的時間常超過預期
+            // 間隔，用真實時間才能保證總長度準確、不會被拖長。分頁被切到
+            // 背景時，用 recorder.pause() 真的暫停錄影，暫停的時間從經過
+            // 時間裡扣掉，都是延續已經驗證過的做法。
             if (typeof MediaRecorder !== 'undefined' &&
                 HTMLCanvasElement.prototype.captureStream) {
                 try {
-                    const w = 1080, h = 1440, fps = 30, seconds = 7;
-                    // 目前這組鏡頭參數化下，angle=0（fraction=0）對應的是第二個字母
-                    // 的正面——實測真實素材＋比對使用者描述的畫面順序（A正面→d背面→
-                    // A背面→d正面，四個地標角度平均分布在一圈上）反推出來的：
-                    // 第一個字母的正面落在 270°（3π/2）。從這裡再往前推 30 度當
-                    // 起始點，讓觀眾一開始就有個「即將轉到第一個字母正面」的緩衝，
-                    // 而不是一開始就正對著看，才轉開。這個角度是兩個字母並排的
-                    // 結構性關係決定的，跟選了哪兩個字母無關，所有設計都適用。
-                    const LETTER1_FRONT_ANGLE = Math.PI * 1.5; // 270°
-                    const START_OFFSET = -Math.PI / 6; // -30°
-                    s = _captureScene({ x: radius, y: 0, z: 5 * zoomScale }, w, h, lookAt, bgTexture);
-                    const stream = s.renderer.domElement.captureStream(fps);
-                    const mimeType = MediaRecorder.isTypeSupported('video/mp4')
-                        ? 'video/mp4'
-                        : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-                            ? 'video/webm;codecs=vp9' : 'video/webm');
-                    const recorder = new MediaRecorder(stream, { mimeType });
-                    const chunks = [];
-                    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-                    const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
-
-                    let hiddenAccumMs = 0;
-                    let hiddenSince = null;
-
-                    function onVisibilityChange() {
-                        if (document.hidden) {
-                            hiddenSince = performance.now();
-                            if (recorder.state === 'recording') recorder.pause();
-                        } else {
-                            if (hiddenSince !== null) {
-                                hiddenAccumMs += performance.now() - hiddenSince;
-                                hiddenSince = null;
-                            }
-                            if (recorder.state === 'paused') recorder.resume();
-                        }
-                    }
-                    document.addEventListener('visibilitychange', onVisibilityChange);
-
-                    function renderAtAngle(fraction) {
-                        const angle = LETTER1_FRONT_ANGLE + START_OFFSET + fraction * Math.PI * 2;
-                        s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
-                        s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
-                        s.renderer.render(s.scene, s.camera);
-                    }
-
-                    recorder.start();
-
-                    const startTime = performance.now();
-                    await new Promise((resolve) => {
-                        function tick() {
-                            if (document.hidden) {
-                                requestAnimationFrame(tick);
-                                return;
-                            }
-                            const elapsedSec = (performance.now() - startTime - hiddenAccumMs) / 1000;
-                            if (elapsedSec >= seconds) {
-                                renderAtAngle(1); // 收在整整 360° 的位置，不要停在轉到一半的角度
-                                resolve();
-                                return;
-                            }
-                            renderAtAngle(elapsedSec / seconds);
-                            requestAnimationFrame(tick);
-                        }
-                        requestAnimationFrame(tick);
-                    });
-
-                    recorder.stop();
-                    await recordingDone;
-                    document.removeEventListener('visibilitychange', onVisibilityChange);
-                    s.renderer.forceContextLoss();
-                    s.renderer.dispose();
-                    results.turntable = new Blob(chunks, { type: mimeType });
+                    results.video = await _recordShareVideo({ lookAt, bgTexture, radius, zoomScale });
                 } catch (e) {
-                    console.warn('[capture] 轉檯錄影失敗，略過：', e);
+                    console.warn('[capture] 分享影片錄製失敗，略過：', e);
                 }
             } else {
-                console.warn('[capture] 這個瀏覽器不支援錄影，略過轉檯短片');
+                console.warn('[capture] 這個瀏覽器不支援錄影，略過分享影片');
             }
 
             return results;
         };
+
+        // ============================================================
+        // 分享影片組裝相關常數／輔助函式
+        // ============================================================
+        const _CARD_W = 1080, _CARD_H = 1920; // 9:16，跟分享頁 <video> 的比例一致
+        const _BG_CSS = 'rgb(16,14,10)'; // 跟片尾字卡背景色一致，轉檀片段淡出也淡到這個顏色
+        const _GOLD_CSS = 'rgb(212,175,55)';
+        // 轉檀畫面本身是 3:4（1080x1440，比 9:16「矮」），貼進 1080x1920 的
+        // 合成畫布時上下留白，這是留白的高度——浮水印要貼在這塊留白下方，
+        // 不要疊在留白裡（社群平台重新分享時，畫面上方常被平台自己的字幕/
+        // 標題疊字佔用，浮水印放在那裡容易被蓋掉）。
+        const _LETTERBOX_TOP = (_CARD_H - 1440) / 2;
+
+        let _watermarkCanvasPromise = null;
+        function _buildWatermarkCanvas() {
+            if (_watermarkCanvasPromise) return _watermarkCanvasPromise;
+            _watermarkCanvasPromise = (async () => {
+                await Promise.all([
+                    document.fonts.load("88px 'Cantata One'"),
+                    document.fonts.load("italic 40px 'Libre Caslon Text'"),
+                ]);
+                const c = document.createElement('canvas');
+                const ctx = c.getContext('2d');
+                const mainText = 'DUET', subText = 'by BCAG';
+                ctx.font = "88px 'Cantata One'";
+                const mainW = ctx.measureText(mainText).width;
+                ctx.font = "italic 40px 'Libre Caslon Text'";
+                const subW = ctx.measureText(subText).width;
+                const gap = 20, pad = 8;
+                c.width = pad * 2 + mainW + gap + subW;
+                c.height = 112;
+                const baselineY = c.height - 32;
+                ctx.textBaseline = 'alphabetic';
+                ctx.font = "88px 'Cantata One'";
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillText(mainText, pad, baselineY);
+                ctx.font = "italic 40px 'Libre Caslon Text'";
+                ctx.fillStyle = 'rgba(255,255,255,0.72)';
+                ctx.fillText(subText, pad + mainW + gap, baselineY);
+                return c;
+            })();
+            return _watermarkCanvasPromise;
+        }
+
+        async function _buildCtaCanvas(letter1, letter2) {
+            await document.fonts.load("56px 'Cantata One'");
+            const c = document.createElement('canvas');
+            c.width = _CARD_W;
+            c.height = _CARD_H;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = _BG_CSS;
+            ctx.fillRect(0, 0, _CARD_W, _CARD_H);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+
+            const mainText = `This is my DUET. (${letter1}&${letter2})`;
+            let mainSize = 56;
+            ctx.font = `${mainSize}px 'Cantata One'`;
+            // 字母是使用者自己選的，理論上都很短會在一行內，但還是留一個
+            // 防溢出的保險：太寬就等比例縮小字級，不要真的跑版。
+            while (ctx.measureText(mainText).width > _CARD_W - 160 && mainSize > 28) {
+                mainSize -= 2;
+                ctx.font = `${mainSize}px 'Cantata One'`;
+            }
+            ctx.fillStyle = '#fff';
+            ctx.fillText(mainText, _CARD_W / 2, _CARD_H / 2);
+
+            ctx.font = "44px 'Cantata One'";
+            ctx.fillStyle = _GOLD_CSS;
+            ctx.fillText('duet.brendonchen.com', _CARD_W / 2, _CARD_H / 2 + 76);
+            return c;
+        }
+
+        async function _recordShareVideo({ lookAt, bgTexture, radius, zoomScale }) {
+            const ROTATE_SECONDS = 6;
+            const FADE_SECONDS = 0.6; // 轉檀片段最後這段時間淡出到 _BG_CSS
+            const CTA_SECONDS = 2.5;
+            const fps = 30;
+
+            // 目前這組鏡頭參數化下，angle=0（fraction=0）對應的是第二個字母
+            // 的正面——實測真實素材反推出來的：第一個字母的正面落在 270°
+            // （3π/2）。從這裡再往前推 30 度當起始點，讓觀眾一開始有個
+            // 「即將轉到第一個字母正面」的緩衝。這個角度是兩個字母並排的
+            // 結構性關係決定的，跟選了哪兩個字母無關，所有設計都適用。
+            const LETTER1_FRONT_ANGLE = Math.PI * 1.5;
+            const START_OFFSET = -Math.PI / 6;
+
+            const s = _captureScene({ x: radius, y: 0, z: 5 * zoomScale }, 1080, 1440, lookAt, bgTexture);
+            const watermark = await _buildWatermarkCanvas();
+            const letter1 = document.getElementById('letter1').value || '';
+            const letter2 = document.getElementById('letter2').value || '';
+            const ctaCanvas = await _buildCtaCanvas(letter1, letter2);
+
+            const compositor = document.createElement('canvas');
+            compositor.width = _CARD_W;
+            compositor.height = _CARD_H;
+            const cctx = compositor.getContext('2d');
+
+            const stream = compositor.captureStream(fps);
+            const mimeType = MediaRecorder.isTypeSupported('video/mp4')
+                ? 'video/mp4'
+                : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9' : 'video/webm');
+            const recorder = new MediaRecorder(stream, { mimeType });
+            const chunks = [];
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+            const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+
+            let hiddenAccumMs = 0;
+            let hiddenSince = null;
+            function onVisibilityChange() {
+                if (document.hidden) {
+                    hiddenSince = performance.now();
+                    if (recorder.state === 'recording') recorder.pause();
+                } else {
+                    if (hiddenSince !== null) {
+                        hiddenAccumMs += performance.now() - hiddenSince;
+                        hiddenSince = null;
+                    }
+                    if (recorder.state === 'paused') recorder.resume();
+                }
+            }
+            document.addEventListener('visibilitychange', onVisibilityChange);
+
+            function drawRotationFrame(elapsedSec) {
+                const fraction = Math.min(elapsedSec / ROTATE_SECONDS, 1);
+                const angle = LETTER1_FRONT_ANGLE + START_OFFSET + fraction * Math.PI * 2;
+                s.camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
+                s.camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+                s.renderer.render(s.scene, s.camera);
+
+                cctx.fillStyle = _BG_CSS;
+                cctx.fillRect(0, 0, _CARD_W, _CARD_H);
+                cctx.drawImage(s.renderer.domElement, 0, _LETTERBOX_TOP, _CARD_W, 1440);
+                cctx.drawImage(watermark, 36, _LETTERBOX_TOP + 30);
+
+                const fadeStart = ROTATE_SECONDS - FADE_SECONDS;
+                if (elapsedSec > fadeStart) {
+                    const t = Math.min((elapsedSec - fadeStart) / FADE_SECONDS, 1);
+                    cctx.fillStyle = _BG_CSS;
+                    cctx.globalAlpha = t;
+                    cctx.fillRect(0, 0, _CARD_W, _CARD_H);
+                    cctx.globalAlpha = 1;
+                }
+            }
+
+            function drawCtaFrame() {
+                cctx.drawImage(ctaCanvas, 0, 0);
+            }
+
+            recorder.start();
+            const totalSeconds = ROTATE_SECONDS + CTA_SECONDS;
+            const startTime = performance.now();
+            await new Promise((resolve) => {
+                function tick() {
+                    if (document.hidden) {
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+                    const elapsedSec = (performance.now() - startTime - hiddenAccumMs) / 1000;
+                    if (elapsedSec >= totalSeconds) {
+                        drawCtaFrame();
+                        resolve();
+                        return;
+                    }
+                    if (elapsedSec < ROTATE_SECONDS) {
+                        drawRotationFrame(elapsedSec);
+                    } else {
+                        drawCtaFrame();
+                    }
+                    requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            });
+
+            recorder.stop();
+            await recordingDone;
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            s.renderer.forceContextLoss();
+            s.renderer.dispose();
+            return new Blob(chunks, { type: mimeType });
+        }
 
         window.bailInitialized = bailInitialized;
 
