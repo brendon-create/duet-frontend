@@ -1301,7 +1301,7 @@
             // 蓋滿轉檀內容區域、透明度漸強的純色平面）。正交相機用像素座標，
             // (0,0) 到 (_CARD_W, CONTENT_H) 剛好對應轉檀內容自己的那塊區域。
             const overlayScene = new THREE.Scene();
-            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, CONTENT_H, -10, 10);
+            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, CONTENT_H, 0, -10, 10);
             overlayCamera.position.z = 5;
             const watermarkPlane = _makeOverlayPlane(watermarkCanvas, 36, 30, watermarkCanvas.width, watermarkCanvas.height);
             overlayScene.add(watermarkPlane);
@@ -1315,7 +1315,7 @@
             // CTA 卡場景：獨立、蓋滿整個 9:16 畫面，只在轉檀結束後才會被
             // render 到，時間上完全不跟前面兩層重疊，不需要處理疊加。
             const ctaScene = new THREE.Scene();
-            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, _CARD_H, -10, 10);
+            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, _CARD_H, 0, -10, 10);
             ctaCamera.position.z = 5;
             ctaScene.add(_makeOverlayPlane(ctaCanvas, 0, 0, _CARD_W, _CARD_H));
 
