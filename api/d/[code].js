@@ -199,7 +199,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
     </div>
     <a class="cta-primary" href="/">設計你自己的 DUET</a>
     <div class="secondary-row">
-      <button class="cta-secondary" id="download-btn" type="button" data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
+      <button class="cta-secondary" id="download-btn" type="button" hidden data-url="${videoUrl || heroUrl}" data-ext="${videoUrl ? 'mp4' : 'jpg'}">下載影片</button>
       <button class="cta-secondary" id="share-page-btn" type="button">分享這個頁面</button>
     </div>
     <div class="email-gate" id="email-gate" hidden>
@@ -248,18 +248,43 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
       var gateSubmit = document.getElementById('email-gate-submit');
       var gateError = document.getElementById('email-gate-error');
 
-      // 分享者本人在自己的分享頁下載自己的作品不用留 email——design-studio
-      // 把作品分享出去的當下，會在這個瀏覽器記一個 localStorage 旗標（見
-      // design-share-button.js 的 markAsShareOwner()），這裡讀同一把 key。
-      // 讀不到（換瀏覽器/換裝置/無痕模式/旗標從沒被設過）一律當作不是
-      // 本人處理，不做「誰先點下載就當本人」之類的猜測——這樣才不會把
-      // 作品資訊誤發給其他人。
+      // 下載按鈕只給分享者本人看得到——design-studio 把作品分享出去的當下，
+      // 會在這個瀏覽器記一個 localStorage 旗標（見 design-share-button.js
+      // 的 markAsShareOwner()），這裡讀同一把 key。讀不到（換瀏覽器/換裝置/
+      // 無痕模式/旗標從沒被設過）一律當作不是本人處理，不做「誰先點下載就
+      // 當本人」之類的猜測——不是本人的訪客完全看不到下載按鈕，不會有
+      // 「按了才發現要留 email」這種卡關感。
+      //
+      // 是不是本人只決定「按鈕出不出現」，不決定「要不要留 email」——本人
+      // 一樣要留 email 才能下載（這正是這個功能的目的：收集還沒下單的
+      // 設計者的 email，供之後「回來接續設計」提醒信使用）。同一個瀏覽器
+      // 對「同一個」分享頁留過一次之後，不用重複問。
       function isOwner() {
         try {
           return localStorage.getItem('duet_share_owner_${escapeHtml(code)}') === '1';
         } catch (e) {
           return false;
         }
+      }
+
+      function hasGivenEmailForThisPage() {
+        try {
+          return localStorage.getItem('duet_email_given_${escapeHtml(code)}') === '1';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function markEmailGivenForThisPage() {
+        try {
+          localStorage.setItem('duet_email_given_${escapeHtml(code)}', '1');
+        } catch (e) {
+          // 存不了就下次還是會被問一次，不影響這次下載本身
+        }
+      }
+
+      if (isOwner()) {
+        downloadBtn.hidden = false;
       }
 
       function runDownload() {
@@ -288,7 +313,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
       }
 
       downloadBtn.addEventListener('click', function () {
-        if (isOwner()) {
+        if (hasGivenEmailForThisPage()) {
           runDownload();
           return;
         }
@@ -321,6 +346,7 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
               gateError.hidden = false;
               return;
             }
+            markEmailGivenForThisPage();
             gate.hidden = true;
             runDownload();
           })
