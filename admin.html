@@ -1843,7 +1843,7 @@
                             <td>${esc(stat.order_id || '-')}</td>
                             <td>${stat.memory_mb ? stat.memory_mb.toFixed(1) : '-'}</td>
                             <td>${stat.cpu_percent ? stat.cpu_percent.toFixed(1) : '-'}</td>
-                            <td>${stat.created_at ? new Date(stat.created_at).toLocaleString('zh-TW') : '-'}</td>
+                            <td>${stat.created_at ? formatTaiwanTime(stat.created_at) : '-'}</td>
                         </tr>
                     `).join('');
                 } else {
@@ -2075,7 +2075,7 @@
                     <td>${esc(c.phone || '-')}</td>
                     <td>${esc(c.orderCount)}</td>
                     <td>NT$ ${c.totalSpent.toLocaleString()}</td>
-                    <td>${c.lastOrder ? new Date(c.lastOrder).toLocaleDateString('zh-TW') : '-'}</td>
+                    <td>${c.lastOrder ? formatTaiwanDate(c.lastOrder) : '-'}</td>
                 </tr>
             `).join('');
         }
@@ -2144,7 +2144,7 @@
                 const items = order.items || [];
                 const total = order.total || 0;
                 const status = statusMap[order.status] || { text: order.status, class: '' };
-                const date = order.timestamp ? new Date(order.timestamp).toLocaleDateString('zh-TW') : '-';
+                const date = order.timestamp ? formatTaiwanDate(order.timestamp) : '-';
                 const isChecked = selectedOrders.includes(order.orderId) ? 'checked' : '';
                 const rowStyle = order.isInvalid ? 'opacity: 0.5; text-decoration: line-through;' : (order.isTest ? 'opacity: 0.7;' : '');
                 const redeemCodes = order.redeemCodes || [];
@@ -2476,7 +2476,7 @@
                     o.isTest ? '是' : '否',
                     o.isInvalid ? '是' : '否',
                     o.manufacturer_name || '',
-                    o.timestamp ? new Date(o.timestamp).toLocaleString('zh-TW') : ''
+                    o.timestamp ? formatTaiwanTime(o.timestamp) : ''
                 ];
             });
 
@@ -2579,8 +2579,8 @@
                     <h3>基本資訊</h3>
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${esc(order.orderId)}</span></div>
                     <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${esc(status.text)}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${oid}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${oid}')">🔄 重新生成 STL</button>` : ''}</div>
-                    <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">確認信寄送時間</span><span class="detail-value">${order.confirmationEmailSentAt ? new Date(order.confirmationEmailSentAt).toLocaleString('zh-TW') : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? formatTaiwanTime(order.timestamp) : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">確認信寄送時間</span><span class="detail-value">${order.confirmationEmailSentAt ? formatTaiwanTime(order.confirmationEmailSentAt) : '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${esc(order.estimatedShipDate || '-')}</span></div>
                     <div class="detail-row">
                         <span class="detail-label">測試訂單</span>
@@ -2608,7 +2608,7 @@
                         ${orderNotes.length ? orderNotes.map(n => `
                         <div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
                             <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${esc(n.note || '')}</div>
-                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${formatTaiwanTime(n.created_at)}</div>
                         </div>`).join('') : '<div class="no-notes-placeholder" style="color:var(--text-muted);font-size:13px;">尚無備注</div>'}
                     </div>
                     <div style="display:flex;gap:8px;">
@@ -2631,8 +2631,8 @@
                 // 後台修改紀錄區塊
                 let revisionHtml = '';
                 if (storyRevision && storyRevision.revised) {
-                    const reqAt = storyRevision.requested_at ? new Date(storyRevision.requested_at).toLocaleString('zh-TW') : '';
-                    const confAt = storyRevision.confirmed_at ? new Date(storyRevision.confirmed_at).toLocaleString('zh-TW') : null;
+                    const reqAt = storyRevision.requested_at ? formatTaiwanTime(storyRevision.requested_at) : '';
+                    const confAt = storyRevision.confirmed_at ? formatTaiwanTime(storyRevision.confirmed_at) : null;
                     const confIp = storyRevision.confirmed_ip || '';
                     revisionHtml = `
                     <div style="margin-top:14px;padding:14px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
@@ -2791,7 +2791,7 @@
                             <button class="btn btn-primary btn-sm" data-oid="${escAttr(order.orderId)}" data-items='${escAttr(JSON.stringify(items.map(i => ({letter1: i.letter1, letter2: i.letter2}))))}' onclick="openRevisionBatchModal(this.dataset.oid, JSON.parse(this.dataset.items))">與客戶確認</button>
                         </span>
                     </h3>
-                    ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${esc(order.manufacturer_name)}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + new Date(order.manufacturer_sent_at).toLocaleString('zh-TW') : ''}</div>` : ''}
+                    ${order.manufacturer_name ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">委託廠商：<span style="color:var(--primary);">${esc(order.manufacturer_name)}</span>${order.manufacturer_sent_at ? ' ｜ 發送於 ' + formatTaiwanTime(order.manufacturer_sent_at) : ''}</div>` : ''}
                     ${items.map((item, idx) => {
                         const views = item.threeViews || [];
                         const findView = (key) => views.find(v => v.name && v.name.includes(key));
@@ -2836,7 +2836,7 @@
                             ${revGroups.map((rows, rIdx) => {
                                 const sorted = [...rows].sort((a, b) => a.id - b.id);
                                 const first = sorted[0], last = sorted[sorted.length - 1];
-                                const created = first.created_at ? new Date(first.created_at).toLocaleString('zh-TW') : '';
+                                const created = first.created_at ? formatTaiwanTime(first.created_at) : '';
                                 const categories = [...new Set(sorted.flatMap(r => (r.unlocked_fields || '').split(',')))].filter(Boolean);
                                 const categoryLabel = esc(categories.map(c => REVISION_CATEGORY_LABELS[c] || c).join('、')) || '確認閱覽';
 
@@ -2860,7 +2860,7 @@
                                     return `<div style="font-size:12px;color:#fbbf24;margin-bottom:2px;">⏳ ${created} 已寄送（${categoryLabel}），等待顧客確認 ${cancelBtns}</div>${snapshotLine}`;
                                 }
 
-                                const confirmed = last.confirmed_at ? new Date(last.confirmed_at).toLocaleString('zh-TW') : '';
+                                const confirmed = last.confirmed_at ? formatTaiwanTime(last.confirmed_at) : '';
                                 // original 取這組裡最早那筆（batch 送出前的真正原始狀態），revised 取最晚那筆
                                 // （後端逐筆處理同一件作品的多個 task 時，每一筆的 items[] 是累加的，最後一筆才反映全部變更）
                                 let original = null, revised = null;
@@ -3367,7 +3367,7 @@
                 const data = await res.json();
                 if (data.success && data.logs.length) {
                     const logsHtml = data.logs.map(log => `<div class="log-item">
-                        <div class="log-header"><span class="log-user">${esc(log.admin_user)}</span><span class="log-time">${new Date(log.created_at).toLocaleString('zh-TW')}</span></div>
+                        <div class="log-header"><span class="log-user">${esc(log.admin_user)}</span><span class="log-time">${formatTaiwanTime(log.created_at)}</span></div>
                         <div class="log-action">${esc(log.action)}: ${esc(log.details || '')}</div>
                     </div>`).join('');
                     document.getElementById('orderDetailContent').innerHTML += `<div class="detail-section"><h3>操作日誌</h3>${logsHtml}</div>`;
@@ -3392,7 +3392,7 @@
                 const n = data.note;
                 const noteHtml = `<div style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:6px;">
                     <div style="font-size:13px;color:var(--text-light);white-space:pre-wrap;">${esc(n.note || '')}</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${new Date(n.created_at).toLocaleString('zh-TW')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${esc(n.created_by || '?')} · ${formatTaiwanTime(n.created_at)}</div>
                 </div>`;
                 const placeholder = listEl.querySelector('.no-notes-placeholder');
                 if (placeholder) {
@@ -3497,7 +3497,7 @@
                     document.getElementById('usersList').innerHTML = data.users.map(u => `<div class="user-card">
                         <div class="user-info">
                             <div class="user-name">${esc(u.name || u.username)}</div>
-                            <div class="user-meta">${esc(u.username)} | 建立於 ${new Date(u.created_at).toLocaleDateString('zh-TW')}</div>
+                            <div class="user-meta">${esc(u.username)} | 建立於 ${formatTaiwanDate(u.created_at)}</div>
                         </div>
                         ${u.username !== 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="deleteUser(${u.id})">刪除</button>` : ''}
                     </div>`).join('');
@@ -3602,7 +3602,7 @@
             }
             
             tbody.innerHTML = promos.map(p => {
-                const validUntil = p.valid_until ? new Date(p.valid_until).toLocaleDateString('zh-TW') : '無限期';
+                const validUntil = p.valid_until ? formatTaiwanDate(p.valid_until) : '無限期';
                 const isRedeemItem = p.promo_type === 'redeem_item';
                 const discount = isRedeemItem ? '完全折抵' : (p.promo_type === 'percentage' ? `${p.value}%` : `NT$ ${p.value}`);
                 const typeLabel = isRedeemItem ? '兌換一件作品' : (p.promo_type === 'percentage' ? '折扣%' : '固定金額');
@@ -3889,7 +3889,7 @@
                             <td><input type="checkbox" class="deleted-select" data-code="${escAttr(c.code)}"></td>
                             <td>${esc(c.code)}</td>
                             <td>${esc(c.description || '')}</td>
-                            <td>${esc(c.deleted_at ? new Date(c.deleted_at).toLocaleString('zh-TW') : '')}</td>
+                            <td>${esc(c.deleted_at ? formatTaiwanTime(c.deleted_at) : '')}</td>
                         </tr>`).join('')}
                     </tbody>
                 </table>
@@ -3949,7 +3949,7 @@
                     <div class="detail-row"><span class="detail-label">姓名</span><span class="detail-value">${esc(name)}</span></div>
                     <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${esc(email)}</span></div>
                     <div class="detail-row"><span class="detail-label">電話</span><span class="detail-value">${esc(phone)}</span></div>
-                    <div class="detail-row"><span class="detail-label">首次購買</span><span class="detail-value">${firstOrder?.timestamp ? new Date(firstOrder.timestamp).toLocaleDateString('zh-TW') : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">首次購買</span><span class="detail-value">${firstOrder?.timestamp ? formatTaiwanDate(firstOrder.timestamp) : '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">訂單數</span><span class="detail-value">${customerOrders.length}</span></div>
                     <div class="detail-row"><span class="detail-label">總消費</span><span class="detail-value" style="color:var(--primary);font-size:16px;">NT$ ${totalSpent.toLocaleString()}</span></div>
                 </div>
@@ -3967,7 +3967,7 @@
                             <div style="font-size:12px;color:var(--text-muted)">
                                 ${esc((o.items || []).map(i => i.letter1 + '+' + i.letter2).join(', ')) || '-'} |
                                 NT$ ${(o.total || 0).toLocaleString()} |
-                                ${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : '-'}
+                                ${o.timestamp ? formatTaiwanDate(o.timestamp) : '-'}
                             </div>
                         </div>
                     `).join('')}
@@ -4434,7 +4434,7 @@
                         <td>${b.new_orders_count}</td>
                         <td>${b.new_codes_count}</td>
                         <td>${b.cumulative_orders_count}</td>
-                        <td>${new Date(b.created_at).toLocaleString('zh-TW')}</td>
+                        <td>${formatTaiwanTime(b.created_at)}</td>
                     </tr>
                 `).join('');
             } catch (e) {
@@ -4550,7 +4550,7 @@
                 document.getElementById('frm-replied-section').style.display = 'block';
                 document.getElementById('frm-edit-section').style.display = 'none';
                 document.getElementById('frm-replied-content').textContent = f.reply_content;
-                const meta = f.replied_at ? `${new Date(f.replied_at).toLocaleString('zh-TW')} · ${f.reply_sent_by||''}` : '';
+                const meta = f.replied_at ? `${formatTaiwanTime(f.replied_at)} · ${f.reply_sent_by||''}` : '';
                 document.getElementById('frm-replied-meta').textContent = meta;
             } else {
                 document.getElementById('frm-replied-section').style.display = 'none';
@@ -4730,7 +4730,7 @@
                     <td><span style="color:#d4af37;">${'★'.repeat(Math.max(0, Math.min(5, parseInt(f.rating) || 0)))}</span></td>
                     <td style="max-width:220px;white-space:pre-wrap;">${esc(f.comment || '-')}</td>
                     <td>${esc(f.customer_email || '-')}</td>
-                    <td>${f.created_at ? new Date(f.created_at).toLocaleString('zh-TW') : '-'}</td>
+                    <td>${f.created_at ? formatTaiwanTime(f.created_at) : '-'}</td>
                     <td>
                         ${f.replied_at
                             ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;color:#4ade80;border-color:#4ade80;"
@@ -4741,7 +4741,7 @@
                     </td>
                     <td style="text-align:center;">
                         ${f.share_consented_at
-                            ? `<span style="color:#4ade80;font-size:13px;" title="同意時間：${new Date(f.share_consented_at).toLocaleString('zh-TW')}">✓ 已同意</span>`
+                            ? `<span style="color:#4ade80;font-size:13px;" title="同意時間：${formatTaiwanTime(f.share_consented_at)}">✓ 已同意</span>`
                             : f.share_consent_token
                                 ? `<span style="color:#888;font-size:12px;">待回覆</span>`
                                 : `<span style="color:#444;font-size:12px;">—</span>`
@@ -5498,7 +5498,7 @@
                             <span style="color:${o.has_story_diff ? '#86efac' : 'var(--text-muted)'};">${o.has_story_diff ? '有差異' : '無差異'}</span>
                             ${willSkip ? '<span style="color:#9ca3af;font-size:10px;">自動排除</span>' : ''}
                             ${o.previously_reviewed ? '<span style="color:#fbbf24;font-size:11px;">⚠️ 曾撈取</span>' : ''}
-                            <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? new Date(o.timestamp).toLocaleDateString('zh-TW') : ''}</span>
+                            <span style="color:var(--text-muted);font-size:11px;margin-left:auto;">${o.timestamp ? formatTaiwanDate(o.timestamp) : ''}</span>
                         </div>`;
                     }).join('');
                 }
@@ -5588,7 +5588,7 @@
                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                             <span style="font-size:11px;color:${statusColor[item.status] || '#888'};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px;">${esc(statusLabel[item.status] || item.status)}</span>
                             <span style="font-size:11px;color:var(--text-muted);">${esc(item.date_from || '?')} ~ ${esc(item.date_to || '?')} · ${item.order_count || 0} 筆</span>
-                            <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? new Date(item.created_at).toLocaleDateString('zh-TW') : ''}</span>
+                            <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${item.created_at ? formatTaiwanDate(item.created_at) : ''}</span>
                         </div>
                         <div style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7;max-height:80px;overflow:hidden;position:relative;" id="sugg-body-${item.id}"></div>
                         <button onclick="toggleSuggestionExpand(${item.id})" style="background:none;border:none;color:var(--primary);font-size:11px;cursor:pointer;margin-top:4px;padding:0;" id="sugg-expand-${item.id}">展開全文</button>
@@ -5700,7 +5700,7 @@
                     const ds = o.distributor_status || 'pending';
                     const color = DIST_STATUS_COLORS[ds] || '#999';
                     const label = DIST_STATUS_LABELS[ds] || ds;
-                    const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
+                    const dateStr = o.created_at ? formatTaiwanDate(o.created_at) : '—';
                     return `<tr>
                         <td style="font-family:monospace;font-size:12px;">${esc(o.order_id)}</td>
                         <td><span style="background:rgba(100,160,255,0.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">${esc(o.distributor_region || '—')}</span></td>
@@ -5736,7 +5736,7 @@
                     const statusBadge = d.is_active
                         ? '<span style="background:rgba(52,211,153,0.15);color:#34d399;padding:2px 8px;border-radius:4px;font-size:12px;">啟用</span>'
                         : '<span style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 8px;border-radius:4px;font-size:12px;">停用</span>';
-                    const dateStr = d.created_at ? new Date(d.created_at).toLocaleDateString('zh-TW') : '—';
+                    const dateStr = d.created_at ? formatTaiwanDate(d.created_at) : '—';
                     const toggleLabel = d.is_active ? '停用' : '啟用';
                     const dregion = String(d.region || '').replace(/[^A-Za-z0-9_-]/g, '');
                     return `<tr>

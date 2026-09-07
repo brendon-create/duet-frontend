@@ -743,7 +743,7 @@
                     <h3>訂單資訊</h3>
                     <div class="detail-row">
                         <span class="detail-label">訂單日期</span>
-                        <span class="detail-value">${order.timestamp ? new Date(order.timestamp).toLocaleString('zh-TW') : '-'}</span>
+                        <span class="detail-value">${order.timestamp ? formatTaiwanTime(order.timestamp) : '-'}</span>
                     </div>
                 </div>
                 
@@ -825,7 +825,7 @@
                             <span class="status-badge ${status.class}">${status.text}</span>
                         </div>
                         <div class="item-details" style="margin-top:8px;">
-                            日期：${order.timestamp ? new Date(order.timestamp).toLocaleDateString('zh-TW') : '-'} | 
+                            日期：${order.timestamp ? formatTaiwanDate(order.timestamp) : '-'} |
                             金額：NT$ ${(order.total || 0).toLocaleString()}
                         </div>
                     </div>

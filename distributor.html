@@ -560,7 +560,7 @@
             const distLabel = DIST_STATUS_LABELS[ds] || ds;
             const payColor  = PAY_STATUS_COLORS[ps]  || '#999';
             const payLabel  = PAY_STATUS_LABELS[ps]  || ps;
-            const date = o.created_at ? new Date(o.created_at).toLocaleDateString('zh-TW') : '—';
+            const date = o.created_at ? formatTaiwanDate(o.created_at) : '—';
             return `<tr>
                 <td style="font-family:monospace;font-size:11px;color:#999;">${o.order_id}</td>
                 <td>${o.customer_name || '—'}</td>
