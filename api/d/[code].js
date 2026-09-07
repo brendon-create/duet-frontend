@@ -287,6 +287,17 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         downloadBtn.hidden = false;
       }
 
+      function downloadViaBlobLink(blob, ext) {
+        var blobUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'duet.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+      }
+
       function runDownload() {
         var original = downloadBtn.textContent;
         var url = downloadBtn.getAttribute('data-url');
@@ -296,14 +307,25 @@ ${heroUrl ? `<meta property="og:image" content="${heroUrl}">` : ''}
         fetch(url)
           .then(function (res) { return res.blob(); })
           .then(function (blob) {
-            var blobUrl = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = 'duet.' + ext;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 30000);
+            // 手機瀏覽器對「跨網域 blob + <a download>」的處理常是直接開啟
+            // 播放、或存成一般檔案（Files app），不會進相簿——網頁本來就
+            // 沒有不經使用者確認直接寫入相簿的權限，Web Share API 跳出的
+            // 系統原生分享面板（裡面有「儲存影片/儲存照片」）是目前唯一
+            // 能讓使用者存進相簿的方式。支援的裝置優先用這個；不支援的
+            // （主要是桌面瀏覽器）維持原本的下載方式，桌面本來就沒有
+            // 「相簿」，下載到下載資料夾是正常預期。
+            var file = new File([blob], 'duet.' + ext, { type: blob.type });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              navigator.share({ files: [file] })
+                .then(function () { downloadBtn.textContent = original; })
+                .catch(function (err) {
+                  downloadBtn.textContent = original;
+                  if (err && err.name === 'AbortError') return; // 使用者自己取消分享面板，不用當失敗處理
+                  downloadViaBlobLink(blob, ext); // 分享面板本身出錯，退回原本的下載方式
+                });
+              return;
+            }
+            downloadViaBlobLink(blob, ext);
             downloadBtn.textContent = original;
           })
           .catch(function () {
