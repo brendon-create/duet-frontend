@@ -732,6 +732,7 @@
                     <button class="btn btn-primary" onclick="showAddPromoModal()">+ 新增優惠碼</button>
                     <button class="btn btn-secondary" onclick="loadPromoCodes()">重新整理</button>
                     <button class="btn btn-secondary" id="promoBulkDeleteBtn" disabled onclick="openBulkDeleteConfirm('promo')">刪除已勾選 (0)</button>
+                    <button class="btn btn-secondary" id="promoBulkExpiryBtn" disabled onclick="openBulkExpiryModal('promo')">修改有效期 (0)</button>
                     <button class="btn btn-secondary" onclick="openDeletedCodesModal()">已刪除</button>
                 </div>
 
@@ -939,6 +940,7 @@
                         </select>
                         <button class="btn btn-secondary" onclick="loadRedeemCodes()">重新整理</button>
                         <button class="btn btn-secondary" id="redeemBulkDeleteBtn" disabled onclick="openBulkDeleteConfirm('redeem')">刪除已勾選 (0)</button>
+                        <button class="btn btn-secondary" id="redeemBulkExpiryBtn" disabled onclick="openBulkExpiryModal('redeem')">修改有效期 (0)</button>
                         <button class="btn btn-secondary" onclick="openDeletedCodesModal()">已刪除</button>
                     </div>
                 </div>
@@ -1505,6 +1507,26 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-secondary" style="flex:1;" onclick="closeBulkDeleteConfirm()">取消</button>
                 <button class="btn btn-primary" style="flex:1; background:#ef4444;" onclick="confirmBulkDelete()">確認刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Update Expiry Modal -->
+    <div class="modal-overlay" id="bulkExpiryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">修改有效期</h2>
+                <button class="modal-close" onclick="closeBulkExpiryModal()">&times;</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">
+                以下 <span id="bulkExpiryCount">0</span> 筆將套用同一個有效期：
+            </p>
+            <ul id="bulkExpiryList" style="max-height: 200px; overflow-y: auto; padding-left: 20px; margin-bottom: 16px;"></ul>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">新的有效期限（留空 = 無限期）</label>
+            <input type="date" id="bulkExpiryDate" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-light); margin-bottom: 16px;">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeBulkExpiryModal()">取消</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="confirmBulkExpiry()">確認修改</button>
             </div>
         </div>
     </div>
@@ -3710,9 +3732,12 @@
             const selector = kind === 'promo' ? '.promo-select' : '.redeem-select';
             const all = document.querySelectorAll(selector);
             const checked = document.querySelectorAll(selector + ':checked');
-            const btn = document.getElementById(kind + 'BulkDeleteBtn');
-            btn.textContent = `刪除已勾選 (${checked.length})`;
-            btn.disabled = checked.length === 0;
+            const deleteBtn = document.getElementById(kind + 'BulkDeleteBtn');
+            deleteBtn.textContent = `刪除已勾選 (${checked.length})`;
+            deleteBtn.disabled = checked.length === 0;
+            const expiryBtn = document.getElementById(kind + 'BulkExpiryBtn');
+            expiryBtn.textContent = `修改有效期 (${checked.length})`;
+            expiryBtn.disabled = checked.length === 0;
             // 部分勾選時「全選」不打勾，避免誤導操作者以為全部都選了
             document.getElementById(kind + 'SelectAll').checked =
                 all.length > 0 && checked.length === all.length;
@@ -3775,6 +3800,54 @@
                     if (kind === 'promo') loadPromoCodes(); else loadRedeemCodes();
                 } else {
                     alert(data.error || '刪除失敗');
+                }
+            } catch (err) { alert('網路錯誤'); }
+        }
+
+        var _bulkExpiryKind = null;
+
+        function openBulkExpiryModal(kind) {
+            const selector = kind === 'promo' ? '.promo-select:checked' : '.redeem-select:checked';
+            const rows = Array.from(document.querySelectorAll(selector)).map(cb => ({
+                code: cb.dataset.code,
+                desc: cb.dataset.desc || '',
+            }));
+            if (!rows.length) return;
+            _bulkExpiryKind = kind;
+
+            document.getElementById('bulkExpiryCount').textContent = rows.length;
+            document.getElementById('bulkExpiryList').innerHTML = rows.map(r =>
+                `<li>${esc(r.code)}${r.desc ? '（' + esc(r.desc) + '）' : ''}</li>`
+            ).join('');
+            document.getElementById('bulkExpiryDate').value = '';
+            document.getElementById('bulkExpiryModal').classList.add('active');
+        }
+
+        function closeBulkExpiryModal() {
+            document.getElementById('bulkExpiryModal').classList.remove('active');
+            _bulkExpiryKind = null;
+        }
+
+        async function confirmBulkExpiry() {
+            const kind = _bulkExpiryKind;
+            if (!kind) return;
+            const selector = kind === 'promo' ? '.promo-select:checked' : '.redeem-select:checked';
+            const codes = Array.from(document.querySelectorAll(selector)).map(cb => cb.dataset.code);
+            if (!codes.length) return;
+            const validUntil = document.getElementById('bulkExpiryDate').value || null;
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/promo-codes/bulk-update-expiry`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+                    body: JSON.stringify({ codes, validUntil })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeBulkExpiryModal();
+                    alert(`已修改 ${data.updatedCount} 筆的有效期`);
+                    if (kind === 'promo') loadPromoCodes(); else loadRedeemCodes();
+                } else {
+                    alert(data.error || '修改失敗');
                 }
             } catch (err) { alert('網路錯誤'); }
         }
