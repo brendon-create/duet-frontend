@@ -21,12 +21,12 @@
     <!-- 🔒 Content Security Policy - 放行所有資源 -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self' https://*.supabase.co https://*.onrender.com;
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://us.i.posthog.com https://www.youtube.com https://connect.facebook.net;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://us.i.posthog.com https://us-assets.i.posthog.com https://www.youtube.com https://connect.facebook.net;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
         font-src 'self' https://fonts.gstatic.com https://raw.githubusercontent.com data:;
         img-src 'self' data: blob: https://*.supabase.co https://cdn.jsdelivr.net https://payment.ecpay.com.tw https://raw.githubusercontent.com https://www.facebook.com;
         frame-src 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://www.youtube.com https://www.youtube-nocookie.com;
-        connect-src 'self' https://*.supabase.co https://*.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://us.i.posthog.com https://www.facebook.com https://connect.facebook.net https://*.on.aws;
+        connect-src 'self' https://*.supabase.co https://*.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com https://us.i.posthog.com https://us-assets.i.posthog.com https://www.facebook.com https://connect.facebook.net https://*.on.aws;
     ">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -325,6 +325,25 @@
             <div class="version-label" data-i18n="studio.slot.2">版本 2</div>
         </div>
     </div>
+
+    <!-- Content Pipeline Phase 6：分享這個作品 -->
+    <button id="share-my-design-btn" type="button">
+        <svg class="share-ring" viewBox="0 0 66 66">
+            <defs>
+                <linearGradient id="shareRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f0d98a" />
+                    <stop offset="100%" stop-color="#d4af37" />
+                </linearGradient>
+            </defs>
+            <circle cx="33" cy="33" r="29" />
+        </svg>
+        <span class="share-btn-label" data-i18n-html="studio.share.btn">分享<br>這個作品</span>
+    </button>
+    <div id="share-explainer">
+        <span data-i18n="studio.share.explainer">只要作品是你喜歡的樣子，隨時都能按下分享，留下當下這個版本的樣貌。</span>
+        <button id="share-explainer-ok" type="button" data-i18n="studio.share.gotIt">知道了</button>
+    </div>
+    <div id="share-restory-hint" data-i18n="studio.share.restoryHint">設計理念已經可以放進短片了，要不要更新分享？</div>
 
     <!-- 佩戴模擬預覽 -->
     <!-- Wearing Preview - Temporarily Disabled -->
@@ -813,6 +832,11 @@
     }
     </script>
 
+    <!-- Content Pipeline Phase 1：獨立模組，開關由 window.DUET_FEATURE_RECORDER 控制（見 assets/js/config.js） -->
+    <script src="js/design-recorder.js"></script>
+    <!-- Content Pipeline Phase 6：分享這個作品 按鈕，同一個開關控制 -->
+    <script src="js/design-share-button.js"></script>
+
     <script type="module">
         // ==========================================
         // 🔧 開發者功能初始化
@@ -857,6 +881,8 @@
 
         // 3D 場景系統
         import { initScene, animate, onResize, getScene, getCamera, showInitialSphere, removeAllPlaceholderSpheres, sceneReadyPromise } from './js/3d-scene.js';
+        // Content Pipeline Phase 6：getCamera 橋接到 window，供 classic script（design-share-button.js）讀取視角
+        window.getCamera = getCamera;
 
         // V3 幾何引擎
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
@@ -871,6 +897,526 @@
         window.ringMesh = ringMesh;
         window.bailMesh = bailMesh;
         window.bailRelativeOffset = bailRelativeOffset;
+
+        // ============================================================
+        // Content Pipeline Phase 4a：瀏覽器算圖效能實測（benchmark spike）
+        // 規格對應：DUET_內容管線_定案規格_v2.md §5 Phase 4a。
+        //
+        // 用法：設計完成後，瀏覽器 console 呼叫 window.__benchmarkTurntable()。
+        // 離屏渲染一段轉檯（用獨立的 renderer/canvas，不影響畫面），量測耗時
+        // 與記憶體，結果印在 console。不寫進任何 UI，純粹測量用，跟正式的
+        // Phase 4 商品照/轉檯擷取邏輯是分開的兩件事（那個等這裡量出來的數字
+        // 過關才會照這個做法做）。
+        // ============================================================
+        window.__benchmarkTurntable = async function (frameCount) {
+            frameCount = frameCount || 150;
+            if (!mainMesh) {
+                console.warn('[benchmark] 還沒有作品可以測，先完成一個設計（兩個字母 + 至少一次字體）');
+                return null;
+            }
+
+            const w = 1080, h = 1440; // 3:4，對應規格 §5 Phase 4 的 turntable 尺寸
+            const canvas = document.createElement('canvas');
+            const bRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            bRenderer.setSize(w, h, false);
+            bRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            bRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const bScene = new THREE.Scene();
+            const bCamera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+            bCamera.up.set(0, 0, 1);
+
+            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+            light2.position.set(5, 5, 10);
+            bScene.add(light1, light2);
+            if (window.envMap) bScene.environment = window.envMap;
+
+            const meshClone = mainMesh.clone();
+            meshClone.geometry = mainMesh.geometry.clone();
+            meshClone.material = mainMesh.material.clone();
+            bScene.add(meshClone);
+            if (ringMesh) {
+                const r = ringMesh.clone();
+                r.geometry = ringMesh.geometry.clone();
+                r.material = ringMesh.material.clone();
+                bScene.add(r);
+            }
+            if (bailMesh) {
+                const b = bailMesh.clone();
+                b.geometry = bailMesh.geometry.clone();
+                b.material = bailMesh.material.clone();
+                bScene.add(b);
+            }
+
+            const radius = 20;
+            const memBefore = (performance.memory && performance.memory.usedJSHeapSize) || null;
+            const t0 = performance.now();
+            let failures = 0;
+
+            for (let i = 0; i < frameCount; i++) {
+                const angle = (i / frameCount) * Math.PI * 2;
+                bCamera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5);
+                bCamera.lookAt(0, 0, 0);
+                try {
+                    bRenderer.render(bScene, bCamera);
+                } catch (e) {
+                    failures++;
+                }
+                // 每 20 格讓出主執行緒一次，避免長時間佔滿被系統判定沒回應
+                if (i % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+            }
+
+            const t1 = performance.now();
+            const memAfter = (performance.memory && performance.memory.usedJSHeapSize) || null;
+
+            const result = {
+                frameCount,
+                resolution: `${w}x${h}`,
+                totalMs: Math.round(t1 - t0),
+                avgMsPerFrame: +((t1 - t0) / frameCount).toFixed(2),
+                failures,
+                memBeforeMB: memBefore ? +(memBefore / 1048576).toFixed(1) : 'n/a（此瀏覽器不支援 performance.memory）',
+                memAfterMB: memAfter ? +(memAfter / 1048576).toFixed(1) : 'n/a',
+                userAgent: navigator.userAgent,
+            };
+            console.log('[benchmark] 轉檯算圖結果：', result);
+            bRenderer.dispose();
+            return result;
+        };
+        console.log('[benchmark] Content Pipeline Phase 4a 已就緒：設計完成後 console 呼叫 window.__benchmarkTurntable() 開始測試');
+
+        // ============================================================
+        // Content Pipeline：商品照 + 分享影片擷取
+        // 商品照規格：hero 4:5 1600x2000、front 1:1 1600x1600、detail 4:5
+        // 1600x2000。分享影片是轉檀旋轉+浮水印+片尾淡出+CTA 卡全部錄在
+        // 一起、瀏覽器端組裝好的最終成品（見 _recordShareVideo()）。
+        //
+        // 供 classic script（design-share-button.js）呼叫，因為 mainMesh/
+        // ringMesh/bailMesh/envMap 都是這個 module script 內部的東西，跟
+        // getCamera 需要橋接是同一個原因。回傳 {hero, front, detail, video}
+        // 的 Blob（video 可能是 undefined——瀏覽器不支援錄影時就略過，
+        // 不擋其他三張圖）。
+        // ============================================================
+        // 商品照/分享影片用固定的背景照（Toscana，跟 Design Studio 預設背景
+        // 同一張），不是跟著使用者當下選的背景走——分享出去的內容應該每次
+        // 看起來一致，不该因為使用者分享前恰好切到哪張背景而不一樣。只載入
+        // 一次、快取起來，四次擷取（hero/front/detail/影片）共用。
+        let _fixedBgPromise = null;
+        function _getFixedBgTexture() {
+            if (!_fixedBgPromise) {
+                _fixedBgPromise = new Promise((resolve) => {
+                    new THREE.TextureLoader().load('/assets/images/backgrounds/Toscana.png', (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        resolve(tex);
+                    });
+                });
+            }
+            return _fixedBgPromise;
+        }
+
+        function _captureScene(camPos, w, h, lookAt, bgTexture) {
+            lookAt = lookAt || { x: 0, y: 0, z: 0 };
+            const canvas = document.createElement('canvas');
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(w, h, false);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            const scene = new THREE.Scene();
+            if (bgTexture) scene.background = bgTexture;
+            const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+            camera.up.set(0, 0, 1);
+            camera.position.set(camPos.x, camPos.y, camPos.z);
+            camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+
+            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+            light2.position.set(5, 5, 10);
+            scene.add(light1, light2);
+            if (window.envMap) scene.environment = window.envMap;
+
+            const meshClone = mainMesh.clone();
+            meshClone.geometry = mainMesh.geometry.clone();
+            meshClone.material = mainMesh.material.clone();
+            scene.add(meshClone);
+            if (ringMesh) {
+                const r = ringMesh.clone();
+                r.geometry = ringMesh.geometry.clone();
+                r.material = ringMesh.material.clone();
+                scene.add(r);
+            }
+            if (bailMesh) {
+                const b = bailMesh.clone();
+                b.geometry = bailMesh.geometry.clone();
+                b.material = bailMesh.material.clone();
+                scene.add(b);
+            }
+            return { renderer, scene, camera };
+        }
+
+        function _canvasToBlob(canvas, mime, quality) {
+            return new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+        }
+
+        window.__captureProductAssets = async function () {
+            if (!mainMesh && window.mainMesh) mainMesh = window.mainMesh; // 防呆備援，見 window.mainMesh 賦值處的註解
+            if (!mainMesh) {
+                console.warn('[capture] mainMesh 不存在，無法擷取商品照/轉檯短片');
+                return null;
+            }
+            // 墜頭掛在主體上方，Z 常常明顯高於主體本身的頂部（例如主體頂部
+            // Z~4-5，墜頭中心可能到 Z~9），原本鏡頭固定看向原點、距離固定，
+            // 沒有考慮墜頭墊高的部分，導致墜頭上半部常被裁到畫面外。這裡改成
+            // 動態算出「主體底部到墜頭頂部」的實際範圍，鏡頭看向這個範圍的
+            // 中心、並依範圍大小拉開距離，確保整個作品（含墜頭）都在畫面裡。
+            mainMesh.geometry.computeBoundingBox();
+            const bbox = mainMesh.geometry.boundingBox;
+            const bailTopZ = (window.bailMesh ? window.bailMesh.position.z : bbox.max.z) + 2; // +2：墜頭環本身半徑的估計值
+            const centerZ = (bbox.min.z + bailTopZ) / 2;
+            const halfHeight = (bailTopZ - bbox.min.z) / 2;
+            // 20 是原本只針對主體本身（半高約 5）抓的基準距離，這裡照實際
+            // 半高等比例拉開，多留 30% 邊界不要貼著畫面邊緣。
+            const zoomScale = Math.max(1, (halfHeight / 5) * 1.3);
+            const lookAt = { x: 0, y: 0, z: centerZ };
+            const radius = 20 * zoomScale;
+            const results = {};
+            const bgTexture = await _getFixedBgTexture();
+
+            // hero：4:5，3/4 角度
+            //
+            // 每次擷取都會建立全新的 WebGLRenderer（_captureScene 內部），
+            // 只呼叫 dispose() 不保證瀏覽器會立刻真的回收底層 WebGL context
+            // （這個專案先前在別的功能上踩過同一個坑）——同一個分頁內累積
+            // 分享過幾次，context 沒有被積極釋放，到後面的擷取（尤其是最後
+            // 才做、又要撐好幾秒的轉檀短片）就可能因為資源不足而錄出空的
+            // 結果。額外呼叫 forceContextLoss() 強制立即釋放，不要等瀏覽器
+            // 自己的 GC 時機。
+            let s = _captureScene({ x: radius * 0.7, y: -radius * 0.7, z: 6 * zoomScale }, 1600, 2000, lookAt, bgTexture);
+            s.renderer.render(s.scene, s.camera);
+            results.hero = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
+            s.renderer.dispose();
+
+            // front：1:1，正面
+            s = _captureScene({ x: 0, y: -radius, z: 4 * zoomScale }, 1600, 1600, lookAt, bgTexture);
+            s.renderer.render(s.scene, s.camera);
+            results.front = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
+            s.renderer.dispose();
+
+            // detail：4:5，拉近一點，交集處微距
+            s = _captureScene({ x: radius * 0.35, y: -radius * 0.35, z: 3 * zoomScale }, 1600, 2000, lookAt, bgTexture);
+            s.renderer.render(s.scene, s.camera);
+            results.detail = await _canvasToBlob(s.renderer.domElement, 'image/jpeg', 0.92);
+            s.renderer.forceContextLoss();
+            s.renderer.dispose();
+
+            // 分享影片：轉檯旋轉 + 浮水印 + 片尾淡出 + CTA 卡，全部在瀏覽器端
+            // 一次錄完（跟 hero-video-generator.html 同一種做法），不再只錄
+            // 轉檯短片、丟給伺服器用 ffmpeg 組裝——伺服器那段組裝流程是今晚
+            // 一整串問題的根源（時長跑掉被攔腰截斷、ffmpeg 收到空檔案報錯、
+            // worker 處理太重的檔案被砍掉、CDN 快取到舊影片、狀態輪詢對不上
+            // 版本……），瀏覽器本來就已經把畫面算好了，不需要再上傳給伺服器
+            // 重新組裝一次。
+            //
+            // 做法：WebGL 渲染轉檯畫面到一個獨立的 canvas，另外開一個 2D
+            // 「合成」canvas，每一幀把 WebGL 畫面貼上去、疊浮水印、片尾疊
+            // 漸強的深色遮罩做淡出；轉完換成純 2D 畫的 CTA 卡（文字用瀏覽器
+            // 本來就有載入的 Cantata One 字型）。全程只開一個 MediaRecorder
+            // 錄這個合成 canvas，錄完就是一支完整、組裝好的影片檔案。
+            //
+            // 角度／淡出都用「實際經過的真實時間」推進，不是每跑一輪迴圈就
+            // 前進固定一格——手機硬體較弱、單格 render 花的時間常超過預期
+            // 間隔，用真實時間才能保證總長度準確、不會被拖長。分頁被切到
+            // 背景時，用 recorder.pause() 真的暫停錄影，暫停的時間從經過
+            // 時間裡扣掉，都是延續已經驗證過的做法。
+            if (typeof MediaRecorder !== 'undefined' &&
+                HTMLCanvasElement.prototype.captureStream) {
+                try {
+                    results.video = await _recordShareVideo({ lookAt, bgTexture, radius, zoomScale });
+                } catch (e) {
+                    console.warn('[capture] 分享影片錄製失敗，略過：', e);
+                }
+            } else {
+                console.warn('[capture] 這個瀏覽器不支援錄影，略過分享影片');
+            }
+
+            return results;
+        };
+
+        // ============================================================
+        // 分享影片組裝相關常數／輔助函式
+        // ============================================================
+        const _CARD_W = 1080, _CARD_H = 1920; // 9:16，跟分享頁 <video> 的比例一致
+        const _BG_CSS = 'rgb(16,14,10)'; // 跟片尾字卡背景色一致，轉檀片段淡出也淡到這個顏色
+        const _GOLD_CSS = 'rgb(212,175,55)';
+        // 轉檀畫面本身是 3:4（1080x1440，比 9:16「矮」），貼進 1080x1920 的
+        // 合成畫布時上下留白，這是留白的高度——浮水印要貼在這塊留白下方，
+        // 不要疊在留白裡（社群平台重新分享時，畫面上方常被平台自己的字幕/
+        // 標題疊字佔用，浮水印放在那裡容易被蓋掉）。
+        const _LETTERBOX_TOP = (_CARD_H - 1440) / 2;
+
+        let _watermarkCanvasPromise = null;
+        function _buildWatermarkCanvas() {
+            if (_watermarkCanvasPromise) return _watermarkCanvasPromise;
+            _watermarkCanvasPromise = (async () => {
+                await Promise.all([
+                    document.fonts.load("88px 'Cantata One'"),
+                    document.fonts.load("italic 40px 'Libre Caslon Text'"),
+                ]);
+                const c = document.createElement('canvas');
+                const ctx = c.getContext('2d');
+                const mainText = 'DUET', subText = 'by BCAG';
+                ctx.font = "88px 'Cantata One'";
+                const mainW = ctx.measureText(mainText).width;
+                ctx.font = "italic 40px 'Libre Caslon Text'";
+                const subW = ctx.measureText(subText).width;
+                const gap = 20, pad = 8;
+                c.width = pad * 2 + mainW + gap + subW;
+                c.height = 112;
+                const baselineY = c.height - 32;
+                ctx.textBaseline = 'alphabetic';
+                ctx.font = "88px 'Cantata One'";
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillText(mainText, pad, baselineY);
+                ctx.font = "italic 40px 'Libre Caslon Text'";
+                ctx.fillStyle = 'rgba(255,255,255,0.72)';
+                ctx.fillText(subText, pad + mainW + gap, baselineY);
+                return c;
+            })();
+            return _watermarkCanvasPromise;
+        }
+
+        async function _buildCtaCanvas(letter1, letter2) {
+            await document.fonts.load("56px 'Cantata One'");
+            const c = document.createElement('canvas');
+            c.width = _CARD_W;
+            c.height = _CARD_H;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = _BG_CSS;
+            ctx.fillRect(0, 0, _CARD_W, _CARD_H);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+
+            const mainText = `This is my DUET. (${letter1}&${letter2})`;
+            let mainSize = 56;
+            ctx.font = `${mainSize}px 'Cantata One'`;
+            // 字母是使用者自己選的，理論上都很短會在一行內，但還是留一個
+            // 防溢出的保險：太寬就等比例縮小字級，不要真的跑版。
+            while (ctx.measureText(mainText).width > _CARD_W - 160 && mainSize > 28) {
+                mainSize -= 2;
+                ctx.font = `${mainSize}px 'Cantata One'`;
+            }
+            ctx.fillStyle = '#fff';
+            ctx.fillText(mainText, _CARD_W / 2, _CARD_H / 2);
+
+            ctx.font = "44px 'Cantata One'";
+            ctx.fillStyle = _GOLD_CSS;
+            ctx.fillText('duet.brendonchen.com', _CARD_W / 2, _CARD_H / 2 + 76);
+            return c;
+        }
+
+        // 用一張 2D canvas（文字/圖案內容）做一個「疊加平面」：正交相機、
+        // 像素座標（左上原點、Y 向下，跟 canvas 2D 一致），純粹把 2D 畫好
+        // 的內容當貼圖傳給 GPU（單向：CPU → GPU，這個方向沒有風險），不是
+        // 反過來用 2D API 去讀 WebGL 畫面內容（那個方向才是先前出事的
+        // 做法——drawImage() 讀 WebGL canvas、又沒開 preserveDrawingBuffer，
+        // 逼著瀏覽器用不穩定的方式管理 GPU 資源）。整支影片從頭到尾只有
+        // 一個 WebGLRenderer、一個 canvas，captureStream() 直接對它呼叫，
+        // 跟原本驗證過安全的轉檀短片擷取完全同一種模式。
+        function _makeOverlayPlane(canvasSrc, x, y, w, h) {
+            const tex = new THREE.CanvasTexture(canvasSrc);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            // 這個正交相機是 top=0/bottom=H（Y 向下的像素座標），跟 Three.js
+            // 慣例的 top>bottom 相反：這會讓內容位置是對的，但有兩個副作用
+            // 要一起修——(1) 投影矩陣手性翻轉，預設單面材質被背面剔除、整層
+            // 消失，要加 DoubleSide；(2) CanvasTexture 預設的 flipY 是配合
+            // 「標準」相機方向設計的，跟這裡反過來的 Y 軸對不上，畫面會整個
+            // 上下顛倒，要關掉 flipY 抵銷。兩個都試過、用實際內容驗證過。
+            tex.flipY = false;
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+            mesh.position.set(x + w / 2, y + h / 2, 0);
+            mesh.renderOrder = 10;
+            return mesh;
+        }
+
+        async function _recordShareVideo({ lookAt, bgTexture, radius, zoomScale }) {
+            const ROTATE_SECONDS = 6;
+            const FADE_SECONDS = 0.6; // 轉檀片段最後這段時間淡出到 _BG_CSS
+            const CTA_SECONDS = 2.5;
+            const fps = 30;
+            const CONTENT_H = 1440; // 轉檀內容本身的高度（3:4），見 _LETTERBOX_TOP
+
+            // 目前這組鏡頭參數化下，angle=0（fraction=0）對應的是第二個字母
+            // 的正面——實測真實素材反推出來的：第一個字母的正面落在 270°
+            // （3π/2）。從這裡再往前推 30 度當起始點，讓觀眾一開始有個
+            // 「即將轉到第一個字母正面」的緩衝。這個角度是兩個字母並排的
+            // 結構性關係決定的，跟選了哪兩個字母無關，所有設計都適用。
+            const LETTER1_FRONT_ANGLE = Math.PI * 1.5;
+            const START_OFFSET = -Math.PI / 6;
+
+            const letter1 = document.getElementById('letter1').value || '';
+            const letter2 = document.getElementById('letter2').value || '';
+            const [watermarkCanvas, ctaCanvas] = await Promise.all([
+                _buildWatermarkCanvas(),
+                _buildCtaCanvas(letter1, letter2),
+            ]);
+
+            // 單一 renderer、單一 canvas，開在最終 9:16 尺寸。autoClear 關掉，
+            // 自己控制每一幀什麼時候清畫面、疊幾層——3D 主場景只畫進轉檀
+            // 內容自己的那塊區域（scissor/viewport 限制），其餘（含浮水印/
+            // 淡出/CTA 卡那幾層）另外用像素座標的正交相機疊上去。
+            const canvas = document.createElement('canvas');
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(_CARD_W, _CARD_H, false);
+            renderer.autoClear = false;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.setClearColor(_BG_CSS, 1);
+
+            // 主場景（跟 _captureScene 建置方式相同，這裡不能呼叫 _captureScene
+            // 本身——那個函式會自己另開一個 renderer，這裡要全程共用同一個）。
+            const scene = new THREE.Scene();
+            if (bgTexture) scene.background = bgTexture;
+            const camera = new THREE.PerspectiveCamera(50, _CARD_W / CONTENT_H, 0.1, 1000);
+            camera.up.set(0, 0, 1);
+            const light1 = new THREE.AmbientLight(0xffffff, 0.5);
+            const light2 = new THREE.DirectionalLight(0xffffff, 1.0);
+            light2.position.set(5, 5, 10);
+            scene.add(light1, light2);
+            if (window.envMap) scene.environment = window.envMap;
+            const meshClone = mainMesh.clone();
+            meshClone.geometry = mainMesh.geometry.clone();
+            meshClone.material = mainMesh.material.clone();
+            scene.add(meshClone);
+            if (ringMesh) {
+                const r = ringMesh.clone();
+                r.geometry = ringMesh.geometry.clone();
+                r.material = ringMesh.material.clone();
+                scene.add(r);
+            }
+            if (bailMesh) {
+                const b = bailMesh.clone();
+                b.geometry = bailMesh.geometry.clone();
+                b.material = bailMesh.material.clone();
+                scene.add(b);
+            }
+
+            // 疊加場景：浮水印（貼在轉檀內容區域左上角）+ 片尾淡出遮罩（一塊
+            // 蓋滿轉檀內容區域、透明度漸強的純色平面）。正交相機用像素座標，
+            // (0,0) 到 (_CARD_W, CONTENT_H) 剛好對應轉檀內容自己的那塊區域。
+            const overlayScene = new THREE.Scene();
+            const overlayCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, CONTENT_H, -10, 10);
+            overlayCamera.position.z = 5;
+            const watermarkPlane = _makeOverlayPlane(watermarkCanvas, 36, 30, watermarkCanvas.width, watermarkCanvas.height);
+            overlayScene.add(watermarkPlane);
+            const fadeGeo = new THREE.PlaneGeometry(_CARD_W, CONTENT_H);
+            const fadeMat = new THREE.MeshBasicMaterial({ color: _BG_CSS, transparent: true, opacity: 0, depthTest: false, side: THREE.DoubleSide });
+            const fadePlane = new THREE.Mesh(fadeGeo, fadeMat);
+            fadePlane.position.set(_CARD_W / 2, CONTENT_H / 2, 1);
+            fadePlane.renderOrder = 20;
+            overlayScene.add(fadePlane);
+
+            // CTA 卡場景：獨立、蓋滿整個 9:16 畫面，只在轉檀結束後才會被
+            // render 到，時間上完全不跟前面兩層重疊，不需要處理疊加。
+            const ctaScene = new THREE.Scene();
+            const ctaCamera = new THREE.OrthographicCamera(0, _CARD_W, 0, _CARD_H, -10, 10);
+            ctaCamera.position.z = 5;
+            ctaScene.add(_makeOverlayPlane(ctaCanvas, 0, 0, _CARD_W, _CARD_H));
+
+            const stream = canvas.captureStream(fps);
+            const mimeType = MediaRecorder.isTypeSupported('video/mp4')
+                ? 'video/mp4'
+                : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9' : 'video/webm');
+            const recorder = new MediaRecorder(stream, { mimeType });
+            const chunks = [];
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+            const recordingDone = new Promise((resolve) => { recorder.onstop = resolve; });
+
+            let hiddenAccumMs = 0;
+            let hiddenSince = null;
+            function onVisibilityChange() {
+                if (document.hidden) {
+                    hiddenSince = performance.now();
+                    if (recorder.state === 'recording') recorder.pause();
+                } else {
+                    if (hiddenSince !== null) {
+                        hiddenAccumMs += performance.now() - hiddenSince;
+                        hiddenSince = null;
+                    }
+                    if (recorder.state === 'paused') recorder.resume();
+                }
+            }
+            document.addEventListener('visibilitychange', onVisibilityChange);
+
+            function drawRotationFrame(elapsedSec) {
+                const fraction = Math.min(elapsedSec / ROTATE_SECONDS, 1);
+                const angle = LETTER1_FRONT_ANGLE + START_OFFSET + fraction * Math.PI * 2;
+                camera.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5 * zoomScale);
+                camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
+
+                const fadeStart = ROTATE_SECONDS - FADE_SECONDS;
+                fadeMat.opacity = elapsedSec > fadeStart
+                    ? Math.min((elapsedSec - fadeStart) / FADE_SECONDS, 1)
+                    : 0;
+
+                // 先清整個 9:16 畫布（含轉檀內容以外的黑邊留白區域），再把
+                // scissor/viewport 限制在轉檀內容自己的那塊區域畫 3D 場景 +
+                // 浮水印/淡出疊加層——外面那圈留白完全不會被這兩次 render 動到。
+                renderer.setScissorTest(false);
+                renderer.setViewport(0, 0, _CARD_W, _CARD_H);
+                renderer.clear();
+
+                renderer.setScissorTest(true);
+                renderer.setScissor(0, _CARD_H - _LETTERBOX_TOP - CONTENT_H, _CARD_W, CONTENT_H);
+                renderer.setViewport(0, _CARD_H - _LETTERBOX_TOP - CONTENT_H, _CARD_W, CONTENT_H);
+                renderer.render(scene, camera);
+                renderer.render(overlayScene, overlayCamera);
+                renderer.setScissorTest(false);
+            }
+
+            function drawCtaFrame() {
+                renderer.setViewport(0, 0, _CARD_W, _CARD_H);
+                renderer.clear();
+                renderer.render(ctaScene, ctaCamera);
+            }
+
+            recorder.start();
+            const totalSeconds = ROTATE_SECONDS + CTA_SECONDS;
+            const startTime = performance.now();
+            await new Promise((resolve) => {
+                function tick() {
+                    if (document.hidden) {
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+                    const elapsedSec = (performance.now() - startTime - hiddenAccumMs) / 1000;
+                    if (elapsedSec >= totalSeconds) {
+                        drawCtaFrame();
+                        resolve();
+                        return;
+                    }
+                    if (elapsedSec < ROTATE_SECONDS) {
+                        drawRotationFrame(elapsedSec);
+                    } else {
+                        drawCtaFrame();
+                    }
+                    requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            });
+
+            recorder.stop();
+            await recordingDone;
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            renderer.forceContextLoss();
+            renderer.dispose();
+            return new Blob(chunks, { type: mimeType });
+        }
+
         window.bailInitialized = bailInitialized;
 
         // 暴露給全域（供其他模組和 inline script 使用）
@@ -2195,6 +2741,7 @@
         async function generateModel() {
             const myGeneration = ++modelGeneration;
             isModelGenerating = true;
+            window.isModelGenerating = true; // 橋接給分享按鈕等外部腳本讀取（跟 window.mainMesh 同一種做法）
             try {
             console.log('[V3 generateModel] 開始生成模型');
 
@@ -2501,6 +3048,7 @@
             );
 
             mainMesh = result;
+            window.mainMesh = mainMesh; // 橋接給 __captureProductAssets 等使用（跟 slot 召回路徑一致的做法）
             window.scene.add(mainMesh);
 
             // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
@@ -2635,7 +3183,10 @@
             }
             } finally {
                 // 只有「最新」這次呼叫才能解鎖，避免被更早、已過期的呼叫提前解鎖
-                if (myGeneration === modelGeneration) isModelGenerating = false;
+                if (myGeneration === modelGeneration) {
+                    isModelGenerating = false;
+                    window.isModelGenerating = false;
+                }
             }
         }
 
@@ -3720,6 +4271,9 @@
 
             const item = {
                 id: Date.now(),
+                // Content Pipeline Phase 1：設計過程時間軸（新增欄位，開關關閉時為 null，不影響結帳契約）
+                designId: window.DesignRecorder?.designId ?? null,
+                designTimeline: window.DesignRecorder?.export({ camera: getCamera() }) ?? null,
                 letter1: document.getElementById('letter1').value,
                 letter2: document.getElementById('letter2').value,
                 font1: font1Name,
@@ -4380,6 +4934,33 @@
             return Array.from(combinations.values());
         }
 
+        // 使用者明確跳過所有設計理念詢問（不做完整諮詢、也不回答字體選擇
+        // 原因，只要作品）——確認信/STL 佇列早在付款當下就已經觸發過了
+        // （見後端 process_order_after_payment → finalize_order_confirmation()，
+        // 唯一觸發點，不依賴這裡有沒有被呼叫到）。這裡純粹是留一筆「顧客
+        // 明確選擇不做設計理念」的紀錄，供後端 log 追溯用，不影響訂單本身
+        // 有沒有成立。
+        function finalizeOrderWithoutStory() {
+            if (!window.lastOrderId) {
+                console.error('❌ 沒有 lastOrderId，無法送出「不做設計理念」的確認');
+                return;
+            }
+            fetch(`${window.BACKEND_URL}/api/order/${window.lastOrderId}/design-story`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ noStory: true })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ 已記錄「不做設計理念」:', window.lastOrderId);
+                    } else {
+                        console.warn('⚠️ 確認「不做設計理念」失敗:', data.error);
+                    }
+                })
+                .catch(err => console.error('❌ API 錯誤:', err));
+        }
+
         // 主流程：收集設計理念
         async function collectDesignStories() {
             // 使用 window.cartItems（付款後從後端載入的）
@@ -4434,7 +5015,8 @@
             if (concepts.length > 0) {
                 showDesignStoryCard(concepts[0].designStory);
             } else {
-                console.error('❌ 沒有設計理念可顯示');
+                console.log('ℹ️ 使用者未提供設計理念，觸發不含理念的確認信');
+                finalizeOrderWithoutStory();
             }
         }
 
@@ -4472,7 +5054,7 @@
             for (let i = 0; i < combinations.length; i++) {
                 const c = combinations[i];
                 showDesignStoryGeneratingIndicator();
-                const designStory = await generateDesignStory(c, chatResult.fontReason || '');
+                const designStory = await generateDesignStory(c, chatResult.fontReason || '', chatResult.letterReason || '');
                 hideDesignStoryGeneratingIndicator();
 
                 if (designStory) {
@@ -4494,7 +5076,8 @@
             if (concepts.length > 0) {
                 showDesignStoryCard(concepts[0].designStory);
             } else {
-                console.error('❌ 沒有設計理念可顯示');
+                console.log('ℹ️ 使用者未提供設計理念，觸發不含理念的確認信');
+                finalizeOrderWithoutStory();
             }
         }
 
@@ -4673,7 +5256,7 @@
         }
 
         // 呼叫後端生成設計理念
-        async function generateDesignStory(combination, fontReason) {
+        async function generateDesignStory(combination, fontReason, letterReason) {
             try {
                 // 優先使用付款後從後端載入的 AI 諮詢資料
                 let aiData = window.aiConsultationData;
@@ -4705,6 +5288,7 @@
                             font2: combination.fonts.font2
                         },
                         fontReason: fontReason,
+                        letterReason: letterReason || '',
                         lang: localStorage.getItem('duet_language') || 'zh'
                     })
                 });
@@ -6219,8 +6803,9 @@
                         body: JSON.stringify({
                             designStory: editedStory,
                             aiDesignStory: window.aiOriginalDesignStory || '',
-                            fontReason: window.lastFontReason || '',
-                            sendEmail: true  // ✅ 觸發發送確認郵件
+                            fontReason: window.lastFontReason || ''
+                            // 確認信/STL 佇列早在付款當下就已經觸發過了，這裡
+                            // 純粹是把理念內容存進訂單，不需要再帶 sendEmail
                         })
                     })
                     .then(res => res.json())
@@ -6976,9 +7561,11 @@
             turnCount++;
 
             const typingId = _ppAddTyping();
+            // 進度只是參考，訪談需要時對話次數本來就會增加；顯示封頂在 maxTurns，不硬性截斷對話
+            const shownTurn = Math.min(turnCount, maxTurns);
             progress.textContent = lang === 'en'
-                ? `Turn ${turnCount} / ${maxTurns}`
-                : `對話中 ${turnCount} / ${maxTurns}`;
+                ? `Turn ${shownTurn} / ${maxTurns}`
+                : `對話中 ${shownTurn} / ${maxTurns}`;
 
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/ai-consultant`, {
@@ -6989,10 +7576,10 @@
                 const data = await res.json();
                 _ppRemoveTyping(typingId);
 
-                if (data.completed) {
+                const finish = (payload) => {
                     localStorage.setItem('duet_ai_consultation', JSON.stringify({
                         conversationHistory: history,
-                        summary: data.summary,
+                        summary: payload.summary,
                         isPostPayment: true
                     }));
                     const done = lang === 'en'
@@ -7000,11 +7587,27 @@
                         : '感謝您的分享！正在為您生成設計理念…';
                     _ppAddMessage('assistant', done);
                     progress.textContent = lang === 'en' ? 'Completed ✓' : '諮詢完成 ✓';
-                    setTimeout(() => onComplete(data), 1500);
+                    setTimeout(() => onComplete(payload), 1500);
+                };
+
+                if (data.completed) {
+                    finish(data);
                 } else {
-                    const reply = data.message || (lang === 'en' ? 'Please try again.' : '請再試一次。');
-                    _ppAddMessage('assistant', reply);
-                    history.push({ role: 'assistant', content: reply });
+                    // 防線：後端沒判定完成時，訊息裡若其實夾著完成 JSON，就地觸發完成；
+                    // 且一律先把任何 JSON 片段清掉再顯示，確保 JSON 絕不進對話泡泡
+                    const embedded = _ppExtractCompletionJson(data.message || '');
+                    const lead = _ppStripJson(data.message || '');
+                    if (lead) {
+                        _ppAddMessage('assistant', lead);
+                        history.push({ role: 'assistant', content: lead });
+                    }
+                    if (embedded) {
+                        finish(embedded);
+                    } else if (!lead) {
+                        const fb = lang === 'en' ? 'Could you tell me a little more?' : '可以再多分享一點嗎？';
+                        _ppAddMessage('assistant', fb);
+                        history.push({ role: 'assistant', content: fb });
+                    }
                 }
             } catch (_) {
                 _ppRemoveTyping(typingId);
@@ -7023,6 +7626,32 @@
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
+    }
+
+    // 從一段文字裡找出「補訪完成」的 JSON（整段是 JSON、包在 ```json 裡、或夾在文字中間都能認）
+    function _ppExtractCompletionJson(text) {
+        if (!text || text.indexOf('{') === -1) return null;
+        const candidates = [];
+        const fenced = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (fenced) candidates.push(fenced[1]);
+        candidates.push(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        for (const c of candidates) {
+            try {
+                const p = JSON.parse(c);
+                if (p && ((p.letterReason && p.fontReason) || (p.recommendations && p.letters))) return p;
+            } catch (_) { /* 不是合法 JSON，換下一個候選 */ }
+        }
+        return null;
+    }
+
+    // 把任何 JSON 片段（圍欄區塊或裸露物件）從文字裡清掉，只留下給人看的內容
+    function _ppStripJson(text) {
+        if (!text) return '';
+        let out = text.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '');
+        if (out.indexOf('```') === -1 && out.indexOf('{') !== -1 && out.lastIndexOf('}') > out.indexOf('{')) {
+            out = out.slice(0, out.indexOf('{')) + out.slice(out.lastIndexOf('}') + 1);
+        }
+        return out.trim();
     }
 
     function _ppAddMessage(role, text) {

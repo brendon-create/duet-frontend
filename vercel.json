@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/d/:code",
+      "destination": "/api/d/:code"
+    }
+  ],
   "redirects": [
     {
       "source": "/s/:slug",
