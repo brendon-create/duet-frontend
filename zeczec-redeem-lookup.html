@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <!-- 環境設定（必須在最前面載入） -->
+    <script src="assets/js/config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>嘖嘖兌換碼補寄 - DUET</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #d4af37;
+            --primary-dark: #b8962e;
+            --bg-dark: #f8f8f8;
+            --bg-card: #fff;
+            --text-dark: #1a1a1a;
+            --text-muted: #666;
+            --border: #e0e0e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', 'Microsoft JhengHei', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        .nav {
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .logo-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .nav-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .hero {
+            padding: 120px 24px 40px;
+            max-width: 520px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .hero > p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary:hover { transform: translateY(-1px); }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message-box {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .message-box.show { display: block; }
+        .message-box.error { border-color: #e74c3c; background: #fdf2f2; }
+        .message-box.success { border-color: #27ae60; background: #f2fdf5; }
+
+        .notes {
+            text-align: left;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.9;
+            list-style: none;
+        }
+
+        .notes li { padding-left: 18px; position: relative; }
+        .notes li::before {
+            content: '·';
+            position: absolute;
+            left: 6px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin: 32px 0 48px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .back-link:hover { color: var(--primary); }
+
+        @media (max-width: 600px) {
+            .hero { padding: 100px 16px 30px; }
+            .hero h1 { font-size: 24px; }
+            .card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <div style="display:flex;align-items:baseline;gap:8px;">
+                <span class="logo-text">DUET</span>
+                <span class="logo-subtitle">BCAG JEWELRY</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">首頁</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>嘖嘖兌換碼補寄</h1>
+        <p>如果找不到當初的兌換碼通知信，輸入您的嘖嘖訂單編號與 Email，我們會把兌換碼重新寄給您一次。</p>
+
+        <div id="messageBox" class="message-box">
+            <span id="messageText"></span>
+        </div>
+
+        <div class="card" id="formCard">
+            <div class="form-group">
+                <label for="orderInput">嘖嘖訂單編號</label>
+                <input type="text" id="orderInput" placeholder="請輸入嘖嘖的訂單編號" autocomplete="off" />
+            </div>
+            <div class="form-group">
+                <label for="emailInput">Email</label>
+                <input type="email" id="emailInput" placeholder="請輸入您在嘖嘖訂單上填寫的 Email" autocomplete="email" />
+            </div>
+            <button class="btn-primary" id="submitBtn">重新寄送兌換碼</button>
+        </div>
+
+        <ul class="notes">
+            <li>本頁僅供 DUET 嘖嘖募資贊助者使用。</li>
+            <li>兌換碼只會重新寄送到您在嘖嘖訂單上填寫的 Email。</li>
+            <li>有任何疑問請聯繫 DUET 官方 LINE：@995fqbwt</li>
+        </ul>
+
+        <a href="index.html" class="back-link">← 回 DUET 官網</a>
+    </div>
+
+    <script>
+        (function () {
+            var orderInput = document.getElementById('orderInput');
+            var emailInput = document.getElementById('emailInput');
+            var submitBtn = document.getElementById('submitBtn');
+            var messageBox = document.getElementById('messageBox');
+            var messageText = document.getElementById('messageText');
+
+            function showMessage(type, text) {
+                messageBox.className = 'message-box show ' + type;
+                messageText.innerHTML = text;
+                messageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            function hideMessage() {
+                messageBox.className = 'message-box';
+            }
+
+            submitBtn.addEventListener('click', function () {
+                var orderNo = orderInput.value.trim();
+                var email = emailInput.value.trim();
+
+                if (!orderNo || !email) {
+                    showMessage('error', '請輸入嘖嘖訂單編號與 Email。');
+                    return;
+                }
+
+                hideMessage();
+                submitBtn.disabled = true;
+                submitBtn.textContent = '寄送中…';
+
+                fetch((window.BACKEND_URL || '') + '/api/zeczec/resend-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderNo: orderNo, email: email })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data && data.success) {
+                            showMessage('success', '兌換碼已重新寄至您的信箱，請檢查收件匣；若沒收到，請查看<strong>垃圾郵件</strong>。');
+                        } else {
+                            showMessage('error', (data && data.error) || '查無符合的訂單，請確認嘖嘖訂單編號與 Email 是否與嘖嘖上填寫的一致。');
+                        }
+                    })
+                    .catch(function () {
+                        showMessage('error', '連線發生問題，請稍後再試，或聯繫 DUET 官方 LINE：@995fqbwt。');
+                    })
+                    .finally(function () {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '重新寄送兌換碼';
+                    });
+            });
+
+            [orderInput, emailInput].forEach(function (el) {
+                el.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') submitBtn.click();
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
