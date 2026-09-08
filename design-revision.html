@@ -253,6 +253,16 @@
                 <label id="font2LetterLabel">字母 2</label>
                 <button type="button" class="font-select-btn" id="font2Btn"></button>
             </div>
+            <!-- 尺寸：只在後台員工模式（admin=1）顯示，讓客服在換字體的同時一併調整作品尺寸；
+                 顧客端的字體重選畫面不提供這個欄位（JS 依 isStaffMode 控制顯示） -->
+            <div class="font-current-row" id="fontSizeRow" style="display:none;">
+                <label>作品尺寸高度</label>
+                <select class="font-select-btn" id="size-select" style="cursor:pointer;">
+                    <option value="8">8 mm</option>
+                    <option value="10">10 mm</option>
+                    <option value="12">12 mm</option>
+                </select>
+            </div>
             <button type="button" class="font-reselect-btn" id="fontReselectBtn">選擇字體</button>
         </div>
 
@@ -698,6 +708,45 @@ document.getElementById('font2Btn').addEventListener('click', openFontSelectorMo
 // 選過一輪之後：改成一個獨立的「＋ 重選字體」按鈕（比照 design-studio.html），不要兩個字母各自一個小連結
 document.getElementById('fontReselectBtn').addEventListener('click', openFontSelectorModal);
 
+// 尺寸（僅後台員工模式）：換尺寸後模型會重新產生、字體規範（可用/較粗/較細）也會依新尺寸變動，
+// 所以要一併重刷候選字體下拉的標記，再重算重量、重建場景
+async function onSizeChanged() {
+    item.size = parseInt(document.getElementById('size-select').value);
+    const shortlist = Array.from(checkedFonts);
+    if (shortlist.length > 0) {
+        ['font1', 'font2'].forEach(target => {
+            const select = document.getElementById(`${target}-select`);
+            if (select) applyFontSelectOptions(select, shortlist, item[target]);
+        });
+        item.font1 = document.getElementById('font1-select')?.value || item.font1;
+        item.font2 = document.getElementById('font2-select')?.value || item.font2;
+    }
+    updateItemSummary();
+    onItemFieldTouched('font');
+    await buildScene();
+    recomputeItemWeight();
+}
+document.getElementById('size-select').addEventListener('change', onSizeChanged);
+
+// 依目前的 mainMesh 幾何體積 × 材質密度重算重量（做法照抄 design-studio.html 的 updateVolumeWeight），
+// 尺寸改了之後重量也要跟著更新，不然廠商製作信會顯示調整前的舊重量
+function recomputeItemWeight() {
+    const mesh = window.mainMesh;
+    if (!mesh || !mesh.geometry?.attributes?.position) return;
+    const positions = mesh.geometry.attributes.position;
+    const p1 = new THREE.Vector3(), p2 = new THREE.Vector3(), p3 = new THREE.Vector3();
+    let volume = 0;
+    for (let i = 0; i < positions.count; i += 3) {
+        p1.fromBufferAttribute(positions, i);
+        p2.fromBufferAttribute(positions, i + 1);
+        p3.fromBufferAttribute(positions, i + 2);
+        volume += p1.dot(p2.cross(p3)) / 6.0;
+    }
+    volume = Math.abs(volume);
+    const density = (MATERIALS[item.material] || MATERIALS['silver925']).density;
+    item.weight = `${((volume * density) / 1000).toFixed(2)} g`;
+}
+
 function applyFontSelectOptions(selectEl, fonts, currentValue) {
     selectEl.innerHTML = '';
     const sizeMm = parseInt(item.size);
@@ -813,6 +862,21 @@ function applyPanelTexts() {
         // （批次模式下切到別的任務時，這顆按鈕的文字也要跟著這個任務目前的狀態同步）
         const anySelectExists = document.getElementById('font1-select') || document.getElementById('font2-select');
         document.getElementById('fontReselectBtn').textContent = anySelectExists ? '＋ 重選字體' : '選擇字體';
+        // 尺寸下拉：僅後台員工模式開放，值同步成這件作品目前的尺寸
+        const fontSizeRow = document.getElementById('fontSizeRow');
+        fontSizeRow.style.display = isStaffMode ? 'block' : 'none';
+        if (isStaffMode) {
+            const sizeSel = document.getElementById('size-select');
+            const cur = String(parseInt(item.size) || '');
+            // 目前尺寸若不在標準選項內（例如舊訂單的特殊尺寸），補一個選項進去，避免下拉顯示的值跟實際作品對不上
+            if (cur && !Array.from(sizeSel.options).some(o => o.value === cur)) {
+                const opt = document.createElement('option');
+                opt.value = cur;
+                opt.textContent = `${cur} mm`;
+                sizeSel.appendChild(opt);
+            }
+            if (cur) sizeSel.value = cur;
+        }
     } else {
         clearTimeout(fontRingReminderTimer);
         document.getElementById('fontRingReminderToast').style.display = 'none';
@@ -830,7 +894,9 @@ function applyPanelTexts() {
 
     if (hasFont) {
         document.getElementById('panelTitle').textContent = '重新選擇字體組合';
-        document.getElementById('panelHint').textContent = '請為兩個字母分別選擇新的字體（字母本身不會更動）。更換字體後模型會重新產生，請一併確認墜頭位置是否需要微調。材質與尺寸不會被更動。';
+        document.getElementById('panelHint').textContent = isStaffMode
+            ? '請為兩個字母分別選擇新的字體（字母本身不會更動），必要時可一併調整作品尺寸。更換後模型會重新產生，請一併確認墜頭位置是否需要微調。'
+            : '請為兩個字母分別選擇新的字體（字母本身不會更動）。更換字體後模型會重新產生，請一併確認墜頭位置是否需要微調。材質與尺寸不會被更動。';
         confirmBtn.textContent = '確認';
     } else if (hasRing && hasChain) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
@@ -1562,6 +1628,11 @@ function goToDesignConfirm(chainSel) {
     if (unlockedFields.includes('font')) {
         currentRingParams.font1 = item.font1;
         currentRingParams.font2 = item.font2;
+        // 後台員工模式可在換字體時一併調尺寸，尺寸改了重量也一起帶出（顧客端沒有尺寸欄位，維持原值）
+        if (isStaffMode) {
+            currentRingParams.size = parseInt(item.size);
+            currentRingParams.weight = item.weight;
+        }
     }
     currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
     document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(item, chainSel, currentCapturedViews, currentRingParams);
