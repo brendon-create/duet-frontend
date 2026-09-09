@@ -723,7 +723,30 @@ async function onSizeChanged() {
     }
     updateItemSummary();
     onItemFieldTouched('font');
+
+    // 換尺寸時圓環要比照 design-studio.html：滑桿值代表「離模型頂端的相對偏移」，
+    // 尺寸變了就跟著新的 modelTopZ 一起上下移動，墜頭（createBail 每次都重錨到 modelTopZ）才不會脫節。
+    // 但 buildScene() 的還原邏輯會拿訂單存的「絕對」ringRelativeZ 反推滑桿、把圓環釘回舊尺寸的絕對高度，
+    // 所以這裡先記下目前滑桿值，buildScene() 之後再寫回、重新定位，讓相對偏移跨尺寸保持不變。
+    const ringSliderSnapshot = {};
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        ringSliderSnapshot[id] = document.getElementById(id).value;
+    });
+
     await buildScene();
+
+    ['ringX', 'ringY', 'ringZ', 'ringRotation'].forEach(id => {
+        document.getElementById(id).value = ringSliderSnapshot[id];
+        const suffix = id === 'ringRotation' ? '°' : '';
+        document.getElementById(`${id}-val`).textContent = ringSliderSnapshot[id] + suffix;
+    });
+    updateRingPosition();
+
+    // buildScene() 內的 createBail() 是對「被釘回舊絕對高度的圓環」算相對偏移的，
+    // 上面把圓環移到正確位置後，要再重錨一次墜頭，讓墜頭–圓環的間距回到與新設計一致（乾淨的 scaledSizeZ/2）。
+    resetBailInitFlag();
+    createBail();
+
     recomputeItemWeight();
 }
 document.getElementById('size-select').addEventListener('change', onSizeChanged);
