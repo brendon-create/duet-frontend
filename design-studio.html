@@ -200,13 +200,17 @@
             <input type="range" id="ringRotation" min="0" max="90" step="1" value="0">
         </div>
 
-        <!-- 🧹 清理零碎部件開關 -->
+        <!-- 🧹 分離部件狀態：偵測到就自動清理，不再需要手動開關。#cleanup-label 直接當狀態文字用；
+             失敗時才露出「重試」。toggle 保留在 DOM（舊程式碼與確認框仍引用其 id）但隱藏、永不觸發。 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label id="cleanup-label" data-i18n="studio.cleanup.label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
-                
-                <!-- Toggle Switch -->
-                <div class="toggle-switch" id="cleanup-toggle-container">
+
+                <button type="button" id="cleanup-retry-btn" style="display:none; padding:3px 12px; font-size:12px;
+                        cursor:pointer; background:transparent; border:1px solid #d4af37; border-radius:6px; color:#d4af37;">重試</button>
+
+                <!-- Toggle Switch（隱藏，僅為相容舊引用保留） -->
+                <div class="toggle-switch" id="cleanup-toggle-container" style="display:none;">
                     <input type="checkbox" id="cleanup-toggle" class="toggle-checkbox" disabled>
                     <label for="cleanup-toggle" class="toggle-label">
                         <span class="toggle-button"></span>
@@ -2540,6 +2544,8 @@
         let renderCount = 0;              // 成功 render 次數（用於下單統計）
         let fragmentCheckController = null; // 控制 check-fragments 請求的 AbortController
         let fragmentCheckPending = false; // 標記：分離部件檢查尚未完成
+        let cleanupGeneration = 0;        // 每次 generateModel() +1，讓自動清理途中換了字體/尺寸時，過期的輪詢自己作廢
+        let cleanupActiveTaskId = null;   // 目前自動清理的預覽任務 id，換字體時對它打 /api/request-preview-cancel
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
@@ -3108,6 +3114,17 @@
             fragmentCheckPending = true;
             renderCount++;
 
+            // 換了字體/尺寸重建模型：讓上一輪還在跑的自動清理輪詢自己作廢，並取消還沒開始的預覽任務
+            cleanupGeneration++;
+            if (cleanupActiveTaskId) {
+                fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${cleanupActiveTaskId}`, { method: 'POST', keepalive: true }).catch(() => {});
+                cleanupActiveTaskId = null;
+            }
+            const cleanupLabelReset = document.getElementById('cleanup-label');
+            if (cleanupLabelReset) { cleanupLabelReset.style.color = ''; cleanupLabelReset.classList.remove('loading-pulse'); }
+            const cleanupRetryReset = document.getElementById('cleanup-retry-btn');
+            if (cleanupRetryReset) cleanupRetryReset.style.display = 'none';
+
             // 🔍 背景片段偵測：中止上一個未完成的請求，再發新的
             if (fragmentCheckController) fragmentCheckController.abort();
             fragmentCheckController = new AbortController();
@@ -3138,7 +3155,8 @@
                         const cleanupLabel = document.getElementById('cleanup-label');
                         if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
                         if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
-                        console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量`);
+                        console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量，自動開始清理`);
+                        cleanupFragments();   // 不再等使用者按開關，偵測到就自動清理
                     } else {
                         modelNeedsCleanup = false;
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
@@ -3281,9 +3299,12 @@
             }
 
             isCleanupInProgress = true;
+            const myCleanupGen = cleanupGeneration;   // 換字體/尺寸會 ++cleanupGeneration，讓這一輪自己作廢
             const cleanupLabel = document.getElementById('cleanup-label');
             const cleanupToggle = document.getElementById('cleanup-toggle');
-            
+            const cleanupRetryBtn = document.getElementById('cleanup-retry-btn');
+            if (cleanupRetryBtn) cleanupRetryBtn.style.display = 'none';
+
             // 更新 label 狀態
             if (cleanupLabel) {
                 cleanupLabel.textContent = window.t('studio.cleanup.cleaning') + '...';
@@ -3334,16 +3355,27 @@
                 console.log(`${timestamp()} 🔓 解析 JSON... ${elapsed()}`);
                 const { task_id } = await response1.json();
                 console.log(`${timestamp()} ✅ 取得 task_id: ${task_id} ${elapsed()}`);
+                cleanupActiveTaskId = task_id;
+
+                // 這輪已被新的 generateModel() 取代（使用者換了字體/尺寸）→ 取消任務、放棄結果
+                if (myCleanupGen !== cleanupGeneration) {
+                    fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${task_id}`, { method: 'POST', keepalive: true }).catch(() => {});
+                    return;
+                }
 
                 // 3. 輪詢檢查任務狀態
                 console.log(`${timestamp()} ⏳ 輪詢任務狀態... ${elapsed()}`);
-                
+
                 let pollCount = 0;
                 const maxPolls = 60; // 最多等 60 秒
                 let downloadToken = null;
                 let expires_in = 120;
-                
+
                 while (pollCount < maxPolls) {
+                    if (myCleanupGen !== cleanupGeneration) {
+                        fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${task_id}`, { method: 'POST', keepalive: true }).catch(() => {});
+                        return;
+                    }
                     const statusResp = await fetch(`${window.BACKEND_URL}/api/request-preview-status/${task_id}`);
                     const statusData = await statusResp.json();
                     
@@ -3412,6 +3444,12 @@
                 cleanGeometry.computeVertexNormals();
                 console.log(`${timestamp()} ✅ STL 解析完成 ${elapsed()}`);
 
+                // 換掉幾何前最後檢查一次：這輪若已被新的 generateModel() 取代就不要動場景
+                if (myCleanupGen !== cleanupGeneration) {
+                    cleanGeometry.dispose?.();
+                    return;
+                }
+
                 // 6. 替換場景中的模型
                 console.log(`${timestamp()} 🔄 替換場景模型... ${elapsed()}`);
                 const oldGeometry = mainMesh.geometry;
@@ -3456,6 +3494,7 @@
                 console.log(`${timestamp()} ✅ 清理完成 (總耗時: ${totalTime}秒)`);
 
                 // 清理完成：標記後端需套用清理，並清除「有零碎部件」封鎖
+                cleanupActiveTaskId = null;
                 cleanFragmentsApplied = true;
                 modelNeedsCleanup = false;
 
@@ -3470,30 +3509,39 @@
                     cleanupLabel.style.color = '#4caf50';
                     cleanupLabel.classList.remove('loading-pulse');
                 }
+                if (cleanupRetryBtn) cleanupRetryBtn.style.display = 'none';
 
                 // 更新體積重量（清理後可能改變）
                 setTimeout(() => updateVolumeWeight(), 100);
 
             } catch (error) {
                 console.error('❌ 清理失敗:', error);
-                
-                // 清理失敗時，關閉 toggle
-                if (cleanupToggle) {
-                    cleanupToggle.checked = false;
-                }
-                
+                cleanupActiveTaskId = null;
+
+                // 這輪已被新的 generateModel() 取代 → 不要覆寫新狀態、也不要顯示失敗提示
+                if (myCleanupGen !== cleanupGeneration) { isCleanupInProgress = false; return; }
+
+                // 自動清理失敗：維持 modelNeedsCleanup=true（購物車仍封鎖），露出「重試」讓使用者手動再試一次
                 if (cleanupLabel) {
-                    cleanupLabel.textContent = window.t('studio.cleanup.label');
-                    cleanupLabel.style.color = '';
+                    cleanupLabel.textContent = window.t('studio.cleanup.failed').replace(/[:：]\s*$/, '');
+                    cleanupLabel.style.color = '#e57368';
                     cleanupLabel.classList.remove('loading-pulse');
                 }
+                if (cleanupRetryBtn) cleanupRetryBtn.style.display = '';
 
-                alert(window.t('studio.cleanup.failed') + error.message);
-                
             } finally {
                 isCleanupInProgress = false;
             }
         }
+
+        // 自動清理失敗後，使用者按「重試」再跑一次
+        (function bindCleanupRetry() {
+            const btn = document.getElementById('cleanup-retry-btn');
+            if (btn) btn.addEventListener('click', () => {
+                btn.style.display = 'none';
+                if (!isCleanupInProgress) cleanupFragments();
+            });
+        })();
 
         // ============================================================
         // Ring & Bail functions moved to js/ring-bail.js
