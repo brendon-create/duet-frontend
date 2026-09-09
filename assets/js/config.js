@@ -8,10 +8,10 @@ const PRODUCTION_BACKEND_URL = 'https://duet-backend-wlw8.onrender.com';
 const STAGING_BACKEND_URL = 'https://duet-backend-staging-ye5v.onrender.com';
 const ENV_STORAGE_KEY = 'duet_deploy_env';
 
-// Content Pipeline 網址（目前只有 staging 版本存在，production 版本要等正式
-// 上線那天才會建立；production 環境下 window.DUET_FEATURE_RECORDER 本來就是
-// false，不會真的用到這個值）
-const STAGING_CONTENT_URL = 'https://duet-content-pipeline-staging.onrender.com';
+// Content Pipeline 網址——這個專案本來就不打算另外開一個獨立的 production
+// instance（見備忘錄），只有這一個服務，網址上還留著「staging」字樣是沿用
+// 舊稱呼，staging/production 環境都打同一個服務。
+const CONTENT_URL = 'https://duet-content-pipeline-staging.onrender.com';
 
 /**
  * 取得當前環境（優先順序：URL > localStorage > 預設）
@@ -57,9 +57,10 @@ const backendUrl = currentEnv === 'staging' ? STAGING_BACKEND_URL : PRODUCTION_B
 window.BACKEND_URL = backendUrl;
 window.CURRENT_ENV = currentEnv;
 
-// Content Pipeline — Design Event Recorder 開關（Phase 1）：staging 開、正式關
-window.DUET_FEATURE_RECORDER = (currentEnv === 'staging');
-window.CONTENT_URL = (currentEnv === 'staging') ? STAGING_CONTENT_URL : '';
+// Content Pipeline — Design Event Recorder 開關（Phase 1）：staging/正式都開
+// （2026-09-09 正式上線，此前只在 staging 開放測試）
+window.DUET_FEATURE_RECORDER = true;
+window.CONTENT_URL = CONTENT_URL;
 
 console.log(`[config] 環境: ${currentEnv}, 後端: ${BACKEND_URL}`);
 
