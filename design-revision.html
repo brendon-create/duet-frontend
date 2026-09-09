@@ -82,6 +82,30 @@
         }
         .hint-text { font-size: 11px; color: #777; margin-top: 10px; line-height: 1.6; }
 
+        /* 作品分離部件狀態面板（比照 design-studio.html，改成自動清理、無開關）：
+           平常淺灰靜態；偵測到並清理中會微光閃爍；完成轉綠；失敗轉紅並露出「重試」 */
+        .fragment-status {
+            margin-top: 10px; padding: 9px 12px; border-radius: 8px;
+            font-size: 12px; line-height: 1.6; text-align: center;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #999;
+            transition: background 0.3s, border-color 0.3s, color 0.3s;
+        }
+        .fragment-status[data-state="cleaning"] {
+            background: rgba(212,175,55,0.12); border-color: rgba(212,175,55,0.5); color: #d4af37;
+            animation: fragPulse 1.3s ease-in-out infinite;
+        }
+        .fragment-status[data-state="done"] {
+            background: rgba(76,175,80,0.12); border-color: rgba(76,175,80,0.45); color: #7bc67e;
+        }
+        .fragment-status[data-state="failed"] {
+            background: rgba(231,76,60,0.12); border-color: rgba(231,76,60,0.5); color: #e57368;
+        }
+        @keyframes fragPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #fragmentRetryBtn {
+            margin-left: 8px; padding: 3px 10px; font-size: 12px; cursor: pointer;
+            background: transparent; border: 1px solid currentColor; border-radius: 6px; color: inherit;
+        }
+
         /* ── 手機版 RWD：面板改成底部抽屜，讓出上方空間顯示作品 ── */
         @media (max-width: 768px) {
             #panel {
@@ -285,6 +309,12 @@
             </div>
         </div>
 
+        <!-- 作品分離部件：每次重建模型都會背景偵測，偵測到就自動清理；清理未完成前「確認」會被鎖住 -->
+        <div id="fragmentStatus" class="fragment-status" data-state="idle" style="display:none;">
+            <span id="fragmentStatusText">分離部件檢查中…</span>
+            <button type="button" id="fragmentRetryBtn" style="display:none;">重試</button>
+        </div>
+
         <button class="btn-gold" id="mainConfirmBtn">確認</button>
         <div class="hint-text" id="panelHint">拖曳滑桿調整圓環與墜頭的位置，直到墜頭確實與作品本體相連。字母、字體、材質與尺寸不會被更動。</div>
     </div>
@@ -298,6 +328,16 @@
     <div style="font-size:26px;margin-bottom:8px;">🔗</div>
     <div style="font-size:13px;color:#eee;line-height:1.6;">選好新字體後，別忘了順便確認墜頭是否還與作品本體確實相連。</div>
     <button onclick="document.getElementById('fontRingReminderToast').style.display='none';"
+            style="margin-top:14px;padding:6px 20px;background:#d4af37;color:#000;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;">知道了</button>
+</div>
+
+<!-- 偵測到分離部件時跳一下這個提醒，隨即自動開始清理；約 6 秒後自動消失 -->
+<div id="fragmentToast" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+     z-index:800;background:rgba(20,18,12,0.97);border:1px solid rgba(212,175,55,0.4);border-radius:14px;
+     padding:20px 24px;max-width:min(320px,84vw);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+    <div style="font-size:26px;margin-bottom:8px;">🧹</div>
+    <div style="font-size:13px;color:#eee;line-height:1.6;">偵測到作品有分離部件，正在自動為您清理，完成後即可確認。</div>
+    <button onclick="document.getElementById('fragmentToast').style.display='none';"
             style="margin-top:14px;padding:6px 20px;background:#d4af37;color:#000;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;">知道了</button>
 </div>
 
@@ -461,6 +501,7 @@ window.THREE = THREE;
 import { getMaterial, MATERIALS, PLATING_COLORS } from './js/materials.js';
 import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } from './js/3d-scene.js';
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
@@ -1016,6 +1057,7 @@ async function selectBatchTask(taskId) {
     const base = batchItemsByIndex[task.item_index];
     const localUpdate = batchLocalDone[taskId] ? (batchCollectedUpdates[taskId] || {}) : {};
     item = Object.assign({}, base, localUpdate);
+    fragCleanApplied = !!item.cleanFragments;   // 沿用這件作品現有的清理狀態，沒改幾何就不會被動到
     orderId = batchOrderId;
     unlockedFields = task.category === 'ack' ? [] : [task.category];
 
@@ -1176,6 +1218,7 @@ async function loadData() {
             if (!data.success) { showView('viewError'); return; }
 
             item = data.item;
+            fragCleanApplied = !!item.cleanFragments;
             orderId = data.order_id;
             unlockedFields = staffUnlockedFields;
             orderAiConsultation = data.ai_consultation || null;
@@ -1202,6 +1245,7 @@ async function loadData() {
         if (data.already_confirmed) { showView('viewAlreadyConfirmed'); return; }
 
         item = data.item;
+        fragCleanApplied = !!item.cleanFragments;
         orderId = data.order_id;
         unlockedFields = data.unlocked_fields && data.unlocked_fields.length ? data.unlocked_fields : ['ring'];
         orderAiConsultation = data.ai_consultation || null;
@@ -1355,6 +1399,10 @@ async function buildScene() {
             onItemFieldTouched('ring');
         };
     });
+
+    // 模型（重新）建好後，背景偵測分離部件；偵測到就自動清理，清完前鎖住「確認」。
+    // 不 await——不擋畫面；換字體/尺寸再次進到這裡時，fragGeneration 會讓這一輪自己作廢。
+    scheduleFragmentCheck();
 }
 
 function renderChainGrid() {
@@ -1642,8 +1690,164 @@ function captureCurrentRingParams() {
         ringSliderY: parseFloat(document.getElementById('ringY').value),
         ringSliderZ: parseFloat(document.getElementById('ringZ').value),
         ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
+        // 分離部件清理結果一律帶上（後端 generate_stl_for_item 產正式 STL 時會讀）；
+        // ring 類別白名單也收這個 key，chain/ack 類別會被後端過濾掉，帶著無害
+        cleanFragments: fragCleanApplied,
     };
 }
+
+// ============ 作品分離部件：背景偵測 + 自動清理（比照 design-studio.html，改成自動、無開關）============
+// 每次 buildScene() 後跑一次偵測；偵測到就自動清理，清理完成前 mainConfirmBtn 會被鎖住。
+// fragGeneration 讓「換字體/尺寸 → 又 buildScene()」時，上一輪還在飛的偵測/清理/輪詢自己作廢。
+let fragCleanApplied = false;   // 已清理過（存回作品、傳後端產 STL 用），載入訂單時用 item.cleanFragments 初始化
+let fragNeedsCleanup = false;   // 偵測到分離部件、還沒清完 → 鎖住確認
+let fragChecking = false;       // 背景偵測進行中 → 鎖住確認
+let fragCleaning = false;       // 自動清理進行中 → 鎖住確認
+let fragGeneration = 0;
+let fragCheckController = null;
+let fragActiveTaskId = null;    // 目前清理任務 id，換字體時對它打 cancel
+
+function fragCanConfirm() { return !fragChecking && !fragNeedsCleanup && !fragCleaning; }
+
+function refreshConfirmLock() {
+    const btn = document.getElementById('mainConfirmBtn');
+    if (btn) btn.disabled = !fragCanConfirm();
+}
+
+function setFragStatus(state, text, showRetry) {
+    const box = document.getElementById('fragmentStatus');
+    if (!box) return;
+    box.style.display = 'block';
+    box.dataset.state = state;
+    document.getElementById('fragmentStatusText').textContent = text;
+    document.getElementById('fragmentRetryBtn').style.display = showRetry ? 'inline-block' : 'none';
+    refreshConfirmLock();
+}
+
+function showFragmentToast() {
+    const toast = document.getElementById('fragmentToast');
+    if (!toast) return;
+    toast.style.display = 'block';
+    clearTimeout(showFragmentToast._t);
+    showFragmentToast._t = setTimeout(() => { toast.style.display = 'none'; }, 6000);
+}
+
+function cancelFragTask(taskId) {
+    if (!taskId) return;
+    fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${taskId}`, { method: 'POST', keepalive: true }).catch(() => {});
+}
+
+// buildScene() 尾端呼叫：中止上一輪、對新幾何重新偵測
+async function scheduleFragmentCheck() {
+    const myGen = ++fragGeneration;
+    if (fragCheckController) fragCheckController.abort();
+    if (fragActiveTaskId) { cancelFragTask(fragActiveTaskId); fragActiveTaskId = null; }
+    fragNeedsCleanup = false;
+    fragCleaning = false;
+    fragChecking = true;
+    setFragStatus('idle', '分離部件檢查中…', false);
+
+    fragCheckController = new AbortController();
+    let result;
+    try {
+        const resp = await fetch(`${window.BACKEND_URL}/api/check-fragments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                letter1: item.letter1, letter2: item.letter2,
+                font1: item.font1, font2: item.font2, size: parseInt(item.size),
+            }),
+            signal: fragCheckController.signal,
+        });
+        result = await resp.json();
+    } catch (e) {
+        if (myGen !== fragGeneration) return;      // 已被新一輪取代
+        fragChecking = false;
+        // 偵測本身失敗採 fail-open：不鎖確認（製作前後端還會再驗一次），但提示一下
+        setFragStatus('idle', '分離部件檢查暫時無法完成，將於製作前再次確認。', false);
+        return;
+    }
+    if (myGen !== fragGeneration) return;
+    fragChecking = false;
+    if (result && result.has_fragments) {
+        fragNeedsCleanup = true;
+        refreshConfirmLock();
+        showFragmentToast();
+        runFragmentCleanup(myGen);
+    } else {
+        setFragStatus('idle', '作品分離部件檢查：正常', false);
+    }
+}
+
+async function runFragmentCleanup(gen) {
+    if (gen !== fragGeneration) return;
+    fragCleaning = true;
+    setFragStatus('cleaning', '偵測到分離部件，正在自動為您清理…', false);
+    try {
+        const rp = captureCurrentRingParams();
+        const startResp = await fetch(`${window.BACKEND_URL}/api/request-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                letter1: item.letter1, letter2: item.letter2,
+                font1: item.font1, font2: item.font2, size: parseInt(item.size),
+                ringRelativeX: rp.ringRelativeX, ringRelativeY: rp.ringRelativeY,
+                ringRelativeZ: rp.ringRelativeZ, ringRotation: rp.ringRotation,
+            }),
+        });
+        const startData = await startResp.json();
+        const taskId = startData.task_id;
+        if (gen !== fragGeneration) { cancelFragTask(taskId); return; }
+        if (!taskId) throw new Error('清理任務建立失敗');
+        fragActiveTaskId = taskId;
+
+        let token = null;
+        for (let i = 0; i < 60; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            if (gen !== fragGeneration) return;
+            const st = await (await fetch(`${window.BACKEND_URL}/api/request-preview-status/${taskId}`)).json();
+            if (st.status === 'completed') { token = st.token; break; }
+            if (st.status === 'error' || st.status === 'failed') throw new Error(st.error || '清理任務失敗');
+        }
+        if (gen !== fragGeneration) return;
+        if (!token) throw new Error('清理任務逾時');
+
+        const buf = await (await fetch(`${window.BACKEND_URL}/api/get-preview/${token}`)).arrayBuffer();
+        if (gen !== fragGeneration) return;
+
+        const clean = new STLLoader().parse(buf);
+        clean.computeVertexNormals();
+        clean.computeBoundingBox();
+        const c = clean.boundingBox.getCenter(new THREE.Vector3());
+        clean.translate(-c.x, -c.y, -c.z);
+        clean.computeBoundingBox();
+        window.modelTopZ = clean.boundingBox.max.z;
+        window.modelCenter = new THREE.Vector3(0, 0, 0);
+
+        const oldGeo = window.mainMesh.geometry;
+        window.mainMesh.geometry = clean;
+        oldGeo.dispose();
+        updateRingPosition();   // 換掉幾何後，圓環/墜頭依新的 modelTopZ 重新定位
+
+        fragActiveTaskId = null;
+        fragCleaning = false;
+        fragNeedsCleanup = false;
+        fragCleanApplied = true;
+        onItemFieldTouched('font');   // 批次模式下把這次變更記進 batchCollectedUpdates
+        setFragStatus('done', '作品分離部件已清理', false);
+    } catch (e) {
+        if (gen !== fragGeneration) return;
+        console.warn('⚠️ 自動清理分離部件失敗:', e && e.message);
+        fragActiveTaskId = null;
+        fragCleaning = false;
+        // fragNeedsCleanup 維持 true → 確認保持鎖住（硬擋）
+        setFragStatus('failed', '自動清理失敗，請按「重試」，若持續失敗請聯繫客服。', true);
+    }
+}
+
+document.getElementById('fragmentRetryBtn').addEventListener('click', () => {
+    runFragmentCleanup(fragGeneration);
+});
 
 function goToDesignConfirm(chainSel) {
     currentChainValue = chainSel;
@@ -1677,6 +1881,12 @@ function completeBatchTask(fields) {
 
 // 重選字體後，要先問一次「要不要重新生成設計理念」，問完（不管答案）才繼續原本 chain/ring/ack 的流程
 function proceedFromMainPanel() {
+    // 硬擋：分離部件還在偵測/清理（或清理失敗）時不能往下走
+    if (!fragCanConfirm()) {
+        showFragmentToast();
+        refreshConfirmLock();
+        return;
+    }
     if (unlockedFields.includes('font')) {
         document.getElementById('storyRegenAskModal').style.display = 'flex';
         return;
