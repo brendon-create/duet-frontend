@@ -12,10 +12,9 @@
  * 從回應差異分辨兩者。
  */
 
-// 目前 CONTENT 只有一個 instance（原本叫 staging，尚未拆出獨立 production），
-// 之後正式上線、CONTENT 有專屬網域時要記得更新這裡（跟 assets/js/config.js
-// 的 STAGING_CONTENT_URL 是同一個東西，但那個是瀏覽器端 JS 讀不到，這裡是
-// server-side function，需要自己的一份）。
+// CONTENT 只有一個 instance（網址還留著「staging」字樣，是沿用舊稱呼，
+// staging/正式環境都打同一個服務——見 assets/js/config.js 的 CONTENT_URL，
+// 那個是瀏覽器端 JS 讀不到，這裡是 server-side function，需要自己的一份）。
 const CONTENT_URL = 'https://duet-content-pipeline-staging.onrender.com';
 
 function escapeHtml(str) {
