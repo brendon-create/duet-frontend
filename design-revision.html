@@ -1568,8 +1568,11 @@ function saveToFontSlot(slotIndex) {
     slotElement.classList.remove('empty');
     // 圓環位置一起存：滑桿拖曳當下並不會即時寫回 item.ringRelativeX 等欄位（那些欄位只在送出時
     // 才用 captureCurrentRingParams() 讀取現值寫入），所以套用候選版本時若不一併存讀，圓環位置
-    // 會被 buildScene() 重新讀回 item 上舊的（甚至是歸零的預設）數值，滑桿看起來像被重置
-    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2, ring: captureCurrentRingParams() };
+    // 會被 buildScene() 重新讀回 item 上舊的（甚至是歸零的預設）數值，滑桿看起來像被重置。
+    // 尺寸也要一併存：兩個候選格可能是不同尺寸（例如比較 12mm vs 10mm），圓環位置是在「存檔當下
+    // 那個尺寸」量到的絕對值，套用時如果沒跟著換回同一個尺寸，畫面建出來的模型跟還原的圓環位置
+    // 對不起來，墜頭就會跑掉——這裡直接照抄 onSizeChanged() 已經驗證過的做法。
+    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2, size: item.size, ring: captureCurrentRingParams() };
 
     // 覆蓋舊版本時先釋放舊的 WebGL context，避免使用者反覆換來換去存同一格時，
     // 瀏覽器同時存在的 WebGL context 數量超過上限（design-studio.html 目前也還沒補這個，順手修掉）
@@ -1655,6 +1658,9 @@ async function applyFontSlot(slotIndex) {
     if (!recipe) { saveToFontSlot(slotIndex); return; }
     item.font1 = recipe.font1;
     item.font2 = recipe.font2;
+    item.size = recipe.size; // 兩個候選格可能是不同尺寸，跟著換回這個候選格存檔當下的尺寸
+    const sizeSelect = document.getElementById('size-select');
+    if (sizeSelect) sizeSelect.value = String(recipe.size);
     Object.assign(item, recipe.ring); // 還原存這個候選版本當下的圓環位置，不然 buildScene() 會讀到舊值、滑桿看起來被歸零
     // 若目前候選字體下拉選單裡剛好有這個字體，順便同步顯示值（不強求，不在清單裡也沒關係，畫面照樣正確）
     ['font1', 'font2'].forEach(target => {
@@ -1667,6 +1673,23 @@ async function applyFontSlot(slotIndex) {
     updateItemSummary();
     onItemFieldTouched('font');
     await buildScene();
+
+    // 比照 onSizeChanged() 的做法：buildScene() 的還原邏輯是拿「絕對」ringRelativeZ
+    // 反推滑桿、把圓環釘回存檔當下的絕對高度——如果這個候選格的尺寸跟另一格不同，
+    // 這樣算出來的滑桿值就會是錯的，要拿這個候選格自己存的滑桿快照覆蓋回去、
+    // 重新定位，再重錨一次墜頭，讓墜頭–圓環的間距回到跟這個候選格一致。
+    document.getElementById('ringX').value = recipe.ring.ringSliderX;
+    document.getElementById('ringX-val').textContent = recipe.ring.ringSliderX;
+    document.getElementById('ringY').value = recipe.ring.ringSliderY;
+    document.getElementById('ringY-val').textContent = recipe.ring.ringSliderY;
+    document.getElementById('ringZ').value = recipe.ring.ringSliderZ;
+    document.getElementById('ringZ-val').textContent = recipe.ring.ringSliderZ;
+    document.getElementById('ringRotation').value = recipe.ring.ringSliderRotation;
+    document.getElementById('ringRotation-val').textContent = recipe.ring.ringSliderRotation + '°';
+    updateRingPosition();
+
+    resetBailInitFlag();
+    createBail();
 }
 
 document.querySelectorAll('.font-candidate-slot').forEach(el => {
