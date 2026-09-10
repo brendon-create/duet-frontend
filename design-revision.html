@@ -1067,6 +1067,13 @@ async function selectBatchTask(taskId) {
     unlockedFields = task.category === 'ack' ? [] : [task.category];
 
     resetFontSlots(); // 換到別的 task（可能是別件作品）時，候選格是上一個 font 任務留下的，不清掉會顯示錯的比較對象
+    // 「重選字體」的暫存狀態也要一起清乾淨：候選清單（checkedFonts）與動態產生的 font1/font2 下拉，
+    // 都是上一件作品留下的。不清的話，這件作品的字體面板會停在上一件的字體，且 onSizeChanged() 會拿
+    // 上一件的 checkedFonts 把字體套到這一件——害這件只想改尺寸卻連字體一起被改掉。
+    // 清掉後 applyPanelTexts() 會依「沒有下拉元素」把唯讀按鈕與「選擇字體」文字補回這件作品目前的字體。
+    checkedFonts.clear();
+    document.getElementById('font1-select')?.remove();
+    document.getElementById('font2-select')?.remove();
     updateItemSummary();
     applyPanelTexts();
     renderBatchStatusList();
