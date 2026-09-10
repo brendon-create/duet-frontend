@@ -1042,15 +1042,25 @@ function renderBatchStatusList() {
 }
 
 // 用顏色引導客戶「現在該按哪一顆」，畫面上任何時刻只有一顆金色按鈕看起來是該按的：
-// 目前這個項目已完成 → 「確認」變灰；全部項目都完成前 → 「全部送出」維持灰色
+// 目前這個項目已完成 → 「確認」變灰；全部項目都完成後 → 底部這顆「確認」直接變成「全部送出」，
+// 客戶按完確認不用再往上捲去找那顆按鈕（上方 batchSubmitAllBtn 這時就隱藏，避免同時出現兩顆）。
 function updateBatchActionButtonsState() {
     const mainBtn = document.getElementById('mainConfirmBtn');
-    const currentDone = activeTaskId != null && !!batchLocalDone[activeTaskId];
-    mainBtn.classList.toggle('muted', currentDone);
-
     const allBtn = document.getElementById('batchSubmitAllBtn');
+    const currentDone = activeTaskId != null && !!batchLocalDone[activeTaskId];
     const allDone = batchTasks.length > 0 && batchTasks.every(t => batchLocalDone[t.id]);
-    allBtn.classList.toggle('muted', !allDone);
+
+    if (allDone) {
+        mainBtn.textContent = '全部送出';
+        mainBtn.classList.remove('muted');
+        allBtn.style.display = 'none';
+    } else {
+        // 還有項目沒完成：底部維持「確認」（chain 類別 applyPanelTexts 會設成「前往選擇項鍊」，別覆蓋掉）
+        if (mainBtn.textContent === '全部送出') mainBtn.textContent = '確認';
+        mainBtn.classList.toggle('muted', currentDone);
+        allBtn.style.display = '';
+        allBtn.classList.add('muted');
+    }
 }
 
 // 切換到批次裡的某一個 task：把該 task 對應的作品資料（若這個 task 已經完成過，疊上目前暫存在
@@ -2088,6 +2098,9 @@ document.getElementById('storyRegenAcceptBtn').addEventListener('click', () => {
 });
 
 document.getElementById('mainConfirmBtn').addEventListener('click', () => {
+    // 批次模式下全部項目都確認完後，這顆已變成「全部送出」→ 直接走整批送出流程
+    const allDone = isBatchMode && batchTasks.length > 0 && batchTasks.every(t => batchLocalDone[t.id]);
+    if (allDone) { submitWholeBatch(); return; }
     proceedFromMainPanel();
 });
 
