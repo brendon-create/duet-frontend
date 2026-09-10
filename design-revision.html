@@ -934,21 +934,20 @@ function applyPanelTexts() {
         // （批次模式下切到別的任務時，這顆按鈕的文字也要跟著這個任務目前的狀態同步）
         const anySelectExists = document.getElementById('font1-select') || document.getElementById('font2-select');
         document.getElementById('fontReselectBtn').textContent = anySelectExists ? '＋ 重選字體' : '選擇字體';
-        // 尺寸下拉：僅後台員工模式開放，值同步成這件作品目前的尺寸
+        // 尺寸下拉：只要開放了字體組合（font 類別）就一併開放尺寸調整，跟「客服先調整外觀」一致
+        // （批次「與客戶確認」流程也適用，顧客端可在換字體時一併調尺寸）；值同步成這件作品目前的尺寸
         const fontSizeRow = document.getElementById('fontSizeRow');
-        fontSizeRow.style.display = isStaffMode ? 'block' : 'none';
-        if (isStaffMode) {
-            const sizeSel = document.getElementById('size-select');
-            const cur = String(parseInt(item.size) || '');
-            // 目前尺寸若不在標準選項內（例如舊訂單的特殊尺寸），補一個選項進去，避免下拉顯示的值跟實際作品對不上
-            if (cur && !Array.from(sizeSel.options).some(o => o.value === cur)) {
-                const opt = document.createElement('option');
-                opt.value = cur;
-                opt.textContent = `${cur} mm`;
-                sizeSel.appendChild(opt);
-            }
-            if (cur) sizeSel.value = cur;
+        fontSizeRow.style.display = 'block';
+        const sizeSel = document.getElementById('size-select');
+        const cur = String(parseInt(item.size) || '');
+        // 目前尺寸若不在標準選項內（例如舊訂單的特殊尺寸），補一個選項進去，避免下拉顯示的值跟實際作品對不上
+        if (cur && !Array.from(sizeSel.options).some(o => o.value === cur)) {
+            const opt = document.createElement('option');
+            opt.value = cur;
+            opt.textContent = `${cur} mm`;
+            sizeSel.appendChild(opt);
         }
+        if (cur) sizeSel.value = cur;
     } else {
         clearTimeout(fontRingReminderTimer);
         document.getElementById('fontRingReminderToast').style.display = 'none';
@@ -966,9 +965,7 @@ function applyPanelTexts() {
 
     if (hasFont) {
         document.getElementById('panelTitle').textContent = '重新選擇字體組合';
-        document.getElementById('panelHint').textContent = isStaffMode
-            ? '請為兩個字母分別選擇新的字體（字母本身不會更動），必要時可一併調整作品尺寸。更換後模型會重新產生，請一併確認墜頭位置是否需要微調。'
-            : '請為兩個字母分別選擇新的字體（字母本身不會更動）。更換字體後模型會重新產生，請一併確認墜頭位置是否需要微調。材質與尺寸不會被更動。';
+        document.getElementById('panelHint').textContent = '請為兩個字母分別選擇新的字體（字母本身不會更動），必要時可一併調整作品尺寸。更換後模型會重新產生，請一併確認墜頭位置是否需要微調。材質不會被更動。';
         confirmBtn.textContent = '確認';
     } else if (hasRing && hasChain) {
         document.getElementById('panelTitle').textContent = '調整墜頭位置';
@@ -1943,11 +1940,9 @@ function goToDesignConfirm(chainSel) {
     if (unlockedFields.includes('font')) {
         currentRingParams.font1 = item.font1;
         currentRingParams.font2 = item.font2;
-        // 後台員工模式可在換字體時一併調尺寸，尺寸改了重量也一起帶出（顧客端沒有尺寸欄位，維持原值）
-        if (isStaffMode) {
-            currentRingParams.size = parseInt(item.size);
-            currentRingParams.weight = item.weight;
-        }
+        // 換字體時可一併調尺寸（後台員工模式與顧客端皆是），尺寸改了重量也一起帶出
+        currentRingParams.size = parseInt(item.size);
+        currentRingParams.weight = item.weight;
     }
     currentCapturedViews = captureThreeViews(); // 用「現在」的圓環位置重新截圖，不能用頁面剛載入時的舊圖
     document.getElementById('finalSummary').innerHTML = buildFinalSummaryHtml(item, chainSel, currentCapturedViews, currentRingParams);
@@ -1992,6 +1987,9 @@ function proceedAfterFontDecision() {
             if (unlockedFields.includes('font')) {
                 fields.font1 = item.font1;
                 fields.font2 = item.font2;
+                // 換字體時可一併調尺寸，尺寸改了重量也帶出（font 類別白名單已含 size/weight）
+                fields.size = parseInt(item.size);
+                fields.weight = item.weight;
             }
             completeBatchTask(fields);
         } else {
