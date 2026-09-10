@@ -509,7 +509,8 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
-    ringMesh, bailMesh
+    resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave,
+    ringMesh, bailMesh, bailRelativeOffset
 } from './js/ring-bail.js';
 
 // ring-bail.js 內部的 getMaterial() 也是直接讀全域 window.MATERIALS/PLATING_COLORS
@@ -1079,6 +1080,7 @@ async function selectBatchTask(taskId) {
 function resetFontSlots() {
     [window.slot1Renderer, window.slot2Renderer].forEach(r => r?.dispose());
     window.slot1Renderer = window.slot2Renderer = null;
+    fontSlotRecipes.forEach(disposeFontSlotRecipe); // 釋放存下的 mesh/ring/bail clone，避免切換 task 時累積
     fontSlotRecipes = [null, null];
     document.querySelectorAll('.font-candidate-slot').forEach(el => {
         el.classList.add('empty');
@@ -1564,22 +1566,43 @@ function buildFinalSummaryHtml(itemData, chainSel, views, ringParams) {
 }
 
 // ============ 重選字體：候選版本比較 ============
-// 縮圖渲染邏輯照抄 design-studio.html 的 saveToSlot()（已修過偏移/手機版消失/模糊等問題，見該檔案註解），
-// 但這裡不需要「召回繼續編輯」，所以不做 modelGeneration/bailLoadId 那套非同步保護、也不存完整可還原資料，
-// 只存 { font1, font2 } 這組「套用」需要的最小資訊——點候選格直接重跑正常的換字體流程，安全性沿用既有機制
+// 縮圖渲染邏輯照抄 design-studio.html 的 saveToSlot()（已修過偏移/手機版消失/模糊等問題，見該檔案註解）。
+// 召回機制也比照 design-studio 的 loadFromSlot()：暫存時把當下畫面上「實際的那顆 mesh」連同圓環/墜頭
+// 一起 clone 起來，召回時直接還原、跳過 buildScene()。這樣已經清理過分離部件的作品被召回時不會又變回
+// 未清理狀態、不用重跑一次後端清理（重算路徑的老問題）。
 let fontSlotRecipes = [null, null];
+
+function disposeFontSlotRecipe(recipe) {
+    if (!recipe) return;
+    [recipe.meshClone, recipe.ringClone, recipe.bailClone].forEach(m => {
+        if (!m) return;
+        m.geometry?.dispose();
+        m.material?.dispose();
+    });
+}
 
 function saveToFontSlot(slotIndex) {
     if (!window.mainMesh) return;
+    // 分離部件還在清理中就先擋下：這時畫面上的 mesh 是未清理的中間狀態，存進去會是髒的，
+    // 而召回不會重跑偵測，等於把髒幾何永久帶進候選格
+    if (fragCleaning) { alert('分離部件清理中，請待清理完成後再暫存這個版本'); return; }
     const slotElement = document.querySelector(`.font-candidate-slot[data-slot="${slotIndex + 1}"]`);
     slotElement.classList.remove('empty');
-    // 圓環位置一起存：滑桿拖曳當下並不會即時寫回 item.ringRelativeX 等欄位（那些欄位只在送出時
-    // 才用 captureCurrentRingParams() 讀取現值寫入），所以套用候選版本時若不一併存讀，圓環位置
-    // 會被 buildScene() 重新讀回 item 上舊的（甚至是歸零的預設）數值，滑桿看起來像被重置。
-    // 尺寸也要一併存：兩個候選格可能是不同尺寸（例如比較 12mm vs 10mm），圓環位置是在「存檔當下
-    // 那個尺寸」量到的絕對值，套用時如果沒跟著換回同一個尺寸，畫面建出來的模型跟還原的圓環位置
-    // 對不起來，墜頭就會跑掉——這裡直接照抄 onSizeChanged() 已經驗證過的做法。
-    fontSlotRecipes[slotIndex] = { font1: item.font1, font2: item.font2, size: item.size, ring: captureCurrentRingParams() };
+    // 圓環滑桿快照（ring）：滑桿拖曳當下不會即時寫回 item.ringRelativeX 等欄位，召回時要靠這份快照
+    // 把四個滑桿的顯示值補回去。
+    // mesh/ring/bail clone：比照 design-studio 的 saveToSlot()，存「當下實際的幾何」而不是一組參數，
+    // 召回時直接還原、不重算，才能保住已清理的分離部件結果。cleanFragments 記下存檔當下的清理狀態，
+    // 召回時一併還原，送出產 STL 時後端才知道這件已經清過。
+    disposeFontSlotRecipe(fontSlotRecipes[slotIndex]);
+    fontSlotRecipes[slotIndex] = {
+        font1: item.font1, font2: item.font2, size: item.size,
+        ring: captureCurrentRingParams(),
+        cleanFragments: fragCleanApplied,
+        meshClone: (() => { const c = window.mainMesh.clone(); c.geometry = window.mainMesh.geometry.clone(); c.material = window.mainMesh.material.clone(); return c; })(),
+        ringClone: ringMesh ? (() => { const c = ringMesh.clone(); c.geometry = ringMesh.geometry.clone(); c.material = ringMesh.material.clone(); return c; })() : null,
+        bailClone: bailMesh ? (() => { const c = bailMesh.clone(); c.geometry = bailMesh.geometry.clone(); c.material = bailMesh.material.clone(); return c; })() : null,
+        bailRelativeOffset: bailRelativeOffset.clone(),
+    };
 
     // 覆蓋舊版本時先釋放舊的 WebGL context，避免使用者反覆換來換去存同一格時，
     // 瀏覽器同時存在的 WebGL context 數量超過上限（design-studio.html 目前也還沒補這個，順手修掉）
@@ -1660,15 +1683,29 @@ function saveToFontSlot(slotIndex) {
     slotElement.appendChild(label);
 }
 
-async function applyFontSlot(slotIndex) {
+function applyFontSlot(slotIndex) {
     const recipe = fontSlotRecipes[slotIndex];
     if (!recipe) { saveToFontSlot(slotIndex); return; }
+
+    // 取消任何在飛的分離部件偵測/清理，直接沿用這個候選格存檔當下的清理狀態——
+    // 召回不重跑 buildScene()，也就不會重新偵測分離部件，已清理的作品召回後仍是已清理
+    fragGeneration++;
+    if (fragCheckController) fragCheckController.abort();
+    if (fragActiveTaskId) { cancelFragTask(fragActiveTaskId); fragActiveTaskId = null; }
+    fragChecking = false;
+    fragNeedsCleanup = false;
+    fragCleaning = false;
+    fragCleanApplied = !!recipe.cleanFragments;
+    item.cleanFragments = !!recipe.cleanFragments;
+    setFragStatus('idle', recipe.cleanFragments ? '作品分離部件已清理' : '作品分離部件檢查：正常', false);
+
+    // 還原欄位
     item.font1 = recipe.font1;
     item.font2 = recipe.font2;
     item.size = recipe.size; // 兩個候選格可能是不同尺寸，跟著換回這個候選格存檔當下的尺寸
     const sizeSelect = document.getElementById('size-select');
     if (sizeSelect) sizeSelect.value = String(recipe.size);
-    Object.assign(item, recipe.ring); // 還原存這個候選版本當下的圓環位置，不然 buildScene() 會讀到舊值、滑桿看起來被歸零
+    Object.assign(item, recipe.ring); // 還原存這個候選版本當下的圓環位置（ringRelativeX/Y/Z、ringRotation）
     // 若目前候選字體下拉選單裡剛好有這個字體，順便同步顯示值（不強求，不在清單裡也沒關係，畫面照樣正確）
     ['font1', 'font2'].forEach(target => {
         const select = document.getElementById(`${target}-select`);
@@ -1677,14 +1714,35 @@ async function applyFontSlot(slotIndex) {
             select.style.fontFamily = `"${item[target]}", sans-serif`;
         }
     });
-    updateItemSummary();
-    onItemFieldTouched('font');
-    await buildScene();
 
-    // 比照 onSizeChanged() 的做法：buildScene() 的還原邏輯是拿「絕對」ringRelativeZ
-    // 反推滑桿、把圓環釘回存檔當下的絕對高度——如果這個候選格的尺寸跟另一格不同，
-    // 這樣算出來的滑桿值就會是錯的，要拿這個候選格自己存的滑桿快照覆蓋回去、
-    // 重新定位，再重錨一次墜頭，讓墜頭–圓環的間距回到跟這個候選格一致。
+    // 直接還原存檔當下的 mesh／圓環／墜頭（跳過 buildScene()，不重算、不重偵測分離部件）——
+    // 比照 design-studio.html 的 loadFromSlot()
+    const oldMainMesh = window.mainMesh;
+    resetRingState();
+    resetBailState();
+    if (oldMainMesh) {
+        window.scene.remove(oldMainMesh);
+        oldMainMesh.geometry?.dispose();
+        oldMainMesh.material?.dispose();
+    }
+    const restored = recipe.meshClone.clone();
+    restored.geometry = recipe.meshClone.geometry.clone();
+    restored.material = recipe.meshClone.material.clone();
+    window.scene.add(restored);
+    window.mainMesh = restored;
+    removeAllPlaceholderSpheres();
+
+    // 依還原的幾何重算模型中心/頂端 Z：圓環滑桿 oninput、送出時 captureCurrentRingParams() 都會用到。
+    // 存檔與召回是同一份幾何，所以這裡算出來的值跟存檔當時一致，還原的圓環絕對位置才對得上。
+    restored.geometry.computeBoundingBox();
+    const bb = restored.geometry.boundingBox;
+    window.modelCenter = bb.getCenter(new THREE.Vector3());
+    window.modelTopZ = bb.max.z;
+
+    if (recipe.ringClone) restoreRingFromSave(recipe.ringClone);
+    if (recipe.bailClone) restoreBailFromSave(recipe.bailClone, recipe.bailRelativeOffset);
+
+    // 四個滑桿的顯示值補回這個候選格的快照（滑桿拖曳當下不會即時寫回 item，只能靠存檔時的快照）
     document.getElementById('ringX').value = recipe.ring.ringSliderX;
     document.getElementById('ringX-val').textContent = recipe.ring.ringSliderX;
     document.getElementById('ringY').value = recipe.ring.ringSliderY;
@@ -1693,10 +1751,10 @@ async function applyFontSlot(slotIndex) {
     document.getElementById('ringZ-val').textContent = recipe.ring.ringSliderZ;
     document.getElementById('ringRotation').value = recipe.ring.ringSliderRotation;
     document.getElementById('ringRotation-val').textContent = recipe.ring.ringSliderRotation + '°';
-    updateRingPosition();
 
-    resetBailInitFlag();
-    createBail();
+    updateItemSummary();
+    recomputeItemWeight();
+    onItemFieldTouched('font');
 }
 
 document.querySelectorAll('.font-candidate-slot').forEach(el => {
