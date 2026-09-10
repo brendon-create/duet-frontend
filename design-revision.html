@@ -288,6 +288,10 @@
                 </select>
             </div>
             <button type="button" class="font-reselect-btn" id="fontReselectBtn">選擇字體</button>
+            <!-- 比照 design-studio.html 的「儲存到版本 1/2」：候選格視窗點擊只負責「空的→暫存、有東西→召回」，
+                 要用主畫面目前的作品覆蓋掉候選格裡已存的版本，一律走這兩顆按鈕，避免誤點視窗弄丟已存的比較對象 -->
+            <button type="button" class="font-reselect-btn" id="saveFontSlot1Btn">儲存到候選 1</button>
+            <button type="button" class="font-reselect-btn" id="saveFontSlot2Btn">儲存到候選 2</button>
         </div>
 
         <div id="ringControls">
@@ -748,6 +752,9 @@ document.getElementById('font1Btn').addEventListener('click', openFontSelectorMo
 document.getElementById('font2Btn').addEventListener('click', openFontSelectorModal);
 // 選過一輪之後：改成一個獨立的「＋ 重選字體」按鈕（比照 design-studio.html），不要兩個字母各自一個小連結
 document.getElementById('fontReselectBtn').addEventListener('click', openFontSelectorModal);
+// 這兩顆一律覆蓋，不看候選格原本有沒有東西（跟 design-studio.html 的「儲存到版本 1/2」一致）
+document.getElementById('saveFontSlot1Btn').addEventListener('click', () => saveToFontSlot(0));
+document.getElementById('saveFontSlot2Btn').addEventListener('click', () => saveToFontSlot(1));
 
 // 尺寸（僅後台員工模式）：換尺寸後模型會重新產生、字體規範（可用/較粗/較細）也會依新尺寸變動，
 // 所以要一併重刷候選字體下拉的標記，再重算重量、重建場景
