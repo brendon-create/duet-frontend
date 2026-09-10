@@ -227,9 +227,9 @@ window.translations = {
         'studio.font.preload.faster':  '切換字體將更快速',
 
         // ── 分離部件 (Fragment) / 購物車提示 ──
-        'fragment.cart.detected':   '⚠️ 發現作品含有分離部件，請回主畫面使用左側面板清理後再放入購物車。',
+        'fragment.cart.detected':   '⚠️ 發現作品含有分離部件，系統正在自動清理，請待清理完成後再放入購物車。',
         'fragment.cart.clear':      '✅ 確認完畢，作品無分離部件，可以進行製作。',
-        'fragment.warning.body':    '作品含有分離部件，請先使用<br><strong style="color:#d4af37;">左側面板</strong>中正在發光的開關進行清理，確認作品樣貌後再放入購物車。',
+        'fragment.warning.body':    '偵測到作品含有分離部件，系統<strong style="color:#d4af37;">正在自動為您清理</strong>，完成後即可放入購物車。',
         'fragment.warning.ok':      '知道了',
         'studio.generate.first':    '請先生成作品',
         'studio.cleanup.failed':    '清理失敗：',
@@ -677,9 +677,9 @@ window.translations = {
         'studio.font.preload.faster':  'Font switching will be faster',
 
         // ── 分離部件 (Fragment) / 購物車提示 ──
-        'fragment.cart.detected':   '⚠️ Detached parts found. Please go back to the main view and clean up using the left panel before adding to cart.',
+        'fragment.cart.detected':   '⚠️ Detached parts found. The system is cleaning them up automatically — please wait until it finishes before adding to cart.',
         'fragment.cart.clear':      '✅ Confirmed — no detached parts. Ready for production.',
-        'fragment.warning.body':    'This piece has detached parts. Please use the glowing switch in the<br><strong style="color:#d4af37;">left panel</strong> to clean it up and confirm the design before adding to cart.',
+        'fragment.warning.body':    'Detached parts detected. The system is <strong style="color:#d4af37;">cleaning them up automatically</strong> — you can add to cart once it finishes.',
         'fragment.warning.ok':      'Got it',
         'studio.generate.first':    'Please generate a design first',
         'studio.cleanup.failed':    'Cleanup failed: ',
