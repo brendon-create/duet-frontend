@@ -277,8 +277,8 @@
                 <label id="font2LetterLabel">字母 2</label>
                 <button type="button" class="font-select-btn" id="font2Btn"></button>
             </div>
-            <!-- 尺寸：只在後台員工模式（admin=1）顯示，讓客服在換字體的同時一併調整作品尺寸；
-                 顧客端的字體重選畫面不提供這個欄位（JS 依 isStaffMode 控制顯示） -->
+            <!-- 尺寸：只要開放了字體組合（font 類別）就一併開放尺寸調整，客服先調整與顧客端（含批次「與客戶確認」）皆同；
+                 JS applyPanelTexts() 在 hasFont 時顯示並帶入目前尺寸 -->
             <div class="font-current-row" id="fontSizeRow" style="display:none;">
                 <label>作品尺寸高度</label>
                 <select class="font-select-btn" id="size-select" style="cursor:pointer;">
