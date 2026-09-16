@@ -2613,7 +2613,7 @@
                     </div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="orderNoteInput-${oid}" placeholder="新增備注..." style="flex:1;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-light);font-size:13px;" onkeydown="if(event.key==='Enter') addOrderNote('${oid}')">
-                        <button class="btn btn-primary btn-sm" onclick="addOrderNote('${oid}')">新增</button>
+                        <button id="orderNoteBtn-${oid}" class="btn btn-primary btn-sm" onclick="addOrderNote('${oid}')">新增</button>
                     </div>
                 </div>`;
 
@@ -3377,8 +3377,12 @@
 
         async function addOrderNote(orderId) {
             const input = document.getElementById(`orderNoteInput-${orderId}`);
+            const btn = document.getElementById(`orderNoteBtn-${orderId}`);
+            if (input.disabled) return;
             const note = input.value.trim();
             if (!note) return;
+            input.disabled = true;
+            if (btn) btn.disabled = true;
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/notes`, {
                     method: 'POST',
@@ -3403,6 +3407,9 @@
                 input.value = '';
             } catch (e) {
                 alert('新增備注失敗：網路錯誤');
+            } finally {
+                input.disabled = false;
+                if (btn) btn.disabled = false;
             }
         }
 
