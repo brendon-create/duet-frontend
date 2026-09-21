@@ -412,6 +412,10 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    // 顧客輸入的內容（姓名、地址、字母…）一律先跳脫再放進 innerHTML，避免儲存型 XSS
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
     const DIST_STATUS_LABELS = { pending:'待處理', manufacturing:'製作中', completed:'製作完成', shipped:'已出貨', delivered:'已簽收' };
     const DIST_STATUS_COLORS = { pending:'#f59e0b', manufacturing:'#60a5fa', completed:'#a78bfa', shipped:'#34d399', delivered:'#666' };
 
@@ -529,7 +533,7 @@
             _allOrders = data.orders || [];
             applyFilter();
         } catch(e) {
-            tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;padding:24px;">${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center;padding:24px;">${esc(e.message)}</td></tr>`;
         }
     }
 
@@ -562,13 +566,13 @@
             const payLabel  = PAY_STATUS_LABELS[ps]  || ps;
             const date = o.created_at ? formatTaiwanDate(o.created_at) : '—';
             return `<tr>
-                <td style="font-family:monospace;font-size:11px;color:#999;">${o.order_id}</td>
-                <td>${o.customer_name || '—'}</td>
-                <td style="color:#999;font-size:12px;">${o.items_summary || '—'}</td>
+                <td style="font-family:monospace;font-size:11px;color:#999;">${esc(o.order_id)}</td>
+                <td>${esc(o.customer_name) || '—'}</td>
+                <td style="color:#999;font-size:12px;">${esc(o.items_summary) || '—'}</td>
                 <td><span style="color:${payColor};font-weight:500;">${payLabel}</span></td>
                 <td><span style="color:${distColor};font-weight:500;">${distLabel}</span></td>
                 <td style="color:#999;">${date}</td>
-                <td><button class="btn" style="font-size:12px;padding:4px 12px;" onclick="openOrder('${o.order_id}')">查看</button></td>
+                <td><button class="btn" style="font-size:12px;padding:4px 12px;" data-oid="${esc(o.order_id)}" onclick="openOrder(this.dataset.oid)">查看</button></td>
             </tr>`;
         }).join('');
     }
@@ -593,7 +597,7 @@
             if (!data.success) throw new Error(data.error);
             renderOrderModal(data.order);
         } catch(e) {
-            document.getElementById('modalContent').innerHTML = `<p style="color:#f87171;">${e.message}</p>`;
+            document.getElementById('modalContent').innerHTML = `<p style="color:#f87171;">${esc(e.message)}</p>`;
         }
     }
 
@@ -604,14 +608,14 @@
 
         const itemsHtml = (o.items || []).map((item, i) => `
             <div class="design-card">
-                ${item.design_photo_url ? `<img src="${item.design_photo_url}" alt="設計圖" onerror="this.style.display='none'">` : ''}
+                ${/^https?:\/\//i.test(item.design_photo_url || '') ? `<img src="${esc(item.design_photo_url)}" alt="設計圖" onerror="this.style.display='none'">` : ''}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
-                    <div><span style="color:#666;">字母：</span>${item.letter1} + ${item.letter2}</div>
-                    <div><span style="color:#666;">字型：</span>${item.font1} / ${item.font2}</div>
-                    <div><span style="color:#666;">尺寸：</span>${item.size || '—'} mm</div>
+                    <div><span style="color:#666;">字母：</span>${esc(item.letter1)} + ${esc(item.letter2)}</div>
+                    <div><span style="color:#666;">字型：</span>${esc(item.font1)} / ${esc(item.font2)}</div>
+                    <div><span style="color:#666;">尺寸：</span>${esc(item.size) || '—'} mm</div>
                 </div>
                 ${item.has_stl
-                    ? `<a href="${window.BACKEND_URL}/api/distributor/orders/${o.order_id}/stl/${i}"
+                    ? `<a href="${window.BACKEND_URL}/api/distributor/orders/${encodeURIComponent(o.order_id)}/stl/${i}"
                           style="display:inline-block;margin-top:10px;color:#c9a96e;font-size:13px;text-decoration:none;border:1px solid rgba(201,169,110,0.3);padding:5px 14px;border-radius:6px;"
                           download>⬇ 下載 STL</a>`
                     : '<div style="margin-top:10px;font-size:12px;color:#666;">STL 生成中，請稍後</div>'
@@ -631,10 +635,10 @@
         document.getElementById('modalContent').innerHTML = `
             <div class="section-title">顧客資訊</div>
             <div class="info-grid">
-                <div class="info-item"><label>收件人</label><span>${o.customer_name || '—'}</span></div>
-                <div class="info-item"><label>電話</label><span>${o.customer_phone || '—'}</span></div>
-                <div class="info-item" style="grid-column:1/-1"><label>收件地址</label><span>${o.shipping_address || '—'}</span></div>
-                <div class="info-item" style="grid-column:1/-1"><label>Email</label><span>${o.customer_email || '—'}</span></div>
+                <div class="info-item"><label>收件人</label><span>${esc(o.customer_name) || '—'}</span></div>
+                <div class="info-item"><label>電話</label><span>${esc(o.customer_phone) || '—'}</span></div>
+                <div class="info-item" style="grid-column:1/-1"><label>收件地址</label><span>${esc(o.shipping_address) || '—'}</span></div>
+                <div class="info-item" style="grid-column:1/-1"><label>Email</label><span>${esc(o.customer_email) || '—'}</span></div>
             </div>
 
             <div class="section-title">設計內容</div>
@@ -651,7 +655,7 @@
                         <option value="">— 選擇新狀態 —</option>
                         ${statusOptions}
                     </select>
-                    <button class="btn btn-primary" onclick="submitStatus('${o.order_id}')">更新</button>
+                    <button class="btn btn-primary" data-oid="${esc(o.order_id)}" onclick="submitStatus(this.dataset.oid)">更新</button>
                 </div>
                 ${trackingField}
                 ` : '<p style="color:#666;font-size:13px;">此訂單已完成，無法再更新狀態。</p>'}
