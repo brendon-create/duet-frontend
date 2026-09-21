@@ -447,6 +447,15 @@
     </div>
 </div>
 
+<!-- 設計理念可編輯提示 -->
+<div id="storyEditHintModal" class="modal-overlay" style="z-index:600;">
+    <div class="modal-box" style="max-width:380px;">
+        <h3>💡 這段文字可以編輯</h3>
+        <div class="sub" style="margin-bottom:20px;">這是 AI 為您重新生成的設計理念，直接編輯上方文字框即可修改內容。</div>
+        <button class="btn-gold" id="storyEditHintOkBtn">知道了</button>
+    </div>
+</div>
+
 <!-- 設計確認（7 天鑑賞期提示）-->
 <div id="designConfirmModal" class="modal-overlay">
     <div class="modal-box">
@@ -2074,6 +2083,7 @@ async function requestStoryRegeneration() {
             document.getElementById('storyRegenReasonModal').style.display = 'none';
             document.getElementById('storyRegenResultText').value = data.designStory;
             document.getElementById('storyRegenResultModal').style.display = 'flex';
+            document.getElementById('storyEditHintModal').style.display = 'flex';
         } else {
             msgEl.style.color = '#ef4444';
             msgEl.textContent = data.error || '生成失敗，請再試一次';
@@ -2089,6 +2099,10 @@ document.getElementById('storyRegenSubmitBtn').addEventListener('click', request
 document.getElementById('storyRegenRetryBtn').addEventListener('click', () => {
     document.getElementById('storyRegenResultModal').style.display = 'none';
     document.getElementById('storyRegenReasonModal').style.display = 'flex';
+});
+
+document.getElementById('storyEditHintOkBtn').addEventListener('click', () => {
+    document.getElementById('storyEditHintModal').style.display = 'none';
 });
 
 document.getElementById('storyRegenAcceptBtn').addEventListener('click', () => {

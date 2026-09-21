@@ -73,7 +73,7 @@ window.translations = {
         'faq.q3': '如果不滿意設計怎麼辦?',
         'faq.a3': '付款前可無限次修改設計。付款後若作品有明顯疑慮（例如墜頭位置偏移、包含未清除的分離部件等），製作前會再次確認。收到作品後若有製作品質問題，提供 30 天無條件退換貨保證。（因作品完全按照訂製時看到的 3D 模擬製作，退換貨不包含對作品造型本身的不滿意，下單前請仔細確認造型）',
         'faq.q4': '對話記錄會保存在哪？我的隱私有保障嗎?',
-        'faq.a4': '對話內容僅用於設計推薦，採用端到端加密，並儲存在符合 SOC2 Type II、HIPAA、ISO 27001 三重資安認證的資料庫中，不會在未經您同意的情況下被分享或用於其他用途。您的故事只屬於您。',
+        'faq.a4': '對話內容主要用於設計推薦，透過 HTTPS/TLS 加密傳輸，並儲存於符合 SOC2 Type II、ISO 27001 認證的雲端服務設施中，不會在未經您同意的情況下分享給第三方或用於模型訓練。我們可能將對話記錄（已排除姓名等直接識別資訊）用於內部服務品質分析。',
         'faq.q5': '可以只訂購一個字母嗎?',
         'faq.a5': 'DUET 的核心是「交織」，因此僅提供雙字母設計。但你可以選擇相同字母（如 A × A），創造對稱美感。或是將其中一個字母選擇風格較簡約的「I」，這樣完成的作品視覺上就會像是只有一個平面的字母。',
         'faq.q6': '退換貨政策是什麼?',
@@ -365,6 +365,7 @@ window.translations = {
         // ── 設計理念卡片 ──
         'design.story.edit.hint':   '💡 點擊卡片內文字可編輯',
         'design.story.confirm':     '確定',
+        'design.story.decline':     '不需要設計理念',
 
         // ── AI 諮詢 Modal ──
         'ai.modal.consultant':      '設計諮詢',
@@ -523,7 +524,7 @@ window.translations = {
         'faq.q3': "What if I'm not satisfied with the design?",
         'faq.a3': 'You may revise your design unlimited times before payment. After payment, if there are clear concerns (such as misaligned bail or disconnected components), we will confirm with you before production. If there is a quality issue with the finished piece, we offer a 30-day unconditional exchange or refund. (As each piece is produced exactly to the 3D preview you approved, dissatisfaction with the design itself is not covered — please review carefully before ordering.)',
         'faq.q4': 'Where is my conversation stored? Is my privacy protected?',
-        'faq.a4': 'Your conversation is used solely for design recommendations. It is end-to-end encrypted and stored in a database certified to SOC2 Type II, HIPAA, and ISO 27001 standards. It will never be shared or used for any other purpose without your consent. Your story belongs only to you.',
+        'faq.a4': 'Your conversation is mainly used for design recommendations. It is transmitted via HTTPS/TLS encryption and stored on cloud infrastructure certified to SOC2 Type II and ISO 27001 standards. It will never be shared with third parties or used for model training without your consent. We may use de-identified conversation records (excluding your name and other direct identifiers) for internal service quality analysis.',
         'faq.q5': 'Can I order with just one letter?',
         'faq.a5': `At the heart of DUET is the concept of intertwining, so all designs feature two letters. However, you can choose the same letter twice (e.g., A × A) for a symmetrical aesthetic, or choose "I" as one of the letters for a more minimal look.`,
         'faq.q6': 'What is the return policy?',
@@ -815,6 +816,7 @@ window.translations = {
         // ── 設計理念卡片 ──
         'design.story.edit.hint':   '💡 Click on card text to edit',
         'design.story.confirm':     'Confirm',
+        'design.story.decline':     'No design concept needed',
 
         // ── AI 諮詢 Modal ──
         'ai.modal.consultant':      'Design Consultation',
