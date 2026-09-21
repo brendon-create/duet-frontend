@@ -5751,10 +5751,6 @@
         // ── 設計確認 Modal ──────────────────────────────────
         const _DESIGN_STATEMENT_TEXT = '此為客製化商品，確認後無法修改設計；實品與 3D 預覽可能因手工製作略有差異（尖銳角落會修整出圓角）；客製化商品不適用七天鑑賞期。';
         const _DESIGN_STATEMENT_VERSION = 'v1';
-        // 使用條款／隱私權政策版本號：對應 terms.html／privacy.html 頁面上標示的「版本 v1.1」，
-        // 政策內容有實質修改時記得同步更新這裡，這樣訂單存的同意紀錄才對得上當時的條款版本
-        const _TERMS_VERSION = 'v1.1';
-        const _PRIVACY_VERSION = 'v1.1';
         // 只存翻譯 key，實際文字在每次渲染時才用 window.t() 現查，避免切換語言後這裡的文字卡住不更新；
         // 'plating.none' 這個 key 在 translations.js 裡其實不存在（原本 `|| '無'` fallback 因此從沒真的生效過），改用真正存在的 'cart.item.plating.none'
         const _MATERIAL_LABEL_KEYS = { silver925: 'mat.silver925', brass: 'mat.brass', precious_metal: 'mat.precious' };
@@ -5949,11 +5945,7 @@
                         promoCode: appliedPromoCode,    // 傳送優惠碼
                         aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
                         designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
-                        marketingConsent: document.getElementById('marketing-consent-checkbox')?.checked || false, // ✅ 結帳頁勾選框實際值，未勾選視為不同意
-                        termsAccepted: window._termsConsent?.termsAccepted || false, // ✅ 條款同意存證
-                        termsVersion: window._termsConsent?.termsVersion || '',
-                        privacyVersion: window._termsConsent?.privacyVersion || '',
-                        consentTimestamp: window._termsConsent?.consentTimestamp || '',
+                        // marketingConsent 不特別傳，後端 /api/checkout 預設視為同意（不在結帳頁另外詢問）
                         returnUrl: window.location.origin + '/payment-success.html',
                         renderCount: renderCount,       // 本次 session 的 render 次數（後台統計用）
                         lang: localStorage.getItem('duet_language') || 'zh'
@@ -6222,24 +6214,6 @@
 
                             <p id="email-confirm-hint" style="font-size:15px; color:rgba(255,255,255,0.5); margin:0 0 12px; text-align:right;"></p>
 
-                            <!-- 同意勾選區 -->
-                            <div style="background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
-                                <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:12px;">
-                                    <input type="checkbox" id="terms-consent-checkbox" required
-                                           style="margin-top:2px;width:17px;height:17px;accent-color:#d4af37;cursor:pointer;flex-shrink:0;">
-                                    <label for="terms-consent-checkbox" style="cursor:pointer; font-size:13px; color:rgba(255,255,255,0.8);">
-                                        ${window.t('order.form.termsConsent')}
-                                    </label>
-                                </div>
-                                <div style="display:flex; align-items:flex-start; gap:8px;">
-                                    <input type="checkbox" id="marketing-consent-checkbox"
-                                           style="margin-top:2px;width:17px;height:17px;accent-color:#d4af37;cursor:pointer;flex-shrink:0;">
-                                    <label for="marketing-consent-checkbox" style="cursor:pointer; font-size:13px; color:rgba(255,255,255,0.7);">
-                                        ${window.t('order.form.marketingConsent')}
-                                    </label>
-                                </div>
-                            </div>
-
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);"
                                         onclick="document.getElementById('user-info-modal').remove();">
@@ -6402,15 +6376,6 @@
                 // 處理表單提交
                 document.getElementById('user-info-form').addEventListener('submit', (e) => {
                     e.preventDefault();
-
-                    // ✅ 條款同意存證：與 window._designConfirmation 同一套模式，記錄同意的版本號與時間點，
-                    // 讓後端能存下「客戶當時同意的是哪一版條款」，發生消費爭議時才拿得出證據
-                    window._termsConsent = {
-                        termsAccepted: document.getElementById('terms-consent-checkbox').checked,
-                        termsVersion: _TERMS_VERSION,
-                        privacyVersion: _PRIVACY_VERSION,
-                        consentTimestamp: new Date().toISOString()
-                    };
 
                     const invoiceType = document.querySelector('input[name="invoice-type"]:checked').value;
 

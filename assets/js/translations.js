@@ -309,8 +309,6 @@ window.translations = {
         'order.form.originalPrice':  '原價',
         'order.form.discount':      '優惠折扣',
         'order.form.total':         '應付金額',
-        'order.form.termsConsent':  '我已詳閱並同意 DUET 的<a href="terms.html" target="_blank" style="color:#d4af37;">使用條款</a>與<a href="privacy.html" target="_blank" style="color:#d4af37;">隱私權政策</a>',
-        'order.form.marketingConsent': '我願意收到 DUET 的優惠活動、新品消息，以及關係經營、生命故事等實用內容（可隨時取消訂閱）',
         'order.form.cancel':        '取消',
         'order.form.continue':      '繼續付款',
 
@@ -762,8 +760,6 @@ window.translations = {
         'order.form.originalPrice':  'Original Price',
         'order.form.discount':      'Discount',
         'order.form.total':          'Total',
-        'order.form.termsConsent':  'I have read and agree to DUET\'s <a href="terms-en.html" target="_blank" style="color:#d4af37;">Terms of Service</a> and <a href="privacy.html" target="_blank" style="color:#d4af37;">Privacy Policy</a> (English version in progress; the Chinese version is authoritative)',
-        'order.form.marketingConsent': "I'd like to receive promotions, new arrivals, and content on relationships and meaningful moments from DUET (unsubscribe anytime)",
         'order.form.cancel':        'Cancel',
         'order.form.continue':      'Continue to Payment',
 
