@@ -3164,26 +3164,75 @@
                 size: parseInt(document.getElementById('size').value)
             };
             (async () => {
-                try {
-                    const resp = await fetch(`${window.BACKEND_URL}/api/check-fragments`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(checkParams),
-                        signal: myController.signal
-                    });
-                    if (myController.signal.aborted) return;
-                    const result = await resp.json();
-                    if (myController.signal.aborted) return;
+                // 碎片偵測是「客戶看到的＝最後拿到的」這個承諾的把關者，503（後端 OpenSCAD 名額
+                // 滿載）或任何網路失敗，都絕對不能被當成「已確認乾淨」而悄悄放行——寧可自動重試，
+                // 重試用盡也要保守地當成「需要清理」，交給背景佇列（一定會排隊處理完成）把關，
+                // 不能讓 fragmentCheckPending 在還沒有真正答案的情況下變成 false。
+                const maxAttempts = 5;
+                let attempt = 0;
+                let confirmedResult = null; // 只有 HTTP 200 時才會賦值
+
+                while (attempt < maxAttempts) {
+                    attempt++;
+                    try {
+                        const resp = await fetch(`${window.BACKEND_URL}/api/check-fragments`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(checkParams),
+                            signal: myController.signal
+                        });
+                        if (myController.signal.aborted) return;
+
+                        if (resp.ok) {
+                            confirmedResult = await resp.json();
+                            // await 之後、寫入任何全域狀態之前，再次確認這仍是目前這一輪
+                            // （不是被新的 generateModel() 取代的舊設計，例如剛好在解析 JSON
+                            // 期間使用者已經換了字體/尺寸）
+                            if (myController.signal.aborted || fragmentCheckController !== myController) return;
+                            break;
+                        }
+
+                        // 非 200（例如 503：OpenSCAD 名額滿載）—— 不是「沒有碎片」，是「還不知道」，
+                        // 依 Retry-After（沒有就預設 2 秒）延遲後重試
+                        if (attempt < maxAttempts) {
+                            const retryAfterSec = parseFloat(resp.headers.get('Retry-After')) || 2;
+                            console.warn(`⚠️ 片段偵測回應 ${resp.status}，${retryAfterSec}s 後重試（第 ${attempt}/${maxAttempts} 次）`);
+                            await new Promise(r => setTimeout(r, retryAfterSec * 1000));
+                            if (myController.signal.aborted) return;
+                        }
+                    } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        console.warn(`⚠️ 片段偵測失敗（第 ${attempt}/${maxAttempts} 次）:`, e.message);
+                        if (attempt < maxAttempts) {
+                            await new Promise(r => setTimeout(r, 2000));
+                            if (myController.signal.aborted) return;
+                        }
+                    }
+                }
+
+                if (myController.signal.aborted) return;
+
+                if (confirmedResult) {
+                    // 拿到明確答案（HTTP 200），照原本邏輯處理
                     fragmentCheckPending = false;
-                    if (result.has_fragments && !cleanFragmentsApplied && !isCleanupInProgress) {
+                    // 「這個設計需不需要清理」只能由 has_fragments 決定，不能被 isCleanupInProgress
+                    // 影響——isCleanupInProgress 只該用來決定「現在要不要立刻啟動一輪新的清理」，
+                    // 不然如果上一個（已經被放棄的）設計的清理還沒真正結束（isCleanupInProgress 還是
+                    // true 的殘留狀態），會誤判成「這個新設計不需要清理」而放行加入購物車
+                    if (confirmedResult.has_fragments) {
                         modelNeedsCleanup = true;
                         showFragmentWarning();
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
                         const cleanupLabel = document.getElementById('cleanup-label');
                         if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
                         if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
-                        console.log(`⚠️ 片段偵測：發現 ${result.component_count} 個分量，自動開始清理`);
-                        cleanupFragments();   // 不再等使用者按開關，偵測到就自動清理
+                        console.log(`⚠️ 片段偵測：發現 ${confirmedResult.component_count} 個分量，自動開始清理`);
+                        if (!cleanFragmentsApplied && !isCleanupInProgress) {
+                            cleanupFragments();   // 不再等使用者按開關，偵測到就自動清理
+                        }
+                        // 若 isCleanupInProgress 目前是 true（前一輪已經放棄的設計還在收尾），
+                        // 這裡先不啟動——等它結束時（見 cleanupFragments() 內偵測到過期那段）
+                        // 會自動幫這一輪重新排入清理，不需要使用者手動按重試
                     } else {
                         modelNeedsCleanup = false;
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
@@ -3192,21 +3241,31 @@
                         if (cleanupLabel) cleanupLabel.classList.remove('cleanup-needs-attention-label');
                         console.log('✅ 片段偵測：模型無分離部件');
                     }
-                    // 若有人在 pending 期間就加入購物車，通知購物車更新狀態
-                    const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
-                    if (cartPendingMsg) {
-                        if (modelNeedsCleanup) {
-                            cartPendingMsg.innerHTML = window.t('fragment.cart.detected');
-                            cartPendingMsg.style.color = '#d4af37';
-                        } else {
-                            cartPendingMsg.innerHTML = window.t('fragment.cart.clear');
-                            cartPendingMsg.style.color = '#8fd4a0';
-                            setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
-                        }
+                } else {
+                    // 重試 5 次全部失敗——無法確認這個模型到底乾不乾淨，保守起見當成「需要清理」，
+                    // 交給背景佇列（blocking=True，會排隊等到處理完成，不會再被 503 擋掉）收尾
+                    console.error(`❌ 片段偵測連續失敗 ${maxAttempts} 次，保守視為需要清理`);
+                    modelNeedsCleanup = true;
+                    fragmentCheckPending = false; // 「偵測」階段結束，交棒給 modelNeedsCleanup/isCleanupInProgress 把關
+                    showFragmentWarning();
+                    const toggleContainer = document.getElementById('cleanup-toggle-container');
+                    const cleanupLabel = document.getElementById('cleanup-label');
+                    if (toggleContainer) toggleContainer.classList.add('cleanup-needs-attention');
+                    if (cleanupLabel) cleanupLabel.classList.add('cleanup-needs-attention-label');
+                    if (!cleanFragmentsApplied && !isCleanupInProgress) cleanupFragments();
+                }
+
+                // 若有人在 pending 期間就加入購物車，通知購物車更新狀態
+                const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
+                if (cartPendingMsg) {
+                    if (modelNeedsCleanup) {
+                        cartPendingMsg.innerHTML = window.t('fragment.cart.detected');
+                        cartPendingMsg.style.color = '#d4af37';
+                    } else {
+                        cartPendingMsg.innerHTML = window.t('fragment.cart.clear');
+                        cartPendingMsg.style.color = '#8fd4a0';
+                        setTimeout(() => { if (cartPendingMsg) cartPendingMsg.remove(); }, 4000);
                     }
-                } catch (e) {
-                    fragmentCheckPending = false;
-                    if (e.name !== 'AbortError') console.warn('⚠️ 片段偵測失敗（靜默）:', e.message);
                 }
             })();
 
@@ -3384,9 +3443,16 @@
                 console.log(`${timestamp()} ✅ 取得 task_id: ${task_id} ${elapsed()}`);
                 cleanupActiveTaskId = task_id;
 
-                // 這輪已被新的 generateModel() 取代（使用者換了字體/尺寸）→ 取消任務、放棄結果
+                // 這輪已被新的 generateModel() 取代（使用者換了字體/尺寸）→ 取消任務、放棄結果。
+                // 但「新的那個設計」如果也需要清理，不能就這樣放著沒人管——finally 釋放
+                // isCleanupInProgress 之後，用 setTimeout(...,0) 排到下一輪 tick 再檢查，
+                // 確保是在這次呼叫完全結束（isCleanupInProgress 已經變回 false）之後才重新觸發，
+                // 不需要使用者手動按重試
                 if (myCleanupGen !== cleanupGeneration) {
                     fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${task_id}`, { method: 'POST', keepalive: true }).catch(() => {});
+                    setTimeout(() => {
+                        if (modelNeedsCleanup && !cleanFragmentsApplied && !isCleanupInProgress) cleanupFragments();
+                    }, 0);
                     return;
                 }
 
@@ -3401,6 +3467,9 @@
                 while (pollCount < maxPolls) {
                     if (myCleanupGen !== cleanupGeneration) {
                         fetch(`${window.BACKEND_URL}/api/request-preview-cancel/${task_id}`, { method: 'POST', keepalive: true }).catch(() => {});
+                        setTimeout(() => {
+                            if (modelNeedsCleanup && !cleanFragmentsApplied && !isCleanupInProgress) cleanupFragments();
+                        }, 0);
                         return;
                     }
                     const statusResp = await fetch(`${window.BACKEND_URL}/api/request-preview-status/${task_id}`);
@@ -3474,6 +3543,9 @@
                 // 換掉幾何前最後檢查一次：這輪若已被新的 generateModel() 取代就不要動場景
                 if (myCleanupGen !== cleanupGeneration) {
                     cleanGeometry.dispose?.();
+                    setTimeout(() => {
+                        if (modelNeedsCleanup && !cleanFragmentsApplied && !isCleanupInProgress) cleanupFragments();
+                    }, 0);
                     return;
                 }
 
@@ -3545,8 +3617,15 @@
                 console.error('❌ 清理失敗:', error);
                 cleanupActiveTaskId = null;
 
-                // 這輪已被新的 generateModel() 取代 → 不要覆寫新狀態、也不要顯示失敗提示
-                if (myCleanupGen !== cleanupGeneration) { isCleanupInProgress = false; return; }
+                // 這輪已被新的 generateModel() 取代 → 不要覆寫新狀態、也不要顯示失敗提示，
+                // 但如果新的那個設計也需要清理，一樣要在這次呼叫完全結束後重新排入
+                if (myCleanupGen !== cleanupGeneration) {
+                    isCleanupInProgress = false;
+                    setTimeout(() => {
+                        if (modelNeedsCleanup && !cleanFragmentsApplied && !isCleanupInProgress) cleanupFragments();
+                    }, 0);
+                    return;
+                }
 
                 // 自動清理失敗：維持 modelNeedsCleanup=true（購物車仍封鎖），露出「重試」讓使用者手動再試一次
                 if (cleanupLabel) {
@@ -4275,6 +4354,13 @@
             // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
             if (modelNeedsCleanup) {
                 showToast(window.t('studio.fragment.addToCart'));
+                return;
+            }
+
+            // 🔍 碎片偵測還在跑、還沒有確認結果（包含重試中）——這個當下 modelNeedsCleanup
+            // 還沒被設定，如果不擋，使用者可能在偵測結果出來之前就把還沒確認過的設計加進購物車
+            if (fragmentCheckPending) {
+                showToast(window.t('studio.fragment.checking'));
                 return;
             }
 
