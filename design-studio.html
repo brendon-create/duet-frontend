@@ -201,10 +201,13 @@
         </div>
 
         <!-- 🧹 分離部件狀態：偵測到就自動清理，不再需要手動開關。#cleanup-label 直接當狀態文字用；
-             失敗時才露出「重試」。toggle 保留在 DOM（舊程式碼與確認框仍引用其 id）但隱藏、永不觸發。 -->
+             還沒偵測完（idle）時留空、不顯示「清理作品分離部件」這句沒有意義的預設文字，只在
+             清理中／已清理／清理失敗時才顯示對應文字；失敗時才露出「重試」。
+             不能掛 data-i18n，否則語言切換時 applyLanguage() 會把它蓋回固定文字，蓋掉當下的動態狀態。
+             toggle 保留在 DOM（舊程式碼與確認框仍引用其 id）但隱藏、永不觸發。 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" data-i18n="studio.cleanup.label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
+                <label id="cleanup-label" style="margin: 0; font-size: 13px;"></label>
 
                 <button type="button" id="cleanup-retry-btn" style="display:none; padding:3px 12px; font-size:12px;
                         cursor:pointer; background:transparent; border:1px solid #d4af37; border-radius:6px; color:#d4af37;">重試</button>
@@ -3132,7 +3135,7 @@
             }
             
             if (cleanupLabel) {
-                cleanupLabel.textContent = window.t('studio.cleanup.label');  // 重置文字
+                cleanupLabel.textContent = '';  // 還沒偵測完，先留空（保留空間但不顯示文字）
                 cleanupLabel.style.color = '';  // 重置顏色
                 cleanupLabel.classList.remove('loading-pulse');
             }
