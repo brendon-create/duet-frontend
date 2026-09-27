@@ -919,7 +919,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
         // 字體載入系統
         import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
@@ -3101,9 +3101,10 @@
 
             debug('Model generated, creating ring...'); // Debug
             createRing();
-            
-            // 🔧 建立 Bail
-            createBail();
+
+            // 🔧 建立 Bail（await：墜頭 STL 是非同步下載的，沒等它定位完成就解鎖「加入購物車」，
+            // 會抓到「圓環已在新位置、墜頭還沒跟上」的過渡畫面存進訂單照片）
+            await createBail();
             
             // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
             setTimeout(() => updateVolumeWeight(), 100);
@@ -4347,6 +4348,13 @@
 
             // ⏳ 模型還在背景重新運算（例如剛改完尺寸），此時 BBox/圓環位置都還是舊資料，先擋下來
             if (isModelGenerating) {
+                showToast(window.t('studio.model.updating'));
+                return;
+            }
+
+            // ⏳ 額外保險：墜頭 STL 還在下載/定位中（正常情況下 isModelGenerating 已經涵蓋這段，
+            // 這裡是防呆，避免之後有其他路徑繞過 generateModel() 直接呼叫 createBail()）
+            if (bailLoading) {
                 showToast(window.t('studio.model.updating'));
                 return;
             }

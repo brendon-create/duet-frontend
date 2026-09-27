@@ -13,6 +13,7 @@ export let ringMesh = null;
 export let bailMesh = null;
 export let bailRelativeOffset = new THREE.Vector3();
 export let bailInitialized = false;
+export let bailLoading = false; // true 期間墜頭 STL 尚未下載/定位完成，呼叫端應擋住加入購物車等操作
 let bailLoadId = 0; // 每次 createBail 或 resetBailState 遞增，取消過期的 async STL 結果
 
 function getMaterial(materialType, finish, plating) {
@@ -83,24 +84,26 @@ export function createBail() {
         );
         bailMesh.rotation.z = ringMesh.rotation.z;
         console.log(`🔗 Bail 位置已更新（保持偏移）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
-        return;
+        return Promise.resolve();
     }
 
     // 舊的 bailMesh 留著參照，等新的載入、加進場景後才移除，避免換作品時墜頭環扣中間有一段時間憑空消失
     // （STL 是非同步載入，若在這裡就先移除，畫面會空白直到載入完成）
     const oldBailMesh = bailMesh;
 
-    if (!window.mainMesh) return;
+    if (!window.mainMesh) return Promise.resolve();
 
     const myBailId = ++bailLoadId;
+    bailLoading = true;
     const bailUrl = `assets/models/bail.stl`;
     console.log('🔽 載入 Bail STL:', bailUrl);
 
     const loader = new STLLoader();
+    return new Promise((resolve) => {
     loader.load(
         bailUrl,
         (geometry) => {
-            if (myBailId !== bailLoadId) return; // 已被 reset 或新的 createBail 取代，捨棄
+            if (myBailId !== bailLoadId) { resolve(); return; } // 已被 reset 或新的 createBail 取代，捨棄
             console.log('✅ Bail STL 載入成功');
 
             // 計算 geometry 的中心
@@ -146,11 +149,13 @@ export function createBail() {
             console.log(`🔧 Bail 縮放（非等比）: XY=${scaleXY.toFixed(3)}, Z=${scaleZ.toFixed(3)}`);
             console.log(`📐 Bail 縮放後尺寸: X=${scaledSizeX.toFixed(2)}, Y=${scaledSizeY.toFixed(2)}, Z=${scaledSizeZ.toFixed(2)}`);
 
-            // 定位：Bail 中心點在 modelTopZ + 1.2 + bail高度的一半
+            // 定位：Bail 中心點在「圓環現在的 Z」+ bail 高度的一半，不能用 modelTopZ 現算，
+            // 否則如果圓環在這個 STL 下載完成前就已經被滑桿拉離預設位置，這裡會無視那個調整，
+            // 把墜頭釘在模型頂端、跟圓環對不上（而且這個偏移量之後會被當成基準一路沿用下去）
             // X、Y 跟 Ring 一樣，Z 在 Ring 上方
 
             if (ringMesh) {
-                const bailCenterZ = window.modelTopZ + 1.2 + scaledSizeZ / 2;
+                const bailCenterZ = ringMesh.position.z + scaledSizeZ / 2;
                 bailMesh.position.set(
                     ringMesh.position.x,
                     ringMesh.position.y,
@@ -173,7 +178,7 @@ export function createBail() {
                 // bailMesh.rotation.x = Math.PI / 2; // X 軸旋轉 90 度
 
                 console.log(`🔍 Ring 位置: (${ringMesh.position.x.toFixed(2)}, ${ringMesh.position.y.toFixed(2)}, ${ringMesh.position.z.toFixed(2)})`);
-                console.log(`🔍 Bail 位置（中心在ring上方 ${1.2 + scaledSizeZ/2}mm）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
+                console.log(`🔍 Bail 位置（中心在ring上方 ${scaledSizeZ/2}mm）: (${bailMesh.position.x.toFixed(2)}, ${bailMesh.position.y.toFixed(2)}, ${bailMesh.position.z.toFixed(2)})`);
             } else {
                 bailMesh.position.set(window.modelCenter.x, window.modelCenter.y + 5, window.modelCenter.z);
             }
@@ -201,6 +206,9 @@ export function createBail() {
             if (typeof window.updateWearingPreview === 'function') {
                 window.updateWearingPreview();
             }
+
+            if (myBailId === bailLoadId) bailLoading = false;
+            resolve();
         },
         (progress) => {
             console.log(`⏳ Bail 載入進度: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
@@ -209,8 +217,11 @@ export function createBail() {
             console.error('❌ Bail STL 載入失敗:', error);
             console.log('⚠️ 繼續使用，不使用 Bail');
             // 新的載入失敗，舊的 bail（如果有）維持留在場景上，總比什麼都沒有好
+            if (myBailId === bailLoadId) bailLoading = false;
+            resolve();
         }
     );
+    });
 }
 
 export function resetRingState() {
@@ -225,6 +236,7 @@ export function resetRingState() {
 
 export function resetBailState() {
     bailLoadId++; // 取消任何正在飛行中的 STL 載入
+    bailLoading = false; // 上面已把它的 bailLoadId 判斷作廢，它的 resolve/false 設定不會再生效，這裡要自己清掉
     if (bailMesh) {
         if (window.scene) window.scene.remove(bailMesh);
         bailMesh.geometry?.dispose();
@@ -259,6 +271,7 @@ export function restoreRingFromSave(savedRing) {
 // 直接從儲存資料還原 bail（跳過 async STL 下載，完全複製儲存時的 position/rotation）
 export function restoreBailFromSave(savedBail, savedRelativeOffset) {
     bailLoadId++; // 取消任何正在飛行中的 STL 載入
+    bailLoading = false; // 同上，上面已把它的 bailLoadId 判斷作廢，這裡要自己清掉
     if (bailMesh) {
         if (window.scene) window.scene.remove(bailMesh);
         bailMesh.geometry?.dispose();
