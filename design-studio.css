@@ -324,6 +324,96 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
+        /* 版位角落的「取代」按鈕：只在該版位已存滿（非 .empty）時才顯示，
+           跟縮圖本體（點擊＝召回）的點擊區明確分開，靠 stopPropagation 避免冒泡。 */
+        .slot-replace-btn {
+            display: none;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            background: rgba(20, 20, 24, 0.55);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            color: rgba(212, 175, 55, 0.9);
+            cursor: pointer;
+            padding: 0;
+            z-index: 10;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .slot-replace-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .slot-replace-btn:hover {
+            background: rgba(212, 175, 55, 0.18);
+            border-color: rgba(212, 175, 55, 0.8);
+        }
+
+        .version-slot:not(.empty) .slot-replace-btn {
+            display: flex;
+        }
+
+        /* 版位取代圖示的說明框：left/top 由 JS 依 slot 1 實際位置動態計算（見
+           showSlotReplaceHint()），這裡只負責外觀。跟 #share-explainer 同一套玻璃質感，
+           但不會自動淡出消失——一定要按「知道了」才會消失。 */
+        .slot-replace-hint {
+            position: fixed;
+            max-width: 220px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            backdrop-filter: blur(10px) saturate(100%);
+            -webkit-backdrop-filter: blur(10px) saturate(100%);
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
+            z-index: 250;
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .slot-replace-hint.visible {
+            display: block;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .slot-replace-hint .icon-inline {
+            width: 13px;
+            height: 13px;
+            display: inline-block;
+            vertical-align: -2px;
+            color: #d4af37;
+        }
+
+        .slot-replace-hint button {
+            display: block;
+            margin: 10px auto 0;
+            padding: 6px 18px;
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 999px;
+            color: #d4af37;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+        }
+
+        .slot-replace-hint button:hover {
+            background: rgba(212, 175, 55, 0.22);
+        }
+
         /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體）。
            手機版 .version-slot 用 height:0 + padding-bottom 撐正方形，content box 高度是 0，
            如果靠父層 .version-slot.empty 的 flex 置中（在 0 高度的 content box 裡置中）文字會被推到頂端；
@@ -1216,6 +1306,17 @@
                 justify-content: flex-start;
             }
 
+            /* 手機版 slot 1 旁邊完全沒有空間貼左側，JS 也不再嘗試動態算座標（見
+               showSlotReplaceHint()），這裡直接給一個貼著版位列下方、左右對齊
+               #saved-versions 邊界的固定安全位置。100px 抓在版位（約 90px 高）
+               之後留出安全間距，比照 #share-explainer 同樣的做法。 */
+            .slot-replace-hint {
+                left: 10px;
+                right: 10px;
+                top: 100px;
+                max-width: none;
+            }
+
             .version-slot {
                 /* 寬度扣掉中間 10px 間距後平分，讓中間間距與左右邊界留白（皆為 10px）視覺一致；高度維持不變 */
                 width: calc((100% - 10px) / 2);
@@ -1456,9 +1557,9 @@
 }
 
 #share-my-design-btn .share-btn-label {
-    font-size: 13px;
+    font-size: 12px;
     letter-spacing: 0.5px;
-    color: rgba(255, 255, 255, 0.88);
+    color: rgba(255, 255, 255, 0.6);
     text-align: center;
     line-height: 1.3;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;

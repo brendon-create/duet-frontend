@@ -201,10 +201,13 @@
         </div>
 
         <!-- 🧹 分離部件狀態：偵測到就自動清理，不再需要手動開關。#cleanup-label 直接當狀態文字用；
-             失敗時才露出「重試」。toggle 保留在 DOM（舊程式碼與確認框仍引用其 id）但隱藏、永不觸發。 -->
+             還沒偵測完（idle）時留空、不顯示「清理作品分離部件」這句沒有意義的預設文字，只在
+             清理中／已清理／清理失敗時才顯示對應文字；失敗時才露出「重試」。
+             不能掛 data-i18n，否則語言切換時 applyLanguage() 會把它蓋回固定文字，蓋掉當下的動態狀態。
+             toggle 保留在 DOM（舊程式碼與確認框仍引用其 id）但隱藏、永不觸發。 -->
         <div class="control-group" style="margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label id="cleanup-label" data-i18n="studio.cleanup.label" style="margin: 0; font-size: 13px;">清理作品分離部件</label>
+                <label id="cleanup-label" style="margin: 0; font-size: 13px;"></label>
 
                 <button type="button" id="cleanup-retry-btn" style="display:none; padding:3px 12px; font-size:12px;
                         cursor:pointer; background:transparent; border:1px solid #d4af37; border-radius:6px; color:#d4af37;">重試</button>
@@ -258,9 +261,6 @@
             <div style="margin-top: 6px; font-size: 10px; color: rgba(255, 255, 255, 0.5);" id="preload-progress">0 / 0
             </div>
         </div>
-
-        <button class="btn-secondary" id="save-slot-1" data-i18n="studio.save.slot1">儲存到版本 1</button>
-        <button class="btn-secondary" id="save-slot-2" data-i18n="studio.save.slot2">儲存到版本 2</button>
 
         <button class="btn-primary" id="addToCartBtn">
             <span style="flex: 1;" data-i18n="studio.cart.add">加入購物車</span>
@@ -322,12 +322,26 @@
     <div id="saved-versions">
         <div class="version-slot empty" data-slot="1">
             <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
+            <button type="button" class="slot-replace-btn" id="slot-replace-1" data-i18n-title="studio.slot.replace" title="用目前的作品取代這個版位">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
             <div class="version-label" data-i18n="studio.slot.1">版本 1</div>
         </div>
         <div class="version-slot empty" data-slot="2">
             <div class="version-slot-hint" data-i18n="studio.slot.hint">點擊暫存作品</div>
+            <button type="button" class="slot-replace-btn" id="slot-replace-2" data-i18n-title="studio.slot.replace" title="用目前的作品取代這個版位">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
             <div class="version-label" data-i18n="studio.slot.2">版本 2</div>
         </div>
+    </div>
+
+    <!-- 版位第一次存滿、角落取代圖示第一次出現時的說明框：貼著 slot 1 左側顯示（位置由 JS 依
+         slot 1 實際位置計算，CSS 只負責外觀），要按「知道了」才消失，不像一般 toast 會自動消失、
+         容易來不及看。文字裡直接內嵌跟按鈕一樣的圖示，不用文字描述「右上角圖示」。 -->
+    <div id="slot-replace-hint" class="slot-replace-hint">
+        <span data-i18n-html="studio.slot.replace.hint"></span>
+        <button type="button" id="slot-replace-hint-ok" data-i18n="studio.share.gotIt">知道了</button>
     </div>
 
     <!-- Content Pipeline Phase 6：分享這個作品 -->
@@ -919,7 +933,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized } from './js/ring-bail.js';
+        import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
         // 字體載入系統
         import { availableFonts, fontsLoadedPromise, loadFontsFromJSON, initAvailableFonts } from './js/resource-loader.js';
@@ -3101,9 +3115,10 @@
 
             debug('Model generated, creating ring...'); // Debug
             createRing();
-            
-            // 🔧 建立 Bail
-            createBail();
+
+            // 🔧 建立 Bail（await：墜頭 STL 是非同步下載的，沒等它定位完成就解鎖「加入購物車」，
+            // 會抓到「圓環已在新位置、墜頭還沒跟上」的過渡畫面存進訂單照片）
+            await createBail();
             
             // ⚡ 優化：延遲計算體積重量（不阻塞渲染）
             setTimeout(() => updateVolumeWeight(), 100);
@@ -3131,7 +3146,7 @@
             }
             
             if (cleanupLabel) {
-                cleanupLabel.textContent = window.t('studio.cleanup.label');  // 重置文字
+                cleanupLabel.textContent = '';  // 還沒偵測完，先留空（保留空間但不顯示文字）
                 cleanupLabel.style.color = '';  // 重置顏色
                 cleanupLabel.classList.remove('loading-pulse');
             }
@@ -4103,11 +4118,44 @@
         }
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
+        let slotReplaceHintShown = false; // 只在這次進到頁面後，第一次有版位存滿、角落取代圖示第一次出現時提示一次
+
+        // 說明框固定貼著 slot 1 左側顯示（不管這次存的是 slot 1 還是 slot 2），
+        // 位置用 slot 1 目前的 getBoundingClientRect() 現場算。
+        // 手機版（螢幕 <=768px，跟 design-studio.css 的斷點一致）改用 CSS 寫死的安全位置，
+        // 不做這裡的動態計算——跟 #share-explainer/#share-my-design-btn 同樣的理由：
+        // 手機瀏覽器網址列顯示/收起會讓視窗高度浮動、slot 1 旁邊也完全沒有空間貼左側，
+        // 動態算出來的座標在手機上曾經整個跑出可視範圍、看起來像完全沒顯示。
+        function showSlotReplaceHint() {
+            const hint = document.getElementById('slot-replace-hint');
+            const slot1 = document.querySelector('[data-slot="1"]');
+            if (!hint || !slot1) return;
+            hint.classList.add('visible'); // 要先顯示才能量到實際尺寸（max-width 限制的響應式寬度）
+            if (window.innerWidth <= 768) return; // 手機版位置交給 CSS 的 @media 規則
+            const slotRect = slot1.getBoundingClientRect();
+            const hintRect = hint.getBoundingClientRect();
+            let left = slotRect.left - hintRect.width - 12;
+            let top = slotRect.top + slotRect.height / 2 - hintRect.height / 2;
+            if (left < 8) {
+                // 螢幕太窄、slot 1 左邊放不下時，改貼在 slot 1 下方，避免被裁掉
+                left = Math.max(8, Math.min(slotRect.left, window.innerWidth - hintRect.width - 8));
+                top = slotRect.bottom + 10;
+            }
+            top = Math.max(8, Math.min(top, window.innerHeight - hintRect.height - 8));
+            hint.style.left = left + 'px';
+            hint.style.top = top + 'px';
+        }
+
         function saveToSlot(slotIndex) {
             if (!mainMesh) return;
 
             const slotElement = document.querySelector(`[data-slot="${slotIndex + 1}"]`);
+            const wasEmpty = slotElement.classList.contains('empty');
             slotElement.classList.remove('empty');
+            if (wasEmpty && !slotReplaceHintShown) {
+                slotReplaceHintShown = true;
+                showSlotReplaceHint();
+            }
 
             // 獲取當前字體名稱
             const font1Select = document.getElementById('font1-select');
@@ -4222,6 +4270,17 @@
             label.setAttribute('data-i18n', slotLabelKey); // 讓之後切換語言時 applyLanguage() 也能重新翻譯這個動態產生的標籤
             label.textContent = window.t ? window.t(slotLabelKey) : `Slot ${slotIndex + 1}`;
             slotElement.appendChild(label);
+
+            // 角落「取代」按鈕也要重建（上面 innerHTML = '' 已經把原本的按鈕一起清掉了）；
+            // 點擊行為靠外層 .version-slot 的事件代理處理，這裡不用另外綁 listener。
+            const replaceBtn = document.createElement('button');
+            replaceBtn.type = 'button';
+            replaceBtn.className = 'slot-replace-btn';
+            replaceBtn.id = `slot-replace-${slotIndex + 1}`;
+            replaceBtn.setAttribute('data-i18n-title', 'studio.slot.replace');
+            replaceBtn.title = window.t ? window.t('studio.slot.replace') : 'Replace this slot with your current design';
+            replaceBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
+            slotElement.appendChild(replaceBtn);
         }
 
         function loadFromSlot(slotIndex) {
@@ -4347,6 +4406,13 @@
 
             // ⏳ 模型還在背景重新運算（例如剛改完尺寸），此時 BBox/圓環位置都還是舊資料，先擋下來
             if (isModelGenerating) {
+                showToast(window.t('studio.model.updating'));
+                return;
+            }
+
+            // ⏳ 額外保險：墜頭 STL 還在下載/定位中（正常情況下 isModelGenerating 已經涵蓋這段，
+            // 這裡是防呆，避免之後有其他路徑繞過 generateModel() 直接呼叫 createBail()）
+            if (bailLoading) {
                 showToast(window.t('studio.model.updating'));
                 return;
             }
@@ -6886,17 +6952,21 @@
                 });
             });
 
-            document.getElementById('save-slot-1').addEventListener('click', () => saveToSlot(0));
-            document.getElementById('save-slot-2').addEventListener('click', () => saveToSlot(1));
-
             // Slot 點擊：已有作品則叫出來覆蓋主畫面（Slot 本身內容不變），空的則直接存入。
-            // 要取代 Slot 裡已經存的作品，只能透過參數面板上的「存到 Slot X」按鈕明確操作，
-            // 不會因為誤點視窗就把存好的東西弄丟。
-            document.querySelector('[data-slot="1"]').addEventListener('click', () => {
+            // 要取代 Slot 裡已經存的作品，只能透過角落的「取代」小圖示明確操作，
+            // 不會因為誤點縮圖就把存好的東西弄丟。
+            // 用事件代理（監聽外層 .version-slot，不是直接綁按鈕本身）：saveToSlot() 每次都會
+            // slotElement.innerHTML = '' 整個重建縮圖內容，直接綁在按鈕上的 listener 存完一次就會消失。
+            document.querySelector('[data-slot="1"]').addEventListener('click', (e) => {
+                if (e.target.closest('.slot-replace-btn')) { saveToSlot(0); return; }
                 if (savedVersions[0]) loadFromSlot(0); else saveToSlot(0);
             });
-            document.querySelector('[data-slot="2"]').addEventListener('click', () => {
+            document.querySelector('[data-slot="2"]').addEventListener('click', (e) => {
+                if (e.target.closest('.slot-replace-btn')) { saveToSlot(1); return; }
                 if (savedVersions[1]) loadFromSlot(1); else saveToSlot(1);
+            });
+            document.getElementById('slot-replace-hint-ok').addEventListener('click', () => {
+                document.getElementById('slot-replace-hint').classList.remove('visible');
             });
             document.getElementById('addToCartBtn').addEventListener('click', (e) => {
                 // 如果點擊的是 View Cart 區域，只打開購物車
