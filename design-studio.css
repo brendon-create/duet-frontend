@@ -324,6 +324,41 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
+        /* 版位角落的「取代」按鈕：只在該版位已存滿（非 .empty）時才顯示，
+           跟縮圖本體（點擊＝召回）的點擊區明確分開，靠 stopPropagation 避免冒泡。 */
+        .slot-replace-btn {
+            display: none;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            background: rgba(20, 20, 24, 0.55);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            color: rgba(212, 175, 55, 0.9);
+            cursor: pointer;
+            padding: 0;
+            z-index: 10;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .slot-replace-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .slot-replace-btn:hover {
+            background: rgba(212, 175, 55, 0.18);
+            border-color: rgba(212, 175, 55, 0.8);
+        }
+
+        .version-slot:not(.empty) .slot-replace-btn {
+            display: flex;
+        }
+
         /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體）。
            手機版 .version-slot 用 height:0 + padding-bottom 撐正方形，content box 高度是 0，
            如果靠父層 .version-slot.empty 的 flex 置中（在 0 高度的 content box 裡置中）文字會被推到頂端；
