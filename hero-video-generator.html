@@ -2009,6 +2009,39 @@
                 progressFill.style.width = `${Math.round(fraction * 100)}%`;
             }
         }
+
+        async function runDuetRandomBatch() {
+            const waitFor = async (test, timeout = 30000) => { const started = Date.now(); while (!test()) { if (Date.now() - started > timeout) throw new Error('批次模式初始化逾時'); await new Promise(resolve => setTimeout(resolve, 200)); } };
+            await waitFor(() => ALL_FONTS.length >= 12 && [...document.getElementById('hdr-select').options].some(o => o.value === 'duet_studio.hdr'));
+            const combinations = [
+                ['A','V','Cormorant Garamond','Alex Brush','gold18k','glossy'],['B','Q','Anton','Abril Fatface','whitegold18k','matte'],['C','R','Audiowide','Allura','rosegold18k','glossy'],['D','M','Bangers','Young Serif','none','matte'],['E','N','Bungee','Cantata One','gold18k','matte'],['F','J','Aldrich','Aclonica','whitegold18k','glossy'],['G','L','Alex Brush','Anton','rosegold18k','matte'],['H','S','Abril Fatface','Audiowide','none','glossy'],['I','T','Allura','Bangers','gold18k','glossy'],['K','W','Young Serif','Bungee','whitegold18k','matte'],['O','P','Cantata One','Aldrich','rosegold18k','glossy'],['U','X','Aclonica','Cormorant Garamond','none','matte'],['Y','Z','Anton','Allura','gold18k','matte'],['2','8','Audiowide','Bungee','whitegold18k','glossy'],['3','7','Bangers','Aldrich','rosegold18k','matte'],['4','9','Young Serif','Aclonica','none','glossy'],['A','R','Cantata One','Alex Brush','gold18k','glossy'],['D','U','Cormorant Garamond','Audiowide','whitegold18k','matte'],['M','O','Abril Fatface','Bangers','rosegold18k','glossy'],['S','T','Allura','Young Serif','none','matte']
+            ];
+            if (['rounded','rounded2'].includes(new URLSearchParams(window.location.search).get('batch'))) {
+                combinations.splice(0, combinations.length,
+                    ['G','O','Fredoka','Chango','gold18k','glossy'], ['S','Q','Bubblegum Sans','Gorditas','rosegold18k','matte'],
+                    ['D','R','DM Serif Display','Abril Fatface','whitegold18k','glossy'], ['O','B','Mochiy Pop One','Chela One','gold18k','matte'],
+                    ['Q','G','Sniglet','Fredoka','rosegold18k','glossy'], ['R','O','Lobster','Varela Round','whitegold18k','matte'],
+                    ['B','D','Chango','Bubblegum Sans','gold18k','glossy'], ['S','O','Gorditas','Mochiy Pop One','rosegold18k','matte'],
+                    ['G','R','Chela One','Lobster','whitegold18k','glossy'], ['Q','B','Fredoka','Sniglet','gold18k','matte']
+                );
+            }
+            const set = (id, value) => { const el = document.getElementById(id); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+            set('sec-per-pair','2'); set('resolution','1080x1920'); set('output-format','mp4'); set('rotation-mode','carousel'); set('pendant-size','8'); set('vertical-offset','8'); set('light-intensity','2'); set('hdr-select','duet_studio.hdr');
+            customBgUrl = 'assets/images/backgrounds/LuxuryWoodBackground.png';
+            for (let index = 0; index < combinations.length; index++) {
+                const [letterA,letterB,fontA,fontB,plating,finish] = combinations[index];
+                letterList.innerHTML = ''; addLetterRow(letterA,fontA); addLetterRow(letterB,fontB); set('plating',plating); set('finish',finish);
+                statusText.textContent = `批次 ${index + 1} / ${combinations.length}：${letterA}${letterB}`;
+                await runGenerate();
+                if (!resultBlob || !resultBlob.type.includes('mp4')) throw new Error(`第 ${index + 1} 支未成功輸出 MP4`);
+                const url = URL.createObjectURL(resultBlob), a = document.createElement('a'); const suffix = new URLSearchParams(window.location.search).get('batch') === 'rounded2' ? '_DUET-HDR' : ''; a.href = url; a.download = `${String(index + 1).padStart(2,'0')}_${letterA}${letterB}_${fontA.replaceAll(' ','-')}_${fontB.replaceAll(' ','-')}_${plating}${suffix}.mp4`; a.click(); await new Promise(resolve => setTimeout(resolve,1200)); URL.revokeObjectURL(url);
+            }
+            statusText.textContent = `批次完成：${combinations.length} 支 MP4 已下載`;
+        }
+        if (['duet-random','rounded','rounded2'].includes(new URLSearchParams(window.location.search).get('batch'))) {
+            const startBatch = () => runDuetRandomBatch().catch(err => { console.error('批次生成失敗:',err); statusText.textContent = '批次生成失敗：' + err.message; alert('批次生成失敗：\\n' + err.message); });
+            if (document.readyState === 'complete') startBatch(); else window.addEventListener('load', startBatch);
+        }
     </script>
 </body>
 </html>
