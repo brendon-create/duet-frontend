@@ -336,6 +336,14 @@
         </div>
     </div>
 
+    <!-- 版位第一次存滿、角落取代圖示第一次出現時的說明框：貼著 slot 1 左側顯示（位置由 JS 依
+         slot 1 實際位置計算，CSS 只負責外觀），要按「知道了」才消失，不像一般 toast 會自動消失、
+         容易來不及看。文字裡直接內嵌跟按鈕一樣的圖示，不用文字描述「右上角圖示」。 -->
+    <div id="slot-replace-hint" class="slot-replace-hint">
+        <span data-i18n-html="studio.slot.replace.hint"></span>
+        <button type="button" id="slot-replace-hint-ok" data-i18n="studio.share.gotIt">知道了</button>
+    </div>
+
     <!-- Content Pipeline Phase 6：分享這個作品 -->
     <button id="share-my-design-btn" type="button">
         <svg class="share-ring" viewBox="0 0 66 66">
@@ -4111,6 +4119,28 @@
 
         // 槽位功能（簡化版：純儲存和召回，添加同步旋轉）
         let slotReplaceHintShown = false; // 只在這次進到頁面後，第一次有版位存滿、角落取代圖示第一次出現時提示一次
+
+        // 說明框固定貼著 slot 1 左側顯示（不管這次存的是 slot 1 還是 slot 2），
+        // 位置用 slot 1 目前的 getBoundingClientRect() 現場算，桌機/手機版面完全不同也適用。
+        function showSlotReplaceHint() {
+            const hint = document.getElementById('slot-replace-hint');
+            const slot1 = document.querySelector('[data-slot="1"]');
+            if (!hint || !slot1) return;
+            hint.classList.add('visible'); // 要先顯示才能量到實際尺寸（max-width 限制的響應式寬度）
+            const slotRect = slot1.getBoundingClientRect();
+            const hintRect = hint.getBoundingClientRect();
+            let left = slotRect.left - hintRect.width - 12;
+            let top = slotRect.top + slotRect.height / 2 - hintRect.height / 2;
+            if (left < 8) {
+                // 螢幕太窄、slot 1 左邊放不下時，改貼在 slot 1 下方，避免被裁掉
+                left = Math.max(8, Math.min(slotRect.left, window.innerWidth - hintRect.width - 8));
+                top = slotRect.bottom + 10;
+            }
+            top = Math.max(8, Math.min(top, window.innerHeight - hintRect.height - 8));
+            hint.style.left = left + 'px';
+            hint.style.top = top + 'px';
+        }
+
         function saveToSlot(slotIndex) {
             if (!mainMesh) return;
 
@@ -4119,7 +4149,7 @@
             slotElement.classList.remove('empty');
             if (wasEmpty && !slotReplaceHintShown) {
                 slotReplaceHintShown = true;
-                showToast(window.t('studio.slot.replace.hint'));
+                showSlotReplaceHint();
             }
 
             // 獲取當前字體名稱
@@ -6929,6 +6959,9 @@
             document.querySelector('[data-slot="2"]').addEventListener('click', (e) => {
                 if (e.target.closest('.slot-replace-btn')) { saveToSlot(1); return; }
                 if (savedVersions[1]) loadFromSlot(1); else saveToSlot(1);
+            });
+            document.getElementById('slot-replace-hint-ok').addEventListener('click', () => {
+                document.getElementById('slot-replace-hint').classList.remove('visible');
             });
             document.getElementById('addToCartBtn').addEventListener('click', (e) => {
                 // 如果點擊的是 View Cart 區域，只打開購物車

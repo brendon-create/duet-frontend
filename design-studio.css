@@ -359,6 +359,61 @@
             display: flex;
         }
 
+        /* 版位取代圖示的說明框：left/top 由 JS 依 slot 1 實際位置動態計算（見
+           showSlotReplaceHint()），這裡只負責外觀。跟 #share-explainer 同一套玻璃質感，
+           但不會自動淡出消失——一定要按「知道了」才會消失。 */
+        .slot-replace-hint {
+            position: fixed;
+            max-width: 220px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            backdrop-filter: blur(10px) saturate(100%);
+            -webkit-backdrop-filter: blur(10px) saturate(100%);
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
+            z-index: 250;
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .slot-replace-hint.visible {
+            display: block;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .slot-replace-hint .icon-inline {
+            width: 13px;
+            height: 13px;
+            display: inline-block;
+            vertical-align: -2px;
+            color: #d4af37;
+        }
+
+        .slot-replace-hint button {
+            display: block;
+            margin: 10px auto 0;
+            padding: 6px 18px;
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 999px;
+            color: #d4af37;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+        }
+
+        .slot-replace-hint button:hover {
+            background: rgba(212, 175, 55, 0.22);
+        }
+
         /* 空 Slot 中央提示文字：字體/顏色沿用 .version-slot.empty（跟參數面板同一套系統字體）。
            手機版 .version-slot 用 height:0 + padding-bottom 撐正方形，content box 高度是 0，
            如果靠父層 .version-slot.empty 的 flex 置中（在 0 高度的 content box 裡置中）文字會被推到頂端；
