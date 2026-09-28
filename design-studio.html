@@ -4121,12 +4121,17 @@
         let slotReplaceHintShown = false; // 只在這次進到頁面後，第一次有版位存滿、角落取代圖示第一次出現時提示一次
 
         // 說明框固定貼著 slot 1 左側顯示（不管這次存的是 slot 1 還是 slot 2），
-        // 位置用 slot 1 目前的 getBoundingClientRect() 現場算，桌機/手機版面完全不同也適用。
+        // 位置用 slot 1 目前的 getBoundingClientRect() 現場算。
+        // 手機版（螢幕 <=768px，跟 design-studio.css 的斷點一致）改用 CSS 寫死的安全位置，
+        // 不做這裡的動態計算——跟 #share-explainer/#share-my-design-btn 同樣的理由：
+        // 手機瀏覽器網址列顯示/收起會讓視窗高度浮動、slot 1 旁邊也完全沒有空間貼左側，
+        // 動態算出來的座標在手機上曾經整個跑出可視範圍、看起來像完全沒顯示。
         function showSlotReplaceHint() {
             const hint = document.getElementById('slot-replace-hint');
             const slot1 = document.querySelector('[data-slot="1"]');
             if (!hint || !slot1) return;
             hint.classList.add('visible'); // 要先顯示才能量到實際尺寸（max-width 限制的響應式寬度）
+            if (window.innerWidth <= 768) return; // 手機版位置交給 CSS 的 @media 規則
             const slotRect = slot1.getBoundingClientRect();
             const hintRect = hint.getBoundingClientRect();
             let left = slotRect.left - hintRect.width - 12;

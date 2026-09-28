@@ -1306,6 +1306,17 @@
                 justify-content: flex-start;
             }
 
+            /* 手機版 slot 1 旁邊完全沒有空間貼左側，JS 也不再嘗試動態算座標（見
+               showSlotReplaceHint()），這裡直接給一個貼著版位列下方、左右對齊
+               #saved-versions 邊界的固定安全位置。100px 抓在版位（約 90px 高）
+               之後留出安全間距，比照 #share-explainer 同樣的做法。 */
+            .slot-replace-hint {
+                left: 10px;
+                right: 10px;
+                top: 100px;
+                max-width: none;
+            }
+
             .version-slot {
                 /* 寬度扣掉中間 10px 間距後平分，讓中間間距與左右邊界留白（皆為 10px）視覺一致；高度維持不變 */
                 width: calc((100% - 10px) / 2);
