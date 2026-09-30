@@ -2590,8 +2590,12 @@
 
         // 優惠碼相關變數
         let appliedPromoCode = '';
+        let appliedPromoType = '';
         let promoDiscount = 0;
         let originalTotal = 0;
+        // 只在本頁、同一組碼與同一購物車內容下保留，讓使用者在 503 後手動再按一次
+        // 仍會帶同一 attempt ID；換購物車或移除優惠碼就會產生全新 attempt。
+        let pendingRedeemCheckout = null;
 
         // 120 種字體清單（來自 font-selector.htm）
         // availableFonts, loadFontsFromJSON, initAvailableFonts 已移至 resource-loader.js
@@ -4914,6 +4918,7 @@
                 if (result.valid) {
                     // 優惠碼有效
                     appliedPromoCode = promoCode;
+                    appliedPromoType = result.discountType || '';
                     promoDiscount = result.discount;
 
                     console.log('✅ 優惠碼有效!');
@@ -4944,6 +4949,7 @@
                     console.warn('❌ 優惠碼無效:', result.error);
                     promoMessage.innerHTML = `<span style="color: #ff6b6b;">❌ ${result.error}</span>`;
                     appliedPromoCode = '';
+                    appliedPromoType = '';
                     promoDiscount = 0;
                     renderCart();
                 }
@@ -4952,6 +4958,7 @@
                 console.error('❌ 優惠碼驗證錯誤:', error);
                 promoMessage.innerHTML = `<span style="color: #ff6b6b;">${window.t('studio.promo.error.failed')}</span>`;
                 appliedPromoCode = '';
+                appliedPromoType = '';
                 promoDiscount = 0;
             } finally {
                 // 重置按鈕
@@ -4962,6 +4969,8 @@
 
         function removePromoCode() {
             appliedPromoCode = '';
+            appliedPromoType = '';
+            pendingRedeemCheckout = null;
             promoDiscount = 0;
 
             const promoInput = document.getElementById('promo-code-input');
@@ -6085,24 +6094,54 @@
 
                 // 確保 total 是數字
                 const totalAmount = Number(originalTotal);
-
-                const response = await fetch(`${window.BACKEND_URL}/api/checkout`, {
+                // redeem_item 的免費結帳需要在同一次網路重送時帶回同一個 UUID，
+                // 讓後端安全回傳原訂單，而不是把一組已使用的碼當成失敗。
+                const redeemAttemptKey = appliedPromoType === 'redeem_item'
+                    ? `${appliedPromoCode}|${JSON.stringify(cartItems)}`
+                    : null;
+                const redeemCheckoutAttemptId = redeemAttemptKey && pendingRedeemCheckout?.key === redeemAttemptKey
+                    ? pendingRedeemCheckout.id
+                    : crypto.randomUUID();
+                if (redeemAttemptKey) {
+                    pendingRedeemCheckout = { key: redeemAttemptKey, id: redeemCheckoutAttemptId };
+                }
+                const checkoutPayload = {
+                    orderId: orderId,
+                    items: cartItems,
+                    userInfo: userInfo,
+                    total: totalAmount,
+                    promoCode: appliedPromoCode,
+                    redeemCheckoutAttemptId: redeemCheckoutAttemptId,
+                    aiConsultation: aiData,
+                    designConfirmation: window._designConfirmation || null,
+                    // marketingConsent 不特別傳，後端 /api/checkout 預設視為同意（不在結帳頁另外詢問）
+                    returnUrl: window.location.origin + '/payment-success.html',
+                    renderCount: renderCount,
+                    lang: localStorage.getItem('duet_language') || 'zh'
+                };
+                const submitCheckout = () => fetch(`${window.BACKEND_URL}/api/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: orderId,
-                        items: cartItems,
-                        userInfo: userInfo,
-                        total: totalAmount,             // 確保是數字
-                        promoCode: appliedPromoCode,    // 傳送優惠碼
-                        aiConsultation: aiData,         // ✅ 新增：AI 諮詢資料
-                        designConfirmation: window._designConfirmation || null, // ✅ 設計確認存證
-                        // marketingConsent 不特別傳，後端 /api/checkout 預設視為同意（不在結帳頁另外詢問）
-                        returnUrl: window.location.origin + '/payment-success.html',
-                        renderCount: renderCount,       // 本次 session 的 render 次數（後台統計用）
-                        lang: localStorage.getItem('duet_language') || 'zh'
-                    })
+                    body: JSON.stringify(checkoutPayload)
                 });
+
+                let response;
+                try {
+                    response = await submitCheckout();
+                } catch (firstRequestError) {
+                    // 只重送原子、可 idempotent 的 redeem_item；一般綠界訂單仍維持原行為，
+                    // 避免在尚未完成全站 idempotency 前意外建立兩筆付款訂單。
+                    if (appliedPromoType !== 'redeem_item') throw firstRequestError;
+                    console.warn('⚠️ 兌換碼結帳網路中斷，使用相同識別碼重試一次');
+                    response = await submitCheckout();
+                }
+
+                // 後端若已原子建立訂單、但同步後處理暫時失敗，會明確回 503。
+                // 同一次結帳以同一 UUID 補送一次，讓 pending 訂單能安全恢復處理。
+                if (appliedPromoType === 'redeem_item' && response.status >= 500) {
+                    console.warn('⚠️ 兌換碼訂單處理暫時失敗，使用相同識別碼重試一次');
+                    response = await submitCheckout();
+                }
 
                 console.log('📡 API 回應狀態:', response.status);
                 const result = await response.json();
@@ -6110,6 +6149,9 @@
 
                 if (result.success) {
                     console.log('✅ 結帳成功');
+                    if (redeemAttemptKey && pendingRedeemCheckout?.key === redeemAttemptKey) {
+                        pendingRedeemCheckout = null;
+                    }
 
                     // ✅ 檢查是否為 VIP 免費訂單
                     if (result.vipFree) {
@@ -6152,6 +6194,11 @@
                     displayPaymentForm(result.paymentFormHTML);
                 } else {
                     console.error('❌ 結帳失敗:', result.error);
+                    // 這表示 UUID 已被另一組碼占用；保留它只會讓使用者每次重試都撞到
+                    // 同一個 400，因此依後端提示清掉，下一次結帳會生成新的 attempt。
+                    if (result.error && result.error.includes('結帳識別碼已被使用')) {
+                        pendingRedeemCheckout = null;
+                    }
                     if (window.userInfoModal) {
                         window.userInfoModal.remove();
                         window.userInfoModal = null;
