@@ -587,6 +587,8 @@ let item = null;
 let orderId = '';
 let unlockedFields = ['ring'];
 let orderAiConsultation = null; // 訂單原本的 AI 諮詢完整素材，重選字體後若要重新生成設計理念會用到
+let originalFont1 = null; // 載入當下（顧客尚未編輯前）的字體，用來判斷字體是否真的被改過
+let originalFont2 = null;
 
 // 批次模式狀態
 let batchOrderId = '';
@@ -1081,6 +1083,8 @@ async function selectBatchTask(taskId) {
     const base = batchItemsByIndex[task.item_index];
     const localUpdate = batchLocalDone[taskId] ? (batchCollectedUpdates[taskId] || {}) : {};
     item = Object.assign({}, base, localUpdate);
+    originalFont1 = item.font1;
+    originalFont2 = item.font2;
     fragCleanApplied = !!item.cleanFragments;   // 沿用這件作品現有的清理狀態，沒改幾何就不會被動到
     orderId = batchOrderId;
     unlockedFields = task.category === 'ack' ? [] : [task.category];
@@ -1250,6 +1254,8 @@ async function loadData() {
             if (!data.success) { showView('viewError'); return; }
 
             item = data.item;
+            originalFont1 = item.font1;
+            originalFont2 = item.font2;
             fragCleanApplied = !!item.cleanFragments;
             orderId = data.order_id;
             unlockedFields = staffUnlockedFields;
@@ -1277,6 +1283,8 @@ async function loadData() {
         if (data.already_confirmed) { showView('viewAlreadyConfirmed'); return; }
 
         item = data.item;
+        originalFont1 = item.font1;
+        originalFont2 = item.font2;
         fragCleanApplied = !!item.cleanFragments;
         orderId = data.order_id;
         unlockedFields = data.unlocked_fields && data.unlocked_fields.length ? data.unlocked_fields : ['ring'];
@@ -1996,7 +2004,7 @@ function proceedFromMainPanel() {
         refreshConfirmLock();
         return;
     }
-    if (unlockedFields.includes('font')) {
+    if (unlockedFields.includes('font') && (item.font1 !== originalFont1 || item.font2 !== originalFont2)) {
         document.getElementById('storyRegenAskModal').style.display = 'flex';
         return;
     }
