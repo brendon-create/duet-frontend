@@ -4900,13 +4900,15 @@
             try {
                 console.log('🌐 呼叫後端 API:', `${window.BACKEND_URL}/api/validate-promo`);
 
-                // 呼叫後端驗證 API
+                // 呼叫後端驗證 API（帶上 items，讓後端能對兌換碼類型套用單件限制，
+                // 不然多件購物車會被誤判成「整車折抵成功」，結帳時才被拒絕）
                 const response = await fetch(`${window.BACKEND_URL}/api/validate-promo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         promoCode: promoCode,
-                        total: originalTotal
+                        total: originalTotal,
+                        items: cartItems
                     })
                 });
 
