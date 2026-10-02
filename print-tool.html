@@ -328,7 +328,7 @@ body {
     font-size: 3.3mm;
     letter-spacing: 1.5mm;
     text-indent: 1.5mm;
-    color: #888;
+    color: #4d4d4d; /* 原 #888，加深為原本灰階濃度的 1.5 倍 */
     font-weight: 300;
 }
 
@@ -363,14 +363,23 @@ body {
     .preview-label { display: none !important; }
     #scale-wrap { transform: none !important; margin: 0 !important; }
     #cover-scale-wrap { transform: none !important; margin: 0 !important; }
-    #cover-scale-wrap-2 { transform: none !important; margin: 0 !important; }
     .print-sheet { width: 210mm !important; height: 296.9mm !important; }
     #cover-sheet { break-after: page !important; page-break-after: always !important; }
-    #preview-sheet { break-after: page !important; page-break-after: always !important; }
-    #batch-container { display: none !important; margin: 0 !important; padding: 0 !important; }
-    body.batch-active > * { display: none !important; }
-    body.batch-active > #batch-container { display: block !important; }
+    /* 單筆列印：即使先前用過批次模式留下 batch-rendered，也強制隱藏批次內容 */
+    body:not(.batch-active):not(.cover-only) #batch-container { display: none !important; }
+
+    /* 批次模式：印出畫面上實際預覽的同一份 DOM，不再是另一套隱藏節點 */
+    body.batch-active #cover-scale-wrap,
+    body.batch-active #scale-wrap { display: none !important; }
+    #batch-container { display: block !important; margin: 0 !important; padding: 0 !important; }
+    #batch-scale-wrap { display: block !important; transform: none !important; }
+    #batch-scale-wrap .batch-page { margin: 0 !important; }
     .batch-page { width: 210mm; height: 296.9mm; position: relative; background: white; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+
+    /* 只印正面（空白卡）模式：只留封面頁 */
+    body.cover-only #scale-wrap,
+    body.cover-only #batch-container { display: none !important; }
+    body.cover-only #cover-sheet { break-after: auto !important; page-break-after: auto !important; }
 }
 
 /* ── 批次模式 UI ── */
@@ -411,108 +420,36 @@ body {
     border-color: rgba(212,175,55,0.5);
 }
 
-/* ── 批次列印版面 ── */
+/* ── 批次列印版面（與單筆 .print-sheet 相同尺寸） ── */
 .batch-page {
     width: 210mm;
     height: 297mm;
     position: relative;
     background: white;
-}
-.batch-slot {
-    position: absolute;
-    width: 90mm;
-    height: 135mm;
-    top: 81mm;
-}
-.batch-slot.slot-left  { left: 10mm; }
-.batch-slot.slot-right { left: 110mm; }
-
-/* 封面卡片 */
-.cover-card {
-    width: 100%;
-    height: 100%;
-    border: 0.5pt solid #ccc;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5mm;
-    padding: 8mm;
-    font-family: 'Cormorant Garamond', serif;
-    color: #2e2a24;
-    text-align: center;
-}
-.cover-card .cover-brand {
-    font-size: 7mm;
-    letter-spacing: 4mm;
-    font-weight: 400;
-    color: #c9a96e;
-}
-.cover-card .cover-letters {
-    font-size: 11mm;
-    letter-spacing: 3mm;
-    font-style: italic;
-}
-.cover-card .cover-meta {
-    font-size: 3.2mm;
-    color: #888;
-    letter-spacing: 0.5mm;
-    line-height: 1.8;
-}
-.cover-card .cover-divider {
-    width: 20mm;
-    height: 0.3pt;
-    background: #ccc;
+    overflow: visible; /* 讓裁切角標可溢出，與 .print-sheet 一致 */
 }
 
-/* 設計理念卡片（批次版） */
-.story-card {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    padding: 6mm;
-    display: flex;
-    flex-direction: column;
-    gap: 3mm;
-}
-.story-card .story-header {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 3mm;
-    letter-spacing: 1mm;
-    color: #aaa;
-    border-bottom: 0.3pt solid #ddd;
-    padding-bottom: 2mm;
-}
-.story-card .story-text {
-    font-family: 'TW-Kai', serif;
-    font-size: 4.5mm;
-    line-height: 1.65;
-    color: #2e2a24;
-    text-align: justify;
-    overflow: hidden;
-    flex: 1;
-}
-.story-card .story-text p { margin-bottom: 0.5em; }
-.story-card .story-sig {
-    text-align: right;
-    padding-top: 3mm;
-}
-.story-card .story-sig-line {
-    display: inline-block;
-    width: 25mm;
-    border-bottom: 0.5pt solid #000;
-    vertical-align: bottom;
-}
-
-/* 批次列印螢幕預覽容器 */
+/* 批次結果：畫面預覽容器（取代原本印刷時才顯示的隱藏 DOM，讓畫面與列印輸出一致） */
 #batch-container {
     display: none;
-    margin-top: 16px;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
 }
-#batch-preview {
-    font-size: 11px;
-    color: rgba(212,175,55,0.7);
-    margin-top: 4px;
+body.batch-rendered #batch-container { display: flex; }
+body.batch-rendered #cover-scale-wrap,
+body.batch-rendered #scale-wrap,
+body.batch-rendered .preview-label {
+    display: none;
+}
+#batch-scale-wrap {
+    transform-origin: top center;
+}
+#batch-scale-wrap .batch-page {
+    margin-bottom: 24px;
+}
+#batch-scale-wrap .batch-page:last-child {
+    margin-bottom: 0;
 }
 </style>
 </head>
@@ -562,10 +499,15 @@ body {
         </div>
 
         <button class="print-btn" onclick="document.fonts.ready.then(()=>window.print())">列印 / 匯出 PDF</button>
+        <button class="print-btn" style="background:transparent;border:1px solid rgba(212,175,55,0.4);color:#d4af37;"
+            onclick="printCoverOnly()">只印正面（空白卡，含裁切線）</button>
 
         <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;">
             <button class="batch-toggle" id="batchToggleBtn" onclick="toggleBatchMode()">批次模式（多筆訂單）</button>
             <div class="batch-section" id="batchSection">
+                <button class="print-btn" style="margin-top:8px;" onclick="loadPendingPrintOrders()">載入待列印訂單（未出貨＋有設計理念）</button>
+                <div id="pendingPrintList" style="display:none;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;
+                    background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;"></div>
                 <label style="margin-top:8px;">批次訂單編號（一行一筆）</label>
                 <textarea id="batchInput" placeholder="D20260502-001&#10;D20260502-002&#10;D20260502-003"></textarea>
                 <button class="print-btn" onclick="batchImport()">批次匯入並預覽</button>
@@ -685,59 +627,14 @@ body {
                 </div>
             </div>
         </div>
-        <div class="preview-label" style="margin-top:20px;">第三頁：封面（空白卡用）</div>
-        <div id="cover-scale-wrap-2">
-            <div class="print-sheet cover-sheet" id="cover-sheet-2">
-                <!-- 封面卡片 1 -->
-                <div class="card-cover cover-1">
-                    <div class="cover-front-panel">
-                        <div class="cover-brand-name">DUET</div>
-                        <div class="cover-brand-sub">by BCAG</div>
-                    </div>
-                    <div class="cover-back-panel">duet.brendonchen.com</div>
-                </div>
-                <!-- 封面卡片 1 裁切角標 + 對折導引（在卡片外） -->
-                <div class="card-marks marks-1">
-                    <div class="cm cm-h cm-tl-h"></div>
-                    <div class="cm cm-v cm-tl-v"></div>
-                    <div class="cm cm-h cm-tr-h"></div>
-                    <div class="cm cm-v cm-tr-v"></div>
-                    <div class="cm cm-h cm-bl-h"></div>
-                    <div class="cm cm-v cm-bl-v"></div>
-                    <div class="cm cm-h cm-br-h"></div>
-                    <div class="cm cm-v cm-br-v"></div>
-                    <div class="cm cm-fold cm-fold-t"></div>
-                    <div class="cm cm-fold cm-fold-b"></div>
-                </div>
-                <!-- 封面卡片 2 -->
-                <div class="card-cover cover-2">
-                    <div class="cover-front-panel">
-                        <div class="cover-brand-name">DUET</div>
-                        <div class="cover-brand-sub">by BCAG</div>
-                    </div>
-                    <div class="cover-back-panel">duet.brendonchen.com</div>
-                </div>
-                <!-- 封面卡片 2 裁切角標 + 對折導引（在卡片外） -->
-                <div class="card-marks marks-2">
-                    <div class="cm cm-h cm-tl-h"></div>
-                    <div class="cm cm-v cm-tl-v"></div>
-                    <div class="cm cm-h cm-tr-h"></div>
-                    <div class="cm cm-v cm-tr-v"></div>
-                    <div class="cm cm-h cm-bl-h"></div>
-                    <div class="cm cm-v cm-bl-v"></div>
-                    <div class="cm cm-h cm-br-h"></div>
-                    <div class="cm cm-v cm-br-v"></div>
-                    <div class="cm cm-fold cm-fold-t"></div>
-                    <div class="cm cm-fold cm-fold-b"></div>
-                </div>
-            </div>
+
+        <!-- 批次列印結果：畫面預覽（與實際列印輸出共用同一份 DOM） -->
+        <div id="batch-container">
+            <div id="batch-scale-wrap"></div>
         </div>
     </div>
 
 </div>
-
-<!-- 批次列印容器（螢幕隱藏，列印時顯示） -->
-<div id="batch-container"></div>
 
 <!-- 批次量測用隱形元素（與正式 card-inner 相同 CSS，供 DOM scrollHeight 量測） -->
 <div style="position:fixed;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;">
@@ -962,12 +859,35 @@ function scalePreview() {
     const sheetPxH = 297 * 3.7795;
     const scale = Math.min(1, availW / sheetPxW);
     const compensate = `${sheetPxH * (scale - 1)}px`;
-    ['scale-wrap', 'cover-scale-wrap', 'cover-scale-wrap-2'].forEach(id => {
+    ['scale-wrap', 'cover-scale-wrap'].forEach(id => {
         const wrap = document.getElementById(id);
         wrap.style.transform = `scale(${scale})`;
         wrap.style.transformOrigin = 'top center';
         wrap.style.marginBottom = compensate;
     });
+
+    // 批次預覽：多張 .batch-page 疊在同一個 wrap 裡縮放，
+    // 用量到的實際高度（含頁間間距）算出縮放後的高度，設回容器，
+    // 避免 transform 縮小後、原本未縮放的版面高度留下一大段空白。
+    const batchWrap = document.getElementById('batch-scale-wrap');
+    const batchContainer = document.getElementById('batch-container');
+    if (batchWrap && batchWrap.children.length) {
+        batchWrap.style.transform = `scale(${scale})`;
+        const naturalH = batchWrap.scrollHeight;
+        batchContainer.style.height = (naturalH * scale) + 'px';
+        batchContainer.style.overflow = 'hidden';
+    } else if (batchContainer) {
+        batchContainer.style.height = '';
+        batchContainer.style.overflow = '';
+    }
+}
+
+/* 確保 TW-Kai 字體真的已請求並載入完成，不依賴 document.fonts.ready
+   （fonts.ready 只等「已經被請求的字體」，font-display:swap 若畫面上
+   還沒有用到該字體的文字，根本還沒開始下載，ready 會提早 resolve，
+   導致量測分欄時用的是 fallback 字體，跟之後實際顯示/列印的字體不同） */
+async function ensureStoryFontLoaded() {
+    try { await document.fonts.load('16px "TW-Kai"'); } catch {}
 }
 
 let _batchMode = false;
@@ -978,6 +898,7 @@ window.onbeforeprint = function () {
 
 /* 列印後：重置 */
 window.onafterprint = function () {
+    document.body.classList.remove('cover-only');
     if (_batchMode) {
         document.body.classList.remove('batch-active');
         return;
@@ -987,20 +908,78 @@ window.onafterprint = function () {
     updateCards();
 };
 
-/* ── 批次列印觸發 ── */
+/* ── 只印正面（空白卡）── */
+function printCoverOnly() {
+    document.body.classList.add('cover-only');
+    document.fonts.ready.then(() => window.print());
+}
+
+/* ── 批次列印觸發：按下列印的這一刻，把這批訂單標記為已列印 ── */
 function triggerBatchPrint() {
     _batchMode = true;
     document.body.classList.add('batch-active');
+    if (_lastBatchOrderIds.length) {
+        fetch(`${window.BACKEND_URL}/api/admin/orders/mark-printed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': adminAuthHeader() },
+            body: JSON.stringify({ orderIds: _lastBatchOrderIds })
+        }).catch(() => {});
+    }
     document.fonts.ready.then(() => window.print());
 }
 
 function clearBatch() {
-    document.getElementById('batch-container').innerHTML = '';
+    document.getElementById('batch-scale-wrap').innerHTML = '';
     document.getElementById('batchPrintBar').style.display = 'none';
     document.getElementById('batchStatus').textContent = '';
     document.getElementById('batchInput').value = '';
+    document.getElementById('pendingPrintList').style.display = 'none';
+    document.getElementById('pendingPrintList').innerHTML = '';
     document.body.classList.remove('batch-active');
+    document.body.classList.remove('batch-rendered');
     _batchMode = false;
+    _lastBatchOrderIds = [];
+    scalePreview();
+}
+
+/* ── 員工後台共用的管理員認證 header（localStorage 由 admin.html 寫入，同源可共用） ── */
+function adminAuthHeader() {
+    return 'Bearer ' + (localStorage.getItem('adminToken') || '');
+}
+
+/* ── 載入待列印訂單（未出貨 + 有設計理念），已列印過的標示供手動刪除 ── */
+async function loadPendingPrintOrders() {
+    const listEl = document.getElementById('pendingPrintList');
+    listEl.style.display = 'flex';
+    listEl.innerHTML = '載入中...';
+    try {
+        const res = await fetch(`${window.BACKEND_URL}/api/admin/orders/pending-print`, {
+            headers: { 'Authorization': adminAuthHeader() }
+        });
+        const data = await res.json();
+        if (!data.success) { listEl.innerHTML = `載入失敗：${data.error || ''}`; return; }
+
+        const orders = data.orders || [];
+        if (orders.length === 0) {
+            listEl.innerHTML = '<div style="font-size:12px;color:rgba(232,224,208,0.4);">目前沒有未出貨且有設計理念的訂單</div>';
+            return;
+        }
+        listEl.innerHTML = orders.map(o => `
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" class="pending-print-cb" value="${o.order_id}" checked onchange="syncPendingPrintToBatchInput()">
+                <span>${o.order_id}${o.customerName ? `（${o.customerName}）` : ''}</span>
+                ${o.printedAt ? '<span style="color:rgba(212,175,55,0.75);font-size:11px;">已列印</span>' : ''}
+            </label>
+        `).join('');
+        syncPendingPrintToBatchInput();
+    } catch {
+        listEl.innerHTML = '網路錯誤，請稍後再試';
+    }
+}
+
+function syncPendingPrintToBatchInput() {
+    const checked = Array.from(document.querySelectorAll('.pending-print-cb:checked')).map(cb => cb.value);
+    document.getElementById('batchInput').value = checked.join('\n');
 }
 
 /* ── 批次模式切換 ── */
@@ -1013,6 +992,8 @@ function toggleBatchMode() {
 }
 
 /* ── 批次列印主函數 ── */
+let _lastBatchOrderIds = [];
+
 async function batchImport() {
     const statusEl = document.getElementById('batchStatus');
     const lines = document.getElementById('batchInput').value
@@ -1042,11 +1023,14 @@ async function batchImport() {
         if (ok.length === 0) return;
     }
 
-    // 確保字體已載入後再進行 DOM 量測
-    await document.fonts.ready;
+    _lastBatchOrderIds = ok.map(r => r.id);
 
-    // 建立批次列印 HTML（與單筆相同版面：上下各一張 bi-fold 卡）
-    const container = document.getElementById('batch-container');
+    // 確保 TW-Kai 真的已載入後再進行 DOM 量測，量測結果才會跟實際輸出一致
+    await ensureStoryFontLoaded();
+
+    // 建立批次列印 HTML（與單筆相同版面：上下各一張 bi-fold 卡），
+    // 直接渲染進畫面上可見的 #batch-scale-wrap，螢幕預覽與列印輸出共用同一份 DOM
+    const container = document.getElementById('batch-scale-wrap');
     container.innerHTML = '';
     const overflowIds = [];
     const shrunkIds = [];
@@ -1055,10 +1039,11 @@ async function batchImport() {
         const o1 = ok[i];
         const o2 = ok[i + 1] || null;
 
-        // 第一頁：封面
+        // 第一頁：封面——永遠印兩份 logo（即使第二格沒有設計理念），
+        // 這樣第二格對應的背面留白，裁下來就是一張可用的空白備用卡，不浪費半張紙
         const coverPage = document.createElement('div');
         coverPage.className = 'batch-page';
-        coverPage.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
+        coverPage.innerHTML = buildBatchCoverCard(1) + buildBatchCoverCard(2);
         container.appendChild(coverPage);
 
         // 第二頁：設計理念（card-1 = 上方，card-2 = 下方）
@@ -1072,13 +1057,10 @@ async function batchImport() {
         storyPage.className = 'batch-page';
         storyPage.innerHTML = c1.html + c2.html;
         container.appendChild(storyPage);
-
-        // 第三頁：封面（空白卡用）
-        const coverPage2 = document.createElement('div');
-        coverPage2.className = 'batch-page';
-        coverPage2.innerHTML = buildBatchCoverCard(1) + (o2 ? buildBatchCoverCard(2) : '');
-        container.appendChild(coverPage2);
     }
+
+    document.body.classList.add('batch-rendered');
+    scalePreview();
 
     const names = ok.map(r => {
         const item = (r.order.items && r.order.items[0]) || {};
@@ -1161,8 +1143,9 @@ window.addEventListener('resize', scalePreview);
 updateCards();
 scalePreview();
 
-/* TW-Kai 字體載入完成後重算排版（font-display:swap 會先用 fallback，loaded 後需重算） */
-document.fonts.ready.then(() => updateCards());
+/* 主動請求 TW-Kai 字體（font-display:swap 預設要等畫面出現用到該字體的文字才會開始下載，
+   這裡提早觸發下載，載完後重算排版，確保量測跟之後顯示/列印用的是同一套字體） */
+ensureStoryFontLoaded().then(() => updateCards());
 
 if (window !== window.top) {
     document.querySelector('.app-header').style.display = 'none';

@@ -621,6 +621,7 @@
                                 <th>商品</th>
                                 <th>金額</th>
                                 <th>兌換碼</th>
+                                <th>設計理念</th>
                                 <th>狀態</th>
                                 <th>日期</th>
                                 <th>預計出貨</th>
@@ -628,7 +629,7 @@
                             </tr>
                         </thead>
                         <tbody id="ordersTableBody">
-                            <tr><td colspan="10" class="loading">載入中...</td></tr>
+                            <tr><td colspan="11" class="loading">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1882,7 +1883,7 @@
                     }
                 }
             } catch (err) {
-                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="10" class="loading">載入失敗</td></tr>';
+                document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="11" class="loading">載入失敗</td></tr>';
             }
         }
         
@@ -2131,7 +2132,7 @@
 
             const tbody = document.getElementById('ordersTableBody');
             if (!pageOrders.length) {
-                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">尚無訂單</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
             
@@ -2165,6 +2166,7 @@
                     <td>${esc(items.map(i => i.letter1 + i.letter2).join(', ')) || '-'}</td>
                     <td>NT$ ${total.toLocaleString()}</td>
                     <td>${redeemCodesHtml}</td>
+                    <td style="text-align:center;">${order.hasDesignStory ? '<span style="color:#86efac;font-weight:700;">✔</span>' : ''}</td>
                     <td><span class="status-badge ${status.class}">${esc(status.text)}</span>${
                         order.confirmationStatus === 'pending'
                             ? '<span title="已寄送確認信，等待顧客確認" style="margin-left:6px;color:#fbbf24;font-weight:700;cursor:default;">❓</span>'
