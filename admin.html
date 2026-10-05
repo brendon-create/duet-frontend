@@ -2238,14 +2238,22 @@
             
             try {
                 if (action === 'delete') {
-                    // 刪除訂單
+                    // 刪除訂單：用資料庫真正的 order_id（而非可能跟訂單JSON內容不一致的 orderId）
+                    const failures = [];
                     for (const orderId of selectedOrders) {
-                        await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}`, {
+                        const dbOrderId = allOrders.find(o => o.orderId === orderId)?.order_id || orderId;
+                        const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${dbOrderId}`, {
                             method: 'DELETE',
                             headers: { 'Authorization': adminAuthHeader() }
                         });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.success) {
+                            failures.push(`${orderId}（${data.error || res.status}）`);
+                        }
                     }
-                    alert('刪除完成');
+                    alert(failures.length === 0
+                        ? '刪除完成'
+                        : `部分刪除失敗：\n${failures.join('\n')}`);
                 } else {
                     // 標記為測試或無效
                     for (const orderId of selectedOrders) {
