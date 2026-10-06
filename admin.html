@@ -607,6 +607,7 @@
                     </select>
                     <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
                     <button id="emailMfrBtn" class="btn btn-secondary" onclick="openStartProductionModal(selectedOrders)" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
+                    <button id="printStoryBtn" class="btn btn-secondary" onclick="printSelectedStories()" style="display:none;background:#0f766e;color:#fff;border-color:#0f766e;">🖨 列印理念</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
                     <button class="btn btn-primary" onclick="exportOrders()">匯出 CSV</button>
                     <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
@@ -616,7 +617,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="selectAllOrders" onchange="toggleSelectAll()" style="width: 18px; height: 18px;"></th>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders()" style="width: 18px; height: 18px;"></th>
                                 <th>訂單編號</th>
                                 <th>客戶</th>
                                 <th>商品</th>
@@ -1762,6 +1763,37 @@
             if (tab === 'distributorAccounts') loadDistributors();
         }
 
+        // 訂單列表勾選後「列印理念」→ 帶著訂單編號切到列印工具分頁，直接跑出批次預覽
+        function printSelectedStories() {
+            if (selectedOrders.length === 0) return;
+            const orderIds = [...selectedOrders];
+            const iframe = document.getElementById('print-iframe');
+            const alreadyLoaded = !!iframe.src && iframe.src !== window.location.href;
+
+            switchTab('print');
+
+            const inject = () => {
+                try {
+                    const win = iframe.contentWindow;
+                    const doc = win.document;
+                    const batchSection = doc.getElementById('batchSection');
+                    if (batchSection && !batchSection.classList.contains('visible')) {
+                        win.toggleBatchMode();
+                    }
+                    doc.getElementById('batchInput').value = orderIds.join('\n');
+                    win.batchImport();
+                } catch (e) {
+                    console.error('無法將訂單帶入列印工具:', e);
+                }
+            };
+
+            if (alreadyLoaded) {
+                inject();
+            } else {
+                iframe.addEventListener('load', inject, { once: true });
+            }
+        }
+
         // 訂單使用的兌換碼／優惠碼 → 跳轉到對應分頁並定位到該筆
         function highlightRow(selector) {
             const row = document.querySelector(selector);
@@ -2194,17 +2226,25 @@
         // 訂單勾選功能
         let selectedOrders = [];
         
+        function updateOrderSelectionButtons() {
+            const emailBtn = document.getElementById('emailMfrBtn');
+            if (emailBtn) emailBtn.style.display = selectedOrders.length > 0 ? '' : 'none';
+            const printBtn = document.getElementById('printStoryBtn');
+            if (printBtn) printBtn.style.display = selectedOrders.length > 0 ? '' : 'none';
+        }
+
         function toggleOrderSelection(orderId) {
             if (selectedOrders.includes(orderId)) {
                 selectedOrders = selectedOrders.filter(id => id !== orderId);
             } else {
                 selectedOrders.push(orderId);
             }
-            const btn = document.getElementById('emailMfrBtn');
-            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
+            updateOrderSelectionButtons();
         }
 
-        function toggleSelectAll() {
+        // 原本叫 toggleSelectAll()，跟優惠碼/兌換碼批次操作那邊的 toggleSelectAll(kind, checked)
+        // 撞名，後定義的會蓋掉這個，導致訂單列表表頭「全選」失效，改成專屬名稱避免再撞名
+        function toggleSelectAllOrders() {
             const selectAll = document.getElementById('selectAllOrders');
             const _st = document.getElementById('showTestOrders')?.checked || false;
             const _si = document.getElementById('showInvalidOrders')?.checked || false;
@@ -2216,8 +2256,7 @@
                 // 取消選取目前頁面
                 selectedOrders = selectedOrders.filter(id => !pageOrders.some(o => o.orderId === id));
             }
-            const btn = document.getElementById('emailMfrBtn');
-            if (btn) btn.style.display = selectedOrders.length > 0 ? '' : 'none';
+            updateOrderSelectionButtons();
             renderOrders(filteredOrders);
         }
         
