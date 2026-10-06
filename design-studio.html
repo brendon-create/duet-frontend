@@ -4163,10 +4163,8 @@
             }
 
             // 獲取當前字體名稱
-            const font1Select = document.getElementById('font1-select');
-            const font2Select = document.getElementById('font2-select');
-            const font1Name = font1Select ? font1Select.value : document.getElementById('font1-btn').getAttribute('data-selected');
-            const font2Name = font2Select ? font2Select.value : document.getElementById('font2-btn').getAttribute('data-selected');
+            const font1Name = getCurrentFont('font1') || '';
+            const font2Name = getCurrentFont('font2') || '';
 
             // 保存當前狀態
             savedVersions[slotIndex] = {
@@ -4319,8 +4317,20 @@
 
             const font1Select = document.getElementById('font1-select');
             const font2Select = document.getElementById('font2-select');
-            if (font1Select) font1Select.value = slotData.font1;
-            if (font2Select) font2Select.value = slotData.font2;
+            // 版位存的字體可能已不在目前選單裡（存檔後又用「重選字體」換過一批，選單會被整個重建），
+            // 直接 select.value = 不存在的值會讓選單變成「沒有選中任何項目」、value 讀出來是空字串
+            [[font1Select, slotData.font1], [font2Select, slotData.font2]].forEach(([sel, fontName]) => {
+                if (!sel) return;
+                if (fontName && !Array.from(sel.options).some(o => o.value === fontName)) {
+                    const opt = document.createElement('option');
+                    opt.value = fontName;
+                    opt.text = fontName;
+                    opt.style.fontFamily = `"${fontName}", sans-serif`;
+                    sel.appendChild(opt);
+                    applyConstraintsToFontSelect(sel, parseInt(slotData.size));
+                }
+                sel.value = fontName;
+            });
 
             // 清除舊模型
             if (mainMesh) {
@@ -4446,10 +4456,12 @@
             const threeViews = captureThreeViews();
 
             // 獲取當前選擇的字體名稱
-            const font1Select = document.getElementById('font1-select');
-            const font2Select = document.getElementById('font2-select');
-            const font1Name = font1Select ? font1Select.value : document.getElementById('font1-btn').getAttribute('data-selected');
-            const font2Name = font2Select ? font2Select.value : document.getElementById('font2-btn').getAttribute('data-selected');
+            const font1Name = getCurrentFont('font1') || '';
+            const font2Name = getCurrentFont('font2') || '';
+            if (!font1Name || !font2Name) {
+                showToast('找不到目前選擇的字體，請重新選擇字體後再加入購物車');
+                return;
+            }
 
             // 計算圓環相對於主體中心的向量
             const ringRelativeX = ringMesh ? (ringMesh.position.x - modelCenter.x) : 0;
