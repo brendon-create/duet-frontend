@@ -372,7 +372,9 @@ body {
     /* 批次模式：印出畫面上實際預覽的同一份 DOM，不再是另一套隱藏節點 */
     body.batch-active #cover-scale-wrap,
     body.batch-active #scale-wrap { display: none !important; }
-    #batch-container { display: block !important; margin: 0 !important; padding: 0 !important; }
+    /* 蓋掉 JS 在畫面預覽縮放時設的內嵌 height/overflow（只是為了螢幕不留空白），
+       列印時絕對不能讓它限制容器高度，否則內容會被擠到下一頁，造成版面全部跑掉 */
+    #batch-container { display: block !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
     #batch-scale-wrap { display: block !important; transform: none !important; }
     #batch-scale-wrap .batch-page { margin: 0 !important; }
     .batch-page { width: 210mm; height: 296.9mm; position: relative; background: white; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
