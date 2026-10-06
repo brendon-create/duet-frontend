@@ -622,7 +622,7 @@
                                 <th>客戶</th>
                                 <th>商品</th>
                                 <th>金額</th>
-                                <th>兌換碼</th>
+                                <th>優惠碼</th>
                                 <th>設計理念</th>
                                 <th>狀態</th>
                                 <th>日期</th>
@@ -2212,7 +2212,7 @@
                             : ''
                     }</td>
                     <td>${date}</td>
-                    <td>${esc(order.estimatedShipDate || '-')}</td>
+                    <td${order.manufacturerAckAt ? ' title="廠商已確認交件日期" style="color:#fbbf24;font-weight:700;"' : ''}>${esc(order.estimatedShipDate || '-')}</td>
                     <td><button class="btn btn-secondary btn-sm" data-oid="${oidAttr}" onclick="viewOrder(this.dataset.oid)">查看</button></td>
                 </tr>`;
             }).join('');
