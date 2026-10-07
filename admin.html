@@ -2628,7 +2628,7 @@
                 <div class="detail-section">
                     <h3>基本資訊</h3>
                     <div class="detail-row"><span class="detail-label">訂單編號</span><span class="detail-value">${esc(order.orderId)}</span></div>
-                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${esc(status.text)}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${oid}')">⚒ 開始製作</button>` : ''}${order.status === 'stl_failed' ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${oid}')">🔄 重新生成 STL</button>` : ''}</div>
+                    <div class="detail-row"><span class="detail-label">狀態</span><span class="status-badge ${status.class}">${esc(status.text)}</span>${(order.status === 'paid' || order.status === 'free_order') ? `<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="openStartProductionModal('${oid}')">⚒ 開始製作</button>` : ''}<button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="retryStlGeneration('${oid}', ${order.status === 'stl_failed' ? 'false' : 'true'})">🔄 重新生成 STL</button></div>
                     <div class="detail-row"><span class="detail-label">建立日期</span><span class="detail-value">${order.timestamp ? formatTaiwanTime(order.timestamp) : '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">確認信寄送時間</span><span class="detail-value">${order.confirmationEmailSentAt ? formatTaiwanTime(order.confirmationEmailSentAt) : '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">預計出貨日期</span><span class="detail-value">${esc(order.estimatedShipDate || '-')}</span></div>
@@ -5130,12 +5130,16 @@
         }
 
         // 重新將訂單加入 STL 生成佇列（用於 stl_failed 或卡住的訂單）
-        async function retryStlGeneration(orderId) {
-            if (!confirm(`確定要將訂單 ${orderId} 重新加入 STL 生成佇列嗎？`)) return;
+        async function retryStlGeneration(orderId, force = false) {
+            const msg = force
+                ? `這會用訂單目前的字體和尺寸重新生成 STL（舊的 STL 檔案會保留，路徑記入歷史紀錄）。\n若這筆訂單已經寄給廠商，請記得另行通知廠商。\n\n確定要為訂單 ${orderId} 重新生成嗎？`
+                : `確定要將訂單 ${orderId} 重新加入 STL 生成佇列嗎？`;
+            if (!confirm(msg)) return;
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/retry-stl`, {
                     method: 'POST',
-                    headers: { 'Authorization': adminAuthHeader(), 'X-Admin-User': currentUser?.username || 'admin' }
+                    headers: { 'Authorization': adminAuthHeader(), 'X-Admin-User': currentUser?.username || 'admin', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force })
                 });
                 const data = await res.json();
                 if (data.success) {
