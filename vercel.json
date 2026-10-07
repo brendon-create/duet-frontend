@@ -5,6 +5,10 @@
     {
       "source": "/d/:code",
       "destination": "/api/d/:code"
+    },
+    {
+      "source": "/ack/:token",
+      "destination": "https://duet-backend-wlw8.onrender.com/api/manufacturer/ack/:token"
     }
   ],
   "redirects": [
