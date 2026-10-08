@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <script src="assets/js/config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字體卡尺 - DUET 後台</title>
+    <link rel="icon" type="image/png" href="assets/images/logo/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #d4af37;
+            --bg-dark: #0a0a0a;
+            --bg-card: #1a1a1a;
+            --bg-cell: #222;
+            --text-light: #e0e0e0;
+            --text-muted: #888;
+            --border: rgba(212,175,55,0.2);
+            --ok: #4ade80;
+            --warn: #facc15;
+            --bad: #f87171;
+        }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg-dark); color: var(--text-light); font-size: 13px; }
+        .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+        .ctl-group { display: flex; gap: 6px; align-items: flex-end; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+        .ctl-group > .title { color: var(--primary); font-weight: 600; margin-right: 4px; align-self: center; }
+        label { display: flex; flex-direction: column; gap: 3px; color: var(--text-muted); font-size: 11px; }
+        select, input { background: var(--bg-cell); color: var(--text-light); border: 1px solid #333; border-radius: 5px; padding: 5px 7px; font: inherit; font-size: 13px; }
+        input[type=number] { width: 72px; }
+        button { background: var(--primary); color: #000; border: none; border-radius: 6px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+        button.ghost { background: transparent; color: var(--text-muted); border: 1px solid #333; font-weight: 400; padding: 4px 10px; }
+        button:disabled { opacity: 0.5; cursor: wait; }
+        details { color: var(--text-muted); }
+        details[open] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+        details .rules { display: flex; gap: 8px; margin-top: 6px; }
+        #status { color: var(--text-muted); align-self: center; min-height: 1em; }
+        #status.err { color: var(--bad); }
+        /* 整頁固定為視窗大小、不捲動：上半＝2D 雙字母 + 3D，下半＝截面 */
+        html, body { height: 100%; overflow: hidden; }
+        #app { height: 100vh; display: flex; flex-direction: column; }
+        .controls { flex: 0 0 auto; }
+        .top { flex: 58 1 0; min-height: 0; display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; padding: 10px 12px 0; }
+        .bottom { flex: 42 1 0; min-height: 0; padding: 10px 12px 12px; display: flex; }
+        .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+        .bottom > .panel { flex: 1; }
+        .panel h3 { flex: 0 0 auto; font-size: 13px; font-weight: 500; color: var(--primary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .panel h3 small { color: var(--text-muted); font-weight: 400; font-size: 11px; }
+        .pair { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .cell { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+        .cell-title { font-size: 12px; color: var(--text-light); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fill { flex: 1; min-height: 0; position: relative; background: #111; border-radius: 6px; overflow: hidden; }
+        .fill > canvas, #view3d > canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+        canvas.view { cursor: crosshair; }
+        .sec-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: 10px; }
+        .sec-side, .pins-box { min-height: 0; overflow: auto; }
+        .pins-box h4 { font-size: 12px; font-weight: 500; color: var(--primary); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-card); padding-bottom: 4px; }
+        .readout { margin-top: 4px; min-height: 16px; color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #2a2a2a; white-space: nowrap; }
+        th { color: var(--text-muted); font-weight: 400; font-size: 11px; }
+        .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #000; }
+        .badge.ok { background: var(--ok); } .badge.warn { background: var(--warn); } .badge.bad { background: var(--bad); }
+        .note { color: var(--text-muted); font-size: 11px; line-height: 1.5; margin-top: 6px; }
+        #authMsg { display: none; padding: 60px; text-align: center; color: var(--text-muted); font-size: 15px; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/assets/vendor/three.module.js",
+            "three/addons/": "/assets/vendor/three-addons/",
+            "three-mesh-bvh": "/assets/vendor/three-mesh-bvh.module.js",
+            "three-bvh-csg": "/assets/vendor/three-bvh-csg.module.js"
+        }
+    }
+    </script>
+</head>
+<body>
+<div id="authMsg">請先在員工後台登入，再開啟字體卡尺。</div>
+
+<div id="app">
+    <div class="controls">
+        <div class="ctl-group">
+            <span class="title">字母 1</span>
+            <label>字體<select id="font1"></select></label>
+            <label>字元<select id="char1"></select></label>
+            <label>R 值（mm）<input id="r1" type="number" step="0.025" min="0" max="1" placeholder="預設"></label>
+        </div>
+        <div class="ctl-group">
+            <span class="title">字母 2</span>
+            <label>字體<select id="font2"></select></label>
+            <label>字元<select id="char2"></select></label>
+            <label>R 值（mm）<input id="r2" type="number" step="0.025" min="0" max="1" placeholder="預設"></label>
+        </div>
+        <label>尺寸<select id="size"><option value="8">8 mm</option><option value="10">10 mm</option><option value="12">12 mm</option></select></label>
+        <button id="loadBtn">載入</button>
+        <details>
+            <summary>判定規則</summary>
+            <div class="rules">
+                <label>最薄邊 紅 &lt;<input id="sideBad" type="number" step="0.05"></label>
+                <label>最薄邊 黃 &lt;<input id="sideWarn" type="number" step="0.05"></label>
+                <label>截面積 紅 &lt;<input id="areaBad" type="number" step="0.05"></label>
+                <label>截面積 黃 &lt;<input id="areaOk" type="number" step="0.05"></label>
+                <button class="ghost" id="rulesReset">恢復預設</button>
+            </div>
+        </details>
+        <span id="status"></span>
+    </div>
+
+    <div class="top">
+        <section class="panel">
+            <h3>2D 字母 <small>滾輪縮放・拖曳平移・雙擊重設・點擊固定量測；灰色＝另一個字母在該高度沒有實體（不會產生交集）</small></h3>
+            <div class="pair">
+                <div class="cell">
+                    <div class="cell-title" id="title1">字母 1</div>
+                    <div class="fill"><canvas class="view" id="cv1"></canvas></div>
+                    <div class="readout" id="ro1"></div>
+                </div>
+                <div class="cell">
+                    <div class="cell-title" id="title2">字母 2</div>
+                    <div class="fill"><canvas class="view" id="cv2"></canvas></div>
+                    <div class="readout" id="ro2"></div>
+                </div>
+            </div>
+        </section>
+        <section class="panel">
+            <h3>3D 成品 <small>拖曳旋轉・滾輪縮放；半透明面＝目前切面</small></h3>
+            <div class="fill" id="view3d"></div>
+        </section>
+    </div>
+
+    <div class="bottom">
+        <section class="panel">
+            <h3>成品截面 <small>沿深度方向切穿另一個字母</small></h3>
+            <div class="sec-body">
+                <div class="fill"><canvas id="cvSec"></canvas></div>
+                <div class="sec-side">
+                    <div id="secTable"></div>
+                    <div class="note">
+                        切面垂直於游標所在的筆畫。w1＝游標筆畫的寬度；w2＝被切到的另一個字母筆畫在同一高度的寬度。<br>
+                        截面積以 w1 × w2 計算（矩形，保守估算）：兩筆畫斜交時真實截面是平行四邊形、面積略大。<br>
+                        寬度＝穿過該點的最短弦長；游標太靠近尖角時會偏小。輪廓來自後端 OpenSCAD 實際畫出的形狀（與送印 STL 相同）。
+                    </div>
+                </div>
+                <div class="pins-box">
+                    <h4>已固定的量測 <button class="ghost" id="pinClear">全部清除</button></h4>
+                    <table><thead><tr><th>#</th><th>字母</th><th>位置 mm</th><th>w1</th><th>截面（w2 / 面積 / 判定）</th><th></th></tr></thead><tbody id="pinBody"></tbody></table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+import { buildShape, pointInShape, caliperAt, sectionBlocks, emptyBands, judge, judgeSingle } from './js/caliper-geometry.js';
+
+const $ = id => document.getElementById(id);
+const CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
+const DEFAULT_RULES = { sideBad: 0.5, sideWarn: 0.55, areaBad: 0.6, areaOk: 0.7 };
+const COLORS = { ok: '#4ade80', warn: '#facc15', bad: '#f87171' };
+const WORST = { ok: 0, warn: 1, bad: 2 };
+
+// ── 判定規則（記在瀏覽器） ──────────────────────
+let rules = { ...DEFAULT_RULES };
+try { Object.assign(rules, JSON.parse(localStorage.getItem('caliperRules') || '{}')); } catch {}
+function syncRuleInputs() { for (const k in DEFAULT_RULES) $(k).value = rules[k]; }
+syncRuleInputs();
+for (const k in DEFAULT_RULES) $(k).addEventListener('change', () => {
+    const v = parseFloat($(k).value);
+    if (!isNaN(v)) rules[k] = v;
+    try { localStorage.setItem('caliperRules', JSON.stringify(rules)); } catch {}
+    redrawAll(); renderPins();
+});
+$('rulesReset').addEventListener('click', () => {
+    rules = { ...DEFAULT_RULES }; syncRuleInputs();
+    try { localStorage.removeItem('caliperRules'); } catch {}
+    redrawAll(); renderPins();
+});
+
+// ── 登入檢查 ─────────────────────────────────
+const token = localStorage.getItem('adminToken');
+if (!token) { $('authMsg').style.display = 'block'; $('app').style.display = 'none'; }
+
+function setStatus(msg, err = false) { $('status').textContent = msg; $('status').className = err ? 'err' : ''; }
+
+// ── 選單 ─────────────────────────────────────
+const fontsJson = await (await fetch('fonts.json')).json();
+const fontNames = fontsJson.fonts.map(f => f.name);
+for (const sel of [$('font1'), $('font2')]) sel.innerHTML = fontNames.map(n => `<option>${n}</option>`).join('');
+for (const sel of [$('char1'), $('char2')]) sel.innerHTML = CHARS.map(c => `<option>${c}</option>`).join('');
+$('font1').value = 'Alex Brush'; $('char1').value = 'm';
+$('font2').value = 'Allura'; $('char2').value = 'A';
+$('size').value = '12';
+
+// ── 向後端取 OpenSCAD 實際輪廓 ───────────────────
+const outlineCache = new Map();
+async function fetchOutline(font, char, size, r) {
+    const key = `${font}|${char}|${size}|${r}`;
+    if (outlineCache.has(key)) return outlineCache.get(key);
+    const res = await fetch(`${window.BACKEND_URL}/api/admin/glyph-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ font, char, size, offset_r: r === '' ? null : parseFloat(r) })
+    });
+    if (res.status === 401) throw new Error('登入已過期，請回後台重新登入');
+    const data = await res.json();
+    if (!data.success) throw new Error(`${font} 「${char}」：${data.error}`);
+    outlineCache.set(key, data);
+    return data;
+}
+
+// ── 狀態 ─────────────────────────────────────
+const L = { 1: null, 2: null };          // { data, shape }
+const view = { 1: null, 2: null };       // { k, ox, oy }：mm → px
+let hover = null;                        // { which, x, y, cal, blocks }
+const pins = [];
+
+$('loadBtn').addEventListener('click', load);
+async function load() {
+    if (!token) return;
+    $('loadBtn').disabled = true;
+    setStatus('伺服器繪製字形中…（每個字形約 1–4 秒）');
+    try {
+        const size = parseFloat($('size').value);
+        const [d1, d2] = await Promise.all([
+            fetchOutline($('font1').value, $('char1').value, size, $('r1').value),
+            fetchOutline($('font2').value, $('char2').value, size, $('r2').value)
+        ]);
+        L[1] = { data: d1, shape: buildShape(d1.contours) };
+        L[2] = { data: d2, shape: buildShape(d2.contours) };
+        // 灰色區（另一個字母在該高度沒有實體）只跟兩個字形有關，載入時算一次
+        L[1].bands = emptyBands(L[2].shape, L[1].shape.bbox.yMin, L[1].shape.bbox.yMax, 0.02);
+        L[2].bands = emptyBands(L[1].shape, L[2].shape.bbox.yMin, L[2].shape.bbox.yMax, 0.02);
+        for (const i of [1, 2]) {
+            const d = L[i].data;
+            $('r' + i).placeholder = `預設 ${d.offset_r_default}`;
+            $('title' + i).textContent = `字母 ${i}：${d.font}「${d.char}」 R=${d.offset_r}mm${d.fallback_center ? '（⚠ 置中退回舊做法）' : ''}`;
+        }
+        hover = null; pins.length = 0; renderPins();
+        resetView(1); resetView(2);
+        redrawAll();
+        setStatus('建立 3D 模型中…');
+        await new Promise(r => setTimeout(r, 30));
+        build3D();
+        setStatus(`已載入（${size}mm）`);
+    } catch (e) {
+        setStatus(e.message, true);
+    } finally {
+        $('loadBtn').disabled = false;
+    }
+}
+
+// ── 2D 畫面 ──────────────────────────────────
+const cv = { 1: $('cv1'), 2: $('cv2') };
+function fitCanvas(c) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return dpr;
+}
+function resetView(i) {
+    // 兩個字母用同一個縮放比例，高度方向對齊，方便對照同一個高度
+    const c = cv[i]; const dpr = fitCanvas(c);
+    let k = Infinity;
+    for (const j of [1, 2]) {
+        const b = L[j].shape.bbox, m = 24 * dpr;
+        k = Math.min(k, (c.width - 2 * m) / (b.xMax - b.xMin), (c.height - 2 * m) / (b.yMax - b.yMin));
+    }
+    view[i] = { k, ox: c.width / 2, oy: c.height / 2 };
+}
+const toPx = (i, x, y) => [view[i].ox + x * view[i].k, view[i].oy - y * view[i].k];
+const toMm = (i, px, py) => [(px - view[i].ox) / view[i].k, (view[i].oy - py) / view[i].k];
+
+function draw2D(i) {
+    const c = cv[i], ctx = c.getContext('2d'); const dpr = fitCanvas(c);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, c.width, c.height);
+    if (!L[i] || !view[i]) return;
+    const self = L[i].shape;
+    // 格線：1mm 細線、5mm 粗線
+    const [mx0, my1] = toMm(i, 0, 0), [mx1, my0] = toMm(i, c.width, c.height);
+    for (let g = Math.floor(mx0); g <= mx1; g++) {
+        ctx.strokeStyle = g % 5 === 0 ? '#2e2e2e' : '#1c1c1c'; ctx.lineWidth = 1;
+        const [px] = toPx(i, g, 0); ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, c.height); ctx.stroke();
+    }
+    for (let g = Math.floor(my0); g <= my1; g++) {
+        ctx.strokeStyle = g % 5 === 0 ? '#2e2e2e' : '#1c1c1c';
+        const [, py] = toPx(i, 0, g); ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(c.width, py); ctx.stroke();
+        if (g % 2 === 0) { ctx.fillStyle = '#555'; ctx.font = `${10 * dpr}px Outfit`; ctx.fillText(`${g}`, 4 * dpr, py - 2 * dpr); }
+    }
+    // 字形
+    ctx.beginPath();
+    for (const cont of self.contours) cont.forEach(([x, y], j) => { const [px, py] = toPx(i, x, y); j ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(212,175,55,0.55)'; ctx.fill('evenodd');
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+    // 灰色：另一個字母在這個高度完全沒有實體（不會產生交集）
+    ctx.fillStyle = 'rgba(110,110,110,0.6)';
+    for (const [y0, y1] of L[i].bands) {
+        const [, pa] = toPx(i, 0, y1), [, pb] = toPx(i, 0, y0);
+        ctx.fillRect(0, pa, c.width, pb - pa);
+    }
+    // 固定的量測
+    pins.forEach((p, n) => {
+        if (p.which === i) drawCaliper(ctx, i, p.cal, colorOfBlocks(p.cal, p.blocks), `#${n + 1}`, dpr);
+        else for (const b of p.blocks) if (b.cal2) drawCaliper(ctx, i, b.cal2, '#888', `#${n + 1}`, dpr);
+    });
+    // 游標量測
+    if (hover && hover.cal) {
+        if (hover.which === i) {
+            drawCaliper(ctx, i, hover.cal, colorOfBlocks(hover.cal, hover.blocks), `${hover.cal.width.toFixed(3)} mm`, dpr);
+        } else {
+            // 另一個字母：標出被切面切到的區域（每塊在各高度的水平區間），與它自己的垂直寬度 w2
+            ctx.fillStyle = 'rgba(96,165,250,0.45)';
+            for (const blk of hover.blocks) {
+                for (let s = 0; s < blk.strips.length; s++) {
+                    const st = blk.strips[s], t = st.s / hover.cal.width;
+                    const y = hover.cal.b[1] + t * (hover.cal.a[1] - hover.cal.b[1]);
+                    const [p0x, py] = toPx(i, st.u0, y), [p1x] = toPx(i, st.u1, y);
+                    ctx.fillRect(p0x, py - 1.5 * dpr, p1x - p0x, 3 * dpr);
+                }
+                if (blk.cal2) drawCaliper(ctx, i, blk.cal2, COLORS[judge(hover.cal.width, blk.w2, rules)], `w2 ${blk.w2.toFixed(3)}`, dpr);
+            }
+        }
+    }
+}
+function colorOfBlocks(cal, blocks) {
+    if (!blocks.length) return COLORS[judgeSingle(cal.width, rules)];
+    let worst = 'ok';
+    for (const b of blocks) { const j = judge(cal.width, b.w2, rules); if (WORST[j] > WORST[worst]) worst = j; }
+    return COLORS[worst];
+}
+function drawCaliper(ctx, i, cal, color, label, dpr) {
+    const [ax, ay] = toPx(i, ...cal.a), [bx, by] = toPx(i, ...cal.b);
+    const tx = -(ay - by), ty = ax - bx, tl = Math.hypot(tx, ty) || 1, j = 7 * dpr;
+    ctx.strokeStyle = color; ctx.lineWidth = 2 * dpr;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    for (const [px, py] of [[ax, ay], [bx, by]]) { ctx.moveTo(px - tx / tl * j, py - ty / tl * j); ctx.lineTo(px + tx / tl * j, py + ty / tl * j); }
+    ctx.stroke();
+    ctx.font = `600 ${12 * dpr}px Outfit`;
+    const lx = Math.max(ax, bx) + 10 * dpr, ly = (ay + by) / 2;
+    ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(label, lx, ly);
+    ctx.fillStyle = color; ctx.fillText(label, lx, ly);
+}
+
+// ── 截面面板 ─────────────────────────────────
+function drawSection() {
+    const c = $('cvSec'), ctx = c.getContext('2d'); const dpr = fitCanvas(c);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
+    const tbl = $('secTable');
+    if (!hover || !hover.cal) {
+        ctx.fillStyle = '#555'; ctx.font = `${13 * dpr}px Outfit`;
+        ctx.fillText('把游標移到任一個字母的筆畫上', 16 * dpr, 28 * dpr);
+        tbl.innerHTML = ''; return;
+    }
+    const { cal, blocks } = hover;
+    if (!blocks.length) {
+        ctx.fillStyle = COLORS.bad; ctx.font = `${13 * dpr}px Outfit`;
+        ctx.fillText('這個位置在成品中不存在（另一個字母在這個高度沒有實體）', 16 * dpr, 28 * dpr);
+        tbl.innerHTML = ''; return;
+    }
+    // 橫軸＝深度方向（另一個字母的水平座標 u），縱軸＝沿卡尺（0..w1），兩軸同比例
+    let u0 = Infinity, u1 = -Infinity;
+    for (const b of blocks) for (const s of b.strips) { u0 = Math.min(u0, s.u0); u1 = Math.max(u1, s.u1); }
+    const m = 30 * dpr;
+    const k = Math.min((c.width - 2 * m) / (u1 - u0), (c.height - 2 * m) / cal.width, 120 * dpr);
+    const X = u => c.width / 2 + (u - (u0 + u1) / 2) * k, Y = s => c.height / 2 + (cal.width / 2 - s) * k;
+    blocks.forEach((b, n) => {
+        const j = judge(cal.width, b.w2, rules);
+        ctx.beginPath();
+        b.strips.forEach((s, q) => { q ? ctx.lineTo(X(s.u0), Y(s.s)) : ctx.moveTo(X(s.u0), Y(s.s)); });
+        [...b.strips].reverse().forEach(s => ctx.lineTo(X(s.u1), Y(s.s)));
+        ctx.closePath();
+        ctx.fillStyle = COLORS[j] + '55'; ctx.fill();
+        ctx.strokeStyle = COLORS[j]; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+        const cx = X(b.uMid);
+        ctx.fillStyle = '#ddd'; ctx.font = `600 ${12 * dpr}px Outfit`; ctx.textAlign = 'center';
+        ctx.fillText(`#${n + 1}`, cx, Y(cal.width) - 8 * dpr);
+        ctx.textAlign = 'left';
+    });
+    ctx.fillStyle = '#666'; ctx.font = `${10 * dpr}px Outfit`;
+    ctx.fillText(`↕ w1 = ${cal.width.toFixed(3)} mm（游標筆畫）   ↔ 深度方向（另一個字母）`, 8 * dpr, c.height - 8 * dpr);
+    tbl.innerHTML = `<table><thead><tr><th>塊</th><th>w1</th><th>w2</th><th>兩筆畫夾角</th><th>截面積（w1×w2）</th><th>判定</th></tr></thead><tbody>${
+        blocks.map((b, n) => {
+            const j = judge(cal.width, b.w2, rules);
+            return `<tr><td>#${n + 1}</td><td>${cal.width.toFixed(3)}</td><td>${b.w2.toFixed(3)}</td><td>${b.angleDeg.toFixed(0)}°</td><td>${b.area.toFixed(3)} mm²</td><td><span class="badge ${j}">${{ ok: '可列印', warn: '邊緣', bad: '過細' }[j]}</span></td></tr>`;
+        }).join('')}</tbody></table>`;
+}
+
+function redrawAll() { draw2D(1); draw2D(2); drawSection(); update3DOverlay(); }
+
+// ── 滑鼠：量測、縮放、平移、固定 ─────────────────
+for (const i of [1, 2]) {
+    const c = cv[i];
+    let drag = null, raf = 0, last = null;
+    const pos = e => { const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; };
+    c.addEventListener('mousemove', e => {
+        if (!L[i]) return;
+        const [px, py] = pos(e);
+        if (drag) {
+            if (Math.hypot(px - drag.px, py - drag.py) > 4) drag.moved = true;
+            view[i].ox = drag.ox + px - drag.px; view[i].oy = drag.oy + py - drag.py;
+            draw2D(i); return;
+        }
+        last = [px, py];
+        if (!raf) raf = requestAnimationFrame(() => {
+            raf = 0;
+            const [x, y] = toMm(i, ...last);
+            const cal = caliperAt(L[i].shape, x, y);
+            hover = cal ? { which: i, x, y, cal, blocks: sectionBlocks(cal, L[3 - i].shape) } : null;
+            $('ro' + i).textContent = cal ? `游標 (${x.toFixed(2)}, ${y.toFixed(2)}) mm　筆畫垂直寬度 ${cal.width.toFixed(3)} mm` : '';
+            $('ro' + (3 - i)).textContent = '';
+            redrawAll();
+        });
+    });
+    c.addEventListener('mouseleave', () => { if (hover && hover.which === i) { hover = null; redrawAll(); } $('ro' + i).textContent = ''; });
+    c.addEventListener('mousedown', e => { if (!L[i]) return; const [px, py] = pos(e); drag = { px, py, ox: view[i].ox, oy: view[i].oy, moved: false }; });
+    window.addEventListener('mouseup', () => {
+        if (drag && !drag.moved && hover && hover.which === i) { pins.push({ ...hover }); renderPins(); redrawAll(); }
+        drag = null;
+    });
+    c.addEventListener('wheel', e => {
+        if (!L[i]) return;
+        e.preventDefault();
+        const [px, py] = pos(e), f = Math.exp(-e.deltaY * 0.0015);
+        view[i].ox = px - (px - view[i].ox) * f; view[i].oy = py - (py - view[i].oy) * f; view[i].k *= f;
+        draw2D(i);
+    }, { passive: false });
+    c.addEventListener('dblclick', () => { if (L[i]) { resetView(i); draw2D(i); } });
+}
+
+function renderPins() {
+    $('pinBody').innerHTML = pins.map((p, n) => {
+        const blk = p.blocks.length ? p.blocks.map(b => {
+            const j = judge(p.cal.width, b.w2, rules);
+            return `${b.w2.toFixed(3)} / ${b.area.toFixed(3)} <span class="badge ${j}">${{ ok: '可列印', warn: '邊緣', bad: '過細' }[j]}</span>`;
+        }).join('　') : '<span class="badge bad">不在成品中</span>';
+        return `<tr><td>#${n + 1}</td><td>字母 ${p.which}</td><td>(${p.x.toFixed(2)}, ${p.y.toFixed(2)})</td><td>${p.cal.width.toFixed(3)}</td><td>${blk}</td><td><button class="ghost" data-del="${n}">刪除</button></td></tr>`;
+    }).join('');
+}
+$('pinBody').addEventListener('click', e => { const n = e.target.dataset.del; if (n !== undefined) { pins.splice(+n, 1); renderPins(); redrawAll(); } });
+$('pinClear').addEventListener('click', () => { pins.length = 0; renderPins(); redrawAll(); });
+// 版面自適應：任何區塊尺寸改變（視窗縮放、設定列換行）都重新配置畫面
+let resizeRaf = 0;
+new ResizeObserver(() => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => { if (L[1]) { resetView(1); resetView(2); redrawAll(); } else drawSection(); resize3D(); });
+}).observe(document.querySelector('.top'));
+
+// ── 3D 成品（只供觀看；量測數字都由 2D 輪廓計算） ─────────
+const box = $('view3d');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+box.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
+camera.up.set(0, 0, 1);
+camera.position.set(28, -34, 22);
+const controls = new OrbitControls(camera, renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(20, -30, 40); scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xffffff, 0.5); dl2.position.set(-30, 20, -10); scene.add(dl2);
+let model = null, overlay = new THREE.Group();
+scene.add(overlay);
+function render3D() { renderer.render(scene, camera); }
+controls.addEventListener('change', render3D);
+function resize3D() { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); render3D(); }
+resize3D();
+
+function contoursToShapes(contours) {
+    // 依包含層數分外框（偶數層）與洞（奇數層），洞掛到包含它的最內層外框
+    const items = contours.map(c => ({ c, depth: 0, parent: null }));
+    const inside = (pt, c) => pointInShape(buildShape([c]), pt[0], pt[1]);
+    for (const a of items) for (const b of items) if (a !== b && inside(a.c[0], b.c)) {
+        a.depth++;
+        if (!a.parent || inside(b.c[0], a.parent.c)) a.parent = b;
+    }
+    const shapes = new Map();
+    for (const it of items) if (it.depth % 2 === 0) shapes.set(it, new THREE.Shape(it.c.map(([x, y]) => new THREE.Vector2(x, y))));
+    for (const it of items) if (it.depth % 2 === 1 && shapes.has(it.parent)) shapes.get(it.parent).holes.push(new THREE.Path(it.c.map(([x, y]) => new THREE.Vector2(x, y))));
+    return [...shapes.values()];
+}
+function build3D() {
+    if (model) { scene.remove(model); model.geometry.dispose(); model = null; }
+    const size = parseFloat($('size').value), depth = size * 3;
+    const make = d => {
+        const g = new THREE.ExtrudeGeometry(contoursToShapes(d.contours), { depth, bevelEnabled: false });
+        g.translate(0, 0, -depth / 2);
+        return g;
+    };
+    // 與正式建模相同的擺放：字母 1 在 XZ 平面（沿 Y 擠出），字母 2 在 YZ 平面（沿 X 擠出）
+    const g1 = make(L[1].data); g1.rotateX(Math.PI / 2);
+    const g2 = make(L[2].data); g2.rotateX(Math.PI / 2); g2.rotateZ(Math.PI / 2);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6, roughness: 0.35 });
+    const b1 = new Brush(g1.toNonIndexed(), mat); b1.updateMatrixWorld();
+    const b2 = new Brush(g2.toNonIndexed(), mat); b2.updateMatrixWorld();
+    const res = new Evaluator().evaluate(b1, b2, INTERSECTION);
+    res.geometry.computeVertexNormals();
+    model = new THREE.Mesh(res.geometry, mat);
+    scene.add(model);
+    controls.target.set(0, 0, 0); controls.update();
+    update3DOverlay();
+}
+// 2D 平面座標 → 3D：字母 1 (x, y) 在深度 e → (x, e, y)；字母 2 (u, v) 在深度 e → (e, u, v)
+const to3D = (which, h, v, e) => which === 1 ? new THREE.Vector3(h, e, v) : new THREE.Vector3(e, h, v);
+function update3DOverlay() {
+    overlay.clear();
+    if (!model || !hover || !hover.cal) { render3D(); return; }
+    const { which, cal, blocks } = hover, D = parseFloat($('size').value) * 1.5;
+    // 切面：游標筆畫的卡尺線段 × 整個深度
+    const q = [to3D(which, ...cal.b, -D), to3D(which, ...cal.a, -D), to3D(which, ...cal.a, D), to3D(which, ...cal.b, D)];
+    const pg = new THREE.BufferGeometry().setFromPoints([q[0], q[1], q[2], q[0], q[2], q[3]]);
+    overlay.add(new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })));
+    // 被切到的區塊輪廓（截面真實形狀）
+    const pt = (s, u) => { const t = s / cal.width; return to3D(which, cal.b[0] + t * (cal.a[0] - cal.b[0]), cal.b[1] + t * (cal.a[1] - cal.b[1]), u); };
+    for (const b of blocks) {
+        const pts = [...b.strips.map(s => pt(s.s, s.u0)), ...[...b.strips].reverse().map(s => pt(s.s, s.u1))];
+        pts.push(pts[0]);
+        const col = COLORS[judge(cal.width, b.w2, rules)];
+        overlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, depthTest: false })));
+    }
+    render3D();
+}
+
+if (token) load();
+</script>
+</body>
+</html>

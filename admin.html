@@ -189,6 +189,10 @@
             background: var(--primary);
             color: #000;
         }
+
+        /* 系統管理子選單 */
+        .sub-tabs { margin-top: -12px; padding-top: 8px; flex-wrap: wrap; }
+        .sub-tabs .tab { padding: 6px 14px; font-size: 13px; }
         
         /* Stats */
         .stats-row {
@@ -512,15 +516,20 @@
                 <button class="tab" data-tab="promos" onclick="switchTab('promos')" data-i18n="admin.tab.promos">優惠券管理</button>
                 <button class="tab" data-tab="redeem" onclick="switchTab('redeem')" data-i18n="admin.tab.redeem">兌換碼管理</button>
                 <button class="tab" data-tab="feedback" id="feedbackTab_btn" onclick="switchTab('feedback')" data-i18n="admin.tab.feedback">客戶回饋<span id="feedbackUnreadBadge" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:10px;vertical-align:middle;"></span></button>
+                <button class="tab" data-tab="distributorOrders" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
+                <button class="tab" data-tab="distributorAccounts" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
+                <button class="tab" data-tab="sysAdmin" onclick="switchTab(lastSysTab)" data-i18n="admin.tab.sysadmin">⚙ 系統管理</button>
+                <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
+            </div>
+            <!-- 系統管理子選單：子分頁沿用原本的 data-tab / switchTab，其他地方直接呼叫 switchTab('print') 等照常運作 -->
+            <div class="tabs sub-tabs" id="sysSubTabs" style="display:none;">
                 <button class="tab" data-tab="system" onclick="switchTab('system')" data-i18n="admin.tab.system">系統監控</button>
                 <button class="tab" data-tab="fonts" onclick="switchTab('fonts')" data-i18n="admin.tab.fonts">字體規範</button>
+                <button class="tab" data-tab="caliper" onclick="switchTab('caliper')" data-i18n="admin.tab.caliper">字體卡尺</button>
                 <button class="tab" data-tab="print" onclick="switchTab('print')" data-i18n="admin.tab.print">🖨 列印工具</button>
                 <button class="tab" data-tab="gallery" onclick="switchTab('gallery')" data-i18n="admin.tab.gallery">🖼 Gallery</button>
                 <button class="tab" data-tab="manufacturers" onclick="switchTab('manufacturers')">🏭 廠商管理</button>
                 <button class="tab" data-tab="quoteStats" onclick="switchTab('quoteStats')">💰 製造成本統計</button>
-                <button class="tab" data-tab="distributorOrders" onclick="switchTab('distributorOrders')">🌏 代理商訂單</button>
-                <button class="tab" data-tab="distributorAccounts" onclick="switchTab('distributorAccounts')">🤝 代理商管理</button>
-                <button class="lang-toggle-btn" onclick="window.toggleLanguage()" style="margin-left:auto;background:transparent;border:1px solid rgba(201,169,110,0.3);color:#c9a96e;padding:6px 12px;border-radius:16px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:inherit;align-self:center;">EN</button>
             </div>
             
             <!-- Orders Tab -->
@@ -1115,6 +1124,11 @@
     <!-- 字體規範 Tab -->
     <div id="fontsTab" style="display:none; height:calc(100vh - 120px);">
         <iframe id="fonts-iframe" src="" style="width:100%;height:100%;border:none;background:#0a0a0a;" title="字體規範"></iframe>
+    </div>
+
+    <!-- 字體卡尺 Tab -->
+    <div id="caliperTab" style="display:none; height:calc(100vh - 120px);">
+        <iframe id="caliper-iframe" src="" style="width:100%;height:100%;border:none;background:#0a0a0a;" title="字體卡尺"></iframe>
     </div>
 
     <!-- 列印工具 Tab -->
@@ -1730,12 +1744,22 @@
         }
         
         // Tabs
+        // 系統管理底下的子分頁；頂部「系統管理」按鈕會回到上次看的子分頁
+        const SYS_TABS = ['system', 'fonts', 'caliper', 'print', 'gallery', 'manufacturers', 'quoteStats'];
+        let lastSysTab = 'system';
+
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             const tabBtn = document.querySelector(`.tab[data-tab="${tab}"]`);
             if (tabBtn) tabBtn.classList.add('active');
+            const inSys = SYS_TABS.includes(tab);
+            if (inSys) {
+                lastSysTab = tab;
+                document.querySelector('.tab[data-tab="sysAdmin"]').classList.add('active');
+            }
+            document.getElementById('sysSubTabs').style.display = inSys ? 'flex' : 'none';
 
-            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'print', 'gallery', 'manufacturers', 'quoteStats', 'distributorOrders', 'distributorAccounts'];
+            const allTabs = ['orders', 'users', 'promos', 'redeem', 'feedback', 'system', 'fonts', 'caliper', 'print', 'gallery', 'manufacturers', 'quoteStats', 'distributorOrders', 'distributorAccounts'];
             allTabs.forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -1745,6 +1769,10 @@
             if (tab === 'fonts') {
                 const iframe = document.getElementById('fonts-iframe');
                 if (!iframe.src || iframe.src === window.location.href) iframe.src = 'admin-fonts.html';
+            }
+            if (tab === 'caliper') {
+                const iframe = document.getElementById('caliper-iframe');
+                if (!iframe.src || iframe.src === window.location.href) iframe.src = 'font-caliper.html';
             }
             if (tab === 'print') {
                 const iframe = document.getElementById('print-iframe');

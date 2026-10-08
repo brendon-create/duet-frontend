@@ -20,7 +20,7 @@
     { "name": "Bubblegum Sans", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Bungee", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Caesar Dressing", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Cantata One", "weight": 400, "offset_r": 0, "is_bold_required": false },
+    { "name": "Cantata One", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
     { "name": "Caprasimo", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Chango", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Chela One", "weight": 400, "offset_r": 0, "is_bold_required": false },
