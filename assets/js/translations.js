@@ -452,6 +452,8 @@ window.translations = {
         'admin.tab.system':   '系統監控',
         'admin.tab.redeem':   '兌換碼管理',
         'admin.tab.fonts':    '字體規範',
+        'admin.tab.caliper':  '字體卡尺',
+        'admin.tab.sysadmin': '⚙ 系統管理',
         'admin.tab.print':    '🖨 列印工具',
         'admin.tab.gallery':  '🖼 Gallery',
     },
@@ -903,6 +905,8 @@ window.translations = {
         'admin.tab.system':   'System',
         'admin.tab.redeem':   'Redeem Codes',
         'admin.tab.fonts':    'Font Rules',
+        'admin.tab.caliper':  'Font Caliper',
+        'admin.tab.sysadmin': '⚙ System Admin',
         'admin.tab.print':    '🖨 Print Tool',
         'admin.tab.gallery':  '🖼 Gallery',
     }
