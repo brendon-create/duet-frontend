@@ -637,24 +637,24 @@ export function v3CommandsToClipperPath(input, CLIP_SCALE, targetHeight) {
  * Pipeline（歸一化版）：
  *   1. 載入 v3-data JSON（已預處理好 metrics 和路徑，歸一化為 0-1 範圍）
  *   2. 取出 glyph 路徑（已離散化），乘以 targetHeight 轉為實際 mm，再轉 Clipper 路徑
- *   3. 執行 Clipper Offset（依 fonts.json 的 offset_r，直接為 mm 單位）
- *   4. 轉回 THREE.Shape（含孔洞）
- *   5. ExtrudeGeometry 擠出
- *   6. Y 軸 180 度旋轉（Y-up → Z-up）
- *   7. geometry.center() 置中
+ *   3. 依實際墨跡高度縮放到 targetHeight - 2*offset_r（與後端 scad_generator 相同）
+ *   4. 執行 Clipper Offset（依 fonts.json 的 offset_r，直接為 mm 單位）→ 總高剛好 = targetHeight
+ *   5. 轉回 THREE.Shape（含孔洞）
+ *   6. ExtrudeGeometry 擠出
+ *   7. Y 軸 180 度旋轉（Y-up → Z-up）
+ *   8. geometry.center() 置中
  *
  * @param {string} fontName - 字體名稱（對應 fonts.json）
  * @param {string} letter - 單一字母字符
  * @param {number} targetHeight - 目標高度（mm）
- * @param {number} depthFactor - 擠出深度係數（預設 18）
  * @returns {THREE.BufferGeometry}
  */
-export async function createV3LetterGeometry(fontName, letter, targetHeight, depthFactor = 18) {
+export async function createV3LetterGeometry(fontName, letter, targetHeight) {
     console.log(`[V3] 開始生成字母 "${letter}"，字體：${fontName}，目標高度：${targetHeight}mm`);
 
     // ── 步驟 1：載入 V3 預處理 JSON ───────────────────────────
     const fontData = await loadV3FontData(fontName);
-    const { fontHeight, glyphs } = fontData;
+    const { glyphs } = fontData;
 
     // 取得字元的 charCode
     const charCode = letter.charCodeAt(0);
@@ -717,10 +717,27 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
         throw new Error(`[V3] 字母 "${letter}" 轉換 Clipper 路徑失敗，paths 為空`);
     }
 
-    // ── 步驟 3：Clipper Offset（座標已縮放到實際 mm）────────────
     const meta = fontMetaMap[fontName] || { offset_r: 0 };
     const offsetR = meta.offset_r || 0;
 
+    // ── 步驟 3：依實際墨跡高度縮放到 targetHeight - 2*offset_r ──────
+    // 先定型、再加肉（與後端 scad_generator 的 resize → offset 順序一致）：
+    // offset 後總高剛好 = targetHeight，且加粗量是精確的 offset_r mm，不會被後續縮放放大
+    let minY = Infinity, maxY = -Infinity;
+    for (const path of clipperPaths) {
+        for (const pt of path) {
+            if (pt.Y < minY) minY = pt.Y;
+            if (pt.Y > maxY) maxY = pt.Y;
+        }
+    }
+    const coreScale = (targetHeight - 2 * offsetR) * CLIP_SCALE / (maxY - minY);
+    clipperPaths = clipperPaths.map(path => path.map(pt => ({
+        X: Math.round(pt.X * coreScale),
+        Y: Math.round(pt.Y * coreScale)
+    })));
+    console.log(`[V3] 墨跡高度縮放：${((maxY - minY) / CLIP_SCALE).toFixed(3)}mm → ${(targetHeight - 2 * offsetR).toFixed(3)}mm`);
+
+    // ── 步驟 4：Clipper Offset（座標已縮放到實際 mm）────────────
     let finalPaths = clipperPaths;
     if (offsetR > 0) {
         // 座標已乘以 targetHeight 變成實際 mm，offset 直接 = offsetR * CLIP_SCALE
@@ -733,7 +750,7 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
         console.log(`[V3] 字體 "${fontName}" offset_r=0，跳過 Offset`);
     }
 
-    // ── 步驟 4：轉回 THREE.Shape（含孔洞）──────────────────
+    // ── 步驟 5：轉回 THREE.Shape（含孔洞）──────────────────
     // 一律用全點包含法 + pftNonZero union → PolyTree，不依賴 isHole 欄位
     const shapes = clipperPathsToThreeShapes(finalPaths, CLIP_SCALE);
 
@@ -743,10 +760,11 @@ export async function createV3LetterGeometry(fontName, letter, targetHeight, dep
 
     console.log(`[V3] Shape 數量：${shapes.length}，孔洞數：${shapes.reduce((s, sh) => s + sh.holes.length, 0)}`);
 
-    // ── 步驟 5：ExtrudeGeometry 擠出 ─────────────────────────
-    // depth = fontHeight * depthFactor，歸一化後 fontHeight 約 1.x
+    // ── 步驟 6：ExtrudeGeometry 擠出 ─────────────────────────
+    // 字母已是最終尺寸（呼叫端的 scale 約為 1），depth 直接用 mm，與後端 depth = size * 3 一致
+    // 須大於另一個字母的寬度，交集才不會截斷（最寬約 2.6 倍高度，如 Sacramento 'm'）
     // curveSegments 提升到 16-20 解決邊緣折線問題（工業級平滑度）
-    const depth = fontHeight * depthFactor;
+    const depth = targetHeight * 3;
     const extrudeSettings = {
         depth: depth,
         bevelEnabled: false,

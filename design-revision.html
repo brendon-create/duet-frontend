@@ -1357,8 +1357,8 @@ async function buildScene() {
     await Promise.all([sceneReadyPromise, initFontMeta()]);
 
     const targetHeight = parseInt(item.size);
-    let geo1 = await createV3LetterGeometry(item.font1, item.letter1, targetHeight, 18);
-    let geo2 = await createV3LetterGeometry(item.font2, item.letter2, targetHeight, 18);
+    let geo1 = await createV3LetterGeometry(item.font1, item.letter1, targetHeight);
+    let geo2 = await createV3LetterGeometry(item.font2, item.letter2, targetHeight);
 
     geo1.computeBoundingBox(); geo1.center();
     geo2.computeBoundingBox(); geo2.center();
