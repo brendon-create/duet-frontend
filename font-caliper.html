@@ -2,6 +2,8 @@
 <html lang="zh-TW">
 <head>
     <script src="assets/js/config.js"></script>
+    <!-- ClipperLib：訂單 STL 模式把三角面投影聯集成輪廓用，透過 window.ClipperLib 存取 -->
+    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>字體卡尺 - DUET 後台</title>
@@ -36,6 +38,10 @@
         details[open] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
         details .rules { display: flex; gap: 8px; margin-top: 6px; }
         #status { color: var(--text-muted); align-self: center; min-height: 1em; }
+        .mode-switch { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; align-self: center; }
+        .mode-btn { background: transparent; color: var(--text-muted); border-radius: 0; font-weight: 500; padding: 7px 14px; }
+        .mode-btn.active { background: var(--primary); color: #000; }
+        .mode-ctl { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
         #status.err { color: var(--bad); }
         /* 整頁固定為視窗大小、不捲動：上半＝2D 雙字母 + 3D，下半＝截面 */
         html, body { height: 100%; overflow: hidden; }
@@ -81,6 +87,20 @@
 
 <div id="app">
     <div class="controls">
+        <div class="mode-switch">
+            <button class="mode-btn active" data-mode="font">字體模式</button>
+            <button class="mode-btn" data-mode="stl">訂單 STL 模式</button>
+        </div>
+        <div class="mode-ctl" id="stlCtl" style="display:none;">
+            <div class="ctl-group">
+                <label>訂單編號<input id="orderId" type="text" placeholder="DUET..." style="width:190px"></label>
+                <button class="ghost" id="orderQueryBtn">查詢</button>
+                <label>作品<select id="stlItem" disabled></select></label>
+                <label>STL 版本<select id="stlVersion" disabled style="max-width:360px"></select></label>
+                <button id="stlLoadBtn" disabled>載入</button>
+            </div>
+        </div>
+        <div class="mode-ctl" id="fontCtl">
         <div class="ctl-group">
             <span class="title">字母 1</span>
             <label>字體<select id="font1"></select></label>
@@ -95,6 +115,7 @@
         </div>
         <label>尺寸<select id="size"><option value="8">8 mm</option><option value="10">10 mm</option><option value="12">12 mm</option></select></label>
         <button id="loadBtn">載入</button>
+        </div>
         <details>
             <summary>判定規則</summary>
             <div class="rules">
@@ -157,6 +178,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import { buildShape, pointInShape, caliperAt, sectionBlocks, emptyBands, judge, judgeSingle } from './js/caliper-geometry.js';
+import { parseStl, silhouette, buildRayIndex } from './js/caliper-stl.js';
 
 const $ = id => document.getElementById(id);
 const CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
@@ -214,12 +236,97 @@ async function fetchOutline(font, char, size, r) {
 }
 
 // ── 狀態 ─────────────────────────────────────
-const L = { 1: null, 2: null };          // { data, shape }
+const L = { 1: null, 2: null };          // { source: 'font' | 'stl', data, shape, bands }
+let stlState = null;                     // 訂單 STL 模式：{ tri, ixY, ixX }（射線索引：字母 1 截面沿 Y、字母 2 截面沿 X）
+let halfDepth = 9;                       // 3D 切面的半深度（mm）
 const view = { 1: null, 2: null };       // { k, ox, oy }：mm → px
 let hover = null;                        // { which, x, y, cal, blocks }
 const pins = [];
 
 $('loadBtn').addEventListener('click', load);
+
+// ── 模式切換 ─────────────────────────────────
+for (const btn of document.querySelectorAll('.mode-btn')) btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    $('fontCtl').style.display = btn.dataset.mode === 'font' ? 'flex' : 'none';
+    $('stlCtl').style.display = btn.dataset.mode === 'stl' ? 'flex' : 'none';
+});
+
+// 截面沿深度方向的實體區間：訂單 STL 模式用射線穿過網格實測，字體模式回傳 null（由另一個字母輪廓推算）
+function rayFor(i) {
+    if (!L[i] || L[i].source !== 'stl' || !stlState) return null;
+    const ix = i === 1 ? stlState.ixY : stlState.ixX;
+    return (h, v) => ix.intervals(h, v);
+}
+
+// ── 訂單 STL 模式 ────────────────────────────
+let stlItems = [];
+const REASON = { force: '強制重新生成', customer_confirmed: '顧客確認後重新產生' };
+async function adminFetch(path) {
+    const res = await fetch(`${window.BACKEND_URL}${path}`, { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.status === 401) throw new Error('登入已過期，請回後台重新登入');
+    return res;
+}
+$('orderQueryBtn').addEventListener('click', async () => {
+    const id = $('orderId').value.trim();
+    if (!id) return;
+    setStatus('查詢訂單 STL 版本中…');
+    try {
+        const data = await (await adminFetch(`/api/admin/order/${encodeURIComponent(id)}/stl-versions`)).json();
+        if (!data.success) throw new Error(data.error || '查詢失敗');
+        stlItems = data.items;
+        $('stlItem').innerHTML = stlItems.map(it =>
+            `<option value="${it.item_index}">作品 ${it.item_index + 1}：${it.letter1}${it.letter2}　${it.font1} / ${it.font2}　${it.size}mm（${it.versions.length} 個版本）</option>`).join('');
+        $('stlItem').disabled = !stlItems.length;
+        fillVersions();
+        setStatus(stlItems.length ? `找到 ${stlItems.length} 件作品` : '這筆訂單沒有作品', !stlItems.length);
+    } catch (e) { setStatus(e.message, true); }
+});
+$('stlItem').addEventListener('change', fillVersions);
+function fillVersions() {
+    const it = stlItems.find(x => String(x.item_index) === $('stlItem').value);
+    const vs = it ? it.versions : [];
+    $('stlVersion').innerHTML = vs.map((v, n) => {
+        const when = v.replacedAt ? `（${v.replacedAt.slice(0, 16).replace('T', ' ')} 被取代）` : '';
+        const what = v.font1 ? `${v.font1} / ${v.font2} ${v.size}mm` : (REASON[v.reason] || v.reason || '');
+        return `<option value="${n}">${v.current ? '★ 目前版本' : '舊版'}　${what}${when}　${v.path}</option>`;
+    }).join('') || '<option>（這件作品還沒有 STL）</option>';
+    $('stlVersion').disabled = !vs.length;
+    $('stlLoadBtn').disabled = !vs.length;
+}
+$('stlLoadBtn').addEventListener('click', async () => {
+    const it = stlItems.find(x => String(x.item_index) === $('stlItem').value);
+    const v = it && it.versions[+$('stlVersion').value];
+    if (!v) return;
+    $('stlLoadBtn').disabled = true;
+    try {
+        setStatus('下載 STL 中…');
+        const res = await adminFetch(`/api/admin/order/${encodeURIComponent($('orderId').value.trim())}/stl-file?path=${encodeURIComponent(v.path)}`);
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `下載失敗（${res.status}）`);
+        const stl = parseStl(await res.arrayBuffer());
+        setStatus(`投影計算中…（${stl.count.toLocaleString()} 個三角面，約需數秒）`);
+        await new Promise(r => setTimeout(r, 30));
+        const s1 = silhouette(window.ClipperLib, stl.tri, 0, 2);   // 字母 1：沿 Y 投影到 XZ
+        await new Promise(r => setTimeout(r, 0));
+        const s2 = silhouette(window.ClipperLib, stl.tri, 1, 2);   // 字母 2：沿 X 投影到 YZ
+        stlState = { tri: stl.tri, ixY: buildRayIndex(stl.tri, 0, 2, 1), ixX: buildRayIndex(stl.tri, 1, 2, 0) };
+        halfDepth = Math.max(stl.size[0], stl.size[1]) / 2 + 1;
+        const label = `${v.current ? '目前版本' : '舊版'} ${v.path}`;
+        L[1] = { source: 'stl', data: { label }, shape: buildShape(s1), bands: [] };
+        L[2] = { source: 'stl', data: { label }, shape: buildShape(s2), bands: [] };
+        $('title1').textContent = `字母 1「${it.letter1}」（STL 正面投影）`;
+        $('title2').textContent = `字母 2「${it.letter2}」（STL 側面投影）`;
+        hover = null; pins.length = 0; renderPins();
+        resetView(1); resetView(2);
+        redrawAll();
+        build3D();
+        setStatus(`已載入 ${v.path}：${stl.size.map(n => n.toFixed(3)).join(' × ')} mm`);
+    } catch (e) {
+        setStatus(e.message, true);
+    } finally {
+        $('stlLoadBtn').disabled = false;
+    }
+});
 async function load() {
     if (!token) return;
     $('loadBtn').disabled = true;
@@ -230,8 +337,9 @@ async function load() {
             fetchOutline($('font1').value, $('char1').value, size, $('r1').value),
             fetchOutline($('font2').value, $('char2').value, size, $('r2').value)
         ]);
-        L[1] = { data: d1, shape: buildShape(d1.contours) };
-        L[2] = { data: d2, shape: buildShape(d2.contours) };
+        L[1] = { source: 'font', data: d1, shape: buildShape(d1.contours) };
+        L[2] = { source: 'font', data: d2, shape: buildShape(d2.contours) };
+        stlState = null; halfDepth = size * 1.5;
         // 灰色區（另一個字母在該高度沒有實體）只跟兩個字形有關，載入時算一次
         L[1].bands = emptyBands(L[2].shape, L[1].shape.bbox.yMin, L[1].shape.bbox.yMax, 0.02);
         L[2].bands = emptyBands(L[1].shape, L[2].shape.bbox.yMin, L[2].shape.bbox.yMax, 0.02);
@@ -371,12 +479,14 @@ function drawSection() {
     const X = u => c.width / 2 + (u - (u0 + u1) / 2) * k, Y = s => c.height / 2 + (cal.width / 2 - s) * k;
     blocks.forEach((b, n) => {
         const j = judge(cal.width, b.w2, rules);
-        ctx.beginPath();
-        b.strips.forEach((s, q) => { q ? ctx.lineTo(X(s.u0), Y(s.s)) : ctx.moveTo(X(s.u0), Y(s.s)); });
-        [...b.strips].reverse().forEach(s => ctx.lineTo(X(s.u1), Y(s.s)));
-        ctx.closePath();
-        ctx.fillStyle = COLORS[j] + '55'; ctx.fill();
-        ctx.strokeStyle = COLORS[j]; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+        // 每一列畫成一條細矩形（同一列可能有好幾段，例如 H 的兩根直筆畫）
+        const ds = cal.width / 48;
+        ctx.fillStyle = COLORS[j] + '66';
+        for (const st of b.strips) ctx.fillRect(X(st.u0), Y(st.s + ds / 2), (st.u1 - st.u0) * k, ds * k + 0.5);
+        // 游標高度上的這一段（w2 量測位置）
+        ctx.strokeStyle = COLORS[j]; ctx.lineWidth = 2 * dpr;
+        const sP = Math.hypot(cal.p[0] - cal.b[0], cal.p[1] - cal.b[1]);
+        ctx.beginPath(); ctx.moveTo(X(b.u0), Y(sP)); ctx.lineTo(X(b.u1), Y(sP)); ctx.stroke();
         const cx = X(b.uMid);
         ctx.fillStyle = '#ddd'; ctx.font = `600 ${12 * dpr}px Outfit`; ctx.textAlign = 'center';
         ctx.fillText(`#${n + 1}`, cx, Y(cal.width) - 8 * dpr);
@@ -411,7 +521,7 @@ for (const i of [1, 2]) {
             raf = 0;
             const [x, y] = toMm(i, ...last);
             const cal = caliperAt(L[i].shape, x, y);
-            hover = cal ? { which: i, x, y, cal, blocks: sectionBlocks(cal, L[3 - i].shape) } : null;
+            hover = cal ? { which: i, x, y, cal, blocks: sectionBlocks(cal, L[3 - i].shape, 48, rayFor(i)) } : null;
             $('ro' + i).textContent = cal ? `游標 (${x.toFixed(2)}, ${y.toFixed(2)}) mm　筆畫垂直寬度 ${cal.width.toFixed(3)} mm` : '';
             $('ro' + (3 - i)).textContent = '';
             redrawAll();
@@ -487,6 +597,18 @@ function contoursToShapes(contours) {
 }
 function build3D() {
     if (model) { scene.remove(model); model.geometry.dispose(); model = null; }
+    const mat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6, roughness: 0.35 });
+    if (stlState) {
+        // 訂單 STL 模式：直接顯示檔案本身（座標已置中，軸向與正式建模相同）
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(stlState.tri, 3));
+        g.computeVertexNormals();
+        model = new THREE.Mesh(g, mat);
+        scene.add(model);
+        controls.target.set(0, 0, 0); controls.update();
+        update3DOverlay();
+        return;
+    }
     const size = parseFloat($('size').value), depth = size * 3;
     const make = d => {
         const g = new THREE.ExtrudeGeometry(contoursToShapes(d.contours), { depth, bevelEnabled: false });
@@ -496,7 +618,6 @@ function build3D() {
     // 與正式建模相同的擺放：字母 1 在 XZ 平面（沿 Y 擠出），字母 2 在 YZ 平面（沿 X 擠出）
     const g1 = make(L[1].data); g1.rotateX(Math.PI / 2);
     const g2 = make(L[2].data); g2.rotateX(Math.PI / 2); g2.rotateZ(Math.PI / 2);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6, roughness: 0.35 });
     const b1 = new Brush(g1.toNonIndexed(), mat); b1.updateMatrixWorld();
     const b2 = new Brush(g2.toNonIndexed(), mat); b2.updateMatrixWorld();
     const res = new Evaluator().evaluate(b1, b2, INTERSECTION);
@@ -511,7 +632,7 @@ const to3D = (which, h, v, e) => which === 1 ? new THREE.Vector3(h, e, v) : new 
 function update3DOverlay() {
     overlay.clear();
     if (!model || !hover || !hover.cal) { render3D(); return; }
-    const { which, cal, blocks } = hover, D = parseFloat($('size').value) * 1.5;
+    const { which, cal, blocks } = hover, D = halfDepth;
     // 切面：游標筆畫的卡尺線段 × 整個深度
     const q = [to3D(which, ...cal.b, -D), to3D(which, ...cal.a, -D), to3D(which, ...cal.a, D), to3D(which, ...cal.b, D)];
     const pg = new THREE.BufferGeometry().setFromPoints([q[0], q[1], q[2], q[0], q[2], q[3]]);
@@ -519,10 +640,10 @@ function update3DOverlay() {
     // 被切到的區塊輪廓（截面真實形狀）
     const pt = (s, u) => { const t = s / cal.width; return to3D(which, cal.b[0] + t * (cal.a[0] - cal.b[0]), cal.b[1] + t * (cal.a[1] - cal.b[1]), u); };
     for (const b of blocks) {
-        const pts = [...b.strips.map(s => pt(s.s, s.u0)), ...[...b.strips].reverse().map(s => pt(s.s, s.u1))];
-        pts.push(pts[0]);
+        // 每一列畫一條線段，疊起來就是截面形狀
+        const pts = b.strips.flatMap(s => [pt(s.s, s.u0), pt(s.s, s.u1)]);
         const col = COLORS[judge(cal.width, b.w2, rules)];
-        overlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, depthTest: false })));
+        overlay.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, depthTest: false })));
     }
     render3D();
 }
