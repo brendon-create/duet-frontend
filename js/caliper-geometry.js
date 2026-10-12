@@ -75,48 +75,50 @@ export function caliperAt(shape, x, y) {
     const d0 = best.deg;
     for (let d = d0 - 5; d <= d0 + 5; d += 0.5) consider(chord(d));  // 細修（0.5° 誤差 < 0.001%）
     const { dx, dy, ta, tb } = best;
-    return { a: [x + dx * ta, y + dy * ta], b: [x - dx * tb, y - dy * tb], width: ta + tb, n: [dx, dy] };
+    return { p: [x, y], a: [x + dx * ta, y + dy * ta], b: [x - dx * tb, y - dy * tb], width: ta + tb, n: [dx, dy] };
 }
 
 /**
- * 成品截面：字母 self 上某處卡尺 cal（垂直於該筆畫），沿深度方向切穿另一個字母 other。
- * 切面 = 卡尺線段 × 深度方向；在切面上，另一個字母於每個高度的水平區間就是實體。
- * 回傳 blocks：每塊 { strips: [{ s, u0, u1 }], uMid, w2, n2, angleDeg, area }
- *   s = 沿卡尺從 b 到 a 的距離（0..w1），u = 另一個字母的水平座標（＝深度方向）
- *   w2 = 另一個字母在該塊中心、同一高度的垂直筆畫寬度；area 用 w1 × w2（保守估算，見 judge）
+ * 成品截面：字母 self 上游標點 cal.p 的卡尺 cal（垂直於該筆畫），沿深度方向切穿另一個字母 other。
+ * 切面 = 卡尺線段 × 深度方向；切面上每個高度的實體＝另一個字母在該高度的水平區間。
+ * 區塊以「游標高度」上的實體區段定義：成品在游標這一點的實體，就是另一個字母在同一高度的那幾段筆畫，
+ * 每段在游標高度量 w2（不能用區塊中某一列：區塊可能同時含橫槓與直筆畫，像 H，取哪一列就會量到不同筆畫）。
+ * 回傳 blocks：每塊 { u0, u1, uMid, w2, cal2, angleDeg, area, strips }
+ *   u = 另一個字母的水平座標（＝深度方向）；area 用 w1 × w2（保守估算，見 judge）
+ *   strips = 該段在整條卡尺上連通的實體 [{ s, u0, u1 }]（s = 沿卡尺從 b 到 a 的距離），只用來畫截面形狀
+ * intervalsAt(x, y)：選填，直接回傳切面上該點沿深度方向的實體區間（訂單 STL 模式用射線實測）；
+ *   沒給或回傳 null 時，用另一個字母在該高度的水平區間推算
  */
-export function sectionBlocks(cal, other, samples = 48) {
+export function sectionBlocks(cal, other, samples = 48, intervalsAt = null) {
     const [bx, by] = cal.b, dx = cal.a[0] - bx, dy = cal.a[1] - by;
+    const at = (xv, yv) => (intervalsAt && intervalsAt(xv, yv)) || chordsAtY(other, yv);
+    const sP = Math.hypot(cal.p[0] - bx, cal.p[1] - by);
     const rows = [];
     for (let i = 0; i <= samples; i++) {
-        const t = i / samples, s = t * cal.width, yv = by + t * dy;
-        rows.push({ s, y: yv, chords: chordsAtY(other, yv) });
+        const t = i / samples, s = t * cal.width;
+        rows.push({ s, chords: at(bx + t * dx, by + t * dy) });
     }
-    // 相鄰樣本的區間有重疊即視為同一塊
-    const blocks = [];
-    let prev = [];  // 上一列：[{ blk, u0, u1 }]
-    for (const row of rows) {
-        const cur = [], taken = new Set();
-        for (const [u0, u1] of row.chords) {
-            const hit = prev.find(p => !taken.has(p) && p.u0 <= u1 && u0 <= p.u1);
-            let blk;
-            if (hit) { taken.add(hit); blk = hit.blk; } else { blk = { strips: [] }; blocks.push(blk); }
-            blk.strips.push({ s: row.s, u0, u1 });
-            cur.push({ blk, u0, u1 });
-        }
-        prev = cur;
+    const pRow = { s: sP, chords: at(cal.p[0], cal.p[1]), isP: true };
+    rows.push(pRow);
+    rows.sort((a, b) => a.s - b.s);
+    // 相鄰兩列的區間有重疊就連通（union-find），H 的橫槓會把兩根直筆畫連成同一片
+    const nodes = [];
+    rows.forEach((row, r) => row.chords.forEach(([u0, u1]) => nodes.push({ r, s: row.s, u0, u1, parent: nodes.length })));
+    const find = i => (nodes[i].parent === i ? i : (nodes[i].parent = find(nodes[i].parent)));
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        if (b.r === a.r + 1 && a.u0 <= b.u1 && b.u0 <= a.u1) nodes[find(i)].parent = find(j);
     }
-    const n1z = cal.n[1];
-    return blocks.map(blk => {
-        // 在該塊中間那一列自己的高度量 w2（區塊可能只佔卡尺的一部分，不能用卡尺中點的高度）
-        const mid = blk.strips[Math.floor(blk.strips.length / 2)];
-        const uMid = (mid.u0 + mid.u1) / 2;
-        const c2 = caliperAt(other, uMid, by + (mid.s / cal.width) * dy);
-        const w2 = c2 ? c2.width : mid.u1 - mid.u0;
-        const n2z = c2 ? c2.n[1] : 0;
+    const pIndex = rows.indexOf(pRow), n1z = cal.n[1];
+    return nodes.map((nd, i) => ({ nd, i })).filter(({ nd }) => nd.r === pIndex).map(({ nd, i }) => {
+        const root = find(i);
+        const strips = nodes.filter((m, j) => find(j) === root && !rows[m.r].isP).map(m => ({ s: m.s, u0: m.u0, u1: m.u1 }));
+        const uMid = (nd.u0 + nd.u1) / 2;
+        const c2 = caliperAt(other, uMid, cal.p[1]);
+        const w2 = c2 ? c2.width : nd.u1 - nd.u0;
         // 兩個筆畫的 3D 法線：n1 = (n1x, 0, n1z)、n2 = (0, n2x, n2z)，夾角 cosφ = n1z·n2z
-        const cos = Math.min(1, Math.abs(n1z * n2z));
-        return Object.assign(blk, { uMid, w2, cal2: c2, angleDeg: Math.acos(cos) * 180 / Math.PI, area: cal.width * w2 });
+        const cos = Math.min(1, Math.abs(n1z * (c2 ? c2.n[1] : 0)));
+        return { u0: nd.u0, u1: nd.u1, uMid, w2, cal2: c2, angleDeg: Math.acos(cos) * 180 / Math.PI, area: cal.width * w2, strips };
     });
 }
 

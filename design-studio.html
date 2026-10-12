@@ -2882,8 +2882,8 @@
             let geo1, geo2;
             try {
                 [geo1, geo2] = await Promise.all([
-                    createV3LetterGeometry(f1Name, l1, targetHeight, 18),
-                    createV3LetterGeometry(f2Name, l2, targetHeight, 18)
+                    createV3LetterGeometry(f1Name, l1, targetHeight),
+                    createV3LetterGeometry(f2Name, l2, targetHeight)
                 ]);
             } catch (err) {
                 console.error('[V3 generateModel] 幾何體生成失敗:', err);

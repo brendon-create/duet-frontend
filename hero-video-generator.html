@@ -1511,8 +1511,8 @@
 
         async function buildPendant(fontA, letterA, fontB, letterB, targetHeight, pairIdx = 0, plating = 'none', finish = 'glossy') {
             // 生成幾何體
-            let geo1 = await createV3LetterGeometry(fontA, letterA, targetHeight, 18);
-            let geo2 = await createV3LetterGeometry(fontB, letterB, targetHeight, 18);
+            let geo1 = await createV3LetterGeometry(fontA, letterA, targetHeight);
+            let geo2 = await createV3LetterGeometry(fontB, letterB, targetHeight);
 
             // 對齊原點
             geo1.center();
