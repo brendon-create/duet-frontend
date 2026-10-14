@@ -3616,9 +3616,17 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    // 只更新這一筆並依目前篩選重畫，不重新載入整個列表（整批重抓要數秒，且會清掉篩選條件）
+                    const row = allOrders.find(o => o.orderId === orderId || o.order_id === orderId);
+                    if (row) {
+                        row.status = (data.order && data.order.status) || newStatus;
+                        filterOrders();
+                        renderCustomerStats();
+                    } else {
+                        loadOrders();
+                    }
                     alert('更新成功！');
                     closeModal();
-                    loadOrders();
                 } else {
                     alert('更新失敗: ' + data.error);
                 }
