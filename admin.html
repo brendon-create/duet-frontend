@@ -2978,6 +2978,12 @@
                         <div style="font-size:12px;color:var(--text-muted)">字體: ${esc(item.font1)}/${esc(item.font2)} | 尺寸: ${esc(item.size)}mm | 材質: ${esc(item.material)} | 鍍膜: ${esc(item.plating)} | 表面: ${esc(item.finish)} | 項鍊: ${esc(chainLabel)}</div>
                         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">圓環位置: ${esc(ringPosStr)}</div>
                         ${viewsHtml}
+                        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <label for="stlVer-${oid}-${idx}" style="font-size:12px;color:var(--text-muted);">STL 檔案</label>
+                            <select id="stlVer-${oid}-${idx}" disabled style="max-width:420px;padding:6px 8px;background:var(--bg-dark);color:var(--text-light);border:1px solid var(--border);border-radius:6px;font-size:12px;"><option>載入中…</option></select>
+                            <button class="btn btn-secondary btn-sm" id="stlDl-${oid}-${idx}" disabled onclick="downloadItemStl('${oid}', ${idx})">下載</button>
+                            <span id="stlMsg-${oid}-${idx}" style="font-size:12px;"></span>
+                        </div>
                         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:var(--text-muted);">製造廠商報價 NT$</label>
                             <input type="number" min="0" step="1" id="mfrQuote-${oid}-${idx}" value="${escAttr(item.manufacturerQuote ?? '')}" placeholder="尚未填寫" style="width:100px;padding:6px 8px;background:#1a1a1a;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:13px;">
@@ -3030,6 +3036,63 @@
             
             // Load logs
             loadOrderLogs(order.orderId);
+            loadStlVersions(oid);
+        }
+
+        // ── STL 檔案下載：每件作品的目前版本與歷史版本（後端 /stl-versions、/stl-file，需後台登入）──
+        const STL_REASON = { force: '強制重新生成', customer_confirmed: '顧客確認後重新產生' };
+        const stlVersionsByOrder = {};
+        async function loadStlVersions(orderId) {
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${encodeURIComponent(orderId)}/stl-versions`,
+                    { headers: { 'Authorization': adminAuthHeader() } });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || '讀取失敗');
+                stlVersionsByOrder[orderId] = data.items;
+                for (const it of data.items) {
+                    const sel = document.getElementById(`stlVer-${orderId}-${it.item_index}`);
+                    const btn = document.getElementById(`stlDl-${orderId}-${it.item_index}`);
+                    if (!sel) continue;
+                    const n = it.versions.length;
+                    sel.innerHTML = n ? it.versions.map((v, i) => {
+                        const name = v.path.split('/').pop();
+                        const when = v.replacedAt ? `（${formatTaiwanTime(v.replacedAt)} 被取代：${STL_REASON[v.reason] || v.reason || '—'}）` : '';
+                        return `<option value="${i}">${v.current ? '★ 目前版本' : '舊版'}　${esc(name)}${esc(when)}</option>`;
+                    }).join('') : '<option>尚未產生</option>';
+                    sel.disabled = !n;
+                    if (btn) btn.disabled = !n;
+                }
+            } catch (e) {
+                document.querySelectorAll(`[id^="stlMsg-${orderId}-"]`).forEach(el => {
+                    el.style.color = '#ef4444'; el.textContent = `版本清單讀取失敗：${e.message}`;
+                });
+                document.querySelectorAll(`[id^="stlVer-${orderId}-"]`).forEach(el => { el.innerHTML = '<option>讀取失敗</option>'; });
+            }
+        }
+        async function downloadItemStl(orderId, itemIndex) {
+            const it = (stlVersionsByOrder[orderId] || []).find(x => x.item_index === itemIndex);
+            const sel = document.getElementById(`stlVer-${orderId}-${itemIndex}`);
+            const btn = document.getElementById(`stlDl-${orderId}-${itemIndex}`);
+            const msg = document.getElementById(`stlMsg-${orderId}-${itemIndex}`);
+            const v = it && it.versions[+sel.value];
+            if (!v) return;
+            btn.disabled = true;
+            msg.style.color = 'var(--text-muted)'; msg.textContent = '下載中…';
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${encodeURIComponent(orderId)}/stl-file?path=${encodeURIComponent(v.path)}`,
+                    { headers: { 'Authorization': adminAuthHeader() } });
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `下載失敗（${res.status}）`);
+                const url = URL.createObjectURL(await res.blob());
+                const a = document.createElement('a');
+                a.href = url; a.download = v.path.split('/').pop();
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                msg.style.color = '#4ade80'; msg.textContent = '已下載';
+            } catch (e) {
+                msg.style.color = '#ef4444'; msg.textContent = e.message;
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         async function saveItemQuote(orderId, itemIndex) {
