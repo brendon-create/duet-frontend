@@ -25,7 +25,7 @@
     { "name": "Chango", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Chela One", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Cherry Swash", "weight": 400, "offset_r": 0, "is_bold_required": false },
-    { "name": "Cormorant Garamond", "weight": 400, "offset_r": 0.175, "is_bold_required": false },
+    { "name": "Cormorant Garamond", "weight": 400, "offset_r": 0.25, "is_bold_required": false },
     { "name": "Courgette", "weight": 400, "offset_r": 0, "is_bold_required": false },
     { "name": "Crafty Girls", "weight": 400, "offset_r": 0.1, "is_bold_required": false },
     { "name": "Creepster", "weight": 400, "offset_r": 0, "is_bold_required": false },
