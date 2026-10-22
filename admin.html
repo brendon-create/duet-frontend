@@ -610,11 +610,13 @@
                     </label>
                     <select id="bulkActionSelect" style="margin-left: 16px; padding: 8px 12px; background: #2a2a2a; border: 1px solid var(--border); color: var(--text-light); border-radius: 6px;">
                         <option value="">批次動作...</option>
+                        <option value="delivered">確認已簽收（僅已出貨）</option>
                         <option value="test">標記為測試</option>
                         <option value="invalid">標記為無效</option>
                         <option value="delete">刪除選取</option>
                     </select>
-                    <button class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
+                    <button id="bulkActionBtn" class="btn btn-secondary" onclick="executeBulkAction()">執行</button>
+                    <span id="orderSelectionCount" style="font-size:12px;color:var(--text-muted)" aria-live="polite"></span>
                     <button id="emailMfrBtn" class="btn btn-secondary" onclick="openStartProductionModal(selectedOrders)" style="display:none;background:#b45309;color:#fff;border-color:#b45309;">📧 發送給廠商</button>
                     <button id="printStoryBtn" class="btn btn-secondary" onclick="printSelectedStories()" style="display:none;background:#0f766e;color:#fff;border-color:#0f766e;">🖨 列印理念</button>
                     <button class="btn btn-secondary" onclick="loadOrders()">重新整理</button>
@@ -622,6 +624,7 @@
                     <button class="btn btn-secondary" onclick="showExportConsultationsModal()" style="background:#7c3aed;color:#fff;border-color:#7c3aed;">🗂 匯出 AI 諮詢記錄</button>
                 </div>
                 
+                <div id="bulkActionResult" role="status" aria-live="polite" style="display:none;margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:6px;"></div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -1926,12 +1929,11 @@
                 
                 if (data.success) {
                     allOrders = data.orders;
-                    updateStats();
-                    renderOrders(allOrders);
-                    renderCustomerStats();
+                    selectedOrders = selectedOrders.filter(id => allOrders.some(o => o.orderId === id));
                     // 動態補充各代理商 region 篩選選項
                     const sourceSelect = document.getElementById('sourceFilter');
                     if (sourceSelect) {
+                        const savedSource = sourceSelect.value;
                         const regions = [...new Set(allOrders.filter(o => o.distributor_region).map(o => o.distributor_region))];
                         // 移除舊的 region 選項（保留前三個固定選項）
                         while (sourceSelect.options.length > 3) sourceSelect.remove(3);
@@ -1941,7 +1943,10 @@
                             opt.textContent = `🌏 ${r} 代理商`;
                             sourceSelect.appendChild(opt);
                         });
+                        sourceSelect.value = [...sourceSelect.options].some(opt => opt.value === savedSource) ? savedSource : '';
                     }
+                    filterOrders();
+                    renderCustomerStats();
                 }
             } catch (err) {
                 document.getElementById('ordersTableBody').innerHTML = '<tr><td colspan="11" class="loading">載入失敗</td></tr>';
@@ -2184,22 +2189,28 @@
             if (!showTest)    orders = orders.filter(o => !o.isTest);
             if (!showInvalid) orders = orders.filter(o => !o.isInvalid);
             
-            const totalPages = Math.ceil(orders.length / pageSize);
-            if (currentPage > totalPages) currentPage = 1;
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
             const start = (currentPage - 1) * pageSize;
             const end = start + pageSize;
             const pageOrders = orders.slice(start, end);
+
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${Math.max(1, totalPages)} 頁 (共 ${orders.length} 筆)`;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+            const selectAll = document.getElementById('selectAllOrders');
+            if (selectAll) {
+                selectAll.checked = pageOrders.length > 0 && pageOrders.every(o => selectedOrders.includes(o.orderId));
+                selectAll.indeterminate = !selectAll.checked && pageOrders.some(o => selectedOrders.includes(o.orderId));
+            }
+            updateOrderSelectionButtons();
 
             const tbody = document.getElementById('ordersTableBody');
             if (!pageOrders.length) {
                 tbody.innerHTML = '<tr><td colspan="11" class="empty-state">尚無訂單</td></tr>';
                 return;
             }
-            
-            // 更新全選框狀態
-            const selectAll = document.getElementById('selectAllOrders');
-            if (selectAll) selectAll.checked = pageOrders.length > 0 && pageOrders.every(o => selectedOrders.includes(o.orderId));
             
             tbody.innerHTML = pageOrders.map(order => {
                 const u = order.userInfo || {};
@@ -2245,16 +2256,15 @@
                 </tr>`;
             }).join('');
 
-            // Update pagination controls
-            document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 頁 (共 ${orders.length} 筆)`;
-            document.getElementById('prevPage').disabled = currentPage <= 1;
-            document.getElementById('nextPage').disabled = currentPage >= totalPages;
         }
 
         // 訂單勾選功能
         let selectedOrders = [];
+        let bulkActionRunning = false;
         
         function updateOrderSelectionButtons() {
+            const count = document.getElementById('orderSelectionCount');
+            if (count) count.textContent = selectedOrders.length ? `已選 ${selectedOrders.length} 筆（可跨頁，執行前請確認清單）` : '';
             const emailBtn = document.getElementById('emailMfrBtn');
             if (emailBtn) emailBtn.style.display = selectedOrders.length > 0 ? '' : 'none';
             const printBtn = document.getElementById('printStoryBtn');
@@ -2268,6 +2278,7 @@
                 selectedOrders.push(orderId);
             }
             updateOrderSelectionButtons();
+            renderOrders(filteredOrders);
         }
 
         // 原本叫 toggleSelectAll()，跟優惠碼/兌換碼批次操作那邊的 toggleSelectAll(kind, checked)
@@ -2276,7 +2287,8 @@
             const selectAll = document.getElementById('selectAllOrders');
             const _st = document.getElementById('showTestOrders')?.checked || false;
             const _si = document.getElementById('showInvalidOrders')?.checked || false;
-            const pageOrders = filteredOrders.filter(o => (_st || !o.isTest) && (_si || !o.isInvalid));
+            const pageOrders = filteredOrders.filter(o => (_st || !o.isTest) && (_si || !o.isInvalid))
+                .slice((currentPage - 1) * pageSize, currentPage * pageSize);
             if (selectAll.checked) {
                 // 選取目前頁面所有可見訂單
                 selectedOrders = [...new Set([...selectedOrders, ...pageOrders.map(o => o.orderId)])];
@@ -2289,6 +2301,7 @@
         }
         
         async function executeBulkAction() {
+            if (bulkActionRunning) return;
             const action = document.getElementById('bulkActionSelect').value;
             if (!action) {
                 alert('請選擇要執行的動作');
@@ -2296,6 +2309,10 @@
             }
             if (selectedOrders.length === 0) {
                 alert('請先選取要操作的訂單');
+                return;
+            }
+            if (action === 'delivered') {
+                await confirmSelectedOrdersDelivered();
                 return;
             }
             
@@ -2343,6 +2360,66 @@
                 loadOrders();
             } catch (err) {
                 alert('執行失敗: ' + err.message);
+            }
+        }
+
+        async function confirmSelectedOrdersDelivered() {
+            if (bulkActionRunning) return;
+            const selection = [...selectedOrders];
+            if (!selection.length || selection.length > 100) {
+                alert('每次請選取 1–100 筆訂單');
+                return;
+            }
+            const eligible = selection.filter(id => allOrders.find(o => o.orderId === id)?.status === 'shipped');
+            if (!eligible.length) {
+                alert('選取的訂單沒有「已出貨」訂單，未執行更新');
+                return;
+            }
+            const skipped = selection.length - eligible.length;
+            const confirmed = confirm(`請確認以下 ${eligible.length} 筆訂單均已查件並確認收件人取件／簽收：\n\n${eligible.join('\n')}\n\n${skipped ? `另有 ${skipped} 筆不是「已出貨」，將略過。\n` : ''}執行後會更新為「已簽收」，並依原有流程寄送簽收通知。`);
+            if (!confirmed) return;
+            bulkActionRunning = true;
+            const btn = document.getElementById('bulkActionBtn');
+            const resultEl = document.getElementById('bulkActionResult');
+            btn.disabled = true;
+            btn.textContent = '更新中…';
+            resultEl.style.display = 'block';
+            resultEl.textContent = `正在確認 ${eligible.length} 筆訂單，請稍候…`;
+            try {
+                const pairs = eligible.map(id => ({ displayId: id, dbId: allOrders.find(o => o.orderId === id)?.order_id || id }));
+                const res = await callApi('/api/admin/orders/mark-delivered', {
+                    method: 'POST', body: JSON.stringify({ orderIds: pairs.map(p => p.dbId) })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success || !Array.isArray(data.results)) throw new Error(data.error || '批次更新失敗');
+                const successes = [], unchanged = [], failures = [];
+                for (const pair of pairs) {
+                    const result = data.results.find(r => r.orderId === pair.dbId);
+                    const row = allOrders.find(o => o.orderId === pair.displayId);
+                    if (result?.success) {
+                        (result.unchanged ? unchanged : successes).push(pair.displayId);
+                        if (row) {
+                            row.status = 'delivered';
+                            if (result.deliveredAt) row.deliveredAt = result.deliveredAt;
+                        }
+                        selectedOrders = selectedOrders.filter(id => id !== pair.displayId);
+                    } else {
+                        failures.push({ id: pair.displayId, error: result?.error || '未取得更新結果，請重新整理後確認' });
+                        if (row && result?.status) row.status = result.status;
+                    }
+                }
+                filterOrders();
+                renderCustomerStats();
+                resultEl.innerHTML = `<strong>已更新 ${successes.length} 筆；原已簽收 ${unchanged.length} 筆；失敗 ${failures.length} 筆${skipped ? `；略過 ${skipped} 筆其他狀態` : ''}。</strong>
+                    ${successes.length ? `<details style="margin-top:6px"><summary>查看已更新訂單</summary>${successes.map(esc).join('、')}</details>` : ''}
+                    ${failures.length ? `<div style="margin-top:6px;color:#f59e0b">失敗訂單仍保留勾選，請確認後再試。${failures.map(f => `<div>${esc(f.id)}：${esc(f.error)}</div>`).join('')}</div>` : ''}`;
+            } catch (err) {
+                resultEl.textContent = `未取得完整結果：${err.message}。選取已保留，請重新整理確認狀態後再試。`;
+            } finally {
+                bulkActionRunning = false;
+                btn.disabled = false;
+                btn.textContent = '執行';
+                updateOrderSelectionButtons();
             }
         }
         
@@ -2574,71 +2651,67 @@
             URL.revokeObjectURL(url);
         }
 
-        // Order Detail
-        async function viewOrder(orderId) {
-            // 顯示 Loading 提示
-            const orderDetailContent = document.getElementById('orderDetailContent');
-            orderDetailContent.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-muted);">
-                    <div style="width: 40px; height: 40px; border: 3px solid rgba(212, 175, 55, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-                    <div style="font-size: 14px;">載入訂單資料中...</div>
-                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">可能需要 10-30 秒（冷啟動較慢）</div>
-                </div>
-                <style>
-                    @keyframes spin {
-                        to { transform: rotate(360deg); }
-                    }
-                </style>
-            `;
-            document.getElementById('orderModal').classList.add('active');
-            
-            try {
-                const response = await fetch(`${window.BACKEND_URL}/api/order/${orderId}`, {
-                    headers: { 'Authorization': adminAuthHeader() }
-                });
+        // Order Detail：整合查詢；切換／關閉時淘汰舊回應。
+        let orderDetailRequest = 0;
+        let activeOrderId = null;
+        let orderDetailController = null;
+
+        async function fetchOrderDetail(orderId, signal) {
+            const id = encodeURIComponent(orderId);
+            const headers = { 'Authorization': adminAuthHeader() };
+            const response = await fetch(`${window.BACKEND_URL}/api/admin/order/${id}/detail`, { headers, signal });
+            if (response.status !== 404) {
                 const data = await response.json();
-                if (data.success) {
-                    let storyRevision = null;
-                    try {
-                        const revRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/story-revision`, {
-                            headers: { 'Authorization': adminAuthHeader() }
-                        });
-                        const revData = await revRes.json();
-                        if (revData.success) storyRevision = revData.revision;
-                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
-
-                    let itemRevisions = [];
-                    try {
-                        const itemRevRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/item-revisions`, {
-                            headers: { 'Authorization': adminAuthHeader() }
-                        });
-                        const itemRevData = await itemRevRes.json();
-                        if (itemRevData.success) itemRevisions = itemRevData.revisions;
-                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
-
-                    let orderNotes = [];
-                    try {
-                        const notesRes = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/notes`, {
-                            headers: { 'Authorization': adminAuthHeader() }
-                        });
-                        const notesData = await notesRes.json();
-                        if (notesData.success) orderNotes = notesData.notes;
-                    } catch (e) { /* 靜默失敗，不影響主流程 */ }
-
-                    showOrderModal(data.order, storyRevision, itemRevisions, orderNotes);
+                if (!response.ok || !data.success) throw new Error(data.error || '讀取訂單失敗');
+                return data;
+            }
+            // 前後端部署時間不同時，仍可使用舊 API；必要資料改為同時查詢。
+            const requests = [`/api/order/${id}`, `/api/admin/order/${id}/story-revision`,
+                `/api/admin/order/${id}/item-revisions`, `/api/admin/order/${id}/notes`];
+            const results = await Promise.all(requests.map(async (url, index) => {
+                try {
+                    const res = await fetch(`${window.BACKEND_URL}${url}`, { headers, signal });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) throw new Error(data.error || '讀取訂單失敗');
+                    return data;
+                } catch (err) {
+                    if (index === 0 || signal.aborted) throw err;
+                    return {};
                 }
-            } catch (err) { 
-                orderDetailContent.innerHTML = `
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #ef4444;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">⚠</div>
-                        <div style="font-size: 14px;">載入失敗</div>
-                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">請檢查網路連線或稍後再試</div>
-                    </div>
-                `;
+            }));
+            return { order: results[0].order, storyRevision: results[1].revision || null,
+                itemRevisions: results[2].revisions || [], notes: results[3].notes || [], logs: null };
+        }
+
+        async function viewOrder(orderId) {
+            const requestId = ++orderDetailRequest;
+            activeOrderId = orderId;
+            orderDetailController?.abort();
+            const controller = new AbortController();
+            orderDetailController = controller;
+            let timedOut = false;
+            const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 30000);
+            const orderDetailContent = document.getElementById('orderDetailContent');
+            orderDetailContent.innerHTML = '<div class="loading" style="padding:60px 20px">載入訂單資料中…</div>';
+            document.getElementById('orderModal').classList.add('active');
+            try {
+                const data = await fetchOrderDetail(orderId, controller.signal);
+                if (requestId !== orderDetailRequest || activeOrderId !== orderId || controller.signal.aborted) return;
+                showOrderModal(data.order, data.storyRevision, data.itemRevisions || [], data.notes || [], data.logs);
+            } catch (err) {
+                if (requestId !== orderDetailRequest || activeOrderId !== orderId) return;
+                if (err.name === 'AbortError' && !timedOut) return;
+                orderDetailContent.innerHTML = `<div style="padding:40px 20px;text-align:center;color:#ef4444">
+                    <p>${esc(timedOut ? '讀取逾時，請稍後重試' : err.message || '載入失敗')}</p>
+                    <button id="retryOrderDetail" class="btn btn-secondary">重新載入</button></div>`;
+                document.getElementById('retryOrderDetail').addEventListener('click', () => viewOrder(orderId));
+            } finally {
+                clearTimeout(timeout);
+                if (orderDetailController === controller) orderDetailController = null;
             }
         }
-        
-        function showOrderModal(order, storyRevision, itemRevisions = [], orderNotes = []) {
+
+        function showOrderModal(order, storyRevision, itemRevisions = [], orderNotes = [], orderLogs = null) {
             const u = order.userInfo || {};
             const items = order.items || [];
             const status = statusMap[order.status] || { text: order.status, class: '' };
@@ -3028,14 +3101,14 @@
                             <input type="text" id="trackingNumber" value="${escAttr(order.trackingNumber||'')}" placeholder="貨運編號">
                         </div>
                     </div>
-                    <button class="btn btn-primary" style="width:100%" onclick="updateOrderStatus('${oid}')">更新狀態</button>
+                    <button class="btn btn-primary" style="width:100%" onclick="updateOrderStatus('${oid}', this)">更新狀態</button>
                 </div>`;
             
+            content += `<div id="orderLogs-${oid}"></div>`;
             document.getElementById('orderDetailContent').innerHTML = content;
             document.getElementById('orderModal').classList.add('active');
-            
-            // Load logs
-            loadOrderLogs(order.orderId);
+            if (Array.isArray(orderLogs)) renderOrderLogs(order.orderId, orderLogs);
+            else loadOrderLogs(order.orderId);
             loadStlVersions(oid);
         }
 
@@ -3043,11 +3116,13 @@
         const STL_REASON = { force: '強制重新生成', customer_confirmed: '顧客確認後重新產生' };
         const stlVersionsByOrder = {};
         async function loadStlVersions(orderId) {
+            const requestId = orderDetailRequest;
             try {
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${encodeURIComponent(orderId)}/stl-versions`,
                     { headers: { 'Authorization': adminAuthHeader() } });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || '讀取失敗');
+                if (requestId !== orderDetailRequest || activeOrderId !== orderId) return;
                 stlVersionsByOrder[orderId] = data.items;
                 for (const it of data.items) {
                     const sel = document.getElementById(`stlVer-${orderId}-${it.item_index}`);
@@ -3063,6 +3138,7 @@
                     if (btn) btn.disabled = !n;
                 }
             } catch (e) {
+                if (requestId !== orderDetailRequest || activeOrderId !== orderId) return;
                 document.querySelectorAll(`[id^="stlMsg-${orderId}-"]`).forEach(el => {
                     el.style.color = '#ef4444'; el.textContent = `版本清單讀取失敗：${e.message}`;
                 });
@@ -3500,20 +3576,23 @@
             }
         }
 
+        function renderOrderLogs(orderId, logs) {
+            const container = document.getElementById(`orderLogs-${orderId}`);
+            if (!container || activeOrderId !== orderId) return;
+            container.innerHTML = logs.length ? `<div class="detail-section"><h3>操作日誌</h3>${logs.map(log => `<div class="log-item">
+                <div class="log-header"><span class="log-user">${esc(log.admin_user)}</span><span class="log-time">${formatTaiwanTime(log.created_at)}</span></div>
+                <div class="log-action">${esc(log.action)}: ${esc(log.details || '')}</div></div>`).join('')}</div>` : '';
+        }
+
         async function loadOrderLogs(orderId) {
+            const requestId = orderDetailRequest;
             try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${orderId}/logs`, {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/order/${encodeURIComponent(orderId)}/logs`, {
                     headers: { 'Authorization': adminAuthHeader() }
                 });
                 const data = await res.json();
-                if (data.success && data.logs.length) {
-                    const logsHtml = data.logs.map(log => `<div class="log-item">
-                        <div class="log-header"><span class="log-user">${esc(log.admin_user)}</span><span class="log-time">${formatTaiwanTime(log.created_at)}</span></div>
-                        <div class="log-action">${esc(log.action)}: ${esc(log.details || '')}</div>
-                    </div>`).join('');
-                    document.getElementById('orderDetailContent').innerHTML += `<div class="detail-section"><h3>操作日誌</h3>${logsHtml}</div>`;
-                }
-            } catch (e) { console.log('無日誌'); }
+                if (requestId === orderDetailRequest && data.success) renderOrderLogs(orderId, data.logs);
+            } catch (e) { console.log('日誌載入失敗'); }
         }
 
         async function addOrderNote(orderId) {
@@ -3593,13 +3672,12 @@
             document.getElementById('logisticsFields').style.display = (status === 'shipped' || status === 'delivered') ? 'block' : 'none';
         }
         
-        async function updateOrderStatus(orderId) {
+        async function updateOrderStatus(orderId, btn) {
             const newStatus = document.getElementById('newStatus').value;
             const tracking = document.getElementById('trackingNumber')?.value || '';
             const logistics = document.getElementById('logisticsType')?.value || '';
             
             // 顯示處理中
-            const btn = event.target;
             const originalText = btn.textContent;
             btn.textContent = '處理中...';
             btn.disabled = true;
@@ -3639,6 +3717,10 @@
         }
         
         function closeModal() {
+            ++orderDetailRequest;
+            activeOrderId = null;
+            orderDetailController?.abort();
+            orderDetailController = null;
             document.getElementById('orderModal').classList.remove('active');
         }
         
