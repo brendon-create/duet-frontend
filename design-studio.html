@@ -3160,6 +3160,8 @@
             cleanFragmentsApplied = false;
             fragmentCheckPending = true;
             renderCount++;
+            // 漏斗用：區分「真的做出設計」與「進頁面就離開」，每次載入頁面只送一次
+            if (renderCount === 1) posthog.capture('design_rendered');
 
             // 換了字體/尺寸重建模型：讓上一輪還在跑的自動清理輪詢自己作廢，並取消還沒開始的預覽任務
             cleanupGeneration++;
