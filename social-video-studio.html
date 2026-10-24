@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
     <!-- 影片字幕用的標題襯線字 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&display=swap" rel="stylesheet">
 
     <script type="importmap">
     {
@@ -1138,7 +1138,26 @@
         }
 
         // 回傳時間軸描述 + 逐幀繪製函式
-        function buildTimeline(row, groups) {
+        // 結尾 Logo（兩種版型共用）：片尾最後一格淡入純黑，同時浮現首頁同款 Logo「DUET / by BCAG」
+        const LOGO_SEC = 2, LOGO_FADE = 0.5;
+        function drawLogo(ctx, alpha) {
+            text(ctx, 'DUET', W / 2, H * 0.47, { size: 190, weight: 400, family: "'Cantata One', serif", color: '#F3EDE4', alpha, spacing: '0.12em', shadow: false });
+            text(ctx, 'by BCAG', W / 2, H * 0.47 + 140, { size: 52, weight: 'italic 400', family: "'Libre Caslon Text', serif", color: '#9A948C', alpha, spacing: '0.05em', shadow: false });
+        }
+        function withLogo(tl) {
+            const total = tl.total + LOGO_SEC, totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                if (t < tl.total) { tl.draw(i); return; }
+                const a = clamp01((t - tl.total) / LOGO_FADE);
+                if (a < 1) tl.draw(tl.totalFrames - 1); else cctx.clearRect(0, 0, W, H);
+                cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = '#000'; cctx.fillRect(0, 0, W, H); cctx.restore();
+                drawLogo(cctx, a);
+            }
+            return { totalFrames, total, draw };
+        }
+        function buildTimeline(row, groups) { return withLogo(buildMainTimeline(row, groups)); }
+        function buildMainTimeline(row, groups) {
             if (row.layout === 'triptych') return buildTriptychTimeline(row, groups);
             const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row);
             const holdA = 0.45, holdB = 0.55, fade = 0.3;
@@ -1222,7 +1241,7 @@
             const date = new Date().toLocaleDateString('sv-SE'); // 本地日期 YYYY-MM-DD（toISOString 是 UTC，台灣清晨會變前一天）
             const nameCount = {};
             try {
-                await document.fonts.load("600 170px 'Cormorant Garamond'").catch(() => {});
+                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'"].map(f => document.fonts.load(f).catch(() => {})));
                 await ensureBackground(); await hdrReady;
                 for (let r = 0; r < list.length; r++) {
                     const row = list[r];
