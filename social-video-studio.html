@@ -120,7 +120,13 @@
         #focus-modal .fm-tip { font-size: 13px; color: #E8E4DF; }
         #focus-stage { position: relative; cursor: crosshair; line-height: 0; }
         #focus-stage img { max-width: 86vw; max-height: 78vh; display: block; user-select: none; -webkit-user-drag: none; }
-        #focus-frame { position: absolute; border: 2px solid #E6C98A; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); pointer-events: none; }
+        #focus-frame { position: absolute; border: 2px solid #E6C98A; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); cursor: move; }
+        #focus-frame .h { position: absolute; width: 16px; height: 16px; background: #E6C98A; border: 2px solid #161410; border-radius: 3px; }
+        #focus-frame .h.nw { left: -9px; top: -9px; cursor: nwse-resize; } #focus-frame .h.se { right: -9px; bottom: -9px; cursor: nwse-resize; }
+        #focus-frame .h.ne { right: -9px; top: -9px; cursor: nesw-resize; } #focus-frame .h.sw { left: -9px; bottom: -9px; cursor: nesw-resize; }
+        #focus-frame .blur { display: none; position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap; line-height: 1.4;
+            font-size: 12px; padding: 3px 8px; border-radius: 4px; background: rgba(160,60,40,.9); color: #fff; pointer-events: none; }
+        #focus-frame.lowres .blur { display: block; }
         #focus-dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none; }
         #focus-modal .fm-btns { display: flex; gap: 10px; }
         .photo .drop.over { border-color: #C9A96E; color: #C9A96E; }
@@ -290,9 +296,9 @@
     </div>
 
     <div id="focus-modal">
-        <div class="fm-tip">在照片上點作品的位置。亮框是影片會裁到的範圍，片尾會朝這個點慢慢推近。</div>
-        <div id="focus-stage"><img id="focus-img" alt=""><div id="focus-frame"></div><div id="focus-dot"></div></div>
-        <div class="fm-btns"><button id="focus-reset">重設回正中央</button><button class="primary" id="focus-done">完成</button></div>
+        <div class="fm-tip">亮框是影片會裁到的範圍：拖框移動、拖四個角縮放（比例固定），或在框外點一下把框移過去。片尾會從這個畫面再慢慢推近。</div>
+        <div id="focus-stage"><img id="focus-img" alt=""><div id="focus-frame"><div class="h nw" data-c="nw"></div><div class="h ne" data-c="ne"></div><div class="h sw" data-c="sw"></div><div class="h se" data-c="se"></div><div class="blur">可能模糊</div></div><div id="focus-dot"></div></div>
+        <div class="fm-btns"><button id="focus-reset">重設（置中、最大）</button><button class="primary" id="focus-done">完成</button></div>
     </div>
 
     <div id="offscreen">
@@ -870,7 +876,7 @@
                 list.forEach((ph, k) => {
                     const d = document.createElement('div'); d.className = 'pthumb'; d.draggable = true;
                     d.title = '點一下設定作品位置；拖曳可換順序';
-                    d.innerHTML = `<img src="${ph.url}">${ph.fx !== 0.5 || ph.fy !== 0.5 ? '<span class="aim">🎯</span>' : ''}<button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
+                    d.innerHTML = `<img src="${ph.url}">${ph.fx !== 0.5 || ph.fy !== 0.5 || (ph.zoom || 1) !== 1 ? '<span class="aim">🎯</span>' : ''}<button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
                     d.addEventListener('click', () => openFocusEditor(ph, renderPhotoList));
                     d.querySelector('.x').addEventListener('click', ev => {
                         ev.preventDefault(); ev.stopPropagation(); URL.revokeObjectURL(ph.url); list.splice(k, 1);
@@ -895,7 +901,7 @@
                 if (!imgs.length) return;
                 const isNew = !row.photo;
                 if (isNew) row.photo = { list: [], font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
-                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img, fx: 0.5, fy: 0.5 }); });
+                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img, fx: 0.5, fy: 0.5, zoom: 1 }); });
                 fileInput.value = '';
                 renderPhotoList();
                 if (isNew) applyPhotoCombo();
@@ -978,10 +984,10 @@
             text(ctx, `${combo.font1}  ×  ${combo.font2}`, W / 2, H * 0.695, { size: 46, weight: 500, alpha });
             text(ctx, `${String(idx + 1).padStart(2, '0')} / 03  ·  ${PLATING_LABEL[combo.plating]}`, W / 2, H * 0.735, { size: 30, weight: 400, alpha, color: '#E6C98A', spacing: '0.18em' });
         }
-        // 照片鋪滿直式畫面（cover），並讓作品位置 (fx, fy) 盡量落在畫面中央；放大時也朝這個點推近
+        // 照片鋪滿直式畫面（cover）再乘上取景縮放 zoom，讓取景中心 (fx, fy) 盡量落在畫面中央；推近時也朝這個點放大
         function photoCrop(ph, scale) {
-            const img = ph.img, ia = img.naturalWidth / img.naturalHeight, ca = W / H;
-            let dw, dh; if (ia > ca) { dh = H * scale; dw = dh * ia; } else { dw = W * scale; dh = dw / ia; }
+            const img = ph.img, ia = img.naturalWidth / img.naturalHeight, ca = W / H, z = scale * (ph.zoom || 1);
+            let dw, dh; if (ia > ca) { dh = H * z; dw = dh * ia; } else { dw = W * z; dh = dw / ia; }
             const dx = Math.min(0, Math.max(W - dw, W / 2 - ph.fx * dw));
             const dy = Math.min(0, Math.max(H - dh, H / 2 - ph.fy * dh));
             return { dx, dy, dw, dh };
@@ -1001,6 +1007,8 @@
             const bw = focusImg.clientWidth, bh = focusImg.clientHeight;
             Object.assign(focusFrame.style, { left: (-dx / dw * bw) + 'px', top: (-dy / dh * bh) + 'px', width: (W / dw * bw) + 'px', height: (H / dh * bh) + 'px' });
             Object.assign(focusDot.style, { left: (ph.fx * bw) + 'px', top: (ph.fy * bh) + 'px' });
+            // 框內實際用到的原圖寬度 < 720px 時，影片放大後可能模糊
+            focusFrame.classList.toggle('lowres', ph.img.naturalWidth * (W / dw) < 720);
         }
         function openFocusEditor(ph, onDone) {
             focusTarget = ph; focusDone = onDone;
@@ -1009,15 +1017,61 @@
             if (focusImg.complete) requestAnimationFrame(updateFocusOverlay);
         }
         function closeFocusEditor() { focusModal.classList.remove('active'); const cb = focusDone; focusTarget = null; focusDone = null; if (cb) cb(); }
-        focusImg.addEventListener('click', e => {
-            if (!focusTarget) return;
+        // 取景框幾何（以照片寬高的比例表示）：zoom=1 時的框寬高 → 依 zoom 縮小
+        const MAX_ZOOM = 6;
+        function baseFrame(ph) {
+            const ia = ph.img.naturalWidth / ph.img.naturalHeight, ca = W / H;
+            return ia > ca ? { fw: ca / ia, fh: 1 } : { fw: 1, fh: ia / ca };
+        }
+        // 把中心夾在框不會超出照片的範圍內，存下來的 fx/fy 就是框實際的中心
+        function setFrame(ph, cx, cy, zoom) {
+            const { fw, fh } = baseFrame(ph), z = Math.max(1, Math.min(MAX_ZOOM, zoom));
+            const hw = fw / z / 2, hh = fh / z / 2;
+            ph.zoom = z; ph.fx = Math.max(hw, Math.min(1 - hw, cx)); ph.fy = Math.max(hh, Math.min(1 - hh, cy));
+        }
+        let focusDrag = null;
+        const stage = document.getElementById('focus-stage');
+        stage.addEventListener('pointerdown', e => {
+            const ph = focusTarget; if (!ph) return;
+            e.preventDefault();
             const r = focusImg.getBoundingClientRect();
-            focusTarget.fx = clamp01((e.clientX - r.left) / r.width); focusTarget.fy = clamp01((e.clientY - r.top) / r.height);
+            const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+            const { fw, fh } = baseFrame(ph), z = ph.zoom || 1, hw = fw / z / 2, hh = fh / z / 2;
+            const corner = e.target.dataset?.c;
+            if (corner) {
+                // 縮放：對角固定不動
+                focusDrag = { mode: 'resize', ax: corner.includes('w') ? ph.fx + hw : ph.fx - hw, ay: corner.includes('n') ? ph.fy + hh : ph.fy - hh, sx: corner.includes('w') ? -1 : 1, sy: corner.includes('n') ? -1 : 1 };
+            } else if (e.target === focusFrame) {
+                focusDrag = { mode: 'move', ox: px - ph.fx, oy: py - ph.fy };
+            } else {
+                // 框外：框中心移到點的位置，並可直接拖著走
+                setFrame(ph, px, py, z); focusDrag = { mode: 'move', ox: px - ph.fx, oy: py - ph.fy };
+            }
+            stage.setPointerCapture(e.pointerId);
             updateFocusOverlay();
         });
-        document.getElementById('focus-reset').addEventListener('click', () => { if (focusTarget) { focusTarget.fx = 0.5; focusTarget.fy = 0.5; updateFocusOverlay(); } });
+        stage.addEventListener('pointermove', e => {
+            const ph = focusTarget; if (!ph || !focusDrag) return;
+            const r = focusImg.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+            if (focusDrag.mode === 'move') {
+                setFrame(ph, px - focusDrag.ox, py - focusDrag.oy, ph.zoom || 1);
+            } else {
+                const { fw, fh } = baseFrame(ph), d = focusDrag;
+                // 依滑鼠到對角的距離決定新框大小（比例固定，取寬、高兩者中較大的需求），再限制不超出照片
+                let wNeed = Math.max(Math.abs(px - d.ax), Math.abs(py - d.ay) * fw / fh);
+                const wRoom = Math.min(d.sx > 0 ? 1 - d.ax : d.ax, (d.sy > 0 ? 1 - d.ay : d.ay) * fw / fh);
+                const newW = Math.max(fw / MAX_ZOOM, Math.min(fw, wRoom, wNeed));
+                const newH = newW * fh / fw;
+                setFrame(ph, d.ax + d.sx * newW / 2, d.ay + d.sy * newH / 2, fw / newW);
+            }
+            updateFocusOverlay();
+        });
+        const endFocusDrag = () => { focusDrag = null; };
+        stage.addEventListener('pointerup', endFocusDrag); stage.addEventListener('pointercancel', endFocusDrag);
+        document.getElementById('focus-reset').addEventListener('click', () => { if (focusTarget) { setFrame(focusTarget, 0.5, 0.5, 1); updateFocusOverlay(); } });
         document.getElementById('focus-done').addEventListener('click', closeFocusEditor);
-        focusModal.addEventListener('click', e => { if (e.target === focusModal) closeFocusEditor(); });
+        focusModal.addEventListener('click', e => { if (e.target === focusModal && !focusDrag) closeFocusEditor(); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusModal.classList.contains('active')) closeFocusEditor(); });
         window.addEventListener('resize', updateFocusOverlay);
 
