@@ -442,9 +442,61 @@
             geometry.computeBoundingBox();
             const c = geometry.boundingBox.getCenter(new THREE.Vector3());
             geometry.translate(-c.x, -c.y, -c.z); geometry.computeBoundingBox();
-            const info = { geometry, modelTopZ: geometry.boundingBox.max.z };
+            const info = { geometry, modelTopZ: geometry.boundingBox.max.z, attach: findAttachPoint(geometry) };
             geoCache.set(key, info);
             return info;
+        }
+
+        // 自動找圓環掛點：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖；
+        // 圓環底部（x ±0.4、y ±0.3mm）整片都要有實體、高低差 < 0.6mm 才算可掛，
+        // 分數 = 高度 − 0.5 × 離重心的水平距離（越高越好，但不要偏離重心太遠，戴起來才不會歪）
+        function findAttachPoint(geometry) {
+            const STEP = 0.1, bb = geometry.boundingBox, p = geometry.attributes.position.array;
+            const x0 = bb.min.x, y0 = bb.min.y;
+            const nx = Math.ceil((bb.max.x - x0) / STEP) + 1, ny = Math.ceil((bb.max.y - y0) / STEP) + 1;
+            const hm = new Float32Array(nx * ny).fill(-Infinity);
+            let vol = 0, mx = 0, my = 0;
+            for (let t = 0; t < p.length; t += 9) {
+                const ax = p[t], ay = p[t + 1], az = p[t + 2], bx = p[t + 3], by = p[t + 4], bz = p[t + 5], qx = p[t + 6], qy = p[t + 7], qz = p[t + 8];
+                // 重心：以原點為頂點的帶號四面體體積加權
+                const v = (ax * (by * qz - bz * qy) - ay * (bx * qz - bz * qx) + az * (bx * qy - by * qx)) / 6;
+                vol += v; mx += v * (ax + bx + qx) / 4; my += v * (ay + by + qy) / 4;
+                const d = (by - qy) * (ax - qx) + (qx - bx) * (ay - qy);
+                if (Math.abs(d) < 1e-12) continue; // 垂直面，從上面看不到
+                const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, qx) - x0) / STEP)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, qx) - x0) / STEP));
+                const j0 = Math.max(0, Math.ceil((Math.min(ay, by, qy) - y0) / STEP)), j1 = Math.min(ny - 1, Math.floor((Math.max(ay, by, qy) - y0) / STEP));
+                for (let i = i0; i <= i1; i++) {
+                    const px = x0 + i * STEP;
+                    for (let j = j0; j <= j1; j++) {
+                        const py = y0 + j * STEP;
+                        const l1 = ((by - qy) * (px - qx) + (qx - bx) * (py - qy)) / d;
+                        const l2 = ((qy - ay) * (px - qx) + (ax - qx) * (py - qy)) / d;
+                        const l3 = 1 - l1 - l2;
+                        if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+                        const z = l1 * az + l2 * bz + l3 * qz, k = i * ny + j;
+                        if (z > hm[k]) hm[k] = z;
+                    }
+                }
+            }
+            if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
+            // 先用完整圓環底部尺寸找；筆畫太細找不到時退一步只要求單點有實體
+            for (const [fx, fy, maxDiff] of [[4, 3, 0.6], [1, 1, 1.0]]) {
+                let best = null;
+                for (let i = fx; i < nx - fx; i++) {
+                    for (let j = fy; j < ny - fy; j++) {
+                        let hmin = Infinity, hmax = -Infinity;
+                        for (let a = -fx; a <= fx && hmin > -Infinity; a++) for (let b = -fy; b <= fy; b++) {
+                            const h = hm[(i + a) * ny + j + b]; if (h < hmin) hmin = h; if (h > hmax) hmax = h;
+                        }
+                        if (hmin === -Infinity || hmax - hmin > maxDiff) continue;
+                        const x = x0 + i * STEP, y = y0 + j * STEP;
+                        const score = hmin - 0.5 * Math.hypot(x - mx, y - my);
+                        if (!best || score > best.score) best = { x, y, z: hmin, score };
+                    }
+                }
+                if (best) return best;
+            }
+            return { x: 0, y: 0, z: bb.max.z };
         }
 
         async function buildGroup(row, combo) {
@@ -459,10 +511,12 @@
             const group = new THREE.Group();
             group.add(new THREE.Mesh(info.geometry, mat));
             const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64); ringGeo.rotateX(Math.PI / 2);
-            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(0, 0, info.modelTopZ + 1.3); group.add(ring);
+            // 圓環管徑中心落在掛點頂面 → 圓環底部埋進主體 0.3mm，看起來確實接上
+            const { x: ax, y: ay, z: az } = info.attach, ringZ = az + 1.3;
+            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(ax, ay, ringZ); group.add(ring);
             if (bail) {
                 const bailH = bail.boundingBox.max.z - bail.boundingBox.min.z;
-                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(0, 0, info.modelTopZ + 1.2 + bailH / 2); group.add(bm);
+                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ - 0.1 + bailH / 2); group.add(bm);
             }
             return group;
         }
@@ -499,6 +553,33 @@
         // ════════════════════════════════════════════════════════════════
         // 縮圖佇列（序列化，避免同時搶 renderer）
         // ════════════════════════════════════════════════════════════════
+        const TW = 216, TH = 288, THUMB_FRAMES = 36, THUMB_SEC_PER_REV = 4;
+        // 縮圖播放：所有縮圖共用一個 rAF 迴圈；自動慢轉，按住左右拖可停在任意角度
+        (function thumbLoop(last) {
+            requestAnimationFrame(now => {
+                const dt = last ? (now - last) / 1000 : 0;
+                document.querySelectorAll('.combo').forEach(card => {
+                    if (!card._sprite) return;
+                    if (!card._drag) card._frame = ((card._frame || 0) + dt * THUMB_FRAMES / THUMB_SEC_PER_REV) % THUMB_FRAMES;
+                    const k = ((Math.floor(card._frame) % THUMB_FRAMES) + THUMB_FRAMES) % THUMB_FRAMES;
+                    if (k === card._shown) return;
+                    card._shown = k;
+                    const ctx = card.querySelector('canvas').getContext('2d');
+                    ctx.clearRect(0, 0, TW, TH);
+                    ctx.drawImage(card._sprite, k * TW, 0, TW, TH, 0, 0, TW, TH);
+                });
+                thumbLoop(now);
+            });
+        })(0);
+        function bindThumbDrag(card) {
+            const c = card.querySelector('canvas');
+            c.style.cursor = 'grab'; c.style.touchAction = 'none';
+            c.addEventListener('pointerdown', e => { card._drag = { x: e.clientX, f: card._frame || 0 }; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; });
+            c.addEventListener('pointermove', e => { if (card._drag) card._frame = card._drag.f - (e.clientX - card._drag.x) / 5; });
+            const end = () => { card._drag = null; c.style.cursor = 'grab'; };
+            c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+        }
+
         const thumbQueue = [];
         let thumbBusy = false;
         function queueThumb(row, idx) {
@@ -518,14 +599,23 @@
                     if (!/^[A-Za-z0-9]$/.test(row.letterA) || !/^[A-Za-z0-9]$/.test(row.letterB)) throw new Error('缺字母');
                     await ensureBackground(); await hdrReady;
                     const group = await buildGroup(row, combo);
-                    renderGL(group, 0.35, 1, 300, 400);
-                    const tc = card.querySelector('canvas'); tc.getContext('2d').drawImage(glCanvas, 0, 0, 300, 400);
-                    renderGL(null, 0, 1, 300, 400);
+                    // 拍一圈 36 個角度存成橫向長條圖，之後縮圖只播放這張圖，不再動用 3D renderer
+                    const sprite = document.createElement('canvas');
+                    sprite.width = TW * THUMB_FRAMES; sprite.height = TH;
+                    const sctx = sprite.getContext('2d');
+                    for (let k = 0; k < THUMB_FRAMES; k++) {
+                        renderGL(group, k / THUMB_FRAMES * Math.PI * 2, 1, TW, TH);
+                        sctx.drawImage(glCanvas, k * TW, 0);
+                        if (k % 6 === 5) await new Promise(r => requestAnimationFrame(r));
+                    }
+                    renderGL(null, 0, 1, TW, TH);
+                    card._sprite = sprite;
                 } catch (e) {
                     console.error(e);
+                    card._sprite = null;
                     const tc = card.querySelector('canvas'), ctx = tc.getContext('2d');
-                    ctx.fillStyle = '#221F1A'; ctx.fillRect(0, 0, 300, 400); ctx.fillStyle = '#A05050'; ctx.font = '20px sans-serif'; ctx.textAlign = 'center';
-                    ctx.fillText('無法生成', 150, 190); ctx.font = '14px sans-serif'; ctx.fillText(String(e.message).slice(0, 36), 150, 220);
+                    ctx.fillStyle = '#221F1A'; ctx.fillRect(0, 0, TW, TH); ctx.fillStyle = '#A05050'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('無法生成', TW / 2, TH / 2 - 10); ctx.font = '11px sans-serif'; ctx.fillText(String(e.message).slice(0, 30), TW / 2, TH / 2 + 14);
                 }
                 card.classList.remove('loading');
                 await new Promise(r => requestAnimationFrame(r));
@@ -564,7 +654,7 @@
                 ${[0, 1, 2].map(i => `
                 <div class="card combo" data-idx="${i}">
                     <h3>作品 ${i + 1}<span class="lock"></span></h3>
-                    <div class="thumb-wrap"><canvas width="300" height="400"></canvas><div class="busy-tag">計算中…</div></div>
+                    <div class="thumb-wrap"><canvas width="216" height="288" title="按住左右拖曳可轉動"></canvas><div class="busy-tag">計算中…</div></div>
                     <select class="f1 fsel" title="字母 ${'A'}（正面）字體"></select>
                     <select class="f2 fsel" title="字母 B（側面）字體"></select>
                     <div class="mat"><select class="pl"></select><select class="fi"><option value="glossy">亮面</option><option value="matte">霧面</option></select></div>
@@ -600,6 +690,7 @@
             // 填選單
             el.querySelectorAll('.combo').forEach((card, i) => {
                 const c = row.combos[i];
+                bindThumbDrag(card);
                 card.querySelector('.f1').innerHTML = fontOptions(c.font1);
                 card.querySelector('.f2').innerHTML = fontOptions(c.font2);
                 card.querySelector('.pl').innerHTML = platingOptions(c.plating);
