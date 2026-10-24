@@ -614,13 +614,22 @@
         // 縮圖佇列（序列化，避免同時搶 renderer）
         // ════════════════════════════════════════════════════════════════
         const TW = 216, TH = 288, THUMB_FRAMES = 36, THUMB_SEC_PER_REV = 4;
-        // 縮圖播放：所有縮圖共用一個 rAF 迴圈；自動慢轉，按住左右拖可停在任意角度
+        // 縮圖播放：所有縮圖共用同一個旋轉時鐘（globalFrame），角度永遠同步；
+        // 按住左右拖可停在任意角度，放開後偏移量（_off）約半秒內平滑歸零，回到跟其他作品一致
+        let globalFrame = 0;
         (function thumbLoop(last) {
             requestAnimationFrame(now => {
                 const dt = last ? (now - last) / 1000 : 0;
+                globalFrame = (globalFrame + dt * THUMB_FRAMES / THUMB_SEC_PER_REV) % THUMB_FRAMES;
                 document.querySelectorAll('.combo').forEach(card => {
                     if (!card._sprite) return;
-                    if (!card._drag) card._frame = ((card._frame || 0) + dt * THUMB_FRAMES / THUMB_SEC_PER_REV) % THUMB_FRAMES;
+                    if (!card._drag) {
+                        let off = card._off || 0;
+                        off = ((off % THUMB_FRAMES) + THUMB_FRAMES * 1.5) % THUMB_FRAMES - THUMB_FRAMES / 2; // 取最短方向
+                        off *= Math.exp(-dt * 8);
+                        card._off = Math.abs(off) < 0.05 ? 0 : off;
+                        card._frame = globalFrame + card._off;
+                    }
                     const k = ((Math.floor(card._frame) % THUMB_FRAMES) + THUMB_FRAMES) % THUMB_FRAMES;
                     if (k === card._shown) return;
                     card._shown = k;
@@ -636,7 +645,7 @@
             c.style.cursor = 'grab'; c.style.touchAction = 'none';
             c.addEventListener('pointerdown', e => { card._drag = { x: e.clientX, f: card._frame || 0 }; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; });
             c.addEventListener('pointermove', e => { if (card._drag) card._frame = card._drag.f - (e.clientX - card._drag.x) / 5; });
-            const end = () => { card._drag = null; c.style.cursor = 'grab'; };
+            const end = () => { if (card._drag) card._off = card._frame - globalFrame; card._drag = null; c.style.cursor = 'grab'; };
             c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
         }
 
