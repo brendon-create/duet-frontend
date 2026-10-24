@@ -622,7 +622,7 @@
                 gp.rotation.z = 0; gp.position.z = 0; gp.updateMatrixWorld(true);
                 const b = new THREE.Box3().setFromObject(gp);
                 const rxy = Math.max(...[[b.min.x, b.min.y], [b.min.x, b.max.y], [b.max.x, b.min.y], [b.max.x, b.max.y]].map(([x, y]) => Math.hypot(x, y)));
-                visH = Math.max(visH, (b.max.z - b.min.z) * 1.18, 2 * rxy * 1.12 / aspect);
+                visH = Math.max(visH, (b.max.z - b.min.z) * 1.06, 2 * rxy * 1.06 / aspect);
                 czs.push((b.max.z + b.min.z) / 2);
             });
             return { visH, czs };
@@ -990,30 +990,16 @@
         }
         const endSecOf = (row) => row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
 
-        // 三格版：上方標題 → 三格（左作品、右文字）→ CTA；三件同步轉一整圈
-        const TRI_TOP = H * 0.20, TRI_BOTTOM = H * 0.77;
+        // 三格版：上方標題 → 三格（作品置中，不放文字）→ CTA；三件同步轉一整圈
+        const TRI_TOP = H * 0.19, TRI_BOTTOM = H * 0.775;
         function triCells() {
             const ch = (TRI_BOTTOM - TRI_TOP) / 3;
-            return [0, 1, 2].map(i => ({ x: 20, y: Math.round(TRI_TOP + i * ch), w: 540, h: Math.round(ch) }));
+            return [0, 1, 2].map(i => ({ x: 0, y: Math.round(TRI_TOP + i * ch), w: W, h: Math.round(ch) }));
         }
-        function fitText(ctx, str, maxW, size, weight, family) {
-            ctx.save(); let s = size;
-            while (s > 20) { ctx.font = `${weight} ${s}px ${family}`; if (ctx.measureText(str).width <= maxW) break; s -= 2; }
-            ctx.restore(); return s;
-        }
-        function drawTriptychText(ctx, row, cells, alpha) {
-            const sans = "'PingFang TC', -apple-system, sans-serif";
+        function drawTriDividers(ctx, cells, alpha) {
             ctx.save(); ctx.globalAlpha = alpha * 0.3; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 1.5;
-            [1, 2].forEach(i => { const y = cells[i].y; ctx.beginPath(); ctx.moveTo(80, y); ctx.lineTo(W - 80, y); ctx.stroke(); });
+            [1, 2].forEach(i => { const y = cells[i].y; ctx.beginPath(); ctx.moveTo(240, y); ctx.lineTo(W - 240, y); ctx.stroke(); });
             ctx.restore();
-            cells.forEach((c, i) => {
-                const combo = row.combos[i], tx = 590, cy = c.y + c.h / 2, maxW = W - tx - 50;
-                text(ctx, String(i + 1).padStart(2, '0'), tx, cy - 92, { size: 30, weight: 500, alpha, color: '#E6C98A', align: 'left', spacing: '0.2em' });
-                const s1 = fitText(ctx, combo.font1, maxW, 46, 500, sans), s2 = fitText(ctx, '× ' + combo.font2, maxW, 46, 500, sans);
-                text(ctx, combo.font1, tx, cy - 32, { size: s1, weight: 500, alpha, align: 'left' });
-                text(ctx, '× ' + combo.font2, tx, cy + 26, { size: s2, weight: 500, alpha, align: 'left' });
-                text(ctx, PLATING_LABEL[combo.plating] + (row.photo && i === 2 ? '  ·  客戶作品' : ''), tx, cy + 86, { size: 28, weight: 400, alpha, color: '#E6C98A', align: 'left', spacing: '0.12em' });
-            });
         }
         function drawTriHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
@@ -1032,7 +1018,7 @@
                     const st = clamp01((t - introSec) / spinSec);
                     const out = clamp01((introSec + spinSec - t) / outSec); // 最後一小段淡出，接片尾
                     renderTriptych(groups, st * Math.PI * 2, Math.min(a, out), cells, fit); cctx.drawImage(glCanvas, 0, 0);
-                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriptychText(cctx, row, cells, Math.min(a, out)); drawCTA(cctx, a);
+                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriDividers(cctx, cells, Math.min(a, out)); drawCTA(cctx, a);
                 } else {
                     drawEnd(row, t - introSec - spinSec, endSec);
                 }
