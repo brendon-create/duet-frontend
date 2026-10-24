@@ -119,7 +119,7 @@
         .caption textarea, .caption input { width: 100%; }
         .caption .hint { font-size: 10px; color: #6A665E; margin-top: 4px; line-height: 1.5; }
 
-        .card.actions { width: 72px; display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; }
+        .card.actions { width: 84px; display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; }
         .card.actions button { width: 100%; }
 
         #footer {
@@ -231,6 +231,8 @@
         <div>
             <label class="f">每組吊墜秒數 <span class="range-val" id="g-sec-v">3.0s</span></label>
             <input type="range" id="g-sec" min="2" max="6" step="0.5" value="3">
+            <label class="f">三格版轉一圈秒數 <span class="range-val" id="g-spin-v">6.0s</span></label>
+            <input type="range" id="g-spin" min="4" max="10" step="0.5" value="6">
             <label class="f">片尾照片秒數 <span class="range-val" id="g-endsec-v">3.5s</span></label>
             <input type="range" id="g-endsec" min="2" max="6" step="0.5" value="3.5">
             <label class="f">影片位元率 (Mbps) <span class="range-val" id="g-bitrate-v">10</span></label>
@@ -354,7 +356,7 @@
         // ════════════════════════════════════════════════════════════════
         // 狀態 / 持久化
         // ════════════════════════════════════════════════════════════════
-        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'];
+        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'];
         const g = (id) => document.getElementById(id).value;
         const rows = []; // { id, letterA, letterB, combos:[3], photo:{list:[{url,img}],font1,font2,plating}|null, hook, photoLine, el }
         let rowSeq = 0;
@@ -363,7 +365,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(Object.fromEntries(G_IDS.map(id => [id, g(id)]))));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, layout: r.layout
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -610,6 +612,38 @@
             }
         }
 
+        // 三格版：先畫整張背景，再用 viewport/scissor 把三件作品各自畫進自己的格子（同一角度）
+        const cellCam = new THREE.PerspectiveCamera(15, 1, 0.1, 2000);
+        cellCam.up.set(0, 0, 1);
+        // 三件共用同一個取景尺寸，彼此大小比例才真實；以「轉一整圈都不會出格」來算
+        function fitCells(groups, aspect) {
+            let visH = 0; const czs = [];
+            groups.forEach(gp => {
+                gp.rotation.z = 0; gp.position.z = 0; gp.updateMatrixWorld(true);
+                const b = new THREE.Box3().setFromObject(gp);
+                const rxy = Math.max(...[[b.min.x, b.min.y], [b.min.x, b.max.y], [b.max.x, b.min.y], [b.max.x, b.max.y]].map(([x, y]) => Math.hypot(x, y)));
+                visH = Math.max(visH, (b.max.z - b.min.z) * 1.18, 2 * rxy * 1.12 / aspect);
+                czs.push((b.max.z + b.min.z) / 2);
+            });
+            return { visH, czs };
+        }
+        function renderTriptych(groups, angleRad, opacity, cells, fit) {
+            renderGL(null, 0, 1, W, H); // 第一階段：只有背景（並清掉 currentGroup）
+            const savedBg = scene.background; scene.background = null;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.autoClear = false; renderer.setScissorTest(true);
+            const D = 100;
+            groups.forEach((gp, i) => {
+                const c = cells[i], vy = H - c.y - c.h;
+                renderer.setViewport(c.x, vy, c.w, c.h); renderer.setScissor(c.x, vy, c.w, c.h);
+                cellCam.aspect = c.w / c.h; cellCam.fov = 2 * Math.atan(fit.visH / 2 / D) * 180 / Math.PI;
+                cellCam.position.set(0, -D, fit.czs[i]); cellCam.lookAt(0, 0, fit.czs[i]); cellCam.updateProjectionMatrix();
+                gp.rotation.z = -angleRad; gp.position.z = 0; setGroupOpacity(gp, opacity);
+                scene.add(gp); renderer.render(scene, cellCam); scene.remove(gp);
+            });
+            renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.autoClear = true;
+            scene.background = savedBg;
+        }
+
         // ════════════════════════════════════════════════════════════════
         // 縮圖佇列（序列化，避免同時搶 renderer）
         // ════════════════════════════════════════════════════════════════
@@ -703,7 +737,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || ''
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', layout: data?.layout || 'carousel'
             };
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
             if (row.combos.length !== 3) {
@@ -751,6 +785,8 @@
                     <div class="hint">自動帶入：大字「A × B」、每組字體名稱、1/3 計數、片尾「客戶的真實作品 · 材質 · 字體」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
                 </div>
                 <div class="card actions">
+                    <label class="f" style="margin-top:0;">版型</label>
+                    <select class="layout" title="輪播：三件依序出場轉 90°；三格：上中下同時轉 360°"><option value="carousel">輪播</option><option value="triptych">三格</option></select>
                     <button class="gen-one" title="只生成這一支">▶ 這支</button>
                     <button class="del danger" title="刪除這一列">🗑</button>
                 </div>`;
@@ -865,6 +901,9 @@
             el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
             el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
             // 動作
+            const layoutSel = el.querySelector('.layout');
+            layoutSel.value = row.layout;
+            layoutSel.addEventListener('change', () => { row.layout = layoutSel.value; saveState(); });
             el.querySelector('.gen-one').addEventListener('click', () => generateRows([row]));
             el.querySelector('.del').addEventListener('click', () => {
                 if (rows.length === 1) { alert('至少保留一列'); return; }
@@ -923,9 +962,88 @@
             ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore();
         }
 
+        // 片尾（兩種版型共用）：lt = 片尾開始後的秒數
+        function drawEnd(row, lt, endSec) {
+            const a = clamp01(lt / 0.4);
+            renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
+            if (row.photo) {
+                // 多張照片依序播放：每張各自緩慢推近，換張時 0.35 秒交叉淡入
+                const list = row.photo.list, per = endSec / list.length, XF = 0.35;
+                const k = Math.min(list.length - 1, Math.floor(lt / per)), lk = lt - k * per;
+                if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1].img, 1.07, 1);
+                drawPhotoCover(cctx, list[k].img, 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
+                const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
+                grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
+                cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
+                const ta = clamp01((lt - 0.25) / 0.4);
+                text(cctx, 'REAL PIECE  ·  客戶的真實作品', W / 2, H * 0.655, { size: 34, weight: 500, alpha: ta, color: '#E6C98A', spacing: '0.2em' });
+                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.705, { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
+                text(cctx, `${PLATING_LABEL[row.photo.plating]}  ·  ${row.photo.font1} × ${row.photo.font2}`, W / 2, H * 0.755, { size: 36, weight: 400, alpha: ta });
+                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.795, { size: 40, weight: 500, alpha: ta });
+                drawCTA(cctx, ta, H * (row.photoLine ? 0.85 : 0.83));
+            } else {
+                drawHeader(cctx, row, 1);
+                text(cctx, g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a });
+                text(cctx, row.combos.map((c, k) => `${k + 1}  ${c.font1} × ${c.font2}`).join('     '), W / 2, H * 0.57, { size: 26, weight: 400, alpha: a, color: '#E6C98A' });
+                drawCTA(cctx, 1);
+            }
+        }
+        const endSecOf = (row) => row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
+
+        // 三格版：上方標題 → 三格（左作品、右文字）→ CTA；三件同步轉一整圈
+        const TRI_TOP = H * 0.20, TRI_BOTTOM = H * 0.77;
+        function triCells() {
+            const ch = (TRI_BOTTOM - TRI_TOP) / 3;
+            return [0, 1, 2].map(i => ({ x: 20, y: Math.round(TRI_TOP + i * ch), w: 540, h: Math.round(ch) }));
+        }
+        function fitText(ctx, str, maxW, size, weight, family) {
+            ctx.save(); let s = size;
+            while (s > 20) { ctx.font = `${weight} ${s}px ${family}`; if (ctx.measureText(str).width <= maxW) break; s -= 2; }
+            ctx.restore(); return s;
+        }
+        function drawTriptychText(ctx, row, cells, alpha) {
+            const sans = "'PingFang TC', -apple-system, sans-serif";
+            ctx.save(); ctx.globalAlpha = alpha * 0.3; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 1.5;
+            [1, 2].forEach(i => { const y = cells[i].y; ctx.beginPath(); ctx.moveTo(80, y); ctx.lineTo(W - 80, y); ctx.stroke(); });
+            ctx.restore();
+            cells.forEach((c, i) => {
+                const combo = row.combos[i], tx = 590, cy = c.y + c.h / 2, maxW = W - tx - 50;
+                text(ctx, String(i + 1).padStart(2, '0'), tx, cy - 92, { size: 30, weight: 500, alpha, color: '#E6C98A', align: 'left', spacing: '0.2em' });
+                const s1 = fitText(ctx, combo.font1, maxW, 46, 500, sans), s2 = fitText(ctx, '× ' + combo.font2, maxW, 46, 500, sans);
+                text(ctx, combo.font1, tx, cy - 32, { size: s1, weight: 500, alpha, align: 'left' });
+                text(ctx, '× ' + combo.font2, tx, cy + 26, { size: s2, weight: 500, alpha, align: 'left' });
+                text(ctx, PLATING_LABEL[combo.plating] + (row.photo && i === 2 ? '  ·  客戶作品' : ''), tx, cy + 86, { size: 28, weight: 400, alpha, color: '#E6C98A', align: 'left', spacing: '0.12em' });
+            });
+        }
+        function drawTriHeader(ctx, row, alpha) {
+            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.105, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
+            text(ctx, hook, W / 2, H * 0.165, { size: 46, weight: 500, alpha });
+        }
+        function buildTriptychTimeline(row, groups) {
+            const introSec = 0.8, spinSec = parseFloat(g('g-spin')), endSec = endSecOf(row), outSec = 0.35;
+            const total = introSec + spinSec + endSec, totalFrames = Math.round(total * FPS);
+            const cells = triCells(), fit = fitCells(groups, cells[0].w / cells[0].h);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec + spinSec) {
+                    const a = clamp01(t / 0.5);
+                    const st = clamp01((t - introSec) / spinSec);
+                    const out = clamp01((introSec + spinSec - t) / outSec); // 最後一小段淡出，接片尾
+                    renderTriptych(groups, st * Math.PI * 2, Math.min(a, out), cells, fit); cctx.drawImage(glCanvas, 0, 0);
+                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriptychText(cctx, row, cells, Math.min(a, out)); drawCTA(cctx, a);
+                } else {
+                    drawEnd(row, t - introSec - spinSec, endSec);
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
         // 回傳時間軸描述 + 逐幀繪製函式
         function buildTimeline(row, groups) {
-            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
+            if (row.layout === 'triptych') return buildTriptychTimeline(row, groups);
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row);
             const holdA = 0.45, holdB = 0.55, fade = 0.3;
             const total = introSec + segSec * 3 + endSec;
             const totalFrames = Math.round(total * FPS);
@@ -943,29 +1061,7 @@
                     renderGL(groups[seg], ease(p) * Math.PI / 2, opacity, W, H); cctx.drawImage(glCanvas, 0, 0);
                     drawHeader(cctx, row, 1); drawFontLabel(cctx, row.combos[seg], seg, opacity); drawCTA(cctx, 1);
                 } else {
-                    const lt = t - introSec - segSec * 3, a = clamp01(lt / 0.4);
-                    renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
-                    if (row.photo) {
-                        // 多張照片依序播放：每張各自緩慢推近，換張時 0.35 秒交叉淡入
-                        const list = row.photo.list, per = endSec / list.length, XF = 0.35;
-                        const k = Math.min(list.length - 1, Math.floor(lt / per)), lk = lt - k * per;
-                        if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1].img, 1.07, 1);
-                        drawPhotoCover(cctx, list[k].img, 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
-                        const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
-                        grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
-                        cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
-                        const ta = clamp01((lt - 0.25) / 0.4);
-                        text(cctx, 'REAL PIECE  ·  客戶的真實作品', W / 2, H * 0.655, { size: 34, weight: 500, alpha: ta, color: '#E6C98A', spacing: '0.2em' });
-                        text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.705, { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
-                        text(cctx, `${PLATING_LABEL[row.photo.plating]}  ·  ${row.photo.font1} × ${row.photo.font2}`, W / 2, H * 0.755, { size: 36, weight: 400, alpha: ta });
-                        if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.795, { size: 40, weight: 500, alpha: ta });
-                        drawCTA(cctx, ta, H * (row.photoLine ? 0.85 : 0.83));
-                    } else {
-                        drawHeader(cctx, row, 1);
-                        text(cctx, g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a });
-                        text(cctx, row.combos.map((c, k) => `${k + 1}  ${c.font1} × ${c.font2}`).join('     '), W / 2, H * 0.57, { size: 26, weight: 400, alpha: a, color: '#E6C98A' });
-                        drawCTA(cctx, 1);
-                    }
+                    drawEnd(row, t - introSec - segSec * 3, endSec);
                 }
             }
             return { totalFrames, total, draw };
@@ -1150,7 +1246,8 @@
             document.getElementById(id).addEventListener('change', () => { saveState(); invalidateAllThumbs(); }));
         document.getElementById('g-light').addEventListener('change', () => { saveState(); applyLight(); invalidateAllThumbs(); });
         document.getElementById('g-hdr').addEventListener('change', () => { saveState(); hdrReady = loadHDR(g('g-hdr')); invalidateAllThumbs(); });
-        ['g-sec', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
+        bindRange('g-spin', v => parseFloat(v).toFixed(1) + 's');
+        ['g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
         document.getElementById('add-row').addEventListener('click', () => addRow());
         document.getElementById('generate-all').addEventListener('click', () => generateRows(rows.slice()));
 
