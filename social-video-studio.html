@@ -78,7 +78,7 @@
 
         .card.letters { width: 150px; }
         .letters .pair { display: flex; gap: 6px; }
-        .letters .pair input { width: 50%; min-width: 0; text-align: center; font-size: 28px; font-weight: 600; height: 56px; text-transform: uppercase; font-family: 'Cormorant Garamond', serif; }
+        .letters .pair input { width: 50%; min-width: 0; text-align: center; font-size: 28px; font-weight: 600; height: 56px; font-family: 'Cormorant Garamond', serif; }
         .letters .idx { font-size: 20px; color: #C9A96E; font-weight: 600; margin-bottom: 6px; }
         .letters .row-status { font-size: 11px; color: #8A857D; margin-top: 10px; line-height: 1.5; min-height: 32px; }
 
@@ -715,8 +715,8 @@
             // 字母
             const la = el.querySelector('.la'), lb = el.querySelector('.lb');
             const onLetter = () => {
-                la.value = la.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1).toUpperCase();
-                lb.value = lb.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1).toUpperCase();
+                la.value = la.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1);
+                lb.value = lb.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1);
                 row.letterA = la.value; row.letterB = lb.value; saveState();
                 if (row.letterA && row.letterB) row.combos.forEach((_, i) => queueThumb(row, i));
             };
