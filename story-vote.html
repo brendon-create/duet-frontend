@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>設計理念投票</title>
+<style>
+:root{--bg:#f7f5f0;--card:#fff;--fg:#26241f;--mut:#7a766c;--line:#e3dfd5;--acc:#a8842c;--acc-bg:#f6efdc;--ok:#3d7a4a}
+@media (prefers-color-scheme:dark){:root{--bg:#141418;--card:#1f1f25;--fg:#ebe8e1;--mut:#9b978d;--line:#34333b;--acc:#d4af37;--acc-bg:#2c2716;--ok:#7fc28f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:28px 16px 120px}
+h1{font-size:22px;margin:0 0 8px}
+.intro{color:var(--mut);font-size:15px;margin:0 0 16px}
+.name{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.name input{flex:1;min-width:180px;max-width:280px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;margin:22px 0}
+.head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+h2{font-size:17px;margin:0}
+.ctx{color:var(--mut);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px}
+button.ver{all:unset;box-sizing:border-box;display:block;cursor:pointer;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--card);transition:border-color .15s,background .15s}
+button.ver:hover{border-color:var(--acc)}
+button.ver:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.ver[aria-checked="true"]{border-color:var(--acc);background:var(--acc-bg)}
+.tag{font-weight:600;color:var(--acc);font-size:14px;display:flex;justify-content:space-between}
+.tag .pick{display:none}
+button.ver[aria-checked="true"] .pick{display:inline}
+.txt{white-space:pre-wrap;margin-top:6px;font-size:15px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px}
+.bar-in{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.count{font-size:15px}
+.msg{font-size:14px;color:var(--mut)}
+.msg.ok{color:var(--ok)}
+#submit{all:unset;cursor:pointer;background:var(--acc);color:#fff;font-weight:600;padding:10px 22px;border-radius:999px}
+#submit[disabled]{opacity:.45;cursor:not-allowed}
+</style>
+</head>
+<body>
+<main>
+  <h1>DUET 設計理念投票</h1>
+  <p class="intro">每一件作品下面有三個版本的「設計理念」，是附在作品裡、送禮者寫給收禮者的卡片文字。請想像你就是送禮者，選出你最想放進卡片的那一篇。每件作品只能選一個，不用全部投完也可以送出；送出後還能修改再送一次，會以最後一次為準。</p>
+  <div class="name">
+    <label for="name">你的暱稱（選填）</label>
+    <input id="name" maxlength="30" placeholder="方便我們知道是誰投的">
+  </div>
+  <div id="cases"></div>
+</main>
+<div class="bar"><div class="bar-in">
+  <div><div class="count" id="count"></div><div class="msg" id="msg"></div></div>
+  <button id="submit" type="button">送出投票</button>
+</div></div>
+
+<script>
+const CASES = [{"id": "c01", "context": "送給老婆｜結婚週年", "letters": "D + A", "versions": {"old": "D 和 A，是我們各自名字的開頭，放在一起，就是這些年的樣子。三個孩子，沒有任何後援，你和我一起扛過來的。\n\n你的字母，我選了線條柔順、低調有質感的字形——像你這個人：善良正直，卻從不張揚。我的字母，同樣的質感，沉穩一點，是我在你身邊的方式。兩個字放在一起，不爭，也不散。\n\n這些年謝謝你。往後的日子，我們繼續。", "sonnet": "這件墜飾，刻的是我們兩個名字的開頭——D 和 A。把它們交織在一起，是因為這些年我們本來就是這樣過來的：兩個人，三個孩子，沒有任何後援，卻也沒有讓對方獨自撐著。\n\n謝謝妳的善良，謝謝妳對孩子的耐心，謝謝妳在最累的時候還是願意跟我一起扛。我很慶幸，在這段婚姻裡，我身邊的人是妳。\n\n字體選的是柔順、低調、有質感的樣式，就像妳給我的感覺。希望妳戴著它，知道接下來的日子我還在。週年快樂。", "opus": "D 是我，A 是妳。結婚週年，想好好謝謝妳這些日子來的一切。我們有三個小孩，身邊沒有任何後援，一路都是我們兩個人互相扶持、互相幫忙，才把這個家顧好。\n\n妳善良、正直，美麗又有氣質，對孩子總是那麼有愛心跟耐性。我們都喜歡小孩、對人友善、孝順，也都喜歡簡單的生活。這兩個字母，我選了看起來柔順、低調有質感的樣子，就像妳，戴起來有氣質，不浮誇。\n\n謝謝妳，老婆。週年快樂，對未來的日子，我很期待。"}}, {"id": "c02", "context": "送給老婆｜生日", "letters": "B + b", "versions": {"old": "B 和 b，是我們的名字。聖誕節認識的，這件事我一直記得。\n\n你的 b，我選了一個筆觸流動、低調卻有重量的字形——你自主、獨立、一直在學新的東西，這個字形沒有多餘的裝飾，氣質卻很清楚。我的 B，同樣的字形，因為我們是一樣的人，只是大小不同。\n\n生日快到了。我愛你。", "sonnet": "妳的生日快到了，我想送妳一件一直帶著我們兩個人的東西。\n\n大寫的 B 是我，小寫的 b 是妳。同一個字母，交織在一起——有點像我們：都是自主獨立、愛學習的人，偏偏在聖誕節那天遇見了彼此。字體的線條有點圓、有點流動，低調，但戴上去有份量。就像妳。\n\n我愛妳。生日快樂。", "opus": "老婆，生日快樂。\n\n大寫的 B 是我，小寫的 b 是妳，是我們英文名字的第一個字母。兩個字都用圓潤的手寫字體，低調又有質感，戴在身上剛剛好。\n\n我最欣賞妳自主、獨立、好學，這也是我們最像的地方。從聖誕節認識的那天起，兩個這麼像的人就走在一起了。\n\n我愛妳。"}}, {"id": "c03", "context": "送給老婆", "letters": "T + W", "versions": {"old": "T 和 W，是我們兩個人的縮寫，放在同一件作品裡。\n\n兩個字母用的是同一種字體。W 的字形少見，我選它，是因為它本身就有你的樣子：不是常見的那種端正，而是有自己的結構，看起來沉穩，仔細看才知道線條裡有一種分寸感——公平、有智慧，認真付出這件事從來不需要聲張。T 的字形也是這樣，低調，有份量，是我希望站在你身邊的那個樣子。\n\n謝謝你這些年的認真。戴著它，就是我說的話。", "sonnet": "Wendy，\n\nT 和 W，是我們兩個人名字的起點，也是我想把你我放在一起的方式。\n\n你做事公平、有智慧，凡事認真付出，這些我都看在眼裡。我們都不是愛與人計較的人，這大概是我覺得跟妳在一起最自在的地方。\n\n這個字體不常見，選它，是因為我想給妳的東西不將就。謝謝妳，也希望妳幸福。\n\nTony", "opus": "老婆，T 是我，W 是妳，兩個字母放在一起，就是我們。\n\n妳處事公平又有智慧。我們都善良，不與人交惡。妳的認真付出，我都看在眼裡。\n\n這件作品選了低調典雅的樣子，字型也比較特殊少見，就像妳一樣低調，但很特別。謝謝妳，有妳在，我很幸福。"}}, {"id": "c04", "context": "送給男朋友", "letters": "Y + N", "versions": {"old": "Y 和 N，我的名字和你的。\n\n你的字母，我選了一個有弧度、帶流動感的字形——像你這個人給我的感覺，開朗又輕盈，走到哪裡都讓那個地方亮一點。我的字母，字形安靜些，沒有太多稜角，是我想站在你旁邊的樣子。\n\n我知道我不如你那樣外向。但每次一起出去旅行，我喜歡的就是這樣：你在我身邊，我在你身邊，去哪裡都好。戴著它，就是我一直在。", "sonnet": "你的開朗讓我很安心，我的安靜讓你有個地方停下來——我們好像就是這樣剛好。\n\nY 是我，N 是你，兩個字母交在一起，就像我們雖然不一樣，卻一直都在彼此旁邊。字體也選了有點像你、有點像我的搭配：一個輕盈活潑，一個穩穩的。\n\n這是一種很踏實的愛，不轟轟烈烈，但我很在乎你。希望你戴著它的時候，知道我一直在。", "opus": "Y 是我，N 是你。我們的共通點不多，互補的地方倒是很多：我比較內向，你開朗又樂天。所以 Y 圓圓軟軟的，N 寫得活潑飛揚，一個安靜、一個熱鬧，放在一起剛剛好，就像我們。\n\n我想給你的，是很踏實的愛，不是轟轟烈烈的那種，而是讓你覺得安心，知道我一直很在乎你。\n\n以後也要繼續一起出去玩、一起去旅行。我愛你。"}}, {"id": "c05", "context": "送給合作多年的朋友（兩個字母是她和她先生）", "letters": "W + J", "versions": {"old": "W 和 J，是妳和妳先生的縮寫。這件作品本來是送給妳的，但我想讓它同時裝得下妳們兩個人。\n\n妳的字母，我選了一個低調卻有設計感的字形——弧度在那裡，但不誇張，有一點柔，有一點藏著的東西，像妳這個人：溫柔善解人意，卻同時有著讓人意外的毅力。J 的字形沉穩、有份量，收得住，是我覺得在妳身旁應該有的樣子。\n\n合作好幾年，常常覺得，要是早一點認識就好了。說出來其實只是珍惜的另一種說法——還好終究是遇見了妳。", "sonnet": "合作這幾年，我才慢慢意識到，你是那種讓人覺得「怎麼這麼晚才認識」的人。溫柔、善解人意，又有著讓我佩服的毅力——這幾個特質放在同一個人身上，是很難得的事。\n\n這件作品裡交織著 W 和 J，是你和你丈夫名字的縮寫。字體低調、有設計感，弧度不誇張，我覺得很像你給人的感覺。\n\n很高興，我們終究是相遇了。", "opus": "W 和 J，是妳和妳先生的縮寫。我選的字體低調卻又有設計感，弧度也不至於太誇張，簡約又細緻，就像妳給人的感覺：溫柔、善解人意，骨子裡又很有毅力。\n\n我們合作了好幾年，想法一直很契合。回頭看，總有種錯過的感覺，但現在想起來，更多的是珍惜。\n\n很高興能遇見妳。"}}, {"id": "c06", "context": "送給自己｜生日", "letters": "Y + M", "versions": {"old": "兩個字母都是我的名字，也都是我想親手交回給自己的東西。這個生日，我決定把自己放在第一位。\n\nY 的字體，我選了一個流動的筆觸——線條有走向，卻不用力，就像同理別人時那種不強迫的溫柔，一直是我的方式。M 的字體延續同樣的流暢，卻多了一分從容的重量，是我想培養的那種對自己的信任。兩個字母接在一起，有一種話說完整了的感覺。\n\n八年了，我一邊被拉扯，一邊在練習站穩。這件作品是我給自己的承諾：不是等一切都結束了才開始好好愛自己，而是從現在就開始。戴上它，是我記得這件事的方式。", "sonnet": "生日快樂。\n\n這是我送給自己的禮物，也是一個承諾。\n\n過去的我，總是先顧著別人的心情和處境，把自己放在第二位。未來的我，要開始把自己放回來——不論身心，都要健康，都要被好好照顧。\n\nY 和 M，是我的名字。兩個字母交織在一起，筆畫流暢，像是在提醒我：我這個人本來就是完整的。戴上它，就是帶著勇氣和自信繼續走。\n\n我愛你，也謝謝你一路走到這裡。", "opus": "Y 和 M，是我的名字。這個生日，我把它送給自己。\n\n我最喜歡自己的地方，是不管面對什麼事，都能先同理別人。只是過去，我總是先考量別人的心情和處境，把自己擺在第二位。從現在開始，我要多關注自己，不論身心都要健康。我想更愛自己，不管未來面對什麼事情，都能跟自己和解。\n\n兩個字體結合起來，線條很有流暢感。每次戴上它，都給自己滿滿的勇氣與自信。生日快樂，記得更愛自己一點。"}}, {"id": "c07", "context": "送給老婆", "letters": "S + m", "versions": {"old": "S 和 m，是妳，也是我。\n\n妳的 S，我選了一個有分量卻不張揚的字形——端正裡有韌性，就像妳每天早起準備早餐、在三個男生中間撐起整個家，還能保持正向的樣子。m 的字形俐落沉穩，是我想給妳的那份踏實：不多說，但在。\n\n妳不需要什麼才能讓人覺得妳好看，這件事我一直看見。戴著它的時候，記得有人接得住妳。", "sonnet": "妳每天早起，把早餐備好，把三個臭小子送出門。\n\n這些事我都看在眼裡。\n\nS 是妳，M 是我。兩個字母交在一起，就是我想說的——我沒有忘記妳在這個家裡有多不容易，在一群男生裡頭，有時候一定很孤單、很難被理解。但我一直都有看到妳。\n\n我們都不喜歡人多，都不喜歡張揚。這個墜飾也一樣，低調，但它在。就像我會接住妳。\n\n希望妳戴著它的時候，感覺得到這份踏實。", "opus": "S 是妳，m 是我。妳的 S 線條柔和、乾淨，就像妳平常的樣子，穿著簡約，也不用化什麼妝，自然就很好看；我的 m 方方正正，穩穩地待在妳旁邊。我們都不喜歡人多的地方，就喜歡這樣低調地在一起。\n\n妳每天一早起來叫小孩、準備早餐，家裡三個兒子，根本就是住在男生宿舍，有時候我們男生的想法，妳也搞不懂。這些辛苦，我一直都有看到。謝謝妳一直是個沒有心機、凡事都往好處想的人。\n\n希望妳戴著它的時候，覺得溫暖，也記得：我會接住妳。"}}, {"id": "c08", "context": "送給太太", "letters": "D + J", "versions": {"old": "D 和 J 放在一起，是因為我們兩個人都在這裡。一起照顧孩子的那些時間，是我最清楚我們是一體的時候。\n\n字母 J 的字體纖細卻有骨氣，是妳做瑜伽也做重訓的那種質地——柔軟和力量同時存在。字母 D 的字體俐落直接，是我能給妳的樣子。\n\n謝謝妳，也謝謝妳愛我。", "sonnet": "Jenny，\n\nD 和 J，是我們兩個人名字的起頭，也是這件作品的全部。兩個字母交織在一起，就像我們這幾年一起照顧孩子、一起撐著彼此的樣子。\n\n妳善良、孝順，在事業上有自己的成就，同時還把家顧得這麼好。我一直很感謝妳，也很佩服妳。我們都重視孩子，都希望對身邊的人帶來幸福——這件事，是我覺得我們最像的地方。\n\n謝謝妳，也謝謝妳願意跟我一起過這樣的生活。愛妳。\n\nDavid", "opus": "這條墜飾上的 D 是我，J 是妳。兩個字母交織在一起，就像我們一起照顧孩子、一起兼顧事業的每一天。D 簡單俐落，J 線條優雅，放在一起很好看，也很像妳平常簡約乾淨的樣子。\n\n妳善良、孝順，在事業上有成就，還會撥時間做瑜伽跟重訓。我們一樣重視孩子，也一樣希望為身邊的人帶來幸福。這些年一起照顧小孩，有妳在身邊，我很珍惜。\n\n這份禮物想告訴妳的，就是老公對妳的愛跟感謝。謝謝妳，我愛妳。"}}, {"id": "c09", "context": "送給自己（沒有做諮詢對話）", "letters": "S + C", "versions": {"old": "這兩個字母是我的姓和我的名，放在一起就是完整的我。不是為了紀念什麼，是因為這樣的我值得被好好看見。\n\n兩個字母選了同一款字體，因為找到的時候就知道對了——那種筆觸不死板，有點隨性，卻有自己清楚的走法。跟著感覺走，但不是沒有方向。\n\n活出自己的樣子，這件事我一直在做。戴著它，繼續。", "sonnet": "把自己的姓和名交織在一起，就是這件作品最簡單的理由。\n\nS 和 C，是我，也只是我。選這個字體，是因為它看起來有點隨性、有點流動，不死板——跟我本來的樣子很像。戴著自己的名字出門，就是跟著自己的個性走。\n\n送給自己，也沒什麼大道理。就是想好好紀念一下這個人。", "opus": "S 是我的名字，C 是我的姓。把它們交織在一起，做成這件墜飾，是我送給自己的禮物。\n\n選這個字體，是因為它看起來就像我。筆畫不死板，很活潑，順著手勢自由地寫出去。我本來就是這樣的人，跟著自己的個性走。\n\n戴上它，提醒自己：就這樣繼續做自己。"}}, {"id": "c10", "context": "送給自己｜生日", "letters": "T + Y", "versions": {"old": "這件作品只刻了兩個字母，都是我自己名字的縮寫。不是紀念誰，不是送給誰——是我第一次認真為自己做一件事。\n\n兩個字體都是草寫，因為那是最像我的線條：看起來隨性，但每一筆都有方向。兒子說這兩個字看起來像中文字「可」，說是祝我百事可樂、天天開心——我把這個說法也一起帶進來了。\n\n外表搶眼，意義只有我知道。生日快樂，我自己。", "sonnet": "這是一件只屬於你的作品。\n\nY 和 T，是你名字的縮寫，也是你送給自己的生日禮物。外表搶眼，但它真正的意義只有你自己知道——戴著它，你懂就好。\n\n兩個草寫字母交纏在一起，流動又有個性，就像你這個人：走進房間有存在感，但真正有意思的部分，要靠近了才看得見。兒子說這兩個字母看起來像「可」，希望你百事可樂、天天開心——這個祝福，我們都算數。\n\n生日快樂，媽媽。你值得這份禮物。", "opus": "送給自己的生日禮物。T 和 Y，是妳自己名字的縮寫，這件作品從頭到尾只屬於妳。\n\n選草寫，因為它有個性，比較像妳，也是妳喜歡的。妳可以一走進來就被注意到，也可以讓人多看幾眼還看不透，看場合，妳自己決定。它代表什麼，妳自己知道就好。\n\n兒子說這兩個字看起來都像「可」，祝妳百事可樂、天天開心。就照他說的，生日快樂！"}}, {"id": "c11", "context": "送給男友", "letters": "K + E", "versions": {"old": "K 和 E 放在一起，是你的名字和我的名字，也是我們兩個人在一起的樣子。廚房裡，兩個人一起煮飯，這就是我說的幸福。\n\nK 的字體有重量，穩穩的，不誇張——你永遠良善對人，就是這樣的份量。E 的字體線條俐落，不多餘，是我對你的心意，直接說完就好。\n\n我想讓你幸福，不是說說的，是那個一起在家的每一天。", "sonnet": "K 是你，E 是我。\n\n兩個字母交織在一起，就像我們——都是善良的人，都用心對待身邊的人，然後剛好遇見了彼此。\n\n你選的字體看起來穩重，不會太單薄，我覺得很像你。我喜歡我們一起在家煮飯的時候，那種普通又踏實的幸福，是我最想一直留著的。\n\n希望你戴著它的時候，也感覺得到。", "opus": "K 是你，E 是我。\n\n我最欣賞你的善良，你永遠會良善對人。這一點，我們是一樣的。字的樣子我選了看起來比較穩重、不會太單薄的，簡約低調，但有自己的個性。\n\n對我來說，幸福就是我們一起在家、一起煮飯的日常。希望你戴著它的時候，也能感受到這份幸福。"}}, {"id": "c12", "context": "送給男友（兩個字母都是他的名字）", "letters": "J + H", "versions": {"old": "把 J 和 H 放在一起，因為你對我來說就是這樣的人——從第一天開始就是，沒有哪一個特定的時刻，就是一直都是。\n\nJ 的字體有些流動，帶點輕盈，卻不漂浮；H 的字體線條精煉，低調裡有一種沉著的份量。兩個字母放在一起，我想要的是那種整體看起來有特色、有質感的感覺。\n\n你記得我說過的小事，在我還沒開口前就已經注意到了。這些事你從來不提，但我都知道。", "sonnet": "你聰明、細心、善良——這三件事，我從認識你到現在，一直都是這樣覺得。\n\n你會記得我說過的小事，會在我還沒開口前就注意到我的狀態。這種細心，不是每個人都有，我也說不清楚我有多幸運，遇到的是你。\n\nJ 和 H，你的名字和姓，交織在一起。就像你在我生命裡的樣子——是屬於你的，也是獨一無二的。字體我特別挑了有個性、有質感的款式，因為我覺得它很像你，不張揚，但讓人一眼就記住。\n\n戴著它，讓我每次看到都能想起——我身邊有你，真的很好。", "opus": "J 是你的名字，H 是你的姓，兩個字母放在一起，就是你。\n\n你聰明、細心、善良，尤其是細心：我說過的小事你都記得，我還沒開口，你就已經注意到了。聰明和善良，也是我們最像的地方。\n\n這兩個字母我想要有質感，低調又精緻，整體看起來有自己的特色，就像你一樣。你對我來說是獨一無二的，不是因為哪一個時刻，而是一直都是。"}}, {"id": "c13", "context": "送給結婚 24 年的老婆", "letters": "B + S", "versions": {"old": "B 和 S 放在一起，是 Bella 和 Sam，結婚 24 年，兩個名字從來沒有分開過。每天話都講不完，這件事對我來說，比什麼都更能說明我們是什麼。\n\nB 的字體線條纖細而精緻，帶著一種不需要解釋的成熟——那是妳給我的感覺，大方，從不張揚。S 的字體通透，有呼吸感，不沉，卻有一種不會停止的溫柔持續在裡面。\n\n24 年，妳對這個家無條件付出。這是我第一次把它做成一件能帶在身上的東西，送給妳。", "sonnet": "結婚 24 年，B 和 S 從來沒有分開過。\n\n這件墜飾把我們兩個名字的開頭字母交織在一起——就像我們這 24 年，每天話都講不完，說著說著就到了現在。字型選的是優雅的款式，因為那就是妳給我的感覺：從裡到外，大方又好看。\n\n謝謝妳這 24 年對這個家無條件的付出。我愛妳，Bella。", "opus": "Bella：\n\nB 是妳，S 是我，Bella 和 Sam 兩個名字的第一個字母，交織在一起。B 的線條端莊秀氣，S 多了一點曲線和個性，兩個字母放在一起，剛好是我們。\n\n結婚滿 24 年，妳還是一樣漂亮大方、身材好、個性好，對家人無條件付出。我們價值觀一致，到現在每天話還是講不完，這是我最珍惜的事。\n\n謝謝妳這 24 年。我愛妳。"}}, {"id": "c14", "context": "送給男朋友（相識十年的高中同學）", "letters": "C + S", "versions": {"old": "晨和珊，這兩個字從十年前就已經存在彼此的生命裡。C 側過來是 S，看似兩個完全不同的字，卻能融為一體——就像我們各自走了十年的路，最後仍然走到了彼此身邊。\n\n字母 C 的字體筆觸柔和流動，帶著一種沉靜的溫度，像你給我的感覺：細膩，又讓人安心。字母 S 的字體清晰而有分量，是我想讓你看見的那份認真。\n\n無論發生什麼，你都在。這件事我比任何人都清楚，而這個墜飾，是我用來告訴你：我也是。", "sonnet": "正看是 C，側看是 S——兩個不同的字，從不同角度看，卻融在同一個作品裡。就像我們，十年間各自走在不同的路上，路途有時崎嶇，卻還是走到了彼此身邊。或許是緣分，或許是我們早就在彼此心裡佔了一個誰也取代不了的位置。\n\n這份喜歡在時間裡慢慢洗滌，變得很純粹，也很深遠。我心裡有一片一望無際的青青草地，有溫暖的陽光、清涼的微風，而你是那裡唯一一株大樹，不被世俗打擾，穩穩地在那裡。不管發生什麼事，我知道你都會在——這份確定感，是你給我最珍貴的事。\n\nC 是晨，S 是珊，兩個字體不同，卻合成一個專屬於我們的故事。我中有你，你中有我。謝謝晨晨來到我的生命裡，往後我們就像這個墜飾，彼此都是不可或缺的一部分。", "opus": "C是晨Chen的C，S是珊Shan的S。正看是C，側看是S，不同視角下看似完全不同的兩個字，卻融為一體，就像我跟你的相遇。相識的十年間，我們各自走在不同的道路上，無論路途多崎嶇，最終仍然走到了彼此的身邊。\n\n這份喜歡在時間的長河中不斷洗滌，變得如此純粹，也更為深遠。在我心中那片一望無際的青青草地上，你是唯一一株不被世俗凡塵侵擾的大樹。我特意細選了兩個不同的字體，象徵無論我們有多少不同的面相，仍合為一個專屬於我們的故事。\n\n謝謝晨晨來到我的生命中，如今也跟我的人生密不可分。往後你我就如同這個墜飾，我中有你，你中有我，彼此都是不可或缺的一部分。"}}, {"id": "c15", "context": "送給自己", "letters": "A + X", "versions": {"old": "我叫 Andy。A 是我，X 是那個還沒被定義的部分。\n\n選這兩個字母，是因為我想把自己兩種並存的樣子放在一起：一個是活潑可愛、有點直白的 Andy，另一個是還沒有答案的那個問號。\n\n這件作品的字形帶著時尚品牌 Logo 的俐落，視覺上乾淨有力，不需要解釋也有說服力。選這個風格，是因為我希望它看起來很好看，同時讓人看不透——就像 X 這個字母本身，你知道它在那裡，但你不知道它代表什麼。\n\n這是我送給自己的東西。A 和 X 都是我，成熟的、可愛的、已知的、未知的，一起都算數。", "sonnet": "A 是我，X 是還不知道的一切。\n\nA 代表 Andy——那個活潑、可愛、有點鬧的我。X 代表未知，是還沒有答案的問號，是我還沒走到的地方。把這兩個字母放在一起，就是現在完整的我：已經知道自己是誰，但還沒決定要走去哪裡。\n\n這個字體看起來像時尚品牌的 Logo，簡潔、有點神秘。就算別人不知道它代表什麼，也會覺得好看——但我知道。這是只屬於我自己的故事。\n\n戴著它，做自己。", "opus": "A 是你自己，Andy 的 A，代表你活潑又可愛的模樣。X 留給那些想到了、卻還不知道答案的問題，一點神秘，一點未知。\n\n兩個字母用同一種字形，線條帶著神秘、成熟的感覺，看起來就像時尚品牌簡潔的 Logo。就算別人不知道它代表什麼，也會覺得很好看，而不只是兩個普通的英文字母。\n\n希望每天戴著它，都記得自己可以活潑可愛，也可以保留一點神秘。"}}, {"id": "c16", "context": "送給女朋友", "letters": "P + L", "versions": {"old": "P 和 L 放在一起，是柏琳——你的名字和我的名字，藏進同一個字裡。這不是巧合，是我特地找到的。\n\n字母 L 的字體線條優雅，有辨識度，卻不張揚——像妳這個人，真誠、細膩，有自己的重量，但不需要被大聲說出來。字母 P 的字體和 L 一樣，是我選的方式：我跟妳站在同一個地方。\n\n我無時無刻都在想妳。這件作品是我想讓妳知道的事：不用不安，我在。", "sonnet": "P 和 L，是我們的中文名、英文名，也拼成了只屬於我們的「柏琳」。一個字母刻著我，一個刻著妳，在這裡交織在一起。\n\n我知道妳有時候會擔心，覺得我哪天會不愛妳。我想讓妳知道，我無時無刻都在想著妳，也一直想給妳各種驚喜——不是因為我必須這樣做，是因為我真的想。這件作品也是。\n\n戴著它的時候，記得：我在。", "opus": "P 是我，柏宇，也是 Peter；L 是妳，麗琳，也是 Lily。兩個字母放在一起，還能拼成「柏琳」，一個只屬於我們的名字。\n\n我最欣賞妳的真誠、自省和同理心，而我們也很像：很了解對方，會為對方著想，都容易想很多，但也都很願意深入溝通交流。字的線條我選了優雅、有設計感的樣子，好認但不張揚，就像我們兩個都不喜歡高調。\n\n我無時無刻都會想到妳，也會一直想給妳各種浪漫的驚喜。希望妳戴著它的時候，能感受到我對妳的愛，不用再擔心我會不愛妳。我愛妳。"}}, {"id": "c17", "context": "送給自己和兒子", "letters": "T + L", "versions": {"old": "T 和 L，我們兩個人都有的字母。不是刻意找的，就是名字裡本來就有，這件事本身就讓我覺得有什麼早就決定好了。\n\nT 的字體站得穩，線條乾淨，不多說話。L 的字體也不張揚，簡潔，但看得到形狀裡有一種輕盈——是你的樣子，天真、善良，對什麼都好奇。\n\n我們一起看 AGT 的那些晚上，看台上的人拚命，你問問題，我們討論，沒有什麼大道理，就是那樣坐在一起。這件東西是那些時刻，也是以後還沒發生的那些。", "sonnet": "我們的名字裡都有 T 和 L，這不是巧合，是我們之間那條一直都在的線。\n\n你天真善良，對什麼都充滿好奇，跟我一樣。我們一起聽音樂、一起看 AGT 的選手追夢、一起聊各種事情——就是這些普通的日子，讓我覺得做你爸爸是這輩子最好的事。\n\nT 和 L，我和你，父子情深。", "opus": "兒子，我叫 Terry Lin，你叫 Tom Lin，我們的名字都是 T 和 L。這兩個字母是我們共同擁有的，所以我把它們交織在一起，做成這件墜飾。\n\n我最欣賞你的天真無邪和善良。我們也有一樣的好奇心。平常一起討論事情、一起聽音樂、一起看 AGT 的比賽，這些日常的時光，是我最珍惜的。T 的線條方正俐落，L 修長乾淨，簡約低調，就是我想要的樣子。\n\n父子情深，這就是我想對你說的。願你一直保有這份善良和好奇。"}}];
+// 投票 API 只部署在 staging 後端（develop），這頁是 prompt 測試用的臨時頁面
+const BACKEND = "https://duet-backend-staging-ye5v.onrender.com";
+const KEY_ID = "duet_story_vote_voter", KEY_SEL = "duet_story_vote_sel", KEY_NAME = "duet_story_vote_name";
+
+function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function save(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+let voterId = load(KEY_ID);
+if (!voterId) {
+  voterId = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12));
+  save(KEY_ID, voterId);
+}
+let sel = {};
+try { sel = JSON.parse(load(KEY_SEL) || "{}") || {}; } catch (e) { sel = {}; }
+const nameInput = document.getElementById("name");
+nameInput.value = load(KEY_NAME) || "";
+nameInput.addEventListener("input", () => save(KEY_NAME, nameInput.value));
+
+// 每位投票者看到的版本順序固定但彼此不同，避免位置偏誤
+function seededOrder(seed) {
+  let h = 2166136261;
+  for (const c of seed) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const keys = ["old", "sonnet", "opus"];
+  for (let i = keys.length - 1; i > 0; i--) {
+    h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+    const j = h % (i + 1);
+    [keys[i], keys[j]] = [keys[j], keys[i]];
+  }
+  return keys;
+}
+
+const root = document.getElementById("cases");
+CASES.forEach((c, idx) => {
+  const sec = document.createElement("section");
+  const head = document.createElement("div");
+  head.className = "head";
+  const h2 = document.createElement("h2");
+  h2.textContent = `作品 ${idx + 1}　${c.letters}`;
+  const ctx = document.createElement("div");
+  ctx.className = "ctx";
+  ctx.textContent = c.context;
+  head.append(h2, ctx);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.setAttribute("role", "radiogroup");
+  grid.setAttribute("aria-label", `作品 ${idx + 1} 的版本`);
+  seededOrder(voterId + c.id).forEach((key, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ver";
+    btn.setAttribute("role", "radio");
+    btn.dataset.key = key;
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.innerHTML = `<span>版本 ${String.fromCharCode(65 + i)}</span><span class="pick">✓ 我選這篇</span>`;
+    const txt = document.createElement("div");
+    txt.className = "txt";
+    txt.textContent = c.versions[key];
+    btn.append(tag, txt);
+    btn.addEventListener("click", () => {
+      sel[c.id] = key;
+      save(KEY_SEL, JSON.stringify(sel));
+      paint(grid, c.id);
+      updateBar();
+    });
+    grid.append(btn);
+  });
+  paint(grid, c.id);
+  sec.append(head, grid);
+  root.append(sec);
+});
+
+function paint(grid, id) {
+  grid.querySelectorAll("button.ver").forEach(b => b.setAttribute("aria-checked", String(sel[id] === b.dataset.key)));
+}
+
+const countEl = document.getElementById("count"), msgEl = document.getElementById("msg"), submitBtn = document.getElementById("submit");
+function updateBar() {
+  const n = CASES.filter(c => sel[c.id]).length;
+  countEl.textContent = `已選 ${n} / ${CASES.length} 件`;
+  submitBtn.disabled = n === 0;
+}
+updateBar();
+
+submitBtn.addEventListener("click", async () => {
+  const votes = {};
+  CASES.forEach(c => { if (sel[c.id]) votes[c.id] = sel[c.id]; });
+  submitBtn.disabled = true;
+  msgEl.className = "msg";
+  msgEl.textContent = "送出中…";
+  try {
+    const res = await fetch(`${BACKEND}/api/story-vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ voterId, voterName: nameInput.value.trim(), votes }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      msgEl.className = "msg ok";
+      msgEl.textContent = `已送出 ${Object.keys(votes).length} 件，謝謝你！想改的話直接重選再送一次。`;
+    } else {
+      msgEl.textContent = data.error || (res.status === 429 ? "送出太頻繁，請稍等一分鐘再試" : "送出失敗，請稍後再試");
+    }
+  } catch (e) {
+    msgEl.textContent = "連線失敗，請稍後再試（伺服器剛啟動時可能要等 30 秒左右）";
+  } finally {
+    updateBar();
+  }
+});
+</script>
+</body>
+</html>
