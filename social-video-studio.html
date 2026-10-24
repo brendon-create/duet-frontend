@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Video Studio — DUET</title>
+    <!-- ClipperLib：UMD 格式，必須在 importmap 之前載入，geometry-engine.js 透過 window.ClipperLib 存取 -->
+    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+    <!-- mp4-muxer：把 WebCodecs 編好的 H.264 chunk 封裝成 MP4（UMD，window.Mp4Muxer） -->
+    <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
+    <!-- 影片字幕用的標題襯線字 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://esm.sh/three@0.160.0",
+            "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
+            "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
+            "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3"
+        }
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Inter', sans-serif;
+            background: #111110; color: #E8E4DF; min-height: 100vh; padding: 0 0 120px;
+        }
+        a { color: #C9A96E; }
+        header {
+            display: flex; align-items: center; gap: 18px; padding: 14px 22px;
+            border-bottom: 1px solid #2A2820; position: sticky; top: 0; background: #111110; z-index: 5;
+        }
+        header h1 { font-size: 16px; font-weight: 600; letter-spacing: 1px; color: #C9A96E; }
+        header .sub { font-size: 12px; color: #8A857D; }
+        header .spacer { flex: 1; }
+        button {
+            font: inherit; cursor: pointer; border: 1px solid #3A3830; background: #1C1B18; color: #E8E4DF;
+            padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: background .15s;
+        }
+        button:hover { background: #2A2820; }
+        button:disabled { opacity: .4; cursor: not-allowed; }
+        button.primary { background: #C9A96E; color: #161410; border-color: #C9A96E; font-weight: 600; padding: 10px 20px; font-size: 14px; }
+        button.primary:hover { background: #D9BC84; }
+        button.danger:hover { background: #4A2020; border-color: #7A3030; }
+        select, input[type=text], input[type=number] {
+            font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830;
+            border-radius: 5px; padding: 5px 7px; width: 100%;
+        }
+        input[type=range] { width: 100%; accent-color: #C9A96E; }
+        label.f { display: block; font-size: 11px; color: #8A857D; margin: 8px 0 3px; }
+        .warn {
+            display: none; margin: 14px 22px; padding: 12px 16px; background: #3A2A10; border: 1px solid #7A5A20;
+            border-radius: 8px; font-size: 13px; line-height: 1.7;
+        }
+        .warn.visible { display: block; }
+        .warn code { background: #1C1B18; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+
+        /* 全域設定 */
+        #global {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 16px;
+            padding: 10px 22px 16px; border-bottom: 1px solid #2A2820; background: #141311;
+        }
+        #global .range-val { float: right; color: #C9A96E; }
+
+        /* 列 */
+        #rows { padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
+        .row {
+            display: flex; gap: 12px; align-items: stretch; background: #1A1916; border: 1px solid #2A2820;
+            border-radius: 12px; padding: 12px; overflow-x: auto;
+        }
+        .row.busy { outline: 1px solid #C9A96E; }
+        .card { background: #141311; border: 1px solid #2A2820; border-radius: 9px; padding: 10px; flex: 0 0 auto; }
+        .card h3 { font-size: 11px; color: #8A857D; font-weight: 500; margin-bottom: 8px; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+        .card h3 .lock { color: #C9A96E; font-size: 10px; margin-left: auto; }
+
+        .card.letters { width: 150px; }
+        .letters .pair { display: flex; gap: 6px; }
+        .letters .pair input { width: 50%; min-width: 0; text-align: center; font-size: 28px; font-weight: 600; height: 56px; text-transform: uppercase; font-family: 'Cormorant Garamond', serif; }
+        .letters .idx { font-size: 20px; color: #C9A96E; font-weight: 600; margin-bottom: 6px; }
+        .letters .row-status { font-size: 11px; color: #8A857D; margin-top: 10px; line-height: 1.5; min-height: 32px; }
+
+        .card.combo { width: 176px; }
+        .combo canvas { width: 156px; height: 208px; display: block; border-radius: 6px; background: #221F1A; }
+        .combo .thumb-wrap { position: relative; }
+        .combo .thumb-wrap .busy-tag {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            font-size: 11px; color: #C9A96E; background: rgba(0,0,0,.45); border-radius: 6px;
+        }
+        .combo.loading .busy-tag { display: flex; }
+        .combo .btns { display: flex; gap: 6px; margin-top: 8px; }
+        .combo .btns button { flex: 1; }
+        .combo .fsel { margin-top: 6px; }
+        .combo .mat { display: flex; gap: 4px; margin-top: 6px; }
+
+        .card.photo { width: 200px; }
+        .photo .drop {
+            width: 180px; height: 208px; border: 1px dashed #4A4840; border-radius: 6px; display: flex; align-items: center;
+            justify-content: center; text-align: center; font-size: 11px; color: #8A857D; cursor: pointer; overflow: hidden;
+            position: relative; background: #221F1A;
+        }
+        .photo .drop.has img { width: 100%; height: 100%; object-fit: cover; }
+        .photo .drop input { display: none; }
+        .photo .drop.over { border-color: #C9A96E; color: #C9A96E; }
+        .photo .meta { display: none; }
+        .photo.has .meta { display: block; }
+        .photo .clear { margin-top: 8px; width: 100%; }
+
+        .card.caption { width: 250px; }
+        .caption textarea, .caption input { width: 100%; }
+        .caption .hint { font-size: 10px; color: #6A665E; margin-top: 4px; line-height: 1.5; }
+
+        .card.actions { width: 72px; display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; }
+        .card.actions button { width: 100%; }
+
+        #footer {
+            position: fixed; bottom: 0; left: 0; right: 0; background: #141311; border-top: 1px solid #2A2820;
+            padding: 12px 22px; display: flex; align-items: center; gap: 16px; z-index: 5;
+        }
+        #progress { flex: 1; }
+        #progress-msg { font-size: 12px; color: #8A857D; margin-bottom: 5px; }
+        #progress-bar { height: 4px; background: #2A2820; border-radius: 2px; overflow: hidden; }
+        #progress-fill { height: 100%; width: 0; background: #C9A96E; transition: width .2s; }
+        #results { display: flex; gap: 8px; flex-wrap: wrap; }
+        #results a { font-size: 12px; background: #1C1B18; border: 1px solid #3A3830; padding: 5px 10px; border-radius: 6px; text-decoration: none; }
+
+        #offscreen { position: fixed; left: -99999px; top: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DUET · SOCIAL VIDEO STUDIO</h1>
+        <span class="sub">同樣的兩個字母 × 三種字體組合 × 客戶作品照 → 直式短影片（1080×1920 MP4）</span>
+        <span class="spacer"></span>
+        <button id="toggle-global">⚙ 全域設定</button>
+    </header>
+
+    <div class="warn" id="server-warning">
+        這個頁面需要透過本機伺服器開啟才能載入字體資料：<br>
+        <code onclick="copyCmd(this)">cd /Users/brendonchen/Desktop/Duet-code/frontend</code>
+        <code onclick="copyCmd(this)">python3 -m http.server 8080</code>
+        然後用 Chrome 開 <code onclick="copyCmd(this)">http://localhost:8080/social-video-studio.html</code>
+    </div>
+    <div class="warn" id="codec-warning">⚠️ 這個瀏覽器不支援 WebCodecs（H.264 編碼），請改用 Chrome 開啟本頁。</div>
+
+    <section id="global" style="display:none;">
+        <div>
+            <label class="f">背景</label>
+            <select id="g-bg">
+                <option value="assets/images/backgrounds/LuxuryWoodBackground.png">木紋（LuxuryWood）</option>
+                <option value="assets/images/backgrounds/SpotlightStage.png">聚光舞台</option>
+                <option value="assets/images/backgrounds/SmallerStageBackdrop.png">小舞台</option>
+                <option value="assets/images/backgrounds/Stage1.png">Stage 1</option>
+                <option value="assets/images/backgrounds/Stage2.png">Stage 2</option>
+                <option value="assets/images/backgrounds/Toscana.png">Toscana</option>
+                <option value="assets/images/backgrounds/deskdiamond.jpg">鑽石桌面</option>
+                <option value="assets/images/backgrounds/background1.png">background1</option>
+                <option value="assets/images/backgrounds/Social_media_background/Tech_Guy_desk.png">Tech desk</option>
+                <option value="">攝影棚漸層（無圖）</option>
+            </select>
+            <label class="f">背景亮度 <span class="range-val" id="g-bg-brightness-v">0.50</span></label>
+            <input type="range" id="g-bg-brightness" min="0.3" max="1.5" step="0.05" value="0.5">
+            <label class="f">背景對比 <span class="range-val" id="g-bg-contrast-v">1.10</span></label>
+            <input type="range" id="g-bg-contrast" min="0.5" max="2.5" step="0.05" value="1.1">
+            <label class="f">背景位移 <span class="range-val" id="g-bg-pan-v">50%</span></label>
+            <input type="range" id="g-bg-pan" min="0" max="100" step="1" value="50">
+        </div>
+        <div>
+            <label class="f">HDR 環境</label>
+            <select id="g-hdr">
+                <option value="duet_studio.hdr">Duet 攝影棚（預設）</option>
+                <option value="duet_studio5.hdr">Duet 攝影棚 5</option>
+            </select>
+            <label class="f">打光強度 <span class="range-val" id="g-light-v">2.00×</span></label>
+            <input type="range" id="g-light" min="0.3" max="2.5" step="0.05" value="2">
+            <label class="f">吊墜尺寸 <span class="range-val" id="g-size-v">10mm</span></label>
+            <input type="range" id="g-size" min="6" max="14" step="1" value="10">
+            <label class="f">垂直位置 <span class="range-val" id="g-voffset-v">8</span></label>
+            <input type="range" id="g-voffset" min="-30" max="60" step="2" value="8">
+        </div>
+        <div>
+            <label class="f">每組吊墜秒數 <span class="range-val" id="g-sec-v">3.0s</span></label>
+            <input type="range" id="g-sec" min="2" max="6" step="0.5" value="3">
+            <label class="f">片尾照片秒數 <span class="range-val" id="g-endsec-v">3.5s</span></label>
+            <input type="range" id="g-endsec" min="2" max="6" step="0.5" value="3.5">
+            <label class="f">影片位元率 (Mbps) <span class="range-val" id="g-bitrate-v">10</span></label>
+            <input type="range" id="g-bitrate" min="4" max="20" step="1" value="10">
+        </div>
+        <div>
+            <label class="f">勾子句預設（{A} {B} 會自動代入字母）</label>
+            <input type="text" id="g-hook" value="同樣的 {A} × {B}，三種性格">
+            <label class="f">片尾 CTA（所有影片共用）</label>
+            <input type="text" id="g-cta" value="duet.brendonchen.com ｜ 設計屬於你的兩個字母">
+            <label class="f">沒有照片時的片尾句</label>
+            <input type="text" id="g-nophoto" value="你會選哪一個？">
+            <label class="f">貼文 hashtag</label>
+            <input type="text" id="g-tags" value="#DUET #客製珠寶 #字母項鍊 #英文字母 #姓名縮寫 #情侶項鍊 #3D設計">
+        </div>
+    </section>
+
+    <section id="rows"></section>
+    <div style="padding: 0 22px;">
+        <button id="add-row">＋ 新增一支影片</button>
+    </div>
+
+    <div id="footer">
+        <button class="primary" id="generate-all">▶ 全部生成</button>
+        <div id="progress">
+            <div id="progress-msg">就緒。先按「🎲」或直接輸入字母，縮圖會自動算出來。</div>
+            <div id="progress-bar"><div id="progress-fill"></div></div>
+        </div>
+        <div id="results"></div>
+    </div>
+
+    <div id="offscreen">
+        <canvas id="gl-canvas" width="300" height="400"></canvas>
+        <canvas id="comp-canvas" width="1080" height="1920"></canvas>
+    </div>
+
+    <script>
+        window.copyCmd = function(el) {
+            navigator.clipboard.writeText(el.textContent).then(function() {
+                el.style.background = '#2A2820'; setTimeout(function() { el.style.background = ''; }, 600);
+            });
+        };
+        if (window.location.protocol === 'file:') document.getElementById('server-warning').classList.add('visible');
+        if (!('VideoEncoder' in window)) document.getElementById('codec-warning').classList.add('visible');
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+        import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+        import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
+        window.THREE = THREE;
+
+        // ════════════════════════════════════════════════════════════════
+        // 字體風格分類 + 搭配原型（「審美」就在這裡）
+        // ════════════════════════════════════════════════════════════════
+        const FONT_STYLE = {
+            classic:    ['Cormorant Garamond', 'Libre Baskerville', 'DM Serif Display', 'Fraunces', 'Young Serif', 'Cantata One', 'Trocchi', 'Kotta One', 'Marko One', 'Grenze', 'Cherry Swash'],
+            script:     ['Alex Brush', 'Allura', 'Dancing Script', 'Great Vibes', 'Sacramento', 'Grand Hotel', 'Marck Script', 'Mr Dafoe', 'Mrs Sheppards', 'Norican', 'Petemoss', 'Sarina', 'Courgette', 'Dynalight', 'Lobster', 'Sofia'],
+            bold:       ['Anton', 'Antonio', 'Archivo Black', 'Bungee', 'Fugaz One', 'Passero One', 'Righteous', 'Sansita', 'Seymour One', 'Notable', 'Denk One', 'Days One', 'Allan', 'Abril Fatface', 'Gravitas One', 'Arbutus', 'Kelly Slab', 'Caprasimo', 'Chango', 'Kumar One'],
+            tech:       ['Audiowide', 'Orbitron', 'Exo 2', 'Aldrich', 'Baumans', 'Goldman', 'Rationale', 'Syncopate', 'Genos', 'Marvel', 'Offside', 'Atomic Age', 'Lexend Exa', 'Inter', 'Revalia', 'Foldit', 'Arya', 'Gayathri', 'Gidugu', 'Aclonica', 'Flamenco'],
+            rounded:    ['Bubblegum Sans', 'Fredoka', 'Sniglet', 'Mochiy Pop One', 'Varela Round', 'Lemonada', 'Happy Monkey', 'Cute Font', 'Chela One', 'Gorditas', 'Patrick Hand', 'Love Ya Like A Sister', 'Crafty Girls', 'Permanent Marker', 'Amatic SC', 'Text Me One'],
+            decorative: ['Fascinate', 'Federo', 'Macondo Swash Caps', 'Caesar Dressing', 'Smokum', 'Rum Raisin', 'Amarante', 'Aladin', 'Oldenburg', 'Pirata One', 'Creepster', 'Freckle Face', 'Supermercado One', 'Stylish', 'Snippet', 'Joti One']
+        };
+        // 搭配原型：每支影片的三組會從「不同原型」各抽一組，確保三種性格拉得開
+        const ARCHETYPES = [
+            { id: 'elegant',  label: '經典優雅', pairs: [['classic', 'script'], ['script', 'classic'], ['classic', 'classic']] },
+            { id: 'modern',   label: '現代俐落', pairs: [['bold', 'tech'], ['tech', 'bold'], ['tech', 'tech'], ['bold', 'classic']] },
+            { id: 'playful',  label: '活潑可愛', pairs: [['rounded', 'rounded'], ['rounded', 'bold'], ['bold', 'rounded']] },
+            { id: 'bold',     label: '大膽個性', pairs: [['bold', 'bold'], ['bold', 'decorative'], ['decorative', 'bold']] },
+            { id: 'romantic', label: '浪漫手寫', pairs: [['script', 'rounded'], ['rounded', 'script'], ['script', 'bold']] },
+            { id: 'vintage',  label: '復古奇趣', pairs: [['decorative', 'classic'], ['classic', 'decorative'], ['decorative', 'tech']] }
+        ];
+        const PLATING_LABEL = { none: '純銀', gold18k: '鍍18K金', whitegold18k: '鍍白金', rosegold18k: '鍍玫瑰金' };
+        const PLATING_COLORS = { none: 0xC0C0C0, gold18k: 0xFFD700, whitegold18k: 0xE5E5E5, rosegold18k: 0xC9A386 };
+        const FINISH_ROUGHNESS = { glossy: 0.0, matte: 0.6 };
+        const FINISH_ENV_MAP_RATIO = { glossy: 1.0, matte: 0.5 };
+        const BASE_ENV_MAP_INTENSITY = 1.2;
+
+        let ALL_FONTS = [];
+        const styleOf = (font) => Object.keys(FONT_STYLE).find(k => FONT_STYLE[k].includes(font)) || 'tech';
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        function randomPlating() {
+            const r = Math.random();
+            return r < 0.25 ? 'none' : r < 0.55 ? 'gold18k' : r < 0.85 ? 'rosegold18k' : 'whitegold18k';
+        }
+        function archetypeOf(combo) {
+            const a = styleOf(combo.font1), b = styleOf(combo.font2);
+            return ARCHETYPES.find(t => t.pairs.some(p => p[0] === a && p[1] === b))?.id || null;
+        }
+        // 抽一組：避開 excludeArchetypes 的原型、避開 usedFonts 已用過的字體
+        function randomCombo(excludeArchetypes, usedFonts) {
+            const pool = ARCHETYPES.filter(t => !excludeArchetypes.includes(t.id));
+            const type = pick(pool.length ? pool : ARCHETYPES);
+            const [sa, sb] = pick(type.pairs);
+            const avail = (style) => FONT_STYLE[style].filter(f => ALL_FONTS.includes(f) && !usedFonts.includes(f));
+            const la = avail(sa), lb = avail(sb);
+            const font1 = pick(la.length ? la : FONT_STYLE[sa]);
+            let font2 = pick((lb.length ? lb : FONT_STYLE[sb]).filter(f => f !== font1));
+            if (!font2) font2 = pick(FONT_STYLE[sb]);
+            return { font1, font2, plating: randomPlating(), finish: Math.random() < 0.75 ? 'glossy' : 'matte', locked: false };
+        }
+        function randomLetters() {
+            const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const a = pick(A.split('')); let b = pick(A.split('')); while (b === a) b = pick(A.split(''));
+            return [a, b];
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 狀態 / 持久化
+        // ════════════════════════════════════════════════════════════════
+        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'];
+        const g = (id) => document.getElementById(id).value;
+        const rows = []; // { id, letterA, letterB, combos:[3], photo:{url,img,file,font1,font2,plating}|null, hook, photoLine, el }
+        let rowSeq = 0;
+
+        function saveState() {
+            try {
+                localStorage.setItem('duet_svs_global', JSON.stringify(Object.fromEntries(G_IDS.map(id => [id, g(id)]))));
+                localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine
+                }))));
+            } catch (e) { /* 配額滿了就算了 */ }
+        }
+        function loadState() {
+            try {
+                const gs = JSON.parse(localStorage.getItem('duet_svs_global') || 'null');
+                if (gs) G_IDS.forEach(id => { if (gs[id] !== undefined) document.getElementById(id).value = gs[id]; });
+                return JSON.parse(localStorage.getItem('duet_svs_rows') || 'null');
+            } catch (e) { return null; }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 3D：場景 / 幾何快取 / 渲染
+        // ════════════════════════════════════════════════════════════════
+        const glCanvas = document.getElementById('gl-canvas');
+        const compCanvas = document.getElementById('comp-canvas');
+        const cctx = compCanvas.getContext('2d');
+        let scene, camera, renderer, hdrReady;
+        let bgTexture = null, bgTextureKey = '';
+        const geoCache = new Map();   // key → { geometry, modelTopZ }
+        let bailGeo = null;
+
+        function initScene() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(30, 3 / 4, 0.1, 2000);
+            camera.up.set(0, 0, 1);
+            camera.position.set(0, -100, 10);
+            camera.lookAt(0, 0, 10);
+            renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            const mk = (L, base) => { L.userData.baseIntensity = base; scene.add(L); return L; };
+            mk(new THREE.AmbientLight(0xffffff, 0.8), 0.8);
+            mk(new THREE.DirectionalLight(0xFFF5E8, 2.8), 2.8).position.set(20, -15, 30);
+            mk(new THREE.DirectionalLight(0xE8F0FF, 0.8), 0.8).position.set(-20, 15, 10);
+            mk(new THREE.DirectionalLight(0xffffff, 0.5), 0.5).position.set(0, 30, -10);
+            applyLight();
+            hdrReady = loadHDR(g('g-hdr'));
+        }
+        function applyLight() {
+            const mult = parseFloat(g('g-light')) || 1;
+            scene.traverse(o => { if (o.isLight && o.userData.baseIntensity !== undefined) o.intensity = o.userData.baseIntensity * mult; });
+        }
+        function loadHDR(file) {
+            const urls = [
+                `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/${file}`,
+                `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/${file}`
+            ];
+            return import('three/addons/loaders/RGBELoader.js').then(({ RGBELoader }) => new Promise(resolve => {
+                const loader = new RGBELoader(); let i = 0;
+                (function next() {
+                    if (i >= urls.length) { console.warn('HDR 全部失敗，純燈光模式'); resolve(); return; }
+                    loader.load(urls[i++], tex => { tex.mapping = THREE.EquirectangularReflectionMapping; scene.environment = tex; resolve(); }, undefined, next);
+                })();
+            })).catch(() => console.warn('RGBELoader 載入失敗'));
+        }
+
+        function createStudioBackground(W, H) {
+            const c = document.createElement('canvas'); c.width = W; c.height = H;
+            const ctx = c.getContext('2d');
+            const grad = ctx.createRadialGradient(W * .5, H * .38, 0, W * .5, H * .38, Math.hypot(W, H) * .58);
+            grad.addColorStop(0, '#DDD0C0'); grad.addColorStop(.3, '#C4AA90'); grad.addColorStop(.62, '#9A7860'); grad.addColorStop(1, '#5C3C28');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+            return new THREE.CanvasTexture(c);
+        }
+        function loadAdjustedBgTexture(url, exposure, contrast) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+                    const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    const lut = new Uint8Array(256), gamma = 1 / exposure;
+                    for (let i = 0; i < 256; i++) lut[i] = Math.max(0, Math.min(255, Math.round((Math.pow(i / 255, gamma) * 255 - 128) * contrast + 128)));
+                    const d = ctx.getImageData(0, 0, c.width, c.height);
+                    for (let i = 0; i < d.data.length; i += 4) { d.data[i] = lut[d.data[i]]; d.data[i + 1] = lut[d.data[i + 1]]; d.data[i + 2] = lut[d.data[i + 2]]; }
+                    ctx.putImageData(d, 0, 0);
+                    resolve(new THREE.CanvasTexture(c));
+                };
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+        function applyBgCover(tex, W, H, panPercent) {
+            const iw = tex.image.width, ih = tex.image.height, ia = iw / ih, ca = W / H, pan = panPercent / 100;
+            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+            if (ia > ca) { const rx = ca / ia; tex.repeat.set(rx, 1); tex.offset.set((1 - rx) * pan, 0); }
+            else { const ry = ia / ca; tex.repeat.set(1, ry); tex.offset.set(0, (1 - ry) * pan); }
+            tex.needsUpdate = true;
+        }
+        async function ensureBackground() {
+            const key = [g('g-bg'), g('g-bg-brightness'), g('g-bg-contrast')].join('|');
+            if (key === bgTextureKey) return;
+            bgTextureKey = key;
+            bgTexture = g('g-bg') ? await loadAdjustedBgTexture(g('g-bg'), parseFloat(g('g-bg-brightness')), parseFloat(g('g-bg-contrast'))) : null;
+            scene.background = bgTexture ? null : createStudioBackground(1080, 1920);
+        }
+
+        async function loadBailGeometry() {
+            if (bailGeo) return bailGeo;
+            bailGeo = await new Promise(resolve => new STLLoader().load('assets/models/bail.stl', geo => {
+                geo.computeBoundingBox(); const bb = geo.boundingBox;
+                geo.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
+                geo.computeVertexNormals();
+                const s = 4 / Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y);
+                geo.scale(s, s, s); geo.computeBoundingBox();
+                resolve(geo);
+            }, undefined, () => resolve(null)));
+            return bailGeo;
+        }
+
+        async function buildGeometry(letterA, fontA, letterB, fontB, size) {
+            const key = [letterA, fontA, letterB, fontB, size].join('|');
+            if (geoCache.has(key)) return geoCache.get(key);
+            let geo1 = await createV3LetterGeometry(fontA, letterA, size);
+            let geo2 = await createV3LetterGeometry(fontB, letterB, size);
+            geo1.center(); geo2.center();
+            geo1.computeBoundingBox(); const h1 = geo1.boundingBox.max.y - geo1.boundingBox.min.y;
+            geo1.applyMatrix4(new THREE.Matrix4().makeScale(size / h1, size / h1, size / h1));
+            geo2.computeBoundingBox(); const h2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+            geo2.applyMatrix4(new THREE.Matrix4().makeScale(size / h2, size / h2, size / h2));
+            geo1.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+            geo1.center(); geo2.center();
+            geo1 = geo1.toNonIndexed(); geo2 = geo2.toNonIndexed();
+            const ev = new Evaluator(), m = new THREE.MeshStandardMaterial();
+            const b1 = new Brush(geo1, m); b1.updateMatrixWorld();
+            const b2 = new Brush(geo2, m); b2.updateMatrixWorld();
+            const res = ev.evaluate(b1, b2, INTERSECTION);
+            let geometry = res.geometry.toNonIndexed();
+            geometry.deleteAttribute('normal'); geometry.computeVertexNormals();
+            const pos = geometry.attributes.position, nor = geometry.attributes.normal;
+            for (let i = 0; i < pos.count; i++) pos.setXYZ(i, pos.getX(i) + nor.getX(i) * .001, pos.getY(i) + nor.getY(i) * .001, pos.getZ(i) + nor.getZ(i) * .001);
+            pos.needsUpdate = true;
+            geometry.computeBoundingBox();
+            const c = geometry.boundingBox.getCenter(new THREE.Vector3());
+            geometry.translate(-c.x, -c.y, -c.z); geometry.computeBoundingBox();
+            const info = { geometry, modelTopZ: geometry.boundingBox.max.z };
+            geoCache.set(key, info);
+            return info;
+        }
+
+        async function buildGroup(row, combo) {
+            const info = await buildGeometry(row.letterA, combo.font1, row.letterB, combo.font2, parseInt(g('g-size')));
+            const bail = await loadBailGeometry();
+            const mult = parseFloat(g('g-light')) || 1;
+            const mat = new THREE.MeshStandardMaterial({
+                color: PLATING_COLORS[combo.plating] ?? PLATING_COLORS.none, metalness: 1,
+                roughness: FINISH_ROUGHNESS[combo.finish] ?? 0,
+                envMapIntensity: BASE_ENV_MAP_INTENSITY * mult * (FINISH_ENV_MAP_RATIO[combo.finish] ?? 1)
+            });
+            const group = new THREE.Group();
+            group.add(new THREE.Mesh(info.geometry, mat));
+            const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64); ringGeo.rotateX(Math.PI / 2);
+            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(0, 0, info.modelTopZ + 1.3); group.add(ring);
+            if (bail) {
+                const bailH = bail.boundingBox.max.z - bail.boundingBox.min.z;
+                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(0, 0, info.modelTopZ + 1.2 + bailH / 2); group.add(bm);
+            }
+            return group;
+        }
+        function setGroupOpacity(group, opacity) {
+            group.traverse(o => { if (o.isMesh) { o.material.transparent = opacity < 1; o.material.opacity = opacity; } });
+        }
+
+        let currentGroup = null;
+        let glSize = { W: 0, H: 0 };
+        // 把一個 group（或空景）畫進 gl-canvas
+        function renderGL(group, angleRad, opacity, W, H) {
+            if (glSize.W !== W || glSize.H !== H) {
+                glCanvas.width = W; glCanvas.height = H; renderer.setSize(W, H, false);
+                camera.aspect = W / H; camera.updateProjectionMatrix();
+                if (bgTexture) applyBgCover(bgTexture, W, H, parseFloat(g('g-bg-pan')));
+                glSize = { W, H };
+            }
+            if (currentGroup !== group) { if (currentGroup) scene.remove(currentGroup); currentGroup = group; if (group) scene.add(group); }
+            if (group) {
+                group.rotation.z = -angleRad;
+                group.position.z = parseFloat(g('g-voffset'));
+                setGroupOpacity(group, opacity);
+            }
+            if (bgTexture) {
+                if (group) group.visible = false;
+                scene.background = bgTexture; renderer.toneMapping = THREE.NoToneMapping; renderer.render(scene, camera);
+                scene.background = null; if (group) group.visible = true;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.autoClear = false; renderer.render(scene, camera); renderer.autoClear = true;
+            } else {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 縮圖佇列（序列化，避免同時搶 renderer）
+        // ════════════════════════════════════════════════════════════════
+        const thumbQueue = [];
+        let thumbBusy = false;
+        function queueThumb(row, idx) {
+            if (!thumbQueue.some(q => q.row === row && q.idx === idx)) thumbQueue.push({ row, idx });
+            row.el.querySelectorAll('.combo')[idx].classList.add('loading');
+            processThumbs();
+        }
+        async function processThumbs() {
+            if (thumbBusy || generating) return;
+            thumbBusy = true;
+            while (thumbQueue.length) {
+                const { row, idx } = thumbQueue.shift();
+                if (!rows.includes(row)) continue;
+                const card = row.el.querySelectorAll('.combo')[idx];
+                const combo = row.combos[idx];
+                try {
+                    if (!/^[A-Za-z0-9]$/.test(row.letterA) || !/^[A-Za-z0-9]$/.test(row.letterB)) throw new Error('缺字母');
+                    await ensureBackground(); await hdrReady;
+                    const group = await buildGroup(row, combo);
+                    renderGL(group, 0.35, 1, 300, 400);
+                    const tc = card.querySelector('canvas'); tc.getContext('2d').drawImage(glCanvas, 0, 0, 300, 400);
+                    renderGL(null, 0, 1, 300, 400);
+                } catch (e) {
+                    console.error(e);
+                    const tc = card.querySelector('canvas'), ctx = tc.getContext('2d');
+                    ctx.fillStyle = '#221F1A'; ctx.fillRect(0, 0, 300, 400); ctx.fillStyle = '#A05050'; ctx.font = '20px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('無法生成', 150, 190); ctx.font = '14px sans-serif'; ctx.fillText(String(e.message).slice(0, 36), 150, 220);
+                }
+                card.classList.remove('loading');
+                await new Promise(r => requestAnimationFrame(r));
+            }
+            thumbBusy = false;
+        }
+        function invalidateAllThumbs() { rows.forEach(r => r.combos.forEach((_, i) => queueThumb(r, i))); }
+
+        // ════════════════════════════════════════════════════════════════
+        // 列 UI
+        // ════════════════════════════════════════════════════════════════
+        const rowsEl = document.getElementById('rows');
+        const fontOptions = (sel) => ALL_FONTS.map(f => `<option value="${f}"${f === sel ? ' selected' : ''}>${f}</option>`).join('');
+        const platingOptions = (sel) => Object.entries(PLATING_LABEL).map(([v, l]) => `<option value="${v}"${v === sel ? ' selected' : ''}>${l}</option>`).join('');
+
+        function addRow(data) {
+            const row = {
+                id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || ''
+            };
+            if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
+            if (row.combos.length !== 3) {
+                row.combos = []; const used = [], arche = [];
+                for (let i = 0; i < 3; i++) { const c = randomCombo(arche, used); row.combos.push(c); used.push(c.font1, c.font2); arche.push(archetypeOf(c)); }
+            }
+            const el = document.createElement('div'); el.className = 'row'; row.el = el;
+            el.innerHTML = `
+                <div class="card letters">
+                    <div class="idx">#<span class="num"></span></div>
+                    <h3>字母組合</h3>
+                    <div class="pair"><input type="text" class="la" maxlength="1" value="${row.letterA}"><input type="text" class="lb" maxlength="1" value="${row.letterB}"></div>
+                    <button class="rnd-letters" style="width:100%;margin-top:8px;">🎲 隨機字母</button>
+                    <button class="rnd-all" style="width:100%;margin-top:6px;">🔄 全部重抽字體</button>
+                    <div class="row-status"></div>
+                </div>
+                ${[0, 1, 2].map(i => `
+                <div class="card combo" data-idx="${i}">
+                    <h3>作品 ${i + 1}<span class="lock"></span></h3>
+                    <div class="thumb-wrap"><canvas width="300" height="400"></canvas><div class="busy-tag">計算中…</div></div>
+                    <select class="f1 fsel" title="字母 ${'A'}（正面）字體"></select>
+                    <select class="f2 fsel" title="字母 B（側面）字體"></select>
+                    <div class="mat"><select class="pl"></select><select class="fi"><option value="glossy">亮面</option><option value="matte">霧面</option></select></div>
+                    <div class="btns"><button class="reroll">🔄 重抽</button></div>
+                </div>`).join('')}
+                <div class="card photo">
+                    <h3>客戶作品照（選填）</h3>
+                    <label class="drop"><input type="file" accept="image/*"><span class="drop-text">拖曳或點擊上傳<br>出貨作品照片</span></label>
+                    <div class="meta">
+                        <label class="f">這件作品的字體（正面 / 側面）</label>
+                        <select class="pf1"></select>
+                        <select class="pf2" style="margin-top:4px;"></select>
+                        <label class="f">材質</label>
+                        <select class="ppl"></select>
+                        <button class="clear">✕ 移除照片</button>
+                    </div>
+                </div>
+                <div class="card caption">
+                    <h3>字幕</h3>
+                    <label class="f">上方勾子句（留空用預設）</label>
+                    <input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}">
+                    <label class="f">片尾照片補一句（選填）</label>
+                    <input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}">
+                    <div class="hint">自動帶入：大字「A × B」、每組字體名稱、1/3 計數、片尾「客戶的真實作品 · 材質 · 字體」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
+                </div>
+                <div class="card actions">
+                    <button class="gen-one" title="只生成這一支">▶ 這支</button>
+                    <button class="del danger" title="刪除這一列">🗑</button>
+                </div>`;
+            rowsEl.appendChild(el);
+            rows.push(row);
+
+            // 填選單
+            el.querySelectorAll('.combo').forEach((card, i) => {
+                const c = row.combos[i];
+                card.querySelector('.f1').innerHTML = fontOptions(c.font1);
+                card.querySelector('.f2').innerHTML = fontOptions(c.font2);
+                card.querySelector('.pl').innerHTML = platingOptions(c.plating);
+                card.querySelector('.fi').value = c.finish;
+                const sync = () => {
+                    c.font1 = card.querySelector('.f1').value; c.font2 = card.querySelector('.f2').value;
+                    c.plating = card.querySelector('.pl').value; c.finish = card.querySelector('.fi').value;
+                    saveState(); queueThumb(row, i);
+                };
+                ['.f1', '.f2', '.pl', '.fi'].forEach(s => card.querySelector(s).addEventListener('change', sync));
+                card.querySelector('.reroll').addEventListener('click', () => {
+                    if (c.locked) return;
+                    const others = row.combos.filter((_, j) => j !== i);
+                    const nc = randomCombo(others.map(archetypeOf).filter(Boolean), others.flatMap(o => [o.font1, o.font2]));
+                    Object.assign(c, nc); refreshComboCard(row, i); saveState(); queueThumb(row, i);
+                });
+            });
+            el.querySelector('.pf1').innerHTML = fontOptions(row.combos[2].font1);
+            el.querySelector('.pf2').innerHTML = fontOptions(row.combos[2].font2);
+            el.querySelector('.ppl').innerHTML = platingOptions(row.combos[2].plating);
+
+            // 字母
+            const la = el.querySelector('.la'), lb = el.querySelector('.lb');
+            const onLetter = () => {
+                la.value = la.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1).toUpperCase();
+                lb.value = lb.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1).toUpperCase();
+                row.letterA = la.value; row.letterB = lb.value; saveState();
+                if (row.letterA && row.letterB) row.combos.forEach((_, i) => queueThumb(row, i));
+            };
+            la.addEventListener('input', onLetter); lb.addEventListener('input', onLetter);
+            el.querySelector('.rnd-letters').addEventListener('click', () => { [la.value, lb.value] = randomLetters(); onLetter(); });
+            el.querySelector('.rnd-all').addEventListener('click', () => {
+                const used = [], arche = [];
+                row.combos.forEach(c => { if (c.locked) { used.push(c.font1, c.font2); arche.push(archetypeOf(c)); } });
+                row.combos.forEach((c, i) => {
+                    if (c.locked) return;
+                    const nc = randomCombo(arche.filter(Boolean), used); Object.assign(c, nc);
+                    used.push(c.font1, c.font2); arche.push(archetypeOf(c)); refreshComboCard(row, i); queueThumb(row, i);
+                });
+                saveState();
+            });
+
+            // 照片
+            const drop = el.querySelector('.drop'), fileInput = drop.querySelector('input');
+            const setPhoto = (file) => {
+                if (!file || !file.type.startsWith('image/')) return;
+                if (row.photo?.url) URL.revokeObjectURL(row.photo.url);
+                const url = URL.createObjectURL(file);
+                const img = new Image(); img.src = url;
+                row.photo = { file, url, img, font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
+                drop.classList.add('has'); drop.innerHTML = `<img src="${url}">`; drop.appendChild(fileInput);
+                el.querySelector('.card.photo').classList.add('has');
+                applyPhotoCombo();
+            };
+            const applyPhotoCombo = () => {
+                if (!row.photo) return;
+                row.photo.font1 = el.querySelector('.pf1').value; row.photo.font2 = el.querySelector('.pf2').value; row.photo.plating = el.querySelector('.ppl').value;
+                const c = row.combos[2];
+                Object.assign(c, { font1: row.photo.font1, font2: row.photo.font2, plating: row.photo.plating, locked: true });
+                refreshComboCard(row, 2); saveState(); queueThumb(row, 2);
+            };
+            fileInput.addEventListener('change', e => setPhoto(e.target.files[0]));
+            drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+            drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+            drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); setPhoto(e.dataTransfer.files[0]); });
+            ['.pf1', '.pf2', '.ppl'].forEach(s => el.querySelector(s).addEventListener('change', applyPhotoCombo));
+            el.querySelector('.clear').addEventListener('click', () => {
+                if (row.photo?.url) URL.revokeObjectURL(row.photo.url);
+                row.photo = null; row.combos[2].locked = false;
+                drop.classList.remove('has'); drop.innerHTML = '<span class="drop-text">拖曳或點擊上傳<br>出貨作品照片</span>'; drop.appendChild(fileInput); fileInput.value = '';
+                el.querySelector('.card.photo').classList.remove('has'); refreshComboCard(row, 2); saveState();
+            });
+
+            // 字幕
+            el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
+            el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
+            // 動作
+            el.querySelector('.gen-one').addEventListener('click', () => generateRows([row]));
+            el.querySelector('.del').addEventListener('click', () => {
+                if (rows.length === 1) { alert('至少保留一列'); return; }
+                rows.splice(rows.indexOf(row), 1); el.remove(); renumber(); saveState();
+            });
+
+            refreshComboCard(row, 2); renumber(); saveState();
+            row.combos.forEach((_, i) => queueThumb(row, i));
+            return row;
+        }
+        function refreshComboCard(row, i) {
+            const card = row.el.querySelectorAll('.combo')[i], c = row.combos[i];
+            card.querySelector('.f1').value = c.font1; card.querySelector('.f2').value = c.font2;
+            card.querySelector('.pl').value = c.plating; card.querySelector('.fi').value = c.finish;
+            card.querySelector('.lock').textContent = c.locked ? '🔒 客戶作品' : '';
+            card.querySelector('.reroll').disabled = !!c.locked;
+            ['.f1', '.f2', '.pl'].forEach(s => card.querySelector(s).disabled = !!c.locked);
+        }
+        function renumber() { rows.forEach((r, i) => r.el.querySelector('.num').textContent = i + 1); }
+        const setRowStatus = (row, msg) => { row.el.querySelector('.row-status').textContent = msg; };
+
+        // ════════════════════════════════════════════════════════════════
+        // 影片合成
+        // ════════════════════════════════════════════════════════════════
+        const W = 1080, H = 1920, FPS = 30;
+        const ease = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+        function text(ctx, str, x, y, { size = 40, weight = 500, family = "'PingFang TC', -apple-system, sans-serif", color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true } = {}) {
+            if (alpha <= 0 || !str) return;
+            ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+            ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = spacing;
+            if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4; }
+            ctx.fillText(str, x, y); ctx.restore();
+        }
+        const SERIF = "'Cormorant Garamond', 'Times New Roman', serif";
+
+        function drawHeader(ctx, row, alpha) {
+            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.155, { size: 170, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
+            text(ctx, hook, W / 2, H * 0.235, { size: 54, weight: 500, alpha });
+        }
+        function drawCTA(ctx, alpha, y = H * 0.80) {
+            ctx.save(); ctx.globalAlpha = alpha * 0.7; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(W / 2 - 60, y - 44); ctx.lineTo(W / 2 + 60, y - 44); ctx.stroke(); ctx.restore();
+            text(ctx, g('g-cta'), W / 2, y, { size: 36, weight: 400, alpha: alpha * 0.9, color: '#F3E7D0', spacing: '0.04em' });
+        }
+        function drawFontLabel(ctx, combo, idx, alpha) {
+            text(ctx, `${combo.font1}  ×  ${combo.font2}`, W / 2, H * 0.695, { size: 46, weight: 500, alpha });
+            text(ctx, `${String(idx + 1).padStart(2, '0')} / 03  ·  ${PLATING_LABEL[combo.plating]}`, W / 2, H * 0.735, { size: 30, weight: 400, alpha, color: '#E6C98A', spacing: '0.18em' });
+        }
+        function drawPhotoCover(ctx, img, scale, alpha) {
+            const ia = img.naturalWidth / img.naturalHeight, ca = W / H;
+            let dw, dh; if (ia > ca) { dh = H * scale; dw = dh * ia; } else { dw = W * scale; dh = dw / ia; }
+            ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore();
+        }
+
+        // 回傳時間軸描述 + 逐幀繪製函式
+        function buildTimeline(row, groups) {
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = row.photo ? parseFloat(g('g-endsec')) : 2.4;
+            const holdA = 0.45, holdB = 0.55, fade = 0.3;
+            const total = introSec + segSec * 3 + endSec;
+            const totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec) {
+                    renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
+                    const a = clamp01(t / 0.5);
+                    drawHeader(cctx, row, a); drawCTA(cctx, a);
+                } else if (t < introSec + segSec * 3) {
+                    const seg = Math.min(2, Math.floor((t - introSec) / segSec)), lt = t - introSec - seg * segSec;
+                    const p = lt < holdA ? 0 : lt > segSec - holdB ? 1 : (lt - holdA) / (segSec - holdA - holdB);
+                    const opacity = clamp01(Math.min(lt / fade, (segSec - lt) / fade));
+                    renderGL(groups[seg], ease(p) * Math.PI / 2, opacity, W, H); cctx.drawImage(glCanvas, 0, 0);
+                    drawHeader(cctx, row, 1); drawFontLabel(cctx, row.combos[seg], seg, opacity); drawCTA(cctx, 1);
+                } else {
+                    const lt = t - introSec - segSec * 3, p = clamp01(lt / endSec), a = clamp01(lt / 0.4);
+                    renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
+                    if (row.photo) {
+                        drawPhotoCover(cctx, row.photo.img, 1 + 0.07 * p, a);
+                        const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
+                        grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
+                        cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
+                        const ta = clamp01((lt - 0.25) / 0.4);
+                        text(cctx, 'REAL PIECE  ·  客戶的真實作品', W / 2, H * 0.655, { size: 34, weight: 500, alpha: ta, color: '#E6C98A', spacing: '0.2em' });
+                        text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.705, { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
+                        text(cctx, `${PLATING_LABEL[row.photo.plating]}  ·  ${row.photo.font1} × ${row.photo.font2}`, W / 2, H * 0.755, { size: 36, weight: 400, alpha: ta });
+                        if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.795, { size: 40, weight: 500, alpha: ta });
+                        drawCTA(cctx, ta, H * (row.photoLine ? 0.85 : 0.83));
+                    } else {
+                        drawHeader(cctx, row, 1);
+                        text(cctx, g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a });
+                        text(cctx, row.combos.map((c, k) => `${k + 1}  ${c.font1} × ${c.font2}`).join('     '), W / 2, H * 0.57, { size: 26, weight: 400, alpha: a, color: '#E6C98A' });
+                        drawCTA(cctx, 1);
+                    }
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
+        async function pickCodec() {
+            for (const codec of ['avc1.640028', 'avc1.64002a', 'avc1.4d0028', 'avc1.42e028']) {
+                const cfg = { codec, width: W, height: H, bitrate: parseInt(g('g-bitrate')) * 1e6, framerate: FPS, latencyMode: 'quality' };
+                try { if ((await VideoEncoder.isConfigSupported(cfg)).supported) return cfg; } catch (e) { /* try next */ }
+            }
+            throw new Error('找不到可用的 H.264 編碼器，請用 Chrome 開啟');
+        }
+
+        async function encodeVideo(timeline, onProgress) {
+            const cfg = await pickCodec();
+            const muxer = new Mp4Muxer.Muxer({
+                target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory', firstTimestampBehavior: 'offset'
+            });
+            let encErr = null;
+            const encoder = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
+            encoder.configure(cfg);
+            const us = 1e6 / FPS;
+            for (let i = 0; i < timeline.totalFrames; i++) {
+                if (encErr) throw encErr;
+                timeline.draw(i);
+                const frame = new VideoFrame(compCanvas, { timestamp: Math.round(i * us), duration: Math.round(us) });
+                encoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
+                frame.close();
+                while (encoder.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+                if (i % 3 === 0) { onProgress(i / timeline.totalFrames); await new Promise(r => requestAnimationFrame(r)); }
+            }
+            await encoder.flush(); encoder.close(); muxer.finalize();
+            return new Blob([muxer.target.buffer], { type: 'video/mp4' });
+        }
+
+        function captionText(row) {
+            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+            const lines = [hook + ' ✨', ''];
+            row.combos.forEach((c, i) => lines.push(`${String(i + 1).padStart(2, '0')}  ${c.font1} × ${c.font2}（${PLATING_LABEL[c.plating]}）${row.photo && i === 2 ? ' ← 客戶的真實作品' : ''}`));
+            lines.push('', `每一件 DUET 都是兩個英文字母在立體空間裡的交集：正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。同樣的字母，換一種字體，就是完全不同的性格。`);
+            if (row.photoLine) lines.push(row.photoLine);
+            lines.push('', '👉 ' + g('g-cta'), '', g('g-tags'));
+            return lines.join('\n');
+        }
+        function download(blob, name) {
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.textContent = '⬇ ' + name;
+            document.getElementById('results').appendChild(link);
+        }
+
+        let generating = false;
+        const progressMsg = document.getElementById('progress-msg'), progressFill = document.getElementById('progress-fill');
+        const setProgress = (msg, frac) => { progressMsg.textContent = msg; progressFill.style.width = (frac * 100).toFixed(1) + '%'; };
+
+        async function generateRows(list) {
+            if (generating) return;
+            if (!('VideoEncoder' in window)) { alert('這個瀏覽器不支援 WebCodecs，請用 Chrome'); return; }
+            generating = true;
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+            const date = new Date().toISOString().slice(0, 10);
+            const nameCount = {};
+            try {
+                await document.fonts.load("600 170px 'Cormorant Garamond'").catch(() => {});
+                await ensureBackground(); await hdrReady;
+                for (let r = 0; r < list.length; r++) {
+                    const row = list[r];
+                    row.el.classList.add('busy');
+                    if (!row.letterA || !row.letterB) { setRowStatus(row, '⚠️ 缺字母，略過'); row.el.classList.remove('busy'); continue; }
+                    const base = `${date}_${row.letterA}${row.letterB}`;
+                    nameCount[base] = (nameCount[base] || 0) + 1;
+                    const name = nameCount[base] > 1 ? `${base}_${nameCount[base]}` : base;
+                    try {
+                        const groups = [];
+                        for (let i = 0; i < 3; i++) {
+                            setProgress(`影片 ${r + 1}/${list.length}（${row.letterA}${row.letterB}）：計算作品 ${i + 1} 幾何…`, r / list.length);
+                            setRowStatus(row, `計算幾何 ${i + 1}/3…`);
+                            groups.push(await buildGroup(row, row.combos[i]));
+                            await new Promise(res => requestAnimationFrame(res));
+                        }
+                        if (row.photo && !row.photo.img.complete) await new Promise(res => { row.photo.img.onload = res; row.photo.img.onerror = res; });
+                        const tl = buildTimeline(row, groups);
+                        const blob = await encodeVideo(tl, f => {
+                            setProgress(`影片 ${r + 1}/${list.length}（${row.letterA}${row.letterB}）：渲染 ${Math.round(f * 100)}%`, (r + f) / list.length);
+                            setRowStatus(row, `渲染中 ${Math.round(f * 100)}%`);
+                        });
+                        renderGL(null, 0, 1, W, H);
+                        download(blob, name + '.mp4');
+                        download(new Blob([captionText(row)], { type: 'text/plain;charset=utf-8' }), name + '.txt');
+                        setRowStatus(row, `✅ ${name}.mp4（${tl.total.toFixed(1)}s，${(blob.size / 1048576).toFixed(1)} MB）`);
+                    } catch (e) {
+                        console.error(e); setRowStatus(row, '❌ ' + e.message);
+                    }
+                    row.el.classList.remove('busy');
+                }
+                setProgress(`完成 ${list.length} 支。檔案已下載（Chrome 第一次會問是否允許多檔下載，請按允許）。`, 1);
+            } finally {
+                generating = false;
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
+                rows.forEach(r => r.combos.forEach((c, i) => refreshComboCard(r, i)));
+                processThumbs();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 全域設定事件 + 初始化
+        // ════════════════════════════════════════════════════════════════
+        document.getElementById('toggle-global').addEventListener('click', () => {
+            const s = document.getElementById('global'); s.style.display = s.style.display === 'none' ? 'grid' : 'none';
+        });
+        const bindRange = (id, fmt) => {
+            const el = document.getElementById(id), v = document.getElementById(id + '-v');
+            const upd = () => { v.textContent = fmt(el.value); }; el.addEventListener('input', upd); upd();
+        };
+        bindRange('g-bg-brightness', v => parseFloat(v).toFixed(2)); bindRange('g-bg-contrast', v => parseFloat(v).toFixed(2));
+        bindRange('g-bg-pan', v => v + '%'); bindRange('g-light', v => parseFloat(v).toFixed(2) + '×');
+        bindRange('g-size', v => v + 'mm'); bindRange('g-voffset', v => v); bindRange('g-sec', v => parseFloat(v).toFixed(1) + 's');
+        bindRange('g-endsec', v => parseFloat(v).toFixed(1) + 's'); bindRange('g-bitrate', v => v);
+        // 影響畫面的設定 → 重算所有縮圖；只影響字幕的設定 → 只存
+        ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-size', 'g-voffset'].forEach(id =>
+            document.getElementById(id).addEventListener('change', () => { saveState(); invalidateAllThumbs(); }));
+        document.getElementById('g-light').addEventListener('change', () => { saveState(); applyLight(); invalidateAllThumbs(); });
+        document.getElementById('g-hdr').addEventListener('change', () => { saveState(); hdrReady = loadHDR(g('g-hdr')); invalidateAllThumbs(); });
+        ['g-sec', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
+        document.getElementById('add-row').addEventListener('click', () => addRow());
+        document.getElementById('generate-all').addEventListener('click', () => generateRows(rows.slice()));
+
+        (async function init() {
+            const saved = loadState();
+            await initFontMeta();
+            try {
+                const data = await (await fetch('fonts.json')).json();
+                ALL_FONTS = data.fonts.map(f => f.name).sort((a, b) => a.localeCompare(b));
+            } catch (e) { ALL_FONTS = Object.values(FONT_STYLE).flat(); }
+            const missing = ALL_FONTS.filter(f => !Object.values(FONT_STYLE).flat().includes(f));
+            if (missing.length) console.warn('未分類字體（視為 tech）:', missing);
+            initScene();
+            if (saved && saved.length) saved.forEach(addRow); else addRow();
+        })();
+    </script>
+</body>
+</html>
