@@ -134,6 +134,47 @@
         #results a { font-size: 12px; background: #1C1B18; border: 1px solid #3A3830; padding: 5px 10px; border-radius: 6px; text-decoration: none; }
 
         #offscreen { position: fixed; left: -99999px; top: 0; }
+
+        /* 字體選擇視窗（樣式沿用 design-studio 的 #font-selector-modal，改成單選：點一下就選定） */
+        select.f1, select.f2, select.pf1, select.pf2 { font-size: 15px; cursor: pointer; }
+        #font-modal {
+            display: none; position: fixed; inset: 20px; border-radius: 16px; z-index: 2000; overflow: hidden;
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        }
+        #font-modal.active { display: block; }
+        #font-modal .close-modal-btn {
+            position: absolute; top: 14px; right: 20px; background: none; border: none; color: #fff; font-size: 40px;
+            cursor: pointer; z-index: 2001; padding: 0; line-height: 1;
+        }
+        #font-modal .close-modal-btn:hover { color: #d4af37; background: none; }
+        #font-modal .modal-layout { display: flex; height: 100%; }
+        #font-modal .font-sidebar {
+            width: 20%; min-width: 200px; background: rgba(255, 255, 255, 0.02); border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px; overflow-y: auto;
+        }
+        #font-modal .fm-title { font-size: 12px; color: #C9A96E; margin-bottom: 10px; letter-spacing: 1px; }
+        #font-modal .char-input-group { margin-bottom: 20px; }
+        #font-modal .char-input-group input {
+            width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff; text-align: center; font-size: 18px; border-radius: 8px;
+        }
+        #font-modal .font-list-item { padding: 10px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); cursor: pointer; transition: background 0.2s; font-size: 15px; color: #ccc; }
+        #font-modal .font-list-item:hover { background: rgba(255, 255, 255, 0.05); }
+        #font-modal .font-list-item.selected { color: #d4af37; }
+        #font-modal .font-display-area {
+            flex: 1; padding: 40px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 20px; align-content: start;
+        }
+        #font-modal .font-preview-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 10px;
+            background: rgba(255, 255, 255, 0.03); border: 2px solid transparent; border-radius: 12px; transition: all 0.3s;
+            cursor: pointer; min-height: 140px;
+        }
+        #font-modal .font-preview-card:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-2px); }
+        #font-modal .font-preview-card.selected { border-color: #d4af37; background: rgba(212, 175, 55, 0.15); }
+        #font-modal .preview-char { font-size: 48px; margin-bottom: 8px; color: #fff; }
+        #font-modal .preview-name { font-size: 11px; color: rgba(255, 255, 255, 0.5); text-align: center; }
     </style>
 </head>
 <body>
@@ -219,6 +260,18 @@
             <div id="progress-bar"><div id="progress-fill"></div></div>
         </div>
         <div id="results"></div>
+    </div>
+
+    <div id="font-modal">
+        <button class="close-modal-btn" id="font-modal-close">×</button>
+        <div class="modal-layout">
+            <aside class="font-sidebar">
+                <div class="fm-title" id="font-modal-title"></div>
+                <div class="char-input-group"><input type="text" id="font-modal-char" maxlength="2"></div>
+                <div id="font-modal-list"></div>
+            </aside>
+            <section class="font-display-area" id="font-modal-grid"></section>
+        </div>
     </div>
 
     <div id="offscreen">
@@ -719,6 +772,7 @@
             el.querySelector('.pf1').innerHTML = fontOptions(row.combos[2].font1);
             el.querySelector('.pf2').innerHTML = fontOptions(row.combos[2].font2);
             el.querySelector('.ppl').innerHTML = platingOptions(row.combos[2].plating);
+            showSelectFont(el.querySelector('.pf1')); showSelectFont(el.querySelector('.pf2'));
 
             // 字母
             const la = el.querySelector('.la'), lb = el.querySelector('.lb');
@@ -815,6 +869,7 @@
         function refreshComboCard(row, i) {
             const card = row.el.querySelectorAll('.combo')[i], c = row.combos[i];
             card.querySelector('.f1').value = c.font1; card.querySelector('.f2').value = c.font2;
+            showSelectFont(card.querySelector('.f1')); showSelectFont(card.querySelector('.f2'));
             card.querySelector('.pl').value = c.plating; card.querySelector('.fi').value = c.finish;
             card.querySelector('.lock').textContent = c.locked ? '🔒 客戶作品' : '';
             card.querySelector('.reroll').disabled = !!c.locked;
@@ -1007,6 +1062,67 @@
         }
 
         // ════════════════════════════════════════════════════════════════
+        // 字體選擇視窗：攔截字體下拉的點擊改開視窗；選定後寫回 <select> 並觸發 change，
+        // 既有的同步／鎖定／重算縮圖邏輯全部照舊（鎖定的 select 是 disabled，點了不會有反應）
+        // ════════════════════════════════════════════════════════════════
+        const FONT_SELECTS = 'select.f1, select.f2, select.pf1, select.pf2';
+        const fontModal = document.getElementById('font-modal');
+        const fmGrid = document.getElementById('font-modal-grid'), fmList = document.getElementById('font-modal-list');
+        const fmChar = document.getElementById('font-modal-char');
+        let fmTarget = null;
+        function showSelectFont(sel) { sel.style.fontFamily = `"${sel.value}", sans-serif`; }
+        function loadGoogleFonts() {
+            for (let i = 0; i < ALL_FONTS.length; i += 50) {
+                const link = document.createElement('link'); link.rel = 'stylesheet';
+                link.href = 'https://fonts.googleapis.com/css2?family=' + ALL_FONTS.slice(i, i + 50).map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                document.head.appendChild(link);
+            }
+        }
+        function buildFontModal() {
+            ALL_FONTS.forEach(font => {
+                const item = document.createElement('div'); item.className = 'font-list-item'; item.dataset.font = font;
+                item.textContent = font; item.style.fontFamily = `"${font}", sans-serif`;
+                const card = document.createElement('div'); card.className = 'font-preview-card'; card.dataset.font = font;
+                card.innerHTML = `<div class="preview-char" style='font-family:"${font}", sans-serif'></div><div class="preview-name">${font}</div>`;
+                [item, card].forEach(n => n.addEventListener('click', () => pickFont(font)));
+                fmList.appendChild(item); fmGrid.appendChild(card);
+            });
+        }
+        function openFontModal(sel) {
+            const row = rows.find(r => r.el.contains(sel));
+            const isA = sel.matches('.f1, .pf1');
+            const which = sel.matches('.pf1, .pf2') ? '客戶作品' : '作品 ' + (+sel.closest('.combo').dataset.idx + 1);
+            fmTarget = sel;
+            fmChar.value = (isA ? row?.letterA : row?.letterB) || 'A';
+            document.getElementById('font-modal-title').textContent = `${which} · 字母 ${fmChar.value} 的字體（${isA ? '正面' : '側面'}）`;
+            fmGrid.querySelectorAll('.preview-char').forEach(n => n.textContent = fmChar.value);
+            fontModal.querySelectorAll('[data-font]').forEach(n => n.classList.toggle('selected', n.dataset.font === sel.value));
+            fontModal.classList.add('active');
+            const cur = fmGrid.querySelector('.font-preview-card.selected'), curItem = fmList.querySelector('.selected');
+            if (cur) cur.scrollIntoView({ block: 'center' });
+            if (curItem) curItem.scrollIntoView({ block: 'center' });
+        }
+        function closeFontModal() { fontModal.classList.remove('active'); fmTarget = null; }
+        function pickFont(font) {
+            const sel = fmTarget; closeFontModal();
+            if (!sel || sel.value === font) return;
+            sel.value = font; showSelectFont(sel);
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        fmChar.addEventListener('input', () => fmGrid.querySelectorAll('.preview-char').forEach(n => n.textContent = fmChar.value || 'A'));
+        document.getElementById('font-modal-close').addEventListener('click', closeFontModal);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && fontModal.classList.contains('active')) closeFontModal(); });
+        document.addEventListener('mousedown', e => {
+            const sel = e.target.closest?.(FONT_SELECTS);
+            if (!sel || sel.disabled) return;
+            e.preventDefault(); openFontModal(sel);
+        }, true);
+        document.addEventListener('keydown', e => {
+            const sel = e.target.closest?.(FONT_SELECTS);
+            if (sel && !sel.disabled && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); openFontModal(sel); }
+        }, true);
+
+        // ════════════════════════════════════════════════════════════════
         // 全域設定事件 + 初始化
         // ════════════════════════════════════════════════════════════════
         document.getElementById('toggle-global').addEventListener('click', () => {
@@ -1036,6 +1152,7 @@
                 const data = await (await fetch('fonts.json')).json();
                 ALL_FONTS = data.fonts.map(f => f.name).sort((a, b) => a.localeCompare(b));
             } catch (e) { ALL_FONTS = Object.values(FONT_STYLE).flat(); }
+            loadGoogleFonts(); buildFontModal();
             const missing = ALL_FONTS.filter(f => !Object.values(FONT_STYLE).flat().includes(f));
             if (missing.length) console.warn('未分類字體（視為 tech）:', missing);
             initScene();
