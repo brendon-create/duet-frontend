@@ -101,8 +101,15 @@
             justify-content: center; text-align: center; font-size: 11px; color: #8A857D; cursor: pointer; overflow: hidden;
             position: relative; background: #221F1A;
         }
-        .photo .drop.has img { width: 100%; height: 100%; object-fit: cover; }
         .photo .drop input { display: none; }
+        .photo.has .drop { height: 56px; }
+        .photo .plist { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; width: 180px; }
+        .photo.has .plist { display: grid; }
+        .photo .pthumb { position: relative; aspect-ratio: 1; border-radius: 5px; overflow: hidden; cursor: grab; border: 1px solid #3A3830; }
+        .photo .pthumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+        .photo .pthumb .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; font-size: 10px; line-height: 16px; border-radius: 50%; background: rgba(0,0,0,.65); }
+        .photo .pthumb .cover { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; text-align: center; background: rgba(201,169,110,.85); color: #161410; }
+        .photo .pthumb.dragover { outline: 2px solid #C9A96E; }
         .photo .drop.over { border-color: #C9A96E; color: #C9A96E; }
         .photo .meta { display: none; }
         .photo.has .meta { display: block; }
@@ -296,7 +303,7 @@
         // ════════════════════════════════════════════════════════════════
         const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'];
         const g = (id) => document.getElementById(id).value;
-        const rows = []; // { id, letterA, letterB, combos:[3], photo:{url,img,file,font1,font2,plating}|null, hook, photoLine, el }
+        const rows = []; // { id, letterA, letterB, combos:[3], photo:{list:[{url,img}],font1,font2,plating}|null, hook, photoLine, el }
         let rowSeq = 0;
 
         function saveState() {
@@ -662,14 +669,15 @@
                 </div>`).join('')}
                 <div class="card photo">
                     <h3>客戶作品照（選填）</h3>
-                    <label class="drop"><input type="file" accept="image/*"><span class="drop-text">拖曳或點擊上傳<br>出貨作品照片</span></label>
+                    <div class="plist"></div>
+                    <label class="drop"><input type="file" accept="image/*" multiple><span class="drop-text">拖曳或點擊上傳<br>出貨作品照片（可多張）</span></label>
                     <div class="meta">
                         <label class="f">這件作品的字體（正面 / 側面）</label>
                         <select class="pf1"></select>
                         <select class="pf2" style="margin-top:4px;"></select>
                         <label class="f">材質</label>
                         <select class="ppl"></select>
-                        <button class="clear">✕ 移除照片</button>
+                        <button class="clear">✕ 移除全部照片</button>
                     </div>
                 </div>
                 <div class="card caption">
@@ -734,16 +742,47 @@
             });
 
             // 照片
-            const drop = el.querySelector('.drop'), fileInput = drop.querySelector('input');
-            const setPhoto = (file) => {
-                if (!file || !file.type.startsWith('image/')) return;
-                if (row.photo?.url) URL.revokeObjectURL(row.photo.url);
-                const url = URL.createObjectURL(file);
-                const img = new Image(); img.src = url;
-                row.photo = { file, url, img, font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
-                drop.classList.add('has'); drop.innerHTML = `<img src="${url}">`; drop.appendChild(fileInput);
-                el.querySelector('.card.photo').classList.add('has');
-                applyPhotoCombo();
+            const drop = el.querySelector('.drop'), fileInput = drop.querySelector('input'), plist = el.querySelector('.plist');
+            const photoCard = el.querySelector('.card.photo');
+            // 照片清單：第一張是封面；可拖曳換順序、✕ 刪單張
+            const renderPhotoList = () => {
+                const list = row.photo?.list || [];
+                plist.innerHTML = '';
+                list.forEach((ph, k) => {
+                    const d = document.createElement('div'); d.className = 'pthumb'; d.draggable = true;
+                    d.innerHTML = `<img src="${ph.url}"><button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
+                    d.querySelector('.x').addEventListener('click', ev => {
+                        ev.preventDefault(); URL.revokeObjectURL(ph.url); list.splice(k, 1);
+                        if (!list.length) clearPhotos(); else renderPhotoList();
+                    });
+                    d.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/duet-photo', String(k)); });
+                    d.addEventListener('dragover', ev => { if (ev.dataTransfer.types.includes('text/duet-photo')) { ev.preventDefault(); d.classList.add('dragover'); } });
+                    d.addEventListener('dragleave', () => d.classList.remove('dragover'));
+                    d.addEventListener('drop', ev => {
+                        const from = ev.dataTransfer.getData('text/duet-photo'); d.classList.remove('dragover');
+                        if (from === '') return;
+                        ev.preventDefault(); ev.stopPropagation();
+                        const [moved] = list.splice(+from, 1); list.splice(k, 0, moved); renderPhotoList();
+                    });
+                    plist.appendChild(d);
+                });
+                photoCard.classList.toggle('has', list.length > 0);
+                drop.querySelector('.drop-text').innerHTML = list.length ? '＋ 再加照片' : '拖曳或點擊上傳<br>出貨作品照片（可多張）';
+            };
+            const addPhotos = (files) => {
+                const imgs = [...(files || [])].filter(f => f.type.startsWith('image/'));
+                if (!imgs.length) return;
+                const isNew = !row.photo;
+                if (isNew) row.photo = { list: [], font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
+                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img }); });
+                fileInput.value = '';
+                renderPhotoList();
+                if (isNew) applyPhotoCombo();
+            };
+            const clearPhotos = () => {
+                (row.photo?.list || []).forEach(ph => URL.revokeObjectURL(ph.url));
+                row.photo = null; row.combos[2].locked = false;
+                renderPhotoList(); refreshComboCard(row, 2); saveState();
             };
             const applyPhotoCombo = () => {
                 if (!row.photo) return;
@@ -752,17 +791,12 @@
                 Object.assign(c, { font1: row.photo.font1, font2: row.photo.font2, plating: row.photo.plating, locked: true });
                 refreshComboCard(row, 2); saveState(); queueThumb(row, 2);
             };
-            fileInput.addEventListener('change', e => setPhoto(e.target.files[0]));
-            drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+            fileInput.addEventListener('change', e => addPhotos(e.target.files));
+            drop.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); drop.classList.add('over'); } });
             drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-            drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); setPhoto(e.dataTransfer.files[0]); });
+            drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); addPhotos(e.dataTransfer.files); });
             ['.pf1', '.pf2', '.ppl'].forEach(s => el.querySelector(s).addEventListener('change', applyPhotoCombo));
-            el.querySelector('.clear').addEventListener('click', () => {
-                if (row.photo?.url) URL.revokeObjectURL(row.photo.url);
-                row.photo = null; row.combos[2].locked = false;
-                drop.classList.remove('has'); drop.innerHTML = '<span class="drop-text">拖曳或點擊上傳<br>出貨作品照片</span>'; drop.appendChild(fileInput); fileInput.value = '';
-                el.querySelector('.card.photo').classList.remove('has'); refreshComboCard(row, 2); saveState();
-            });
+            el.querySelector('.clear').addEventListener('click', clearPhotos);
 
             // 字幕
             el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
@@ -827,7 +861,7 @@
 
         // 回傳時間軸描述 + 逐幀繪製函式
         function buildTimeline(row, groups) {
-            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = row.photo ? parseFloat(g('g-endsec')) : 2.4;
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
             const holdA = 0.45, holdB = 0.55, fade = 0.3;
             const total = introSec + segSec * 3 + endSec;
             const totalFrames = Math.round(total * FPS);
@@ -845,10 +879,14 @@
                     renderGL(groups[seg], ease(p) * Math.PI / 2, opacity, W, H); cctx.drawImage(glCanvas, 0, 0);
                     drawHeader(cctx, row, 1); drawFontLabel(cctx, row.combos[seg], seg, opacity); drawCTA(cctx, 1);
                 } else {
-                    const lt = t - introSec - segSec * 3, p = clamp01(lt / endSec), a = clamp01(lt / 0.4);
+                    const lt = t - introSec - segSec * 3, a = clamp01(lt / 0.4);
                     renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
                     if (row.photo) {
-                        drawPhotoCover(cctx, row.photo.img, 1 + 0.07 * p, a);
+                        // 多張照片依序播放：每張各自緩慢推近，換張時 0.35 秒交叉淡入
+                        const list = row.photo.list, per = endSec / list.length, XF = 0.35;
+                        const k = Math.min(list.length - 1, Math.floor(lt / per)), lk = lt - k * per;
+                        if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1].img, 1.07, 1);
+                        drawPhotoCover(cctx, list[k].img, 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
                         const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
                         grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
                         cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
@@ -924,7 +962,7 @@
             if (!('VideoEncoder' in window)) { alert('這個瀏覽器不支援 WebCodecs，請用 Chrome'); return; }
             generating = true;
             document.querySelectorAll('button').forEach(b => b.disabled = true);
-            const date = new Date().toISOString().slice(0, 10);
+            const date = new Date().toLocaleDateString('sv-SE'); // 本地日期 YYYY-MM-DD（toISOString 是 UTC，台灣清晨會變前一天）
             const nameCount = {};
             try {
                 await document.fonts.load("600 170px 'Cormorant Garamond'").catch(() => {});
@@ -944,7 +982,7 @@
                             groups.push(await buildGroup(row, row.combos[i]));
                             await new Promise(res => requestAnimationFrame(res));
                         }
-                        if (row.photo && !row.photo.img.complete) await new Promise(res => { row.photo.img.onload = res; row.photo.img.onerror = res; });
+                        for (const ph of row.photo?.list || []) if (!ph.img.complete) await new Promise(res => { ph.img.onload = res; ph.img.onerror = res; });
                         const tl = buildTimeline(row, groups);
                         const blob = await encodeVideo(tl, f => {
                             setProgress(`影片 ${r + 1}/${list.length}（${row.letterA}${row.letterB}）：渲染 ${Math.round(f * 100)}%`, (r + f) / list.length);
