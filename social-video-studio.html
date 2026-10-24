@@ -110,6 +110,19 @@
         .photo .pthumb .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; font-size: 10px; line-height: 16px; border-radius: 50%; background: rgba(0,0,0,.65); }
         .photo .pthumb .cover { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; text-align: center; background: rgba(201,169,110,.85); color: #161410; }
         .photo .pthumb.dragover { outline: 2px solid #C9A96E; }
+        .photo .pthumb .aim { position: absolute; left: 2px; top: 2px; font-size: 11px; line-height: 1; text-shadow: 0 0 3px #000; }
+        .photo .phint { display: none; font-size: 10px; color: #6A665E; margin: -2px 0 6px; }
+        .photo.has .phint { display: block; }
+
+        /* 照片取景視窗：點作品位置，亮框 = 影片實際裁到的直式範圍 */
+        #focus-modal { display: none; position: fixed; inset: 0; z-index: 2100; background: rgba(0,0,0,.82); align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+        #focus-modal.active { display: flex; }
+        #focus-modal .fm-tip { font-size: 13px; color: #E8E4DF; }
+        #focus-stage { position: relative; cursor: crosshair; line-height: 0; }
+        #focus-stage img { max-width: 86vw; max-height: 78vh; display: block; user-select: none; -webkit-user-drag: none; }
+        #focus-frame { position: absolute; border: 2px solid #E6C98A; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); pointer-events: none; }
+        #focus-dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none; }
+        #focus-modal .fm-btns { display: flex; gap: 10px; }
         .photo .drop.over { border-color: #C9A96E; color: #C9A96E; }
         .photo .meta { display: none; }
         .photo.has .meta { display: block; }
@@ -274,6 +287,12 @@
             </aside>
             <section class="font-display-area" id="font-modal-grid"></section>
         </div>
+    </div>
+
+    <div id="focus-modal">
+        <div class="fm-tip">在照片上點作品的位置。亮框是影片會裁到的範圍，片尾會朝這個點慢慢推近。</div>
+        <div id="focus-stage"><img id="focus-img" alt=""><div id="focus-frame"></div><div id="focus-dot"></div></div>
+        <div class="fm-btns"><button id="focus-reset">重設回正中央</button><button class="primary" id="focus-done">完成</button></div>
     </div>
 
     <div id="offscreen">
@@ -766,6 +785,7 @@
                 <div class="card photo">
                     <h3>客戶作品照（選填）</h3>
                     <div class="plist"></div>
+                    <div class="phint">點縮圖可設定作品在畫面中的位置</div>
                     <label class="drop"><input type="file" accept="image/*" multiple><span class="drop-text">拖曳或點擊上傳<br>出貨作品照片（可多張）</span></label>
                     <div class="meta">
                         <label class="f">這件作品的字體（正面 / 側面）</label>
@@ -849,9 +869,11 @@
                 plist.innerHTML = '';
                 list.forEach((ph, k) => {
                     const d = document.createElement('div'); d.className = 'pthumb'; d.draggable = true;
-                    d.innerHTML = `<img src="${ph.url}"><button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
+                    d.title = '點一下設定作品位置；拖曳可換順序';
+                    d.innerHTML = `<img src="${ph.url}">${ph.fx !== 0.5 || ph.fy !== 0.5 ? '<span class="aim">🎯</span>' : ''}<button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
+                    d.addEventListener('click', () => openFocusEditor(ph, renderPhotoList));
                     d.querySelector('.x').addEventListener('click', ev => {
-                        ev.preventDefault(); URL.revokeObjectURL(ph.url); list.splice(k, 1);
+                        ev.preventDefault(); ev.stopPropagation(); URL.revokeObjectURL(ph.url); list.splice(k, 1);
                         if (!list.length) clearPhotos(); else renderPhotoList();
                     });
                     d.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/duet-photo', String(k)); });
@@ -873,7 +895,7 @@
                 if (!imgs.length) return;
                 const isNew = !row.photo;
                 if (isNew) row.photo = { list: [], font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
-                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img }); });
+                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img, fx: 0.5, fy: 0.5 }); });
                 fileInput.value = '';
                 renderPhotoList();
                 if (isNew) applyPhotoCombo();
@@ -956,11 +978,48 @@
             text(ctx, `${combo.font1}  ×  ${combo.font2}`, W / 2, H * 0.695, { size: 46, weight: 500, alpha });
             text(ctx, `${String(idx + 1).padStart(2, '0')} / 03  ·  ${PLATING_LABEL[combo.plating]}`, W / 2, H * 0.735, { size: 30, weight: 400, alpha, color: '#E6C98A', spacing: '0.18em' });
         }
-        function drawPhotoCover(ctx, img, scale, alpha) {
-            const ia = img.naturalWidth / img.naturalHeight, ca = W / H;
+        // 照片鋪滿直式畫面（cover），並讓作品位置 (fx, fy) 盡量落在畫面中央；放大時也朝這個點推近
+        function photoCrop(ph, scale) {
+            const img = ph.img, ia = img.naturalWidth / img.naturalHeight, ca = W / H;
             let dw, dh; if (ia > ca) { dh = H * scale; dw = dh * ia; } else { dw = W * scale; dh = dw / ia; }
-            ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore();
+            const dx = Math.min(0, Math.max(W - dw, W / 2 - ph.fx * dw));
+            const dy = Math.min(0, Math.max(H - dh, H / 2 - ph.fy * dh));
+            return { dx, dy, dw, dh };
         }
+        function drawPhotoCover(ctx, ph, scale, alpha) {
+            const { dx, dy, dw, dh } = photoCrop(ph, scale);
+            ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(ph.img, dx, dy, dw, dh); ctx.restore();
+        }
+
+        // 取景視窗
+        const focusModal = document.getElementById('focus-modal'), focusImg = document.getElementById('focus-img');
+        const focusFrame = document.getElementById('focus-frame'), focusDot = document.getElementById('focus-dot');
+        let focusTarget = null, focusDone = null;
+        function updateFocusOverlay() {
+            const ph = focusTarget; if (!ph) return;
+            const { dx, dy, dw, dh } = photoCrop(ph, 1);
+            const bw = focusImg.clientWidth, bh = focusImg.clientHeight;
+            Object.assign(focusFrame.style, { left: (-dx / dw * bw) + 'px', top: (-dy / dh * bh) + 'px', width: (W / dw * bw) + 'px', height: (H / dh * bh) + 'px' });
+            Object.assign(focusDot.style, { left: (ph.fx * bw) + 'px', top: (ph.fy * bh) + 'px' });
+        }
+        function openFocusEditor(ph, onDone) {
+            focusTarget = ph; focusDone = onDone;
+            focusImg.onload = updateFocusOverlay; focusImg.src = ph.url;
+            focusModal.classList.add('active');
+            if (focusImg.complete) requestAnimationFrame(updateFocusOverlay);
+        }
+        function closeFocusEditor() { focusModal.classList.remove('active'); const cb = focusDone; focusTarget = null; focusDone = null; if (cb) cb(); }
+        focusImg.addEventListener('click', e => {
+            if (!focusTarget) return;
+            const r = focusImg.getBoundingClientRect();
+            focusTarget.fx = clamp01((e.clientX - r.left) / r.width); focusTarget.fy = clamp01((e.clientY - r.top) / r.height);
+            updateFocusOverlay();
+        });
+        document.getElementById('focus-reset').addEventListener('click', () => { if (focusTarget) { focusTarget.fx = 0.5; focusTarget.fy = 0.5; updateFocusOverlay(); } });
+        document.getElementById('focus-done').addEventListener('click', closeFocusEditor);
+        focusModal.addEventListener('click', e => { if (e.target === focusModal) closeFocusEditor(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusModal.classList.contains('active')) closeFocusEditor(); });
+        window.addEventListener('resize', updateFocusOverlay);
 
         // 片尾（兩種版型共用）：lt = 片尾開始後的秒數
         function drawEnd(row, lt, endSec) {
@@ -970,8 +1029,8 @@
                 // 多張照片依序播放：每張各自緩慢推近，換張時 0.35 秒交叉淡入
                 const list = row.photo.list, per = endSec / list.length, XF = 0.35;
                 const k = Math.min(list.length - 1, Math.floor(lt / per)), lk = lt - k * per;
-                if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1].img, 1.07, 1);
-                drawPhotoCover(cctx, list[k].img, 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
+                if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1], 1.07, 1);
+                drawPhotoCover(cctx, list[k], 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
                 const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
                 grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
                 cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
