@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
     <!-- mp4-muxer：把 WebCodecs 編好的 H.264 chunk 封裝成 MP4（UMD，window.Mp4Muxer） -->
     <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
+    <!-- 環境設定：決定 AI 文案按鈕呼叫 staging 或正式後端（跟後台同一套規則，develop 網址加 ?env=staging） -->
+    <script src="assets/js/config.js"></script>
     <!-- 影片字幕用的標題襯線字 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&display=swap" rel="stylesheet">
@@ -69,6 +71,15 @@
         #g-targets .chip.on { background: #C9A96E; color: #161410; border-color: #C9A96E; font-weight: 600; }
         #g-targets .tip { margin-left: 8px; font-size: 11px; color: #6A665E; }
         #global .mixed { outline: 1px dashed #C9A96E; outline-offset: 2px; }
+        .ai-row { display: flex; gap: 4px; align-items: stretch; }
+        .ai-row > input, .ai-row > textarea { flex: 1; min-width: 0; }
+        .ai-btn { flex: 0 0 auto; padding: 0 8px; font-size: 13px; }
+        .caption textarea { font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830; border-radius: 5px; padding: 5px 7px; resize: vertical; min-height: 54px; }
+        #ai-pop { position: absolute; z-index: 2200; width: 320px; background: #1C1B18; border: 1px solid #C9A96E; border-radius: 8px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 12px; }
+        #ai-pop .opt { display: block; width: 100%; text-align: left; white-space: pre-wrap; line-height: 1.5; margin-bottom: 6px; padding: 7px 9px; }
+        #ai-pop .opt:hover { border-color: #C9A96E; }
+        #ai-pop .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+        #ai-pop .msg { color: #8A857D; margin-bottom: 8px; line-height: 1.5; }
 
         /* 列 */
         #rows { padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
@@ -269,9 +280,9 @@
             <label class="f">CTA 網址</label>
             <input type="text" id="g-cta-url" value="duet.brendonchen.com">
             <label class="f">CTA 標語（網址下一行）</label>
-            <input type="text" id="g-cta-line" value="用屬於你們的兩個字母，設計一件作品">
+            <div class="ai-row"><input type="text" id="g-cta-line" value="用屬於你們的兩個字母，設計一件作品"><button class="ai-btn" data-ai="ctaLine" data-target="g-cta-line" title="AI 產生">✨</button></div>
             <label class="f">沒有照片時的片尾句</label>
-            <input type="text" id="g-nophoto" value="你會選哪一個？">
+            <div class="ai-row"><input type="text" id="g-nophoto" value="你會選哪一個？"><button class="ai-btn" data-ai="noPhoto" data-target="g-nophoto" title="AI 產生">✨</button></div>
             <label class="f">貼文 hashtag</label>
             <input type="text" id="g-tags" value="#DUET #客製珠寶 #字母項鍊 #英文字母 #姓名縮寫 #情侶項鍊 #3D設計">
         </div>
@@ -404,7 +415,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, layout: r.layout, settings: r.settings
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -820,7 +831,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', layout: data?.layout || 'carousel',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
@@ -865,9 +876,11 @@
                 <div class="card caption">
                     <h3>字幕</h3>
                     <label class="f">上方勾子句（留空用預設）</label>
-                    <input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}">
+                    <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
                     <label class="f">片尾照片補一句（選填）</label>
                     <input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}">
+                    <label class="f">貼文開頭（只放進貼文草稿，選填）</label>
+                    <div class="ai-row"><textarea class="opening" placeholder="可按 ✨ 依標題延伸">${escapeHtml(row.opening)}</textarea><button class="ai-btn ai-opening" title="AI 產生">✨</button></div>
                     <div class="hint">自動帶入：大字「A × B」、片尾照片上的「A × B」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
                 </div>
                 <div class="card actions">
@@ -988,6 +1001,10 @@
             // 字幕
             el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
             el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
+            el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
+            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine });
+            el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
+            el.querySelector('.ai-opening').addEventListener('click', e => aiSuggest(e.currentTarget, 'opening', { ...hookCtx(), hook: resolvedHook(row), current: row.opening }, el.querySelector('.opening')));
             // 動作
             const layoutSel = el.querySelector('.layout');
             layoutSel.value = row.layout;
@@ -1275,14 +1292,76 @@
             return new Blob([muxer.target.buffer], { type: 'video/mp4' });
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // AI 文案按鈕（✨）：呼叫後端 /api/admin/social-copy，需要先在後台登入（共用同網域的 adminToken）
+        // ════════════════════════════════════════════════════════════════
+        function escapeHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function resolvedHook(row) { return (row.hook || row.settings['g-hook'] || '').replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB); }
+        let aiPop = null;
+        function closeAiPop() { if (aiPop) aiPop.remove(); aiPop = null; }
+        document.addEventListener('mousedown', e => { if (aiPop && !aiPop.contains(e.target) && !e.target.closest('.ai-btn')) closeAiPop(); });
+        async function aiSuggest(anchor, field, ctx, targetEl) {
+            closeAiPop();
+            const pop = aiPop = document.createElement('div'); pop.id = 'ai-pop';
+            const r = anchor.getBoundingClientRect();
+            pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+            pop.style.left = Math.max(8, Math.min(window.innerWidth - 336, r.right + window.scrollX - 320)) + 'px';
+            document.body.appendChild(pop);
+            const alive = () => aiPop === pop;
+            const envLabel = window.CURRENT_ENV === 'staging' ? '測試' : '正式';
+            const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入（${envLabel}環境）</a>`;
+            const showMsg = (html) => { if (alive()) pop.innerHTML = `<div class="msg">${html}</div>`; };
+            showMsg('✨ 產生中，大約 10 到 30 秒…');
+            const token = localStorage.getItem('adminToken');
+            if (!token) { showMsg(`請先到後台登入，登入後回到這頁再按一次 ✨。<br>${loginLink}`); return; }
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/social-copy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ field, ...ctx })
+                });
+                if (res.status === 401) { showMsg(`後台登入已過期，請重新登入後再按一次 ✨。<br>${loginLink}`); return; }
+                if (res.status === 429) { showMsg('按得太頻繁了，請等一分鐘再試。'); return; }
+                const data = await res.json();
+                if (!data.success || !data.options?.length) throw new Error(data.error || '沒有拿到選項');
+                if (!alive()) return;
+                pop.innerHTML = '';
+                data.options.forEach(o => {
+                    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o;
+                    b.addEventListener('click', () => {
+                        targetEl.value = o;
+                        targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeAiPop();
+                    });
+                    pop.appendChild(b);
+                });
+                const bar = document.createElement('div'); bar.className = 'bar';
+                const again = document.createElement('button'); again.textContent = '🔄 再產生一次';
+                again.addEventListener('click', () => aiSuggest(anchor, field, ctx, targetEl));
+                const close = document.createElement('button'); close.textContent = '關閉'; close.addEventListener('click', closeAiPop);
+                bar.append(again, close); pop.appendChild(bar);
+            } catch (e) {
+                console.error(e);
+                showMsg('產生失敗：' + escapeHtml(e.message) + '<br>請稍後再試。');
+            }
+        }
+        // 全域設定裡的 ✨：以第一支選取影片的字母與標題當參考，選定後套用到所有選取的影片
+        document.querySelectorAll('#global .ai-btn').forEach(b => b.addEventListener('click', () => {
+            const r0 = rows.find(r => selected.has(r)) || rows[0];
+            const target = document.getElementById(b.dataset.target);
+            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, current: target.value }, target);
+        }));
+
         // 貼文草稿：依使用者定稿格式，不放作品資訊（字體、材質）
         function captionText(row) {
-            const lines = [
+            const lines = row.opening.trim() ? [row.opening.trim(), ''] : [];
+            lines.push(
                 '每一件 DUET ',
                 '都是兩個英文字母在立體空間裡的交集',
                 `正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。`,
                 '同樣的字母，換一種字體，就是完全不同的性格。'
-            ];
+            );
             if (row.photoLine) lines.push('', row.photoLine);
             lines.push('', '👉 ' + g('g-cta-url'), g('g-cta-line'), '', g('g-tags'));
             return lines.join('\n');
