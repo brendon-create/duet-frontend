@@ -295,6 +295,10 @@
 
     <div id="footer">
         <button class="primary" id="generate-all">▶ 全部生成</button>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <button id="ai-all" title="一次為每支影片寫勾子句、片尾補一句、貼文開頭">✨ 全部產生文案</button>
+            <label style="font-size:11px;color:#8A857D;display:flex;gap:4px;align-items:center;"><input type="checkbox" id="ai-overwrite" style="accent-color:#C9A96E;">覆蓋已填寫的內容</label>
+        </div>
         <div id="progress">
             <div id="progress-msg">就緒。先按「🎲」或直接輸入字母，縮圖會自動算出來。</div>
             <div id="progress-bar"><div id="progress-fill"></div></div>
@@ -878,7 +882,7 @@
                     <label class="f">上方勾子句（留空用預設）</label>
                     <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
                     <label class="f">片尾補一句（選填；沒照片時取代全域片尾句）</label>
-                    <input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}">
+                    <div class="ai-row"><input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}"><button class="ai-btn ai-pline" title="AI 產生">✨</button></div>
                     <label class="f">貼文開頭（只放進貼文草稿，選填）</label>
                     <div class="ai-row"><textarea class="opening" placeholder="可按 ✨ 依標題延伸">${escapeHtml(row.opening)}</textarea><button class="ai-btn ai-opening" title="AI 產生">✨</button></div>
                     <div class="hint">自動帶入：大字「A × B」、片尾照片上的「A × B」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
@@ -1002,7 +1006,8 @@
             el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
             el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
             el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
-            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine });
+            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo });
+            el.querySelector('.ai-pline').addEventListener('click', e => aiSuggest(e.currentTarget, 'photoLine', { ...hookCtx(), hook: resolvedHook(row), current: row.photoLine }, el.querySelector('.pline')));
             el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
             el.querySelector('.ai-opening').addEventListener('click', e => aiSuggest(e.currentTarget, 'opening', { ...hookCtx(), hook: resolvedHook(row), current: row.opening }, el.querySelector('.opening')));
             // 動作
@@ -1353,6 +1358,49 @@
             const target = document.getElementById(b.dataset.target);
             aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, current: target.value }, target);
         }));
+
+        // 「✨ 全部產生文案」：一次把所有影片送給 AI，看得到整批內容才能避免各支重複；
+        // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
+        const AI_FIELD_SEL = { hook: '.hook', photoLine: '.pline', opening: '.opening' };
+        document.getElementById('ai-all').addEventListener('click', async () => {
+            const btn = document.getElementById('ai-all'), overwrite = document.getElementById('ai-overwrite').checked;
+            const list = rows.filter(r => r.letterA && r.letterB);
+            const showStatus = (html) => { progressMsg.innerHTML = html; };
+            const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入</a>`;
+            if (!list.length) { showStatus('沒有可產生文案的影片（請先填字母）。'); return; }
+            if (!overwrite && list.every(r => Object.keys(AI_FIELD_SEL).every(k => r[k].trim()))) { showStatus('每支的文案都已經填好了。要重寫請勾選「覆蓋已填寫的內容」。'); return; }
+            const token = localStorage.getItem('adminToken');
+            if (!token) { showStatus(`請先到後台登入，登入後回到這頁再按一次。${loginLink}`); return; }
+            btn.disabled = true;
+            showStatus(`✨ 正在為 ${list.length} 支影片產生文案，大約 30 秒到 1 分鐘…`);
+            try {
+                const res = await fetch(`${window.BACKEND_URL}/api/admin/social-copy-batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) })
+                });
+                if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
+                if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
+                const data = await res.json();
+                if (!data.success || data.videos?.length !== list.length) throw new Error(data.error || '回傳數量不符');
+                let filled = 0;
+                data.videos.forEach((v, i) => {
+                    const r = list[i]; if (!rows.includes(r)) return;
+                    Object.entries(AI_FIELD_SEL).forEach(([k, sel]) => {
+                        if (!v[k] || (!overwrite && r[k].trim())) return;
+                        const input = r.el.querySelector(sel);
+                        input.value = v[k]; input.dispatchEvent(new Event('input', { bubbles: true }));
+                        filled++;
+                    });
+                });
+                showStatus(`✅ 已填入 ${filled} 個欄位。不滿意的欄位可以按旁邊的 ✨ 換其他版本。`);
+            } catch (e) {
+                console.error(e);
+                showStatus('產生失敗：' + escapeHtml(e.message) + '，請稍後再試。');
+            } finally {
+                btn.disabled = false;
+            }
+        });
 
         // 貼文草稿：依使用者定稿格式，不放作品資訊（字體、材質）
         function captionText(row) {
