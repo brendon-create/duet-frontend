@@ -1239,7 +1239,7 @@
         orbitCam.up.set(0, 0, 1);
         // 公轉角度（兩段速度）：作品在前方時以慢速從中央偏左繞到中央偏右（±ORBIT_SWEEP），
         // 佔每件時間的 ORBIT_SLOW 比例；其餘時間加速轉到下一件。兩段交界速度相同，用 Hermite 曲線平滑銜接。
-        const ORBIT_SWEEP = 15 * Math.PI / 180, ORBIT_SLOW = 0.6, STEP_ANGLE = 2 * Math.PI / 3;
+        const ORBIT_SWEEP = 15 * Math.PI / 180, ORBIT_SLOW = 0.8, STEP_ANGLE = 2 * Math.PI / 3;
         function orbitAngle(t, segSec) {
             const half = ORBIT_SLOW * segSec / 2, vSlow = ORBIT_SWEEP / half, tk = (k) => segSec * (k + 0.5);
             // 第一件之前、最後一件之後都維持慢速飄移，影片開頭作品就在中央偏左
