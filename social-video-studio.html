@@ -64,6 +64,11 @@
             padding: 10px 22px 16px; border-bottom: 1px solid #2A2820; background: #141311;
         }
         #global .range-val { float: right; color: #C9A96E; }
+        #g-targets { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px 0 2px; font-size: 12px; color: #8A857D; }
+        #g-targets .chip { min-width: 38px; padding: 5px 10px; }
+        #g-targets .chip.on { background: #C9A96E; color: #161410; border-color: #C9A96E; font-weight: 600; }
+        #g-targets .tip { margin-left: 8px; font-size: 11px; color: #6A665E; }
+        #global .mixed { outline: 1px dashed #C9A96E; outline-offset: 2px; }
 
         /* 列 */
         #rows { padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
@@ -213,6 +218,7 @@
     <div class="warn" id="codec-warning">⚠️ 這個瀏覽器不支援 WebCodecs（H.264 編碼），請改用 Chrome 開啟本頁。</div>
 
     <section id="global" style="display:none;">
+        <div id="g-targets"></div>
         <div>
             <label class="f">背景</label>
             <select id="g-bg">
@@ -260,7 +266,7 @@
         <div>
             <label class="f">勾子句預設（{A} {B} 會自動代入字母）</label>
             <input type="text" id="g-hook" value="同樣的 {A} × {B}，三種性格">
-            <label class="f">CTA 網址（所有影片共用）</label>
+            <label class="f">CTA 網址</label>
             <input type="text" id="g-cta-url" value="duet.brendonchen.com">
             <label class="f">CTA 標語（網址下一行）</label>
             <input type="text" id="g-cta-line" value="用屬於你們的兩個字母，設計一件作品">
@@ -384,15 +390,21 @@
         // 狀態 / 持久化
         // ════════════════════════════════════════════════════════════════
         const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags'];
-        const g = (id) => document.getElementById(id).value;
+        // 每支影片各自有一份設定（row.settings）。畫縮圖、生成影片前用 useRow(row) 切到那支，
+        // 之後 g() 讀到的就是那支的設定；沒有作用中的影片時才讀面板上的值
+        let activeRow = null;
+        const g = (id) => (activeRow?.settings?.[id] !== undefined ? activeRow.settings[id] : document.getElementById(id).value);
+        const panelSettings = () => Object.fromEntries(G_IDS.map(id => [id, document.getElementById(id).value]));
+        const VISUAL_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset'];
+        const selected = new Set(); // 面板目前要套用的影片
         const rows = []; // { id, letterA, letterB, combos:[3], photo:{list:[{url,img}],font1,font2,plating}|null, hook, photoLine, el }
         let rowSeq = 0;
 
         function saveState() {
             try {
-                localStorage.setItem('duet_svs_global', JSON.stringify(Object.fromEntries(G_IDS.map(id => [id, g(id)]))));
+                localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, layout: r.layout
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -410,8 +422,9 @@
         const glCanvas = document.getElementById('gl-canvas');
         const compCanvas = document.getElementById('comp-canvas');
         const cctx = compCanvas.getContext('2d');
-        let scene, camera, renderer, hdrReady;
-        let bgTexture = null, bgTextureKey = '';
+        let scene, camera, renderer;
+        let bgTexture = null, bgTextureKey = '', bgCoverKey = '', studioBg = null, currentHdr = '';
+        const bgCache = new Map(), hdrCache = new Map();
         const geoCache = new Map();   // key → { geometry, modelTopZ }
         let bailGeo = null;
 
@@ -430,8 +443,20 @@
             mk(new THREE.DirectionalLight(0xFFF5E8, 2.8), 2.8).position.set(20, -15, 30);
             mk(new THREE.DirectionalLight(0xE8F0FF, 0.8), 0.8).position.set(-20, 15, 10);
             mk(new THREE.DirectionalLight(0xffffff, 0.5), 0.5).position.set(0, 30, -10);
+        }
+        // 切到某支影片的設定：背景、HDR、打光都換成那支的
+        async function useRow(row) {
+            activeRow = row;
+            await ensureBackground();
+            await ensureHDR();
             applyLight();
-            hdrReady = loadHDR(g('g-hdr'));
+        }
+        async function ensureHDR() {
+            const file = g('g-hdr');
+            if (file === currentHdr) return;
+            currentHdr = file;
+            if (hdrCache.has(file)) { scene.environment = hdrCache.get(file); return; }
+            await loadHDR(file);
         }
         function applyLight() {
             const mult = parseFloat(g('g-light')) || 1;
@@ -446,7 +471,7 @@
                 const loader = new RGBELoader(); let i = 0;
                 (function next() {
                     if (i >= urls.length) { console.warn('HDR 全部失敗，純燈光模式'); resolve(); return; }
-                    loader.load(urls[i++], tex => { tex.mapping = THREE.EquirectangularReflectionMapping; scene.environment = tex; resolve(); }, undefined, next);
+                    loader.load(urls[i++], tex => { tex.mapping = THREE.EquirectangularReflectionMapping; hdrCache.set(file, tex); scene.environment = tex; resolve(); }, undefined, next);
                 })();
             })).catch(() => console.warn('RGBELoader 載入失敗'));
         }
@@ -478,17 +503,19 @@
         }
         function applyBgCover(tex, W, H, panPercent) {
             const iw = tex.image.width, ih = tex.image.height, ia = iw / ih, ca = W / H, pan = panPercent / 100;
-            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+            // 位移只改 repeat/offset（貼圖矩陣），不需要重新上傳整張圖；只有第一次設定 wrap 時才需要
+            if (tex.wrapS !== THREE.ClampToEdgeWrapping) { tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true; }
             if (ia > ca) { const rx = ca / ia; tex.repeat.set(rx, 1); tex.offset.set((1 - rx) * pan, 0); }
             else { const ry = ia / ca; tex.repeat.set(1, ry); tex.offset.set(0, (1 - ry) * pan); }
-            tex.needsUpdate = true;
         }
         async function ensureBackground() {
             const key = [g('g-bg'), g('g-bg-brightness'), g('g-bg-contrast')].join('|');
             if (key === bgTextureKey) return;
-            bgTextureKey = key;
-            bgTexture = g('g-bg') ? await loadAdjustedBgTexture(g('g-bg'), parseFloat(g('g-bg-brightness')), parseFloat(g('g-bg-contrast'))) : null;
-            scene.background = bgTexture ? null : createStudioBackground(1080, 1920);
+            bgTextureKey = key; bgCoverKey = '';
+            if (!bgCache.has(key)) bgCache.set(key, g('g-bg') ? await loadAdjustedBgTexture(g('g-bg'), parseFloat(g('g-bg-brightness')), parseFloat(g('g-bg-contrast'))) : null);
+            bgTexture = bgCache.get(key);
+            if (!studioBg) studioBg = createStudioBackground(1080, 1920);
+            scene.background = bgTexture ? null : studioBg;
         }
 
         async function loadBailGeometry() {
@@ -536,9 +563,14 @@
             return info;
         }
 
-        // 自動找圓環掛點：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖；
-        // 圓環底部（x ±0.4、y ±0.3mm）整片都要有實體、高低差 < 0.6mm 才算可掛，
-        // 分數 = 高度 − 0.5 × 離重心的水平距離（越高越好，但不要偏離重心太遠，戴起來才不會歪）
+        // 自動找圓環掛點：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖，再挑掛點。
+        // 方向：較寬的字母當佩戴正面。鏈子穿過墜頭的洞、與作品正面平行，所以正面看不到墜頭的洞；
+        //   圓環跟墜頭垂直，正面看得到圓環的圈。字母 A 在 XZ 平面（從 −Y 看）、字母 B 在 YZ 平面（從 X 看），
+        //   B 較寬時整組圓環＋墜頭轉 90°（rot）。以下 u = 圓環所在平面的水平軸、v = 圓環管徑方向的軸。
+        // 可掛條件：圓環底部（u ±0.4、v ±0.3mm）整片有實體、高低差 < 0.6mm；
+        //   且從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
+        // 分數：接近最高點（差 0.4mm 內）一律視為同高，改比誰靠近重心 → 淺凹陷（如 m 中央）會掛正中央；
+        //   更低的位置照高度計分，每偏離重心 1mm 扣 0.3mm。
         function findAttachPoint(geometry) {
             const STEP = 0.1, bb = geometry.boundingBox, p = geometry.attributes.position.array;
             const x0 = bb.min.x, y0 = bb.min.y;
@@ -568,24 +600,46 @@
                 }
             }
             if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
+            const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → B 朝前
+            // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
+            const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
+            const H = rotB ? (u, v) => hm[v * ny + u] : (u, v) => hm[u * ny + v];
+            // 從正面看，每個 u 位置上整件作品的最高點（不分前後深度）
+            const faceMax = new Float32Array(nu).fill(-Infinity);
+            for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const h = H(u, v); if (h > faceMax[u]) faceMax[u] = h; }
+            const R_IN = 1.0, RI = Math.round(R_IN / STEP), TOL = 0.4, LAMBDA = 0.3;
             // 先用完整圓環底部尺寸找；筆畫太細找不到時退一步只要求單點有實體
-            for (const [fx, fy, maxDiff] of [[4, 3, 0.6], [1, 1, 1.0]]) {
-                let best = null;
-                for (let i = fx; i < nx - fx; i++) {
-                    for (let j = fy; j < ny - fy; j++) {
+            for (const [fu, fv, maxDiff] of [[4, 3, 0.6], [1, 1, 1.0]]) {
+                const cands = [];
+                for (let u = fu; u < nu - fu; u++) {
+                    for (let v = fv; v < nv - fv; v++) {
                         let hmin = Infinity, hmax = -Infinity;
-                        for (let a = -fx; a <= fx && hmin > -Infinity; a++) for (let b = -fy; b <= fy; b++) {
-                            const h = hm[(i + a) * ny + j + b]; if (h < hmin) hmin = h; if (h > hmax) hmax = h;
+                        for (let a = -fu; a <= fu && hmin > -Infinity; a++) for (let b = -fv; b <= fv; b++) {
+                            const h = H(u + a, v + b); if (h < hmin) hmin = h; if (h > hmax) hmax = h;
                         }
                         if (hmin === -Infinity || hmax - hmin > maxDiff) continue;
-                        const x = x0 + i * STEP, y = y0 + j * STEP;
-                        const score = hmin - 0.5 * Math.hypot(x - mx, y - my);
-                        if (!best || score > best.score) best = { x, y, z: hmin, score };
+                        // 圓環管徑中心在 hmin → 洞的下緣在水平偏移 d 處的高度 = hmin + 1.3 − √(1 − d²)
+                        let pierce = false;
+                        for (let a = -RI + 1; a <= RI - 1 && !pierce; a++) {
+                            const uu = u + a; if (uu < 0 || uu >= nu) continue;
+                            const d = a * STEP;
+                            if (faceMax[uu] > hmin + 1.3 - Math.sqrt(R_IN * R_IN - d * d) + 0.05) pierce = true;
+                        }
+                        if (pierce) continue;
+                        const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
+                        cands.push({ x, y, z: hmin, d: Math.hypot(x - mx, y - my) });
                     }
                 }
-                if (best) return best;
+                if (!cands.length) continue;
+                const zTop = Math.max(...cands.map(c => c.z));
+                let best = null;
+                for (const c of cands) {
+                    const score = Math.min(c.z, zTop - TOL) - LAMBDA * c.d;
+                    if (!best || score > best.score) best = { ...c, score };
+                }
+                return { x: best.x, y: best.y, z: best.z, rot: rotB ? Math.PI / 2 : 0 };
             }
-            return { x: 0, y: 0, z: bb.max.z };
+            return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
         }
 
         async function buildGroup(row, combo) {
@@ -601,11 +655,11 @@
             group.add(new THREE.Mesh(info.geometry, mat));
             const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64); ringGeo.rotateX(Math.PI / 2);
             // 圓環管徑中心落在掛點頂面 → 圓環底部埋進主體 0.3mm，看起來確實接上
-            const { x: ax, y: ay, z: az } = info.attach, ringZ = az + 1.3;
-            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(ax, ay, ringZ); group.add(ring);
+            const { x: ax, y: ay, z: az, rot } = info.attach, ringZ = az + 1.3;
+            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(ax, ay, ringZ); ring.rotation.z = rot; group.add(ring);
             if (bail) {
                 const bailH = bail.boundingBox.max.z - bail.boundingBox.min.z;
-                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ - 0.1 + bailH / 2); group.add(bm);
+                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ - 0.1 + bailH / 2); bm.rotation.z = rot; group.add(bm);
             }
             return group;
         }
@@ -620,8 +674,11 @@
             if (glSize.W !== W || glSize.H !== H) {
                 glCanvas.width = W; glCanvas.height = H; renderer.setSize(W, H, false);
                 camera.aspect = W / H; camera.updateProjectionMatrix();
-                if (bgTexture) applyBgCover(bgTexture, W, H, parseFloat(g('g-bg-pan')));
                 glSize = { W, H };
+            }
+            if (bgTexture) {
+                const ck = [bgTexture.uuid, W, H, g('g-bg-pan')].join('|');
+                if (ck !== bgCoverKey) { applyBgCover(bgTexture, W, H, parseFloat(g('g-bg-pan'))); bgCoverKey = ck; }
             }
             if (currentGroup !== group) { if (currentGroup) scene.remove(currentGroup); currentGroup = group; if (group) scene.add(group); }
             if (group) {
@@ -727,7 +784,7 @@
                 const combo = row.combos[idx];
                 try {
                     if (!/^[A-Za-z0-9]$/.test(row.letterA) || !/^[A-Za-z0-9]$/.test(row.letterB)) throw new Error('缺字母');
-                    await ensureBackground(); await hdrReady;
+                    await useRow(row);
                     const group = await buildGroup(row, combo);
                     // 拍一圈 36 個角度存成橫向長條圖，之後縮圖只播放這張圖，不再動用 3D renderer
                     const sprite = document.createElement('canvas');
@@ -752,7 +809,6 @@
             }
             thumbBusy = false;
         }
-        function invalidateAllThumbs() { rows.forEach(r => r.combos.forEach((_, i) => queueThumb(r, i))); }
 
         // ════════════════════════════════════════════════════════════════
         // 列 UI
@@ -764,8 +820,10 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', layout: data?.layout || 'carousel'
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', layout: data?.layout || 'carousel',
+                settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
+            if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
             if (row.combos.length !== 3) {
                 row.combos = []; const used = [], arche = [];
@@ -937,7 +995,9 @@
             el.querySelector('.gen-one').addEventListener('click', () => generateRows([row]));
             el.querySelector('.del').addEventListener('click', () => {
                 if (rows.length === 1) { alert('至少保留一列'); return; }
-                rows.splice(rows.indexOf(row), 1); el.remove(); renumber(); saveState();
+                rows.splice(rows.indexOf(row), 1); el.remove(); selected.delete(row);
+                if (!selected.size) rows.forEach(r => selected.add(r));
+                renumber(); syncPanel(); saveState();
             });
 
             refreshComboCard(row, 2); renumber(); saveState();
@@ -953,7 +1013,7 @@
             card.querySelector('.reroll').disabled = !!c.locked;
             ['.f1', '.f2', '.pl'].forEach(s => card.querySelector(s).disabled = !!c.locked);
         }
-        function renumber() { rows.forEach((r, i) => r.el.querySelector('.num').textContent = i + 1); }
+        function renumber() { rows.forEach((r, i) => r.el.querySelector('.num').textContent = i + 1); renderTargets(); }
         const setRowStatus = (row, msg) => { row.el.querySelector('.row-status').textContent = msg; };
 
         // ════════════════════════════════════════════════════════════════
@@ -1247,9 +1307,9 @@
             const nameCount = {};
             try {
                 await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'"].map(f => document.fonts.load(f).catch(() => {})));
-                await ensureBackground(); await hdrReady;
                 for (let r = 0; r < list.length; r++) {
                     const row = list[r];
+                    await useRow(row);
                     row.el.classList.add('busy');
                     if (!row.letterA || !row.letterB) { setRowStatus(row, '⚠️ 缺字母，略過'); row.el.classList.remove('busy'); continue; }
                     const base = `${date}_${row.letterA}${row.letterB}`;
@@ -1354,21 +1414,62 @@
         document.getElementById('toggle-global').addEventListener('click', () => {
             const s = document.getElementById('global'); s.style.display = s.style.display === 'none' ? 'grid' : 'none';
         });
+        const rangeLabelUpdaters = [];
         const bindRange = (id, fmt) => {
             const el = document.getElementById(id), v = document.getElementById(id + '-v');
             const upd = () => { v.textContent = fmt(el.value); }; el.addEventListener('input', upd); upd();
+            rangeLabelUpdaters.push(upd);
         };
+        // 面板上方的影片編號按鈕：點了切換要不要套用到那支；至少保留一支
+        function renderTargets() {
+            const box = document.getElementById('g-targets');
+            box.innerHTML = '<span>套用到：</span>';
+            rows.forEach((r, i) => {
+                const b = document.createElement('button'); b.className = 'chip' + (selected.has(r) ? ' on' : ''); b.textContent = '#' + (i + 1);
+                b.addEventListener('click', () => {
+                    if (selected.has(r)) { if (selected.size > 1) selected.delete(r); } else selected.add(r);
+                    renderTargets(); syncPanel();
+                });
+                box.appendChild(b);
+            });
+            const all = document.createElement('button'); all.textContent = '全選';
+            all.addEventListener('click', () => { rows.forEach(r => selected.add(r)); renderTargets(); syncPanel(); });
+            box.appendChild(all);
+            const tip = document.createElement('span'); tip.className = 'tip';
+            tip.textContent = '金色虛線框 = 所選影片這項設定不同，修改後會統一成新的值';
+            box.appendChild(tip);
+        }
+        // 面板顯示第一支選取影片的設定；選取的影片設定不一致的欄位加虛線框
+        function syncPanel() {
+            const sel = rows.filter(r => selected.has(r));
+            if (!sel.length) return;
+            G_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                el.value = sel[0].settings[id];
+                const mixed = sel.some(r => r.settings[id] !== sel[0].settings[id]);
+                el.classList.toggle('mixed', mixed);
+                el.title = mixed ? '所選影片設定不同' : '';
+            });
+            rangeLabelUpdaters.forEach(f => f());
+        }
+        G_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            const write = () => {
+                rows.forEach(r => { if (selected.has(r)) r.settings[id] = el.value; });
+                el.classList.remove('mixed'); el.title = '';
+                saveState();
+            };
+            el.addEventListener('input', write);
+            el.addEventListener('change', () => {
+                write();
+                if (VISUAL_IDS.includes(id)) rows.forEach(r => { if (selected.has(r)) r.combos.forEach((_, i) => queueThumb(r, i)); });
+            });
+        });
         bindRange('g-bg-brightness', v => parseFloat(v).toFixed(2)); bindRange('g-bg-contrast', v => parseFloat(v).toFixed(2));
         bindRange('g-bg-pan', v => v + '%'); bindRange('g-light', v => parseFloat(v).toFixed(2) + '×');
         bindRange('g-size', v => v + 'mm'); bindRange('g-voffset', v => v); bindRange('g-sec', v => parseFloat(v).toFixed(1) + 's');
         bindRange('g-endsec', v => parseFloat(v).toFixed(1) + 's'); bindRange('g-bitrate', v => v);
-        // 影響畫面的設定 → 重算所有縮圖；只影響字幕的設定 → 只存
-        ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-size', 'g-voffset'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { saveState(); invalidateAllThumbs(); }));
-        document.getElementById('g-light').addEventListener('change', () => { saveState(); applyLight(); invalidateAllThumbs(); });
-        document.getElementById('g-hdr').addEventListener('change', () => { saveState(); hdrReady = loadHDR(g('g-hdr')); invalidateAllThumbs(); });
         bindRange('g-spin', v => parseFloat(v).toFixed(1) + 's');
-        ['g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
         document.getElementById('add-row').addEventListener('click', () => addRow());
         document.getElementById('generate-all').addEventListener('click', () => generateRows(rows.slice()));
 
@@ -1384,6 +1485,7 @@
             if (missing.length) console.warn('未分類字體（視為 tech）:', missing);
             initScene();
             if (saved && saved.length) saved.forEach(addRow); else addRow();
+            syncPanel();
         })();
     </script>
 </body>
