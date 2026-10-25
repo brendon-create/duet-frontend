@@ -882,7 +882,7 @@
                 </div>
                 <div class="card caption">
                     <h3>字幕</h3>
-                    <label class="f">故事背景（只給 AI 參考，不會發布）</label>
+                    <label class="f">故事背景（AI 參考用；附在文案檔最後，不進貼文本文）</label>
                     <div class="ai-row"><textarea class="story" placeholder="字母各代表誰、什麼關係、誰送誰、想說什麼。可按 ✨ 讓 AI 設想">${escapeHtml(row.story)}</textarea><button class="ai-btn ai-story" title="AI 產生">✨</button></div>
                     <label class="f">上方勾子句（留空用預設）</label>
                     <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
@@ -1563,7 +1563,9 @@
                         });
                         renderGL(null, 0, 1, W, H);
                         download(blob, name + '.mp4');
-                        captions.push({ name, text: captionText(row) });
+                        // 故事背景附在貼文後面、用分隔線隔開（虛構設定，可當 Threads 等文字貼文的素材，不屬於貼文本文）
+                        const story = row.story.trim();
+                        captions.push({ name, text: captionText(row) + (story ? `\n\n\n──── 故事背景（虛構設定，不是貼文本文；可當 Threads 素材）────\n${story}` : '') });
                         setRowStatus(row, `✅ ${name}.mp4（${tl.total.toFixed(1)}s，${(blob.size / 1048576).toFixed(1)} MB）`);
                     } catch (e) {
                         console.error(e); setRowStatus(row, '❌ ' + e.message);
