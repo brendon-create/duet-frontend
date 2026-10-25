@@ -1235,14 +1235,21 @@
         const ORBIT_PITCH = 15 * Math.PI / 180, ORBIT_R = 9, ORBIT_DIST = 100;
         const orbitCam = new THREE.PerspectiveCamera(30, W / H, 0.1, 2000);
         orbitCam.up.set(0, 0, 1);
-        const smooth = (u) => u * u * u * (u * (u * 6 - 15) + 10);
-        // 公轉角度：每件在正前方的前後各停 DWELL 比例的時間，中間加速轉到下一件
+        // 公轉角度（兩段速度）：作品在前方時以慢速從中央偏左繞到中央偏右（±ORBIT_SWEEP），
+        // 佔每件時間的 ORBIT_SLOW 比例；其餘時間加速轉到下一件。兩段交界速度相同，用 Hermite 曲線平滑銜接。
+        const ORBIT_SWEEP = 15 * Math.PI / 180, ORBIT_SLOW = 0.6, STEP_ANGLE = 2 * Math.PI / 3;
         function orbitAngle(t, segSec) {
-            const DWELL = 0.25, tk = (k) => segSec * (k + 0.5);
-            if (t <= tk(0)) return 0;
-            if (t >= tk(2)) return 2 * (2 * Math.PI / 3);
-            const k = Math.floor((t - tk(0)) / segSec), u = (t - tk(k)) / segSec;
-            return (k + smooth(clamp01((u - DWELL) / (1 - 2 * DWELL)))) * (2 * Math.PI / 3);
+            const half = ORBIT_SLOW * segSec / 2, vSlow = ORBIT_SWEEP / half, tk = (k) => segSec * (k + 0.5);
+            // 第一件之前、最後一件之後都維持慢速飄移，影片開頭作品就在中央偏左
+            if (t <= tk(0) + half) return (t - tk(0)) * vSlow;
+            if (t >= tk(2) - half) return 2 * STEP_ANGLE + (t - tk(2)) * vSlow;
+            const k = Math.floor((t - tk(0)) / segSec), lt = t - tk(k);
+            if (lt <= half) return k * STEP_ANGLE + lt * vSlow;                 // 慢速：剛過中央、往右
+            if (lt >= segSec - half) return (k + 1) * STEP_ANGLE - (segSec - lt) * vSlow; // 慢速：下一件從左邊進到中央
+            // 快速轉場：從 +SWEEP 轉到下一件的 −SWEEP，起訖速度都等於慢速
+            const T = segSec - 2 * half, u = (lt - half) / T, m = vSlow * T, D = STEP_ANGLE - 2 * ORBIT_SWEEP;
+            const pos = (2 * u ** 3 - 3 * u ** 2 + u) * m + (-2 * u ** 3 + 3 * u ** 2) * D + (u ** 3 - u ** 2) * m;
+            return k * STEP_ANGLE + ORBIT_SWEEP + pos;
         }
         function renderOrbit(groups, theta, t, segSec, alpha) {
             renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0); // 背景（同時清掉 currentGroup）
@@ -1253,7 +1260,7 @@
             const focus = ORBIT_DIST;
             // 每件的位置、深度、自轉角（每件在自己最正前方的時刻剛好轉到字母 A 正面）
             const items = groups.map((gp, k) => {
-                const phi = k * 2 * Math.PI / 3 - theta;
+                const phi = theta - k * 2 * Math.PI / 3; // 角度增加 → 往右移：作品從左邊進來、往右邊離開
                 const pos = new THREE.Vector3(ORBIT_R * Math.sin(phi), -ORBIT_R * Math.cos(phi), 0);
                 const depth = pos.clone().sub(orbitCam.position).dot(viewDir);
                 const spin = (t - segSec * (k + 0.5)) * Math.PI / segSec; // 自轉一圈 = 2 × 每件秒數
