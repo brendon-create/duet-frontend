@@ -260,8 +260,10 @@
         <div>
             <label class="f">勾子句預設（{A} {B} 會自動代入字母）</label>
             <input type="text" id="g-hook" value="同樣的 {A} × {B}，三種性格">
-            <label class="f">片尾 CTA（所有影片共用）</label>
-            <input type="text" id="g-cta" value="duet.brendonchen.com ｜ 設計屬於你的兩個字母">
+            <label class="f">CTA 網址（所有影片共用）</label>
+            <input type="text" id="g-cta-url" value="duet.brendonchen.com">
+            <label class="f">CTA 標語（網址下一行）</label>
+            <input type="text" id="g-cta-line" value="用屬於你們的兩個字母，設計一件作品">
             <label class="f">沒有照片時的片尾句</label>
             <input type="text" id="g-nophoto" value="你會選哪一個？">
             <label class="f">貼文 hashtag</label>
@@ -381,7 +383,7 @@
         // ════════════════════════════════════════════════════════════════
         // 狀態 / 持久化
         // ════════════════════════════════════════════════════════════════
-        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'];
+        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags'];
         const g = (id) => document.getElementById(id).value;
         const rows = []; // { id, letterA, letterB, combos:[3], photo:{list:[{url,img}],font1,font2,plating}|null, hook, photoLine, el }
         let rowSeq = 0;
@@ -961,10 +963,12 @@
         const ease = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
         const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-        function text(ctx, str, x, y, { size = 40, weight = 500, family = "'PingFang TC', -apple-system, sans-serif", color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true } = {}) {
+        function text(ctx, str, x, y, { size = 40, weight = 500, family = "'PingFang TC', -apple-system, sans-serif", color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
             if (alpha <= 0 || !str) return;
             ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
             ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = spacing;
+            // 給了 maxW 時，句子太長就逐步縮小字級，避免超出畫面
+            while (maxW && size > 24 && ctx.measureText(str).width > maxW) { size -= 2; ctx.font = `${weight} ${size}px ${family}`; }
             if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4; }
             ctx.fillText(str, x, y); ctx.restore();
         }
@@ -973,12 +977,15 @@
         function drawHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
             text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.155, { size: 170, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.235, { size: 54, weight: 500, alpha });
+            text(ctx, hook, W / 2, H * 0.235, { size: 70, weight: 500, alpha, maxW: W - 100 });
         }
-        function drawCTA(ctx, alpha, y = H * 0.80) {
+        // CTA：網址、標語兩行置中；size 預設等於輪播版原本勾子句的字級
+        function drawCTA(ctx, alpha, y = H * 0.785, size = 54) {
             ctx.save(); ctx.globalAlpha = alpha * 0.7; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(W / 2 - 60, y - 44); ctx.lineTo(W / 2 + 60, y - 44); ctx.stroke(); ctx.restore();
-            text(ctx, g('g-cta'), W / 2, y, { size: 36, weight: 400, alpha: alpha * 0.9, color: '#F3E7D0', spacing: '0.04em' });
+            ctx.beginPath(); ctx.moveTo(W / 2 - 60, y - size * 0.95); ctx.lineTo(W / 2 + 60, y - size * 0.95); ctx.stroke(); ctx.restore();
+            const opt = { size, weight: 400, alpha: alpha * 0.95, color: '#F3E7D0', spacing: '0.03em', maxW: W - 120 };
+            text(ctx, g('g-cta-url'), W / 2, y, opt);
+            text(ctx, g('g-cta-line'), W / 2, y + size * 1.35, opt);
         }
         function drawFontLabel(ctx, combo, idx, alpha) {
             text(ctx, `${combo.font1}  ×  ${combo.font2}`, W / 2, H * 0.695, { size: 46, weight: 500, alpha });
@@ -1089,20 +1096,19 @@
                 grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
                 cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
                 const ta = clamp01((lt - 0.25) / 0.4);
-                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.705, { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
-                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.795, { size: 40, weight: 500, alpha: ta });
-                drawCTA(cctx, ta, H * (row.photoLine ? 0.85 : 0.83));
+                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * (row.photoLine ? 0.645 : 0.68), { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
+                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.705, { size: 44, weight: 500, alpha: ta, maxW: W - 100 });
+                drawCTA(cctx, ta);
             } else {
                 drawHeader(cctx, row, 1);
                 text(cctx, g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a });
-                text(cctx, row.combos.map((c, k) => `${k + 1}  ${c.font1} × ${c.font2}`).join('     '), W / 2, H * 0.57, { size: 26, weight: 400, alpha: a, color: '#E6C98A' });
                 drawCTA(cctx, 1);
             }
         }
         const endSecOf = (row) => row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
 
         // 三格版：上方標題 → 三格（作品置中，不放文字）→ CTA；三件同步轉一整圈
-        const TRI_TOP = H * 0.19, TRI_BOTTOM = H * 0.775;
+        const TRI_TOP = H * 0.19, TRI_BOTTOM = H * 0.755;
         function triCells() {
             const ch = (TRI_BOTTOM - TRI_TOP) / 3;
             return [0, 1, 2].map(i => ({ x: 0, y: Math.round(TRI_TOP + i * ch), w: W, h: Math.round(ch) }));
@@ -1115,7 +1121,7 @@
         function drawTriHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
             text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.105, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.165, { size: 46, weight: 500, alpha });
+            text(ctx, hook, W / 2, H * 0.165, { size: 62, weight: 500, alpha, maxW: W - 100 });
         }
         function buildTriptychTimeline(row, groups) {
             const introSec = 0.8, spinSec = parseFloat(g('g-spin')), endSec = endSecOf(row), outSec = 0.35;
@@ -1129,7 +1135,7 @@
                     const st = clamp01((t - introSec) / spinSec);
                     const out = clamp01((introSec + spinSec - t) / outSec); // 最後一小段淡出，接片尾
                     renderTriptych(groups, st * Math.PI * 2, Math.min(a, out), cells, fit); cctx.drawImage(glCanvas, 0, 0);
-                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriDividers(cctx, cells, Math.min(a, out)); drawCTA(cctx, a);
+                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriDividers(cctx, cells, Math.min(a, out)); drawCTA(cctx, a, H * 0.79, 46);
                 } else {
                     drawEnd(row, t - introSec - spinSec, endSec);
                 }
@@ -1213,13 +1219,16 @@
             return new Blob([muxer.target.buffer], { type: 'video/mp4' });
         }
 
+        // 貼文草稿：依使用者定稿格式，不放作品資訊（字體、材質）
         function captionText(row) {
-            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
-            const lines = [hook + ' ✨', ''];
-            row.combos.forEach((c, i) => lines.push(`${String(i + 1).padStart(2, '0')}  ${c.font1} × ${c.font2}（${PLATING_LABEL[c.plating]}）${row.photo && i === 2 ? ' ← 客戶的真實作品' : ''}`));
-            lines.push('', `每一件 DUET 都是兩個英文字母在立體空間裡的交集：正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。同樣的字母，換一種字體，就是完全不同的性格。`);
-            if (row.photoLine) lines.push(row.photoLine);
-            lines.push('', '👉 ' + g('g-cta'), '', g('g-tags'));
+            const lines = [
+                '每一件 DUET ',
+                '都是兩個英文字母在立體空間裡的交集',
+                `正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。`,
+                '同樣的字母，換一種字體，就是完全不同的性格。'
+            ];
+            if (row.photoLine) lines.push('', row.photoLine);
+            lines.push('', '👉 ' + g('g-cta-url'), g('g-cta-line'), '', g('g-tags'));
             return lines.join('\n');
         }
         function download(blob, name) {
@@ -1363,7 +1372,7 @@
         document.getElementById('g-light').addEventListener('change', () => { saveState(); applyLight(); invalidateAllThumbs(); });
         document.getElementById('g-hdr').addEventListener('change', () => { saveState(); hdrReady = loadHDR(g('g-hdr')); invalidateAllThumbs(); });
         bindRange('g-spin', v => parseFloat(v).toFixed(1) + 's');
-        ['g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
+        ['g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags'].forEach(id => document.getElementById(id).addEventListener('change', saveState));
         document.getElementById('add-row').addEventListener('click', () => addRow());
         document.getElementById('generate-all').addEventListener('click', () => generateRows(rows.slice()));
 
