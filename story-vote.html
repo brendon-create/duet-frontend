@@ -13,6 +13,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 -apple-system,"
 main{max-width:1500px;margin:0 auto;padding:28px 16px 120px}
 h1{font-size:22px;margin:0 0 8px}
 .intro{color:var(--mut);font-size:15px;margin:0 0 16px}
+.note{background:var(--acc-bg);border-left:3px solid var(--acc);border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:15px}
 .name{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .name input{flex:1;min-width:180px;max-width:280px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
 section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;margin:22px 0}
@@ -43,6 +44,7 @@ button.ver[aria-checked="true"] .pick{display:inline}
 <main>
   <h1>DUET 設計理念投票</h1>
   <p class="intro">每一件作品下面有幾個版本的「設計理念」，是附在作品裡、送禮者寫給收禮者的卡片文字。請想像你就是送禮者，選出你最想放進卡片的那一篇。每件作品只能選一個，不用全部投完也可以送出；送出後還能修改再送一次，會以最後一次為準。</p>
+  <p class="note"><b>請注意：每件作品的版本順序都是隨機打亂的。</b>同一個「版本 A」在不同作品裡，代表的不是同一種寫法。請每件作品單獨判斷，不用管前面選過哪個字母，也不用刻意平均分配。</p>
   <div class="name">
     <label for="name">你的暱稱（選填）</label>
     <input id="name" maxlength="30" placeholder="方便我們知道是誰投的">

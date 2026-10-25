@@ -76,6 +76,7 @@
         .ai-btn { flex: 0 0 auto; padding: 0 8px; font-size: 13px; }
         .caption textarea { font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830; border-radius: 5px; padding: 5px 7px; resize: vertical; min-height: 54px; }
         #ai-pop { position: absolute; z-index: 2200; width: 320px; background: #1C1B18; border: 1px solid #C9A96E; border-radius: 8px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 12px; }
+        .caption textarea.story { min-height: 72px; }
         #ai-pop .opt { display: block; width: 100%; text-align: left; white-space: pre-wrap; line-height: 1.5; margin-bottom: 6px; padding: 7px 9px; }
         #ai-pop .opt:hover { border-color: #C9A96E; }
         #ai-pop .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
@@ -296,7 +297,7 @@
     <div id="footer">
         <button class="primary" id="generate-all">▶ 全部生成</button>
         <div style="display:flex;flex-direction:column;gap:4px;">
-            <button id="ai-all" title="一次為每支影片寫勾子句、片尾補一句、貼文開頭">✨ 全部產生文案</button>
+            <button id="ai-all" title="一次為每支影片設想故事背景，再寫勾子句、片尾補一句、貼文開頭">✨ 全部產生文案</button>
             <label style="font-size:11px;color:#8A857D;display:flex;gap:4px;align-items:center;"><input type="checkbox" id="ai-overwrite" style="accent-color:#C9A96E;">覆蓋已填寫的內容</label>
         </div>
         <div id="progress">
@@ -419,7 +420,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, layout: r.layout, settings: r.settings
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -835,7 +836,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', layout: data?.layout || 'carousel',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
@@ -879,6 +880,8 @@
                 </div>
                 <div class="card caption">
                     <h3>字幕</h3>
+                    <label class="f">故事背景（只給 AI 參考，不會發布）</label>
+                    <div class="ai-row"><textarea class="story" placeholder="字母各代表誰、什麼關係、誰送誰、想說什麼。可按 ✨ 讓 AI 設想">${escapeHtml(row.story)}</textarea><button class="ai-btn ai-story" title="AI 產生">✨</button></div>
                     <label class="f">上方勾子句（留空用預設）</label>
                     <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
                     <label class="f">片尾補一句（選填；沒照片時取代全域片尾句）</label>
@@ -1006,7 +1009,9 @@
             el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
             el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
             el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
-            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo });
+            el.querySelector('.story').addEventListener('input', e => { row.story = e.target.value; saveState(); });
+            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo, story: row.story });
+            el.querySelector('.ai-story').addEventListener('click', e => aiSuggest(e.currentTarget, 'story', { ...hookCtx(), current: row.story }, el.querySelector('.story')));
             el.querySelector('.ai-pline').addEventListener('click', e => aiSuggest(e.currentTarget, 'photoLine', { ...hookCtx(), hook: resolvedHook(row), current: row.photoLine }, el.querySelector('.pline')));
             el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
             el.querySelector('.ai-opening').addEventListener('click', e => aiSuggest(e.currentTarget, 'opening', { ...hookCtx(), hook: resolvedHook(row), current: row.opening }, el.querySelector('.opening')));
@@ -1425,12 +1430,12 @@
         document.querySelectorAll('#global .ai-btn').forEach(b => b.addEventListener('click', () => {
             const r0 = rows.find(r => selected.has(r)) || rows[0];
             const target = document.getElementById(b.dataset.target);
-            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, current: target.value }, target);
+            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, current: target.value }, target);
         }));
 
         // 「✨ 全部產生文案」：一次把所有影片送給 AI，看得到整批內容才能避免各支重複；
         // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
-        const AI_FIELD_SEL = { hook: '.hook', photoLine: '.pline', opening: '.opening' };
+        const AI_FIELD_SEL = { story: '.story', hook: '.hook', photoLine: '.pline', opening: '.opening' };
         document.getElementById('ai-all').addEventListener('click', async () => {
             const btn = document.getElementById('ai-all'), overwrite = document.getElementById('ai-overwrite').checked;
             const list = rows.filter(r => r.letterA && r.letterB);
@@ -1446,7 +1451,7 @@
                 const res = await fetch(`${window.BACKEND_URL}/api/admin/social-copy-batch`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                    body: JSON.stringify({ overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) })
+                    body: JSON.stringify({ overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) })
                 });
                 if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
                 if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
@@ -1502,6 +1507,7 @@
             document.querySelectorAll('button').forEach(b => b.disabled = true);
             const date = new Date().toLocaleDateString('sv-SE'); // 本地日期 YYYY-MM-DD（toISOString 是 UTC，台灣清晨會變前一天）
             const nameCount = {};
+            const captions = []; // 這一輪所有影片的貼文文案，最後合併成一個檔案下載
             try {
                 await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'"].map(f => document.fonts.load(f).catch(() => {})));
                 for (let r = 0; r < list.length; r++) {
@@ -1528,12 +1534,19 @@
                         });
                         renderGL(null, 0, 1, W, H);
                         download(blob, name + '.mp4');
-                        download(new Blob([captionText(row)], { type: 'text/plain;charset=utf-8' }), name + '.txt');
+                        captions.push({ name, text: captionText(row) });
                         setRowStatus(row, `✅ ${name}.mp4（${tl.total.toFixed(1)}s，${(blob.size / 1048576).toFixed(1)} MB）`);
                     } catch (e) {
                         console.error(e); setRowStatus(row, '❌ ' + e.message);
                     }
                     row.el.classList.remove('busy');
+                }
+                // 文案：只有一支就照影片檔名存；多支合併成一個檔，每段標上對應的影片檔名
+                if (captions.length === 1) {
+                    download(new Blob([captions[0].text], { type: 'text/plain;charset=utf-8' }), captions[0].name + '.txt');
+                } else if (captions.length > 1) {
+                    const merged = captions.map((c, i) => `════════ ${i + 1}. ${c.name}.mp4 ════════\n\n${c.text}`).join('\n\n\n');
+                    download(new Blob([merged], { type: 'text/plain;charset=utf-8' }), `${date}_貼文文案_${captions.length}支.txt`);
                 }
                 setProgress(`完成 ${list.length} 支。檔案已下載（Chrome 第一次會問是否允許多檔下載，請按允許）。`, 1);
             } finally {
