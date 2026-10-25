@@ -449,7 +449,7 @@
             camera.up.set(0, 0, 1);
             camera.position.set(0, -100, 10);
             camera.lookAt(0, 0, 10);
-            renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
+            renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true, alpha: true });
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.0;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -889,7 +889,7 @@
                 </div>
                 <div class="card actions">
                     <label class="f" style="margin-top:0;">版型</label>
-                    <select class="layout" title="輪播：三件依序出場轉 90°；三格：上中下同時轉 360°"><option value="carousel">輪播</option><option value="triptych">三格</option></select>
+                    <select class="layout" title="輪播：三件依序出場轉 90°；三格：上中下同時轉 360°；軌道：三件繞圓形軌道輪流轉到前方"><option value="carousel">輪播</option><option value="triptych">三格</option><option value="orbit">軌道</option></select>
                     <button class="gen-one" title="只生成這一支">▶ 這支</button>
                     <button class="del danger" title="刪除這一列">🗑 刪除這支</button>
                 </div>`;
@@ -1222,6 +1222,74 @@
             return { totalFrames, total, draw };
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // 軌道版：三件作品等距（120°）放在水平圓形軌道上，輪流公轉到正前方，同時各自自轉。
+        // 鏡頭在軌道前方、俯視 ORBIT_PITCH；每件作品的自轉軸往後傾斜同樣角度，所以看起來永遠正面直立。
+        // 作品分開畫、由遠到近疊上去，離焦點越遠越模糊（景深）。
+        // ════════════════════════════════════════════════════════════════
+        const ORBIT_PITCH = 15 * Math.PI / 180, ORBIT_R = 9, ORBIT_DIST = 100;
+        const orbitCam = new THREE.PerspectiveCamera(30, W / H, 0.1, 2000);
+        orbitCam.up.set(0, 0, 1);
+        const smooth = (u) => u * u * u * (u * (u * 6 - 15) + 10);
+        // 公轉角度：每件在正前方的前後各停 DWELL 比例的時間，中間加速轉到下一件
+        function orbitAngle(t, segSec) {
+            const DWELL = 0.25, tk = (k) => segSec * (k + 0.5);
+            if (t <= tk(0)) return 0;
+            if (t >= tk(2)) return 2 * (2 * Math.PI / 3);
+            const k = Math.floor((t - tk(0)) / segSec), u = (t - tk(k)) / segSec;
+            return (k + smooth(clamp01((u - DWELL) / (1 - 2 * DWELL)))) * (2 * Math.PI / 3);
+        }
+        function renderOrbit(groups, theta, t, segSec, alpha) {
+            renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0); // 背景（同時清掉 currentGroup）
+            const target = new THREE.Vector3(0, -ORBIT_R, 10 - parseFloat(g('g-voffset')));
+            orbitCam.position.set(0, target.y - ORBIT_DIST * Math.cos(ORBIT_PITCH), target.z + ORBIT_DIST * Math.sin(ORBIT_PITCH));
+            orbitCam.lookAt(target); orbitCam.updateProjectionMatrix();
+            const viewDir = target.clone().sub(orbitCam.position).normalize();
+            const focus = ORBIT_DIST;
+            // 每件的位置、深度、自轉角（每件在自己最正前方的時刻剛好轉到字母 A 正面）
+            const items = groups.map((gp, k) => {
+                const phi = k * 2 * Math.PI / 3 - theta;
+                const pos = new THREE.Vector3(ORBIT_R * Math.sin(phi), -ORBIT_R * Math.cos(phi), 0);
+                const depth = pos.clone().sub(orbitCam.position).dot(viewDir);
+                const spin = (t - segSec * (k + 0.5)) * Math.PI / segSec; // 自轉一圈 = 2 × 每件秒數
+                return { gp, pos, depth, spin };
+            }).sort((a, b) => b.depth - a.depth);
+            const savedBg = scene.background; scene.background = null;
+            renderer.setClearColor(0x000000, 0); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            const tilt = new THREE.Group(); tilt.rotation.x = -ORBIT_PITCH; scene.add(tilt);
+            for (const it of items) {
+                tilt.position.copy(it.pos);
+                it.gp.rotation.z = -it.spin; it.gp.position.z = 0; setGroupOpacity(it.gp, 1);
+                tilt.add(it.gp);
+                renderer.clear(); renderer.render(scene, orbitCam);
+                tilt.remove(it.gp);
+                const off = Math.abs(it.depth - focus);
+                cctx.save();
+                cctx.globalAlpha = alpha;
+                cctx.filter = off > 0.5 ? `blur(${Math.min(14, off * 0.9).toFixed(1)}px) brightness(${(1 - Math.min(0.2, off * 0.015)).toFixed(3)})` : 'none';
+                cctx.drawImage(glCanvas, 0, 0);
+                cctx.restore();
+            }
+            scene.remove(tilt); scene.background = savedBg;
+        }
+        function buildOrbitTimeline(row, groups) {
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row), outSec = 0.35;
+            const orbitSec = segSec * 3, total = introSec + orbitSec + endSec, totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec + orbitSec) {
+                    const a = clamp01(t / 0.5), out = clamp01((introSec + orbitSec - t) / outSec);
+                    const ot = Math.max(0, t - introSec);
+                    renderOrbit(groups, orbitAngle(ot, segSec), ot, segSec, Math.min(a, out));
+                    drawHeader(cctx, row, Math.min(a, out)); drawCTA(cctx, a);
+                } else {
+                    drawEnd(row, t - introSec - orbitSec, endSec);
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
         // 回傳時間軸描述 + 逐幀繪製函式
         // 結尾 Logo（兩種版型共用）：片尾最後一格淡入純黑，同時浮現首頁同款 Logo「DUET / by BCAG」
         const LOGO_SEC = 2, LOGO_FADE = 0.5;
@@ -1244,6 +1312,7 @@
         function buildTimeline(row, groups) { return withLogo(buildMainTimeline(row, groups)); }
         function buildMainTimeline(row, groups) {
             if (row.layout === 'triptych') return buildTriptychTimeline(row, groups);
+            if (row.layout === 'orbit') return buildOrbitTimeline(row, groups);
             const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row);
             const holdA = 0.45, holdB = 0.55, fade = 0.3;
             const total = introSec + segSec * 3 + endSec;
