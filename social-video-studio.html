@@ -841,6 +841,8 @@
             };
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
+            // 照片不會存進瀏覽器，重新載入時一定沒有照片 → 存檔裡殘留的「客戶作品」鎖定要解除
+            row.combos.forEach(c => { c.locked = false; });
             if (row.combos.length !== 3) {
                 row.combos = []; const used = [], arche = [];
                 for (let i = 0; i < 3; i++) { const c = randomCombo(arche, used); row.combos.push(c); used.push(c.font1, c.font2); arche.push(archetypeOf(c)); }
