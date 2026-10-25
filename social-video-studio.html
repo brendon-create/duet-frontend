@@ -345,6 +345,7 @@
         import { STLLoader } from 'three/addons/loaders/STLLoader.js';
         import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
         import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
+        import { findAttachPoint, RING_CENTER_ABOVE_ATTACH } from './js/attach-point.js';
         window.THREE = THREE;
 
         // ════════════════════════════════════════════════════════════════
@@ -579,85 +580,6 @@
             return info;
         }
 
-        // 自動找圓環掛點：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖，再挑掛點。
-        // 方向：較寬的字母當佩戴正面。鏈子穿過墜頭的洞、與作品正面平行，所以正面看不到墜頭的洞；
-        //   圓環跟墜頭垂直，正面看得到圓環的圈。字母 A 在 XZ 平面（從 −Y 看）、字母 B 在 YZ 平面（從 X 看），
-        //   B 較寬時整組圓環＋墜頭轉 90°（rot）。以下 u = 圓環所在平面的水平軸、v = 圓環管徑方向的軸。
-        // 可掛條件：圓環底部（u ±0.4、v ±0.3mm）整片有實體、高低差 < 0.6mm；
-        //   且從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
-        // 分數：接近最高點（差 0.4mm 內）一律視為同高，改比誰靠近重心 → 淺凹陷（如 m 中央）會掛正中央；
-        //   更低的位置照高度計分，每偏離重心 1mm 扣 0.3mm。
-        function findAttachPoint(geometry) {
-            const STEP = 0.1, bb = geometry.boundingBox, p = geometry.attributes.position.array;
-            const x0 = bb.min.x, y0 = bb.min.y;
-            const nx = Math.ceil((bb.max.x - x0) / STEP) + 1, ny = Math.ceil((bb.max.y - y0) / STEP) + 1;
-            const hm = new Float32Array(nx * ny).fill(-Infinity);
-            let vol = 0, mx = 0, my = 0;
-            for (let t = 0; t < p.length; t += 9) {
-                const ax = p[t], ay = p[t + 1], az = p[t + 2], bx = p[t + 3], by = p[t + 4], bz = p[t + 5], qx = p[t + 6], qy = p[t + 7], qz = p[t + 8];
-                // 重心：以原點為頂點的帶號四面體體積加權
-                const v = (ax * (by * qz - bz * qy) - ay * (bx * qz - bz * qx) + az * (bx * qy - by * qx)) / 6;
-                vol += v; mx += v * (ax + bx + qx) / 4; my += v * (ay + by + qy) / 4;
-                const d = (by - qy) * (ax - qx) + (qx - bx) * (ay - qy);
-                if (Math.abs(d) < 1e-12) continue; // 垂直面，從上面看不到
-                const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, qx) - x0) / STEP)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, qx) - x0) / STEP));
-                const j0 = Math.max(0, Math.ceil((Math.min(ay, by, qy) - y0) / STEP)), j1 = Math.min(ny - 1, Math.floor((Math.max(ay, by, qy) - y0) / STEP));
-                for (let i = i0; i <= i1; i++) {
-                    const px = x0 + i * STEP;
-                    for (let j = j0; j <= j1; j++) {
-                        const py = y0 + j * STEP;
-                        const l1 = ((by - qy) * (px - qx) + (qx - bx) * (py - qy)) / d;
-                        const l2 = ((qy - ay) * (px - qx) + (ax - qx) * (py - qy)) / d;
-                        const l3 = 1 - l1 - l2;
-                        if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
-                        const z = l1 * az + l2 * bz + l3 * qz, k = i * ny + j;
-                        if (z > hm[k]) hm[k] = z;
-                    }
-                }
-            }
-            if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
-            const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → B 朝前
-            // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
-            const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
-            const H = rotB ? (u, v) => hm[v * ny + u] : (u, v) => hm[u * ny + v];
-            // 從正面看，每個 u 位置上整件作品的最高點（不分前後深度）
-            const faceMax = new Float32Array(nu).fill(-Infinity);
-            for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const h = H(u, v); if (h > faceMax[u]) faceMax[u] = h; }
-            const R_IN = 1.0, RI = Math.round(R_IN / STEP), TOL = 0.4, LAMBDA = 0.3;
-            // 先用完整圓環底部尺寸找；筆畫太細找不到時退一步只要求單點有實體
-            for (const [fu, fv, maxDiff] of [[4, 3, 0.6], [1, 1, 1.0]]) {
-                const cands = [];
-                for (let u = fu; u < nu - fu; u++) {
-                    for (let v = fv; v < nv - fv; v++) {
-                        let hmin = Infinity, hmax = -Infinity;
-                        for (let a = -fu; a <= fu && hmin > -Infinity; a++) for (let b = -fv; b <= fv; b++) {
-                            const h = H(u + a, v + b); if (h < hmin) hmin = h; if (h > hmax) hmax = h;
-                        }
-                        if (hmin === -Infinity || hmax - hmin > maxDiff) continue;
-                        // 圓環管徑中心在 hmin → 洞的下緣在水平偏移 d 處的高度 = hmin + 1.3 − √(1 − d²)
-                        let pierce = false;
-                        for (let a = -RI + 1; a <= RI - 1 && !pierce; a++) {
-                            const uu = u + a; if (uu < 0 || uu >= nu) continue;
-                            const d = a * STEP;
-                            if (faceMax[uu] > hmin + 1.3 - Math.sqrt(R_IN * R_IN - d * d) + 0.05) pierce = true;
-                        }
-                        if (pierce) continue;
-                        const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
-                        cands.push({ x, y, z: hmin, d: Math.hypot(x - mx, y - my) });
-                    }
-                }
-                if (!cands.length) continue;
-                const zTop = Math.max(...cands.map(c => c.z));
-                let best = null;
-                for (const c of cands) {
-                    const score = Math.min(c.z, zTop - TOL) - LAMBDA * c.d;
-                    if (!best || score > best.score) best = { ...c, score };
-                }
-                return { x: best.x, y: best.y, z: best.z, rot: rotB ? Math.PI / 2 : 0 };
-            }
-            return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
-        }
-
         async function buildGroup(row, combo) {
             const info = await buildGeometry(row.letterA, combo.font1, row.letterB, combo.font2, parseInt(g('g-size')));
             const bail = await loadBailGeometry();
@@ -670,12 +592,12 @@
             const group = new THREE.Group();
             group.add(new THREE.Mesh(info.geometry, mat));
             const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64); ringGeo.rotateX(Math.PI / 2);
-            // 圓環管徑中心落在掛點頂面 → 圓環底部埋進主體 0.3mm，看起來確實接上
-            const { x: ax, y: ay, z: az, rot } = info.attach, ringZ = az + 1.3;
+            // 圓環中心在掛點上方 1.2mm（與 design-studio 成品一致）
+            const { x: ax, y: ay, z: az, rot } = info.attach, ringZ = az + RING_CENTER_ABOVE_ATTACH;
             const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(ax, ay, ringZ); ring.rotation.z = rot; group.add(ring);
             if (bail) {
                 const bailH = bail.boundingBox.max.z - bail.boundingBox.min.z;
-                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ - 0.1 + bailH / 2); bm.rotation.z = rot; group.add(bm);
+                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ + bailH / 2); bm.rotation.z = rot; group.add(bm);
             }
             return group;
         }

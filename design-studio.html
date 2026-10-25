@@ -934,6 +934,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
+        import { findAttachPoint } from './js/attach-point.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
         // 字體載入系統
@@ -3119,6 +3120,7 @@
             }
 
             debug('Model generated, creating ring...'); // Debug
+            autoPositionRing(); // 每次換字母/字體/尺寸生成新作品都重新定位
             createRing();
 
             // 🔧 建立 Bail（await：墜頭 STL 是非同步下載的，沒等它定位完成就解鎖「加入購物車」，
@@ -3600,6 +3602,11 @@
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
                 
+                // 清理後幾何可能改變掛點：滑桿還停在自動定位的值（使用者沒動過）才重新定位，避免蓋掉手動調整
+                if (lastAutoRing && Object.keys(lastAutoRing).every(id => document.getElementById(id).value === lastAutoRing[id])) {
+                    autoPositionRing();
+                }
+
                 // ✅ 保留舊圓環（後端 STL 不含圓環，保持用戶調整的位置）
                 if (ringMesh) {
                     console.log(`${timestamp()} ✅ 保留舊圓環（位置: x=${ringMesh.position.x.toFixed(2)}, y=${ringMesh.position.y.toFixed(2)}, z=${ringMesh.position.z.toFixed(2)}, rot=${(ringMesh.rotation.z * 180 / Math.PI).toFixed(1)}°）${elapsed()}`);
@@ -3676,6 +3683,25 @@
         // ============================================================
 
         // (createRing, createBail, updateRingPosition are imported from ring-bail.js)
+
+        // 自動定位圓環＋墜頭：依作品形狀找掛點，把四支滑桿（與數字標籤）帶到對應值，
+        // 之後由 updateRingPosition() 照滑桿擺放。作品本體與鏡頭角度都不動。
+        // 換算：圓環中心 = modelTopZ + 1.2 + 滑桿 Z，掛點規則是圓環中心在掛點上方 1.2 → 滑桿 Z = 掛點 z − modelTopZ。
+        // 旋轉：較寬的字母當佩戴正面，圓環轉成與它平行（0° 或 90°）。
+        let lastAutoRing = null; // 上次自動帶入的滑桿值；清理分離部件後用來判斷使用者有沒有手動調過
+        function autoPositionRing() {
+            if (!mainMesh) return;
+            const a = findAttachPoint(mainMesh.geometry);
+            const vals = { ringX: a.x, ringY: a.y, ringZ: Math.round((a.z - modelTopZ) * 10) / 10, ringRotation: a.rot ? 90 : 0 };
+            lastAutoRing = {};
+            for (const [id, v] of Object.entries(vals)) {
+                const slider = document.getElementById(id);
+                slider.value = v;
+                document.getElementById(`${id}-val`).textContent = slider.value + (id === 'ringRotation' ? '°' : '');
+                lastAutoRing[id] = slider.value;
+            }
+            console.log('📍 圓環自動定位:', lastAutoRing);
+        }
 
         // 只更新材質，不重建模型（即時切換！）
         function updateMaterial() {
@@ -4292,6 +4318,7 @@
             const slotData = savedVersions[slotIndex];
             if (!slotData) return;
             modelGeneration++; // 取消任何正在飛行中的 generateModel async 結果
+            lastAutoRing = null; // 召回的作品照存檔值擺放，不自動定位
 
             // 載入槽位數據到主畫面
             document.getElementById('letter1').value = slotData.letter1;
