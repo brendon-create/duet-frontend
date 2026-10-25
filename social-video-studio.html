@@ -877,7 +877,7 @@
                     <h3>字幕</h3>
                     <label class="f">上方勾子句（留空用預設）</label>
                     <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
-                    <label class="f">片尾照片補一句（選填）</label>
+                    <label class="f">片尾補一句（選填；沒照片時取代全域片尾句）</label>
                     <input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}">
                     <label class="f">貼文開頭（只放進貼文草稿，選填）</label>
                     <div class="ai-row"><textarea class="opening" placeholder="可按 ✨ 依標題延伸">${escapeHtml(row.opening)}</textarea><button class="ai-btn ai-opening" title="AI 產生">✨</button></div>
@@ -1174,7 +1174,8 @@
                 drawCTA(cctx, ta);
             } else {
                 drawHeader(cctx, row, 1);
-                text(cctx, g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a });
+                // 沒照片時：這支有寫「片尾補一句」就用它，空白才用全域的片尾句
+                text(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a, maxW: W - 100 });
                 drawCTA(cctx, 1);
             }
         }
