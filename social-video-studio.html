@@ -1386,6 +1386,33 @@
         // ════════════════════════════════════════════════════════════════
         function escapeHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
         function resolvedHook(row) { return (row.hook || row.settings['g-hook'] || '').replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB); }
+        // 呼叫 AI 文案端點：超過 150 秒自動放棄；開始與結束都在 console 留紀錄，卡住時方便判斷卡在哪
+        const AI_TIMEOUT_MS = 150000;
+        async function aiFetch(path, body, token) {
+            const ctrl = new AbortController(), started = performance.now();
+            const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS);
+            console.info(`[AI 文案] → ${path}`, body);
+            try {
+                const res = await fetch(`${window.BACKEND_URL}${path}`, {
+                    method: 'POST', signal: ctrl.signal,
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify(body)
+                });
+                console.info(`[AI 文案] ← ${path} HTTP ${res.status}，${((performance.now() - started) / 1000).toFixed(1)} 秒`);
+                return res;
+            } catch (e) {
+                console.error(`[AI 文案] ✕ ${path}，${((performance.now() - started) / 1000).toFixed(1)} 秒`, e);
+                if (e.name === 'AbortError') throw new Error(`等了 ${AI_TIMEOUT_MS / 1000} 秒還沒有回應`);
+                throw e;
+            } finally { clearTimeout(timer); }
+        }
+        // 等待時每秒更新「已等幾秒」
+        function waitTicker(render, label) {
+            const started = Date.now();
+            render(`${label}（已等 0 秒）`);
+            const id = setInterval(() => render(`${label}（已等 ${Math.round((Date.now() - started) / 1000)} 秒）`), 1000);
+            return () => clearInterval(id);
+        }
         let aiPop = null;
         function closeAiPop() { if (aiPop) aiPop.remove(); aiPop = null; }
         document.addEventListener('mousedown', e => { if (aiPop && !aiPop.contains(e.target) && !e.target.closest('.ai-btn')) closeAiPop(); });
@@ -1400,15 +1427,11 @@
             const envLabel = window.CURRENT_ENV === 'staging' ? '測試' : '正式';
             const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入（${envLabel}環境）</a>`;
             const showMsg = (html) => { if (alive()) pop.innerHTML = `<div class="msg">${html}</div>`; };
-            showMsg('✨ 產生中，大約 10 到 30 秒…');
             const token = localStorage.getItem('adminToken');
             if (!token) { showMsg(`請先到後台登入，登入後回到這頁再按一次 ✨。<br>${loginLink}`); return; }
+            const stopTick = waitTicker(showMsg, '✨ 產生中，通常 10 到 40 秒');
             try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/social-copy`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                    body: JSON.stringify({ field, ...ctx })
-                });
+                const res = await aiFetch('/api/admin/social-copy', { field, ...ctx }, token).finally(stopTick);
                 if (res.status === 401) { showMsg(`後台登入已過期，請重新登入後再按一次 ✨。<br>${loginLink}`); return; }
                 if (res.status === 429) { showMsg('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
@@ -1455,28 +1478,25 @@
             const token = localStorage.getItem('adminToken');
             if (!token) { showStatus(`請先到後台登入，登入後回到這頁再按一次。${loginLink}`); return; }
             btn.disabled = true;
-            showStatus(`✨ 正在為 ${list.length} 支影片產生文案，大約 30 秒到 1 分鐘…`);
+            const stopTick = waitTicker(showStatus, `✨ 正在為 ${list.length} 支影片產生故事與文案，通常 30 秒到 1 分半`);
             try {
-                const res = await fetch(`${window.BACKEND_URL}/api/admin/social-copy-batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                    body: JSON.stringify({ overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) })
-                });
+                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
                 if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
                 if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
                 if (!data.success || data.videos?.length !== list.length) throw new Error(data.error || '回傳數量不符');
-                let filled = 0;
+                let filled = 0, kept = 0;
                 data.videos.forEach((v, i) => {
                     const r = list[i]; if (!rows.includes(r)) return;
                     Object.entries(AI_FIELD_SEL).forEach(([k, sel]) => {
-                        if (!v[k] || (!overwrite && r[k].trim())) return;
+                        if (!overwrite && r[k].trim()) { kept++; return; }
+                        if (!v[k]) return;
                         const input = r.el.querySelector(sel);
                         input.value = v[k]; input.dispatchEvent(new Event('input', { bubbles: true }));
                         filled++;
                     });
                 });
-                showStatus(`✅ 已填入 ${filled} 個欄位。不滿意的欄位可以按旁邊的 ✨ 換其他版本。`);
+                showStatus(`✅ 已填入 ${filled} 個欄位。` + (kept ? `另有 ${kept} 個欄位原本就有內容，所以保留沒動；要全部重寫請勾選「覆蓋已填寫的內容」再按一次。` : '不滿意的欄位可以按旁邊的 ✨ 換其他版本。'));
             } catch (e) {
                 console.error(e);
                 showStatus('產生失敗：' + escapeHtml(e.message) + '，請稍後再試。');
