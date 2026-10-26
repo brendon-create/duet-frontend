@@ -12,7 +12,7 @@
     <script src="assets/js/config.js"></script>
     <!-- 影片字幕用的標題襯線字 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
 
     <script type="importmap">
     {
@@ -971,7 +971,7 @@
         const ease = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
         const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-        function text(ctx, str, x, y, { size = 40, weight = 500, family = "'PingFang TC', -apple-system, sans-serif", color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
+        function text(ctx, str, x, y, { size = 40, weight = 500, family = VIDEO_SANS, color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
             if (alpha <= 0 || !str) return;
             ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
             ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = spacing;
@@ -981,6 +981,8 @@
             ctx.fillText(str, x, y); ctx.restore();
         }
         const SERIF = "'Cormorant Garamond', 'Times New Roman', serif";
+        // 影片中文字體：Zen Maru Gothic（Google Fonts，SIL OFL 可商用，繁體字集完整）；載入失敗時退回 PingFang
+        const VIDEO_SANS = "'Zen Maru Gothic', 'PingFang TC', -apple-system, sans-serif";
 
         function drawHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
@@ -1475,7 +1477,7 @@
             const nameCount = {};
             const captions = []; // 這一輪所有影片的貼文文案，最後合併成一個檔案下載
             try {
-                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'"].map(f => document.fonts.load(f).catch(() => {})));
+                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'", "400 40px 'Zen Maru Gothic'", "500 54px 'Zen Maru Gothic'", "700 54px 'Zen Maru Gothic'"].map(f => document.fonts.load(f).catch(() => {})));
                 for (let r = 0; r < list.length; r++) {
                     const row = list[r];
                     await useRow(row);
