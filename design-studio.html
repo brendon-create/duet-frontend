@@ -4483,9 +4483,11 @@
                 return;
             }
 
-            // 🧹 如果模型有分離部件尚未清理，提示用戶先清理
+            // 🧹 分離部件還沒清完：清理是自動的，分「還在跑」和「失敗等重試」兩種提示
             if (modelNeedsCleanup) {
-                showToast(window.t('studio.fragment.addToCart'));
+                const retryBtn = document.getElementById('cleanup-retry-btn');
+                const cleanupFailed = retryBtn && retryBtn.style.display !== 'none';
+                showToast(window.t(cleanupFailed ? 'studio.fragment.cleanupFailed' : 'studio.fragment.addToCart'));
                 return;
             }
 
