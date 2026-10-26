@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Video Studio — DUET</title>
+    <!-- ClipperLib：UMD 格式，必須在 importmap 之前載入，geometry-engine.js 透過 window.ClipperLib 存取 -->
+    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+    <!-- mp4-muxer：把 WebCodecs 編好的 H.264 chunk 封裝成 MP4（UMD，window.Mp4Muxer） -->
+    <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
+    <!-- 環境設定：決定 AI 文案按鈕呼叫 staging 或正式後端（跟後台同一套規則，develop 網址加 ?env=staging） -->
+    <script src="assets/js/config.js"></script>
+    <!-- 影片字幕用的標題襯線字 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://esm.sh/three@0.160.0",
+            "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
+            "three-mesh-bvh": "https://esm.sh/three-mesh-bvh@0.7.3",
+            "three-bvh-csg": "https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.160.0,three-mesh-bvh@0.7.3"
+        }
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Inter', sans-serif;
+            background: #111110; color: #E8E4DF; min-height: 100vh; padding: 0 0 120px;
+        }
+        a { color: #C9A96E; }
+        header {
+            display: flex; align-items: center; gap: 18px; padding: 14px 22px;
+            border-bottom: 1px solid #2A2820; position: sticky; top: 0; background: #111110; z-index: 5;
+        }
+        header h1 { font-size: 16px; font-weight: 600; letter-spacing: 1px; color: #C9A96E; }
+        header .sub { font-size: 12px; color: #8A857D; }
+        header .spacer { flex: 1; }
+        button {
+            font: inherit; cursor: pointer; border: 1px solid #3A3830; background: #1C1B18; color: #E8E4DF;
+            padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: background .15s;
+        }
+        button:hover { background: #2A2820; }
+        button:disabled { opacity: .4; cursor: not-allowed; }
+        button.primary { background: #C9A96E; color: #161410; border-color: #C9A96E; font-weight: 600; padding: 10px 20px; font-size: 14px; }
+        button.primary:hover { background: #D9BC84; }
+        button.danger:hover { background: #4A2020; border-color: #7A3030; }
+        select, input[type=text], input[type=number] {
+            font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830;
+            border-radius: 5px; padding: 5px 7px; width: 100%;
+        }
+        input[type=range] { width: 100%; accent-color: #C9A96E; }
+        label.f { display: block; font-size: 11px; color: #8A857D; margin: 8px 0 3px; }
+        .warn {
+            display: none; margin: 14px 22px; padding: 12px 16px; background: #3A2A10; border: 1px solid #7A5A20;
+            border-radius: 8px; font-size: 13px; line-height: 1.7;
+        }
+        .warn.visible { display: block; }
+        .warn code { background: #1C1B18; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+
+        /* 全域設定 */
+        #global {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 16px;
+            padding: 10px 22px 16px; border-bottom: 1px solid #2A2820; background: #141311;
+        }
+        #global .range-val { float: right; color: #C9A96E; }
+        #g-targets { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px 0 2px; font-size: 12px; color: #8A857D; }
+        #g-targets .chip { min-width: 38px; padding: 5px 10px; }
+        #g-targets .chip.on { background: #C9A96E; color: #161410; border-color: #C9A96E; font-weight: 600; }
+        #g-targets .tip { margin-left: 8px; font-size: 11px; color: #6A665E; }
+        #global .mixed { outline: 1px dashed #C9A96E; outline-offset: 2px; }
+        .ai-row { display: flex; gap: 4px; align-items: stretch; }
+        .ai-row > input, .ai-row > textarea { flex: 1; min-width: 0; }
+        .ai-btn { flex: 0 0 auto; padding: 0 8px; font-size: 13px; }
+        .caption textarea { font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830; border-radius: 5px; padding: 5px 7px; resize: vertical; min-height: 54px; }
+        #ai-pop { position: absolute; z-index: 2200; width: 320px; background: #1C1B18; border: 1px solid #C9A96E; border-radius: 8px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 12px; }
+        .caption textarea.story { min-height: 72px; }
+        #ai-pop .opt { display: block; width: 100%; text-align: left; white-space: pre-wrap; line-height: 1.5; margin-bottom: 6px; padding: 7px 9px; }
+        #ai-pop .opt:hover { border-color: #C9A96E; }
+        #ai-pop .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+        #ai-pop .msg { color: #8A857D; margin-bottom: 8px; line-height: 1.5; }
+
+        /* 列 */
+        #rows { padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
+        .row {
+            display: flex; gap: 12px; align-items: stretch; background: #1A1916; border: 1px solid #2A2820;
+            border-radius: 12px; padding: 12px; overflow-x: auto;
+        }
+        .row.busy { outline: 1px solid #C9A96E; }
+        .card { background: #141311; border: 1px solid #2A2820; border-radius: 9px; padding: 10px; flex: 0 0 auto; }
+        .card h3 { font-size: 11px; color: #8A857D; font-weight: 500; margin-bottom: 8px; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+        .card h3 .lock { color: #C9A96E; font-size: 10px; margin-left: auto; }
+
+        .card.letters { width: 150px; }
+        .letters .pair { display: flex; gap: 6px; }
+        .letters .pair input { width: 50%; min-width: 0; text-align: center; font-size: 28px; font-weight: 600; height: 56px; font-family: 'Cormorant Garamond', serif; }
+        .letters .idx { font-size: 20px; color: #C9A96E; font-weight: 600; margin-bottom: 6px; }
+        .letters .row-status { font-size: 11px; color: #8A857D; margin-top: 10px; line-height: 1.5; min-height: 32px; }
+
+        .card.combo { width: 176px; }
+        .combo canvas { width: 156px; height: 208px; display: block; border-radius: 6px; background: #221F1A; }
+        .combo .thumb-wrap { position: relative; }
+        .combo .thumb-wrap .busy-tag {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            font-size: 11px; color: #C9A96E; background: rgba(0,0,0,.45); border-radius: 6px;
+        }
+        .combo.loading .busy-tag { display: flex; }
+        .combo .btns { display: flex; gap: 6px; margin-top: 8px; }
+        .combo .btns button { flex: 1; }
+        .combo .fsel { margin-top: 6px; }
+        .combo .mat { display: flex; gap: 4px; margin-top: 6px; }
+
+        .card.photo { width: 200px; }
+        .photo .drop {
+            width: 180px; height: 208px; border: 1px dashed #4A4840; border-radius: 6px; display: flex; align-items: center;
+            justify-content: center; text-align: center; font-size: 11px; color: #8A857D; cursor: pointer; overflow: hidden;
+            position: relative; background: #221F1A;
+        }
+        .photo .drop input { display: none; }
+        .photo.has .drop { height: 56px; }
+        .photo .plist { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; width: 180px; }
+        .photo.has .plist { display: grid; }
+        .photo .pthumb { position: relative; aspect-ratio: 1; border-radius: 5px; overflow: hidden; cursor: grab; border: 1px solid #3A3830; }
+        .photo .pthumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+        .photo .pthumb .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; font-size: 10px; line-height: 16px; border-radius: 50%; background: rgba(0,0,0,.65); }
+        .photo .pthumb .cover { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; text-align: center; background: rgba(201,169,110,.85); color: #161410; }
+        .photo .pthumb.dragover { outline: 2px solid #C9A96E; }
+        .photo .pthumb .aim { position: absolute; left: 2px; top: 2px; font-size: 11px; line-height: 1; text-shadow: 0 0 3px #000; }
+        .photo .phint { display: none; font-size: 10px; color: #6A665E; margin: -2px 0 6px; }
+        .photo.has .phint { display: block; }
+
+        /* 照片取景視窗：點作品位置，亮框 = 影片實際裁到的直式範圍 */
+        #focus-modal { display: none; position: fixed; inset: 0; z-index: 2100; background: rgba(0,0,0,.82); align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+        #focus-modal.active { display: flex; }
+        #focus-modal .fm-tip { font-size: 13px; color: #E8E4DF; }
+        #focus-stage { position: relative; cursor: crosshair; line-height: 0; }
+        #focus-stage img { max-width: 86vw; max-height: 78vh; display: block; user-select: none; -webkit-user-drag: none; }
+        #focus-frame { position: absolute; border: 2px solid #E6C98A; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); cursor: move; }
+        #focus-frame .h { position: absolute; width: 16px; height: 16px; background: #E6C98A; border: 2px solid #161410; border-radius: 3px; }
+        #focus-frame .h.nw { left: -9px; top: -9px; cursor: nwse-resize; } #focus-frame .h.se { right: -9px; bottom: -9px; cursor: nwse-resize; }
+        #focus-frame .h.ne { right: -9px; top: -9px; cursor: nesw-resize; } #focus-frame .h.sw { left: -9px; bottom: -9px; cursor: nesw-resize; }
+        #focus-frame .blur { display: none; position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap; line-height: 1.4;
+            font-size: 12px; padding: 3px 8px; border-radius: 4px; background: rgba(160,60,40,.9); color: #fff; pointer-events: none; }
+        #focus-frame.lowres .blur { display: block; }
+        #focus-dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none; }
+        #focus-modal .fm-btns { display: flex; gap: 10px; }
+        .photo .drop.over { border-color: #C9A96E; color: #C9A96E; }
+        .photo .meta { display: none; }
+        .photo.has .meta { display: block; }
+        .photo .clear { margin-top: 8px; width: 100%; }
+
+        .card.caption { width: 250px; }
+        .caption textarea, .caption input { width: 100%; }
+        .caption .hint { font-size: 10px; color: #6A665E; margin-top: 4px; line-height: 1.5; }
+
+        .card.actions { flex: 1 0 84px; min-width: 84px; display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; }
+        .card.actions button { width: 100%; }
+
+        #footer {
+            position: fixed; bottom: 0; left: 0; right: 0; background: #141311; border-top: 1px solid #2A2820;
+            padding: 12px 22px; display: flex; align-items: center; gap: 16px; z-index: 5;
+        }
+        #progress { flex: 1; }
+        #progress-msg { font-size: 12px; color: #8A857D; margin-bottom: 5px; }
+        #progress-bar { height: 4px; background: #2A2820; border-radius: 2px; overflow: hidden; }
+        #progress-fill { height: 100%; width: 0; background: #C9A96E; transition: width .2s; }
+        #results { display: flex; gap: 8px; flex-wrap: wrap; }
+        #results a { font-size: 12px; background: #1C1B18; border: 1px solid #3A3830; padding: 5px 10px; border-radius: 6px; text-decoration: none; }
+
+        #offscreen { position: fixed; left: -99999px; top: 0; }
+
+        /* 字體選擇視窗（樣式沿用 design-studio 的 #font-selector-modal，改成單選：點一下就選定） */
+        select.f1, select.f2, select.pf1, select.pf2 { font-size: 15px; cursor: pointer; }
+        #font-modal {
+            display: none; position: fixed; inset: 20px; border-radius: 16px; z-index: 2000; overflow: hidden;
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        }
+        #font-modal.active { display: block; }
+        #font-modal .close-modal-btn {
+            position: absolute; top: 14px; right: 20px; background: none; border: none; color: #fff; font-size: 40px;
+            cursor: pointer; z-index: 2001; padding: 0; line-height: 1;
+        }
+        #font-modal .close-modal-btn:hover { color: #d4af37; background: none; }
+        #font-modal .modal-layout { display: flex; height: 100%; }
+        #font-modal .font-sidebar {
+            width: 20%; min-width: 200px; background: rgba(255, 255, 255, 0.02); border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px; overflow-y: auto;
+        }
+        #font-modal .fm-title { font-size: 12px; color: #C9A96E; margin-bottom: 10px; letter-spacing: 1px; }
+        #font-modal .char-input-group { margin-bottom: 20px; }
+        #font-modal .char-input-group input {
+            width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff; text-align: center; font-size: 18px; border-radius: 8px;
+        }
+        #font-modal .font-list-item { padding: 10px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); cursor: pointer; transition: background 0.2s; font-size: 15px; color: #ccc; }
+        #font-modal .font-list-item:hover { background: rgba(255, 255, 255, 0.05); }
+        #font-modal .font-list-item.selected { color: #d4af37; }
+        #font-modal .font-display-area {
+            flex: 1; padding: 40px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 20px; align-content: start;
+        }
+        #font-modal .font-preview-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 10px;
+            background: rgba(255, 255, 255, 0.03); border: 2px solid transparent; border-radius: 12px; transition: all 0.3s;
+            cursor: pointer; min-height: 140px;
+        }
+        #font-modal .font-preview-card:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-2px); }
+        #font-modal .font-preview-card.selected { border-color: #d4af37; background: rgba(212, 175, 55, 0.15); }
+        #font-modal .preview-char { font-size: 48px; margin-bottom: 8px; color: #fff; }
+        #font-modal .preview-name { font-size: 11px; color: rgba(255, 255, 255, 0.5); text-align: center; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DUET · SOCIAL VIDEO STUDIO</h1>
+        <span class="sub">同樣的兩個字母 × 三種字體組合 × 客戶作品照 → 直式短影片（1080×1920 MP4）</span>
+        <span class="spacer"></span>
+        <button id="toggle-global">⚙ 全域設定（背景、打光、秒數、CTA）</button>
+    </header>
+
+    <div class="warn" id="server-warning">
+        這個頁面需要透過本機伺服器開啟才能載入字體資料：<br>
+        <code onclick="copyCmd(this)">cd /Users/brendonchen/Desktop/Duet-code/frontend</code>
+        <code onclick="copyCmd(this)">python3 -m http.server 8080</code>
+        然後用 Chrome 開 <code onclick="copyCmd(this)">http://localhost:8080/social-video-studio.html</code>
+    </div>
+    <div class="warn" id="codec-warning">⚠️ 這個瀏覽器不支援 WebCodecs（H.264 編碼），請改用 Chrome 開啟本頁。</div>
+
+    <section id="global" style="display:none;">
+        <div id="g-targets"></div>
+        <div>
+            <label class="f">背景</label>
+            <select id="g-bg">
+                <option value="assets/images/backgrounds/LuxuryWoodBackground.png">木紋（LuxuryWood）</option>
+                <option value="assets/images/backgrounds/SpotlightStage.png">聚光舞台</option>
+                <option value="assets/images/backgrounds/SmallerStageBackdrop.png">小舞台</option>
+                <option value="assets/images/backgrounds/Stage1.png">Stage 1</option>
+                <option value="assets/images/backgrounds/Stage2.png">Stage 2</option>
+                <option value="assets/images/backgrounds/Toscana.png">Toscana</option>
+                <option value="assets/images/backgrounds/deskdiamond.jpg">鑽石桌面</option>
+                <option value="assets/images/backgrounds/background1.png">background1</option>
+                <option value="assets/images/backgrounds/Social_media_background/Tech_Guy_desk.png">Tech desk</option>
+                <option value="">攝影棚漸層（無圖）</option>
+                <option value="__upload__">＋ 上傳自訂背景…</option>
+            </select>
+            <input type="file" id="g-bg-file" accept="image/*" style="display:none">
+            <label class="f">背景亮度 <span class="range-val" id="g-bg-brightness-v">0.50</span></label>
+            <input type="range" id="g-bg-brightness" min="0.3" max="1.5" step="0.05" value="0.5">
+            <label class="f">背景對比 <span class="range-val" id="g-bg-contrast-v">1.10</span></label>
+            <input type="range" id="g-bg-contrast" min="0.5" max="2.5" step="0.05" value="1.1">
+            <label class="f">背景位移 <span class="range-val" id="g-bg-pan-v">50%</span></label>
+            <input type="range" id="g-bg-pan" min="0" max="100" step="1" value="50">
+        </div>
+        <div>
+            <label class="f">HDR 環境</label>
+            <select id="g-hdr">
+                <option value="duet_studio.hdr">Duet 攝影棚（預設）</option>
+                <option value="duet_studio5.hdr">Duet 攝影棚 5</option>
+            </select>
+            <label class="f">打光強度 <span class="range-val" id="g-light-v">2.00×</span></label>
+            <input type="range" id="g-light" min="0.3" max="2.5" step="0.05" value="2">
+            <label class="f">吊墜尺寸 <span class="range-val" id="g-size-v">10mm</span></label>
+            <input type="range" id="g-size" min="6" max="14" step="1" value="10">
+            <label class="f">垂直位置 <span class="range-val" id="g-voffset-v">8</span></label>
+            <input type="range" id="g-voffset" min="-30" max="60" step="2" value="8">
+        </div>
+        <div>
+            <label class="f">每組吊墜秒數 <span class="range-val" id="g-sec-v">3.0s</span></label>
+            <input type="range" id="g-sec" min="2" max="6" step="0.5" value="3">
+            <label class="f">三格版轉一圈秒數 <span class="range-val" id="g-spin-v">6.0s</span></label>
+            <input type="range" id="g-spin" min="4" max="10" step="0.5" value="6">
+            <label class="f">片尾照片秒數 <span class="range-val" id="g-endsec-v">3.5s</span></label>
+            <input type="range" id="g-endsec" min="2" max="6" step="0.5" value="3.5">
+            <label class="f">影片位元率 (Mbps) <span class="range-val" id="g-bitrate-v">10</span></label>
+            <input type="range" id="g-bitrate" min="4" max="20" step="1" value="10">
+        </div>
+        <div>
+            <label class="f">勾子句預設（{A} {B} 會自動代入字母）</label>
+            <input type="text" id="g-hook" value="同樣的 {A} × {B}，三種性格">
+            <label class="f">CTA 網址</label>
+            <input type="text" id="g-cta-url" value="duet.brendonchen.com">
+            <label class="f">CTA 標語（網址下一行）</label>
+            <div class="ai-row"><input type="text" id="g-cta-line" value="用屬於你們的兩個字母，設計一件作品"><button class="ai-btn" data-ai="ctaLine" data-target="g-cta-line" title="AI 產生">✨</button></div>
+            <label class="f">沒有照片時的片尾句</label>
+            <div class="ai-row"><input type="text" id="g-nophoto" value="你會選哪一個？"><button class="ai-btn" data-ai="noPhoto" data-target="g-nophoto" title="AI 產生">✨</button></div>
+            <label class="f">貼文 hashtag</label>
+            <input type="text" id="g-tags" value="#DUET #客製珠寶 #字母項鍊 #英文字母 #姓名縮寫 #情侶項鍊 #3D設計">
+            <label class="f">檔期主題（給 AI 的氣氛方向，可留空）</label>
+            <input type="text" id="g-theme" placeholder="例：聖誕節：溫馨、家庭、感謝，不用每支都提到聖誕節">
+        </div>
+    </section>
+
+    <section id="rows"></section>
+    <div style="padding: 0 22px;">
+        <button id="add-row">＋ 新增一支影片</button>
+    </div>
+
+    <div id="footer">
+        <button class="primary" id="generate-all">▶ 全部生成</button>
+        <button id="ai-all" title="一次為每支影片重新寫故事、勾子句、片尾那句、貼文開頭（會取代目前的內容）">✨ 全部產生文案</button>
+        <div id="progress">
+            <div id="progress-msg">就緒。先按「🎲」或直接輸入字母，縮圖會自動算出來。</div>
+            <div id="progress-bar"><div id="progress-fill"></div></div>
+        </div>
+        <div id="results"></div>
+    </div>
+
+    <div id="font-modal">
+        <button class="close-modal-btn" id="font-modal-close">×</button>
+        <div class="modal-layout">
+            <aside class="font-sidebar">
+                <div class="fm-title" id="font-modal-title"></div>
+                <div class="char-input-group"><input type="text" id="font-modal-char" maxlength="2"></div>
+                <div id="font-modal-list"></div>
+            </aside>
+            <section class="font-display-area" id="font-modal-grid"></section>
+        </div>
+    </div>
+
+    <div id="focus-modal">
+        <div class="fm-tip">亮框是影片會裁到的範圍：拖框移動、拖四個角縮放（比例固定），或在框外點一下把框移過去。片尾會從這個畫面再慢慢推近。</div>
+        <div id="focus-stage"><img id="focus-img" alt=""><div id="focus-frame"><div class="h nw" data-c="nw"></div><div class="h ne" data-c="ne"></div><div class="h sw" data-c="sw"></div><div class="h se" data-c="se"></div><div class="blur">可能模糊</div></div><div id="focus-dot"></div></div>
+        <div class="fm-btns"><button id="focus-reset">重設（置中、最大）</button><button class="primary" id="focus-done">完成</button></div>
+    </div>
+
+    <div id="offscreen">
+        <canvas id="gl-canvas" width="300" height="400"></canvas>
+        <canvas id="comp-canvas" width="1080" height="1920"></canvas>
+    </div>
+
+    <script>
+        window.copyCmd = function(el) {
+            navigator.clipboard.writeText(el.textContent).then(function() {
+                el.style.background = '#2A2820'; setTimeout(function() { el.style.background = ''; }, 600);
+            });
+        };
+        if (window.location.protocol === 'file:') document.getElementById('server-warning').classList.add('visible');
+        if (!('VideoEncoder' in window)) document.getElementById('codec-warning').classList.add('visible');
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+        import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
+        import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
+        import { findAttachPoint, RING_CENTER_ABOVE_ATTACH } from './js/attach-point.js';
+        window.THREE = THREE;
+
+        // ════════════════════════════════════════════════════════════════
+        // 字體風格分類 + 搭配原型（「審美」就在這裡）
+        // ════════════════════════════════════════════════════════════════
+        const FONT_STYLE = {
+            classic:    ['Cormorant Garamond', 'Libre Baskerville', 'DM Serif Display', 'Fraunces', 'Young Serif', 'Cantata One', 'Trocchi', 'Kotta One', 'Marko One', 'Grenze', 'Cherry Swash'],
+            script:     ['Alex Brush', 'Allura', 'Dancing Script', 'Great Vibes', 'Sacramento', 'Grand Hotel', 'Marck Script', 'Mr Dafoe', 'Mrs Sheppards', 'Norican', 'Petemoss', 'Sarina', 'Courgette', 'Dynalight', 'Lobster', 'Sofia'],
+            bold:       ['Anton', 'Antonio', 'Archivo Black', 'Bungee', 'Fugaz One', 'Passero One', 'Righteous', 'Sansita', 'Seymour One', 'Notable', 'Denk One', 'Days One', 'Allan', 'Abril Fatface', 'Gravitas One', 'Arbutus', 'Kelly Slab', 'Caprasimo', 'Chango', 'Kumar One'],
+            tech:       ['Audiowide', 'Orbitron', 'Exo 2', 'Aldrich', 'Baumans', 'Goldman', 'Rationale', 'Syncopate', 'Genos', 'Marvel', 'Offside', 'Atomic Age', 'Lexend Exa', 'Inter', 'Revalia', 'Foldit', 'Arya', 'Gayathri', 'Gidugu', 'Aclonica', 'Flamenco'],
+            rounded:    ['Bubblegum Sans', 'Fredoka', 'Sniglet', 'Mochiy Pop One', 'Varela Round', 'Lemonada', 'Happy Monkey', 'Cute Font', 'Chela One', 'Gorditas', 'Patrick Hand', 'Love Ya Like A Sister', 'Crafty Girls', 'Permanent Marker', 'Amatic SC', 'Text Me One'],
+            decorative: ['Fascinate', 'Federo', 'Macondo Swash Caps', 'Caesar Dressing', 'Smokum', 'Rum Raisin', 'Amarante', 'Aladin', 'Oldenburg', 'Pirata One', 'Creepster', 'Freckle Face', 'Supermercado One', 'Stylish', 'Snippet', 'Joti One']
+        };
+        // 搭配原型：每支影片的三組會從「不同原型」各抽一組，確保三種性格拉得開
+        const ARCHETYPES = [
+            { id: 'elegant',  label: '經典優雅', pairs: [['classic', 'script'], ['script', 'classic'], ['classic', 'classic']] },
+            { id: 'modern',   label: '現代俐落', pairs: [['bold', 'tech'], ['tech', 'bold'], ['tech', 'tech'], ['bold', 'classic']] },
+            { id: 'playful',  label: '活潑可愛', pairs: [['rounded', 'rounded'], ['rounded', 'bold'], ['bold', 'rounded']] },
+            { id: 'bold',     label: '大膽個性', pairs: [['bold', 'bold'], ['bold', 'decorative'], ['decorative', 'bold']] },
+            { id: 'romantic', label: '浪漫手寫', pairs: [['script', 'rounded'], ['rounded', 'script'], ['script', 'bold']] },
+            { id: 'vintage',  label: '復古奇趣', pairs: [['decorative', 'classic'], ['classic', 'decorative'], ['decorative', 'tech']] }
+        ];
+        const PLATING_LABEL = { none: '純銀', gold18k: '鍍18K金', whitegold18k: '鍍白金', rosegold18k: '鍍玫瑰金' };
+        const PLATING_COLORS = { none: 0xC0C0C0, gold18k: 0xFFD700, whitegold18k: 0xE5E5E5, rosegold18k: 0xC9A386 };
+        const FINISH_ROUGHNESS = { glossy: 0.0, matte: 0.6 };
+        const FINISH_ENV_MAP_RATIO = { glossy: 1.0, matte: 0.5 };
+        const BASE_ENV_MAP_INTENSITY = 1.2;
+
+        let ALL_FONTS = [];
+        const styleOf = (font) => Object.keys(FONT_STYLE).find(k => FONT_STYLE[k].includes(font)) || 'tech';
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        function randomPlating() {
+            const r = Math.random();
+            return r < 0.25 ? 'none' : r < 0.55 ? 'gold18k' : r < 0.85 ? 'rosegold18k' : 'whitegold18k';
+        }
+        function archetypeOf(combo) {
+            const a = styleOf(combo.font1), b = styleOf(combo.font2);
+            return ARCHETYPES.find(t => t.pairs.some(p => p[0] === a && p[1] === b))?.id || null;
+        }
+        // 抽一組：避開 excludeArchetypes 的原型、避開 usedFonts 已用過的字體
+        function randomCombo(excludeArchetypes, usedFonts) {
+            const pool = ARCHETYPES.filter(t => !excludeArchetypes.includes(t.id));
+            const type = pick(pool.length ? pool : ARCHETYPES);
+            const [sa, sb] = pick(type.pairs);
+            const avail = (style) => FONT_STYLE[style].filter(f => ALL_FONTS.includes(f) && !usedFonts.includes(f));
+            const la = avail(sa), lb = avail(sb);
+            const font1 = pick(la.length ? la : FONT_STYLE[sa]);
+            let font2 = pick((lb.length ? lb : FONT_STYLE[sb]).filter(f => f !== font1));
+            if (!font2) font2 = pick(FONT_STYLE[sb]);
+            return { font1, font2, plating: randomPlating(), finish: Math.random() < 0.75 ? 'glossy' : 'matte', locked: false };
+        }
+        function randomLetters() {
+            const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const a = pick(A.split('')); let b = pick(A.split('')); while (b === a) b = pick(A.split(''));
+            return [a, b];
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 狀態 / 持久化
+        // ════════════════════════════════════════════════════════════════
+        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags', 'g-theme'];
+        // 每支影片各自有一份設定（row.settings）。畫縮圖、生成影片前用 useRow(row) 切到那支，
+        // 之後 g() 讀到的就是那支的設定；沒有作用中的影片時才讀面板上的值
+        let activeRow = null;
+        const g = (id) => (activeRow?.settings?.[id] !== undefined ? activeRow.settings[id] : document.getElementById(id).value);
+        const panelSettings = () => Object.fromEntries(G_IDS.map(id => [id, document.getElementById(id).value]));
+        const VISUAL_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset'];
+        const selected = new Set(); // 面板目前要套用的影片
+        const rows = []; // { id, letterA, letterB, combos:[3], photo:{list:[{url,img}],font1,font2,plating}|null, hook, photoLine, el }
+        let rowSeq = 0;
+
+        function saveState() {
+            try {
+                localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
+                localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, aiOriginal: r.aiOriginal, layout: r.layout, settings: r.settings
+                }))));
+            } catch (e) { /* 配額滿了就算了 */ }
+        }
+        function loadState() {
+            try {
+                const gs = JSON.parse(localStorage.getItem('duet_svs_global') || 'null');
+                if (gs) G_IDS.forEach(id => { if (gs[id] !== undefined && !String(gs[id]).startsWith('blob:')) document.getElementById(id).value = gs[id]; });
+                return JSON.parse(localStorage.getItem('duet_svs_rows') || 'null');
+            } catch (e) { return null; }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 3D：場景 / 幾何快取 / 渲染
+        // ════════════════════════════════════════════════════════════════
+        const glCanvas = document.getElementById('gl-canvas');
+        const compCanvas = document.getElementById('comp-canvas');
+        const cctx = compCanvas.getContext('2d');
+        let scene, camera, renderer;
+        let bgTexture = null, bgTextureKey = '', bgCoverKey = '', studioBg = null, currentHdr = '';
+        const bgCache = new Map(), hdrCache = new Map();
+        const geoCache = new Map();   // key → { geometry, modelTopZ }
+        let bailGeo = null;
+
+        function initScene() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(30, 3 / 4, 0.1, 2000);
+            camera.up.set(0, 0, 1);
+            camera.position.set(0, -100, 10);
+            camera.lookAt(0, 0, 10);
+            renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true, alpha: true });
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            const mk = (L, base) => { L.userData.baseIntensity = base; scene.add(L); return L; };
+            mk(new THREE.AmbientLight(0xffffff, 0.8), 0.8);
+            mk(new THREE.DirectionalLight(0xFFF5E8, 2.8), 2.8).position.set(20, -15, 30);
+            mk(new THREE.DirectionalLight(0xE8F0FF, 0.8), 0.8).position.set(-20, 15, 10);
+            mk(new THREE.DirectionalLight(0xffffff, 0.5), 0.5).position.set(0, 30, -10);
+        }
+        // 切到某支影片的設定：背景、HDR、打光都換成那支的
+        async function useRow(row) {
+            activeRow = row;
+            await ensureBackground();
+            await ensureHDR();
+            applyLight();
+        }
+        async function ensureHDR() {
+            const file = g('g-hdr');
+            if (file === currentHdr) return;
+            currentHdr = file;
+            if (hdrCache.has(file)) { scene.environment = hdrCache.get(file); return; }
+            await loadHDR(file);
+        }
+        function applyLight() {
+            const mult = parseFloat(g('g-light')) || 1;
+            scene.traverse(o => { if (o.isLight && o.userData.baseIntensity !== undefined) o.intensity = o.userData.baseIntensity * mult; });
+        }
+        function loadHDR(file) {
+            const urls = [
+                `https://raw.githubusercontent.com/brendon-create/duet-frontend/develop/assets/images/hdr/${file}`,
+                `https://cdn.jsdelivr.net/gh/brendon-create/duet-frontend@develop/assets/images/hdr/${file}`
+            ];
+            return import('three/addons/loaders/RGBELoader.js').then(({ RGBELoader }) => new Promise(resolve => {
+                const loader = new RGBELoader(); let i = 0;
+                (function next() {
+                    if (i >= urls.length) { console.warn('HDR 全部失敗，純燈光模式'); resolve(); return; }
+                    loader.load(urls[i++], tex => { tex.mapping = THREE.EquirectangularReflectionMapping; hdrCache.set(file, tex); scene.environment = tex; resolve(); }, undefined, next);
+                })();
+            })).catch(() => console.warn('RGBELoader 載入失敗'));
+        }
+
+        function createStudioBackground(W, H) {
+            const c = document.createElement('canvas'); c.width = W; c.height = H;
+            const ctx = c.getContext('2d');
+            const grad = ctx.createRadialGradient(W * .5, H * .38, 0, W * .5, H * .38, Math.hypot(W, H) * .58);
+            grad.addColorStop(0, '#DDD0C0'); grad.addColorStop(.3, '#C4AA90'); grad.addColorStop(.62, '#9A7860'); grad.addColorStop(1, '#5C3C28');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+            return new THREE.CanvasTexture(c);
+        }
+        function loadAdjustedBgTexture(url, exposure, contrast) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+                    const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    const lut = new Uint8Array(256), gamma = 1 / exposure;
+                    for (let i = 0; i < 256; i++) lut[i] = Math.max(0, Math.min(255, Math.round((Math.pow(i / 255, gamma) * 255 - 128) * contrast + 128)));
+                    const d = ctx.getImageData(0, 0, c.width, c.height);
+                    for (let i = 0; i < d.data.length; i += 4) { d.data[i] = lut[d.data[i]]; d.data[i + 1] = lut[d.data[i + 1]]; d.data[i + 2] = lut[d.data[i + 2]]; }
+                    ctx.putImageData(d, 0, 0);
+                    resolve(new THREE.CanvasTexture(c));
+                };
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+        function applyBgCover(tex, W, H, panPercent) {
+            const iw = tex.image.width, ih = tex.image.height, ia = iw / ih, ca = W / H, pan = panPercent / 100;
+            // 位移只改 repeat/offset（貼圖矩陣），不需要重新上傳整張圖；只有第一次設定 wrap 時才需要
+            if (tex.wrapS !== THREE.ClampToEdgeWrapping) { tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true; }
+            if (ia > ca) { const rx = ca / ia; tex.repeat.set(rx, 1); tex.offset.set((1 - rx) * pan, 0); }
+            else { const ry = ia / ca; tex.repeat.set(1, ry); tex.offset.set(0, (1 - ry) * pan); }
+        }
+        async function ensureBackground() {
+            const key = [g('g-bg'), g('g-bg-brightness'), g('g-bg-contrast')].join('|');
+            if (key === bgTextureKey) return;
+            bgTextureKey = key; bgCoverKey = '';
+            if (!bgCache.has(key)) bgCache.set(key, g('g-bg') ? await loadAdjustedBgTexture(g('g-bg'), parseFloat(g('g-bg-brightness')), parseFloat(g('g-bg-contrast'))) : null);
+            bgTexture = bgCache.get(key);
+            if (!studioBg) studioBg = createStudioBackground(1080, 1920);
+            scene.background = bgTexture ? null : studioBg;
+        }
+
+        async function loadBailGeometry() {
+            if (bailGeo) return bailGeo;
+            bailGeo = await new Promise(resolve => new STLLoader().load('assets/models/bail.stl', geo => {
+                geo.computeBoundingBox(); const bb = geo.boundingBox;
+                geo.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
+                geo.computeVertexNormals();
+                const s = 4 / Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y);
+                geo.scale(s, s, s); geo.computeBoundingBox();
+                resolve(geo);
+            }, undefined, () => resolve(null)));
+            return bailGeo;
+        }
+
+        async function buildGeometry(letterA, fontA, letterB, fontB, size) {
+            const key = [letterA, fontA, letterB, fontB, size].join('|');
+            if (geoCache.has(key)) return geoCache.get(key);
+            let geo1 = await createV3LetterGeometry(fontA, letterA, size);
+            let geo2 = await createV3LetterGeometry(fontB, letterB, size);
+            geo1.center(); geo2.center();
+            geo1.computeBoundingBox(); const h1 = geo1.boundingBox.max.y - geo1.boundingBox.min.y;
+            geo1.applyMatrix4(new THREE.Matrix4().makeScale(size / h1, size / h1, size / h1));
+            geo2.computeBoundingBox(); const h2 = geo2.boundingBox.max.y - geo2.boundingBox.min.y;
+            geo2.applyMatrix4(new THREE.Matrix4().makeScale(size / h2, size / h2, size / h2));
+            geo1.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+            geo2.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+            geo1.center(); geo2.center();
+            geo1 = geo1.toNonIndexed(); geo2 = geo2.toNonIndexed();
+            const ev = new Evaluator(), m = new THREE.MeshStandardMaterial();
+            const b1 = new Brush(geo1, m); b1.updateMatrixWorld();
+            const b2 = new Brush(geo2, m); b2.updateMatrixWorld();
+            const res = ev.evaluate(b1, b2, INTERSECTION);
+            let geometry = res.geometry.toNonIndexed();
+            geometry.deleteAttribute('normal'); geometry.computeVertexNormals();
+            const pos = geometry.attributes.position, nor = geometry.attributes.normal;
+            for (let i = 0; i < pos.count; i++) pos.setXYZ(i, pos.getX(i) + nor.getX(i) * .001, pos.getY(i) + nor.getY(i) * .001, pos.getZ(i) + nor.getZ(i) * .001);
+            pos.needsUpdate = true;
+            geometry.computeBoundingBox();
+            const c = geometry.boundingBox.getCenter(new THREE.Vector3());
+            geometry.translate(-c.x, -c.y, -c.z); geometry.computeBoundingBox();
+            const info = { geometry, modelTopZ: geometry.boundingBox.max.z, attach: findAttachPoint(geometry) };
+            geoCache.set(key, info);
+            return info;
+        }
+
+        async function buildGroup(row, combo) {
+            const info = await buildGeometry(row.letterA, combo.font1, row.letterB, combo.font2, parseInt(g('g-size')));
+            const bail = await loadBailGeometry();
+            const mult = parseFloat(g('g-light')) || 1;
+            const mat = new THREE.MeshStandardMaterial({
+                color: PLATING_COLORS[combo.plating] ?? PLATING_COLORS.none, metalness: 1,
+                roughness: FINISH_ROUGHNESS[combo.finish] ?? 0,
+                envMapIntensity: BASE_ENV_MAP_INTENSITY * mult * (FINISH_ENV_MAP_RATIO[combo.finish] ?? 1)
+            });
+            const group = new THREE.Group();
+            group.add(new THREE.Mesh(info.geometry, mat));
+            const ringGeo = new THREE.TorusGeometry(1.3, 0.3, 16, 64); ringGeo.rotateX(Math.PI / 2);
+            // 圓環中心在掛點上方 1.2mm（與 design-studio 成品一致）
+            const { x: ax, y: ay, z: az, rot } = info.attach, ringZ = az + RING_CENTER_ABOVE_ATTACH;
+            const ring = new THREE.Mesh(ringGeo, mat.clone()); ring.position.set(ax, ay, ringZ); ring.rotation.z = rot; group.add(ring);
+            if (bail) {
+                const bailH = bail.boundingBox.max.z - bail.boundingBox.min.z;
+                const bm = new THREE.Mesh(bail, mat.clone()); bm.position.set(ax, ay, ringZ + bailH / 2); bm.rotation.z = rot; group.add(bm);
+            }
+            return group;
+        }
+        function setGroupOpacity(group, opacity) {
+            group.traverse(o => { if (o.isMesh) { o.material.transparent = opacity < 1; o.material.opacity = opacity; } });
+        }
+
+        let currentGroup = null;
+        let glSize = { W: 0, H: 0 };
+        // 把一個 group（或空景）畫進 gl-canvas
+        function renderGL(group, angleRad, opacity, W, H) {
+            if (glSize.W !== W || glSize.H !== H) {
+                glCanvas.width = W; glCanvas.height = H; renderer.setSize(W, H, false);
+                camera.aspect = W / H; camera.updateProjectionMatrix();
+                glSize = { W, H };
+            }
+            if (bgTexture) {
+                const ck = [bgTexture.uuid, W, H, g('g-bg-pan')].join('|');
+                if (ck !== bgCoverKey) { applyBgCover(bgTexture, W, H, parseFloat(g('g-bg-pan'))); bgCoverKey = ck; }
+            }
+            if (currentGroup !== group) { if (currentGroup) scene.remove(currentGroup); currentGroup = group; if (group) scene.add(group); }
+            if (group) {
+                group.rotation.z = -angleRad;
+                group.position.z = parseFloat(g('g-voffset'));
+                setGroupOpacity(group, opacity);
+            }
+            if (bgTexture) {
+                if (group) group.visible = false;
+                scene.background = bgTexture; renderer.toneMapping = THREE.NoToneMapping; renderer.render(scene, camera);
+                scene.background = null; if (group) group.visible = true;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.autoClear = false; renderer.render(scene, camera); renderer.autoClear = true;
+            } else {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // 三格版：先畫整張背景，再用 viewport/scissor 把三件作品各自畫進自己的格子（同一角度）
+        const cellCam = new THREE.PerspectiveCamera(15, 1, 0.1, 2000);
+        cellCam.up.set(0, 0, 1);
+        // 三件共用同一個取景尺寸，彼此大小比例才真實；以「轉一整圈都不會出格」來算
+        function fitCells(groups, aspect) {
+            let visH = 0; const czs = [];
+            groups.forEach(gp => {
+                gp.rotation.z = 0; gp.position.z = 0; gp.updateMatrixWorld(true);
+                const b = new THREE.Box3().setFromObject(gp);
+                const rxy = Math.max(...[[b.min.x, b.min.y], [b.min.x, b.max.y], [b.max.x, b.min.y], [b.max.x, b.max.y]].map(([x, y]) => Math.hypot(x, y)));
+                visH = Math.max(visH, (b.max.z - b.min.z) * 1.06, 2 * rxy * 1.06 / aspect);
+                czs.push((b.max.z + b.min.z) / 2);
+            });
+            return { visH, czs };
+        }
+        function renderTriptych(groups, angleRad, opacity, cells, fit) {
+            renderGL(null, 0, 1, W, H); // 第一階段：只有背景（並清掉 currentGroup）
+            const savedBg = scene.background; scene.background = null;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.autoClear = false; renderer.setScissorTest(true);
+            const D = 100;
+            groups.forEach((gp, i) => {
+                const c = cells[i], vy = H - c.y - c.h;
+                renderer.setViewport(c.x, vy, c.w, c.h); renderer.setScissor(c.x, vy, c.w, c.h);
+                cellCam.aspect = c.w / c.h; cellCam.fov = 2 * Math.atan(fit.visH / 2 / D) * 180 / Math.PI;
+                cellCam.position.set(0, -D, fit.czs[i]); cellCam.lookAt(0, 0, fit.czs[i]); cellCam.updateProjectionMatrix();
+                gp.rotation.z = -angleRad; gp.position.z = 0; setGroupOpacity(gp, opacity);
+                scene.add(gp); renderer.render(scene, cellCam); scene.remove(gp);
+            });
+            renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.autoClear = true;
+            scene.background = savedBg;
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 縮圖佇列（序列化，避免同時搶 renderer）
+        // ════════════════════════════════════════════════════════════════
+        const TW = 216, TH = 288, THUMB_FRAMES = 36, THUMB_SEC_PER_REV = 4;
+        // 縮圖播放：所有縮圖共用同一個旋轉時鐘（globalFrame），角度永遠同步；
+        // 按住左右拖可停在任意角度，放開後偏移量（_off）約半秒內平滑歸零，回到跟其他作品一致
+        let globalFrame = 0;
+        (function thumbLoop(last) {
+            requestAnimationFrame(now => {
+                const dt = last ? (now - last) / 1000 : 0;
+                globalFrame = (globalFrame + dt * THUMB_FRAMES / THUMB_SEC_PER_REV) % THUMB_FRAMES;
+                document.querySelectorAll('.combo').forEach(card => {
+                    if (!card._sprite) return;
+                    if (!card._drag) {
+                        let off = card._off || 0;
+                        off = ((off % THUMB_FRAMES) + THUMB_FRAMES * 1.5) % THUMB_FRAMES - THUMB_FRAMES / 2; // 取最短方向
+                        off *= Math.exp(-dt * 8);
+                        card._off = Math.abs(off) < 0.05 ? 0 : off;
+                        card._frame = globalFrame + card._off;
+                    }
+                    const k = ((Math.floor(card._frame) % THUMB_FRAMES) + THUMB_FRAMES) % THUMB_FRAMES;
+                    if (k === card._shown) return;
+                    card._shown = k;
+                    const ctx = card.querySelector('canvas').getContext('2d');
+                    ctx.clearRect(0, 0, TW, TH);
+                    ctx.drawImage(card._sprite, k * TW, 0, TW, TH, 0, 0, TW, TH);
+                });
+                thumbLoop(now);
+            });
+        })(0);
+        function bindThumbDrag(card) {
+            const c = card.querySelector('canvas');
+            c.style.cursor = 'grab'; c.style.touchAction = 'none';
+            c.addEventListener('pointerdown', e => { card._drag = { x: e.clientX, f: card._frame || 0 }; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; });
+            c.addEventListener('pointermove', e => { if (card._drag) card._frame = card._drag.f - (e.clientX - card._drag.x) / 5; });
+            const end = () => { if (card._drag) card._off = card._frame - globalFrame; card._drag = null; c.style.cursor = 'grab'; };
+            c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+        }
+
+        const thumbQueue = [];
+        let thumbBusy = false;
+        function queueThumb(row, idx) {
+            if (!thumbQueue.some(q => q.row === row && q.idx === idx)) thumbQueue.push({ row, idx });
+            row.el.querySelectorAll('.combo')[idx].classList.add('loading');
+            processThumbs();
+        }
+        async function processThumbs() {
+            if (thumbBusy || generating) return;
+            thumbBusy = true;
+            while (thumbQueue.length) {
+                const { row, idx } = thumbQueue.shift();
+                if (!rows.includes(row)) continue;
+                const card = row.el.querySelectorAll('.combo')[idx];
+                const combo = row.combos[idx];
+                try {
+                    if (!/^[A-Za-z0-9]$/.test(row.letterA) || !/^[A-Za-z0-9]$/.test(row.letterB)) throw new Error('缺字母');
+                    await useRow(row);
+                    const group = await buildGroup(row, combo);
+                    // 拍一圈 36 個角度存成橫向長條圖，之後縮圖只播放這張圖，不再動用 3D renderer
+                    const sprite = document.createElement('canvas');
+                    sprite.width = TW * THUMB_FRAMES; sprite.height = TH;
+                    const sctx = sprite.getContext('2d');
+                    for (let k = 0; k < THUMB_FRAMES; k++) {
+                        renderGL(group, k / THUMB_FRAMES * Math.PI * 2, 1, TW, TH);
+                        sctx.drawImage(glCanvas, k * TW, 0);
+                        if (k % 6 === 5) await new Promise(r => requestAnimationFrame(r));
+                    }
+                    renderGL(null, 0, 1, TW, TH);
+                    card._sprite = sprite;
+                } catch (e) {
+                    console.error(e);
+                    card._sprite = null;
+                    const tc = card.querySelector('canvas'), ctx = tc.getContext('2d');
+                    ctx.fillStyle = '#221F1A'; ctx.fillRect(0, 0, TW, TH); ctx.fillStyle = '#A05050'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('無法生成', TW / 2, TH / 2 - 10); ctx.font = '11px sans-serif'; ctx.fillText(String(e.message).slice(0, 30), TW / 2, TH / 2 + 14);
+                }
+                card.classList.remove('loading');
+                await new Promise(r => requestAnimationFrame(r));
+            }
+            thumbBusy = false;
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 列 UI
+        // ════════════════════════════════════════════════════════════════
+        const rowsEl = document.getElementById('rows');
+        const fontOptions = (sel) => ALL_FONTS.map(f => `<option value="${f}"${f === sel ? ' selected' : ''}>${f}</option>`).join('');
+        const platingOptions = (sel) => Object.entries(PLATING_LABEL).map(([v, l]) => `<option value="${v}"${v === sel ? ' selected' : ''}>${l}</option>`).join('');
+
+        function addRow(data) {
+            const row = {
+                id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, layout: data?.layout || 'carousel',
+                settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
+            };
+            // 臨時上傳的背景只存在這次開啟的頁面裡；重新整理後網址失效，改回預設背景
+            if (String(row.settings['g-bg'] || '').startsWith('blob:') && !document.querySelector(`#g-bg option[value="${row.settings['g-bg']}"]`)) {
+                row.settings['g-bg'] = 'assets/images/backgrounds/LuxuryWoodBackground.png';
+            }
+            if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
+            if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
+            // 照片不會存進瀏覽器，重新載入時一定沒有照片 → 存檔裡殘留的「客戶作品」鎖定要解除
+            row.combos.forEach(c => { c.locked = false; });
+            if (row.combos.length !== 3) {
+                row.combos = []; const used = [], arche = [];
+                for (let i = 0; i < 3; i++) { const c = randomCombo(arche, used); row.combos.push(c); used.push(c.font1, c.font2); arche.push(archetypeOf(c)); }
+            }
+            const el = document.createElement('div'); el.className = 'row'; row.el = el;
+            el.innerHTML = `
+                <div class="card letters">
+                    <div class="idx">#<span class="num"></span></div>
+                    <h3>字母組合</h3>
+                    <div class="pair"><input type="text" class="la" maxlength="1" value="${row.letterA}"><input type="text" class="lb" maxlength="1" value="${row.letterB}"></div>
+                    <button class="rnd-letters" style="width:100%;margin-top:8px;">🎲 隨機字母</button>
+                    <button class="rnd-all" style="width:100%;margin-top:6px;">🔄 全部重抽字體</button>
+                    <div class="row-status"></div>
+                </div>
+                ${[0, 1, 2].map(i => `
+                <div class="card combo" data-idx="${i}">
+                    <h3>作品 ${i + 1}<span class="lock"></span></h3>
+                    <div class="thumb-wrap"><canvas width="216" height="288" title="按住左右拖曳可轉動"></canvas><div class="busy-tag">計算中…</div></div>
+                    <select class="f1 fsel" title="字母 ${'A'}（正面）字體"></select>
+                    <select class="f2 fsel" title="字母 B（側面）字體"></select>
+                    <div class="mat"><select class="pl"></select><select class="fi"><option value="glossy">亮面</option><option value="matte">霧面</option></select></div>
+                    <div class="btns"><button class="reroll">🔄 重抽</button></div>
+                </div>`).join('')}
+                <div class="card photo">
+                    <h3>客戶作品照（選填）</h3>
+                    <div class="plist"></div>
+                    <div class="phint">點縮圖可設定作品在畫面中的位置</div>
+                    <label class="drop"><input type="file" accept="image/*" multiple><span class="drop-text">拖曳或點擊上傳<br>出貨作品照片（可多張）</span></label>
+                    <div class="meta">
+                        <label class="f">這件作品的字體（正面 / 側面）</label>
+                        <select class="pf1"></select>
+                        <select class="pf2" style="margin-top:4px;"></select>
+                        <label class="f">材質</label>
+                        <select class="ppl"></select>
+                        <button class="clear">✕ 移除全部照片</button>
+                    </div>
+                </div>
+                <div class="card caption">
+                    <h3>字幕</h3>
+                    <label class="f">故事背景（AI 參考用；附在文案檔最後，不進貼文本文）</label>
+                    <div class="ai-row"><textarea class="story" placeholder="字母各代表誰、什麼關係、誰送誰、想說什麼。可按 ✨ 讓 AI 設想">${escapeHtml(row.story)}</textarea><button class="ai-btn ai-story" title="AI 產生">✨</button></div>
+                    <label class="f">上方勾子句（留空用預設）</label>
+                    <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
+                    <label class="f">片尾補一句（選填；沒照片時取代全域片尾句）</label>
+                    <div class="ai-row"><input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}"><button class="ai-btn ai-pline" title="AI 產生">✨</button></div>
+                    <label class="f">貼文開頭（只放進貼文草稿，選填）</label>
+                    <div class="ai-row"><textarea class="opening" placeholder="可按 ✨ 依標題延伸">${escapeHtml(row.opening)}</textarea><button class="ai-btn ai-opening" title="AI 產生">✨</button></div>
+                    <div class="hint">自動帶入：大字「A × B」、片尾照片上的「A × B」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
+                </div>
+                <div class="card actions">
+                    <label class="f" style="margin-top:0;">版型</label>
+                    <select class="layout" title="輪播：三件依序出場轉 90°；三格：上中下同時轉 360°；軌道：三件繞圓形軌道輪流轉到前方"><option value="carousel">輪播</option><option value="triptych">三格</option><option value="orbit">軌道</option></select>
+                    <button class="gen-one" title="只生成這一支">▶ 這支</button>
+                    <button class="del danger" title="刪除這一列">🗑 刪除這支</button>
+                </div>`;
+            rowsEl.appendChild(el);
+            rows.push(row);
+
+            // 填選單
+            el.querySelectorAll('.combo').forEach((card, i) => {
+                const c = row.combos[i];
+                bindThumbDrag(card);
+                card.querySelector('.f1').innerHTML = fontOptions(c.font1);
+                card.querySelector('.f2').innerHTML = fontOptions(c.font2);
+                card.querySelector('.pl').innerHTML = platingOptions(c.plating);
+                card.querySelector('.fi').value = c.finish;
+                const sync = () => {
+                    c.font1 = card.querySelector('.f1').value; c.font2 = card.querySelector('.f2').value;
+                    c.plating = card.querySelector('.pl').value; c.finish = card.querySelector('.fi').value;
+                    saveState(); queueThumb(row, i);
+                };
+                ['.f1', '.f2', '.pl', '.fi'].forEach(s => card.querySelector(s).addEventListener('change', sync));
+                card.querySelector('.reroll').addEventListener('click', () => {
+                    if (c.locked) return;
+                    const others = row.combos.filter((_, j) => j !== i);
+                    const nc = randomCombo(others.map(archetypeOf).filter(Boolean), others.flatMap(o => [o.font1, o.font2]));
+                    Object.assign(c, nc); refreshComboCard(row, i); saveState(); queueThumb(row, i);
+                });
+            });
+            el.querySelector('.pf1').innerHTML = fontOptions(row.combos[2].font1);
+            el.querySelector('.pf2').innerHTML = fontOptions(row.combos[2].font2);
+            el.querySelector('.ppl').innerHTML = platingOptions(row.combos[2].plating);
+            showSelectFont(el.querySelector('.pf1')); showSelectFont(el.querySelector('.pf2'));
+
+            // 字母
+            const la = el.querySelector('.la'), lb = el.querySelector('.lb');
+            const onLetter = () => {
+                la.value = la.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1);
+                lb.value = lb.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1);
+                row.letterA = la.value; row.letterB = lb.value; saveState();
+                if (row.letterA && row.letterB) row.combos.forEach((_, i) => queueThumb(row, i));
+            };
+            la.addEventListener('input', onLetter); lb.addEventListener('input', onLetter);
+            el.querySelector('.rnd-letters').addEventListener('click', () => { [la.value, lb.value] = randomLetters(); onLetter(); });
+            el.querySelector('.rnd-all').addEventListener('click', () => {
+                const used = [], arche = [];
+                row.combos.forEach(c => { if (c.locked) { used.push(c.font1, c.font2); arche.push(archetypeOf(c)); } });
+                row.combos.forEach((c, i) => {
+                    if (c.locked) return;
+                    const nc = randomCombo(arche.filter(Boolean), used); Object.assign(c, nc);
+                    used.push(c.font1, c.font2); arche.push(archetypeOf(c)); refreshComboCard(row, i); queueThumb(row, i);
+                });
+                saveState();
+            });
+
+            // 照片
+            const drop = el.querySelector('.drop'), fileInput = drop.querySelector('input'), plist = el.querySelector('.plist');
+            const photoCard = el.querySelector('.card.photo');
+            // 照片清單：第一張是封面；可拖曳換順序、✕ 刪單張
+            const renderPhotoList = () => {
+                const list = row.photo?.list || [];
+                plist.innerHTML = '';
+                list.forEach((ph, k) => {
+                    const d = document.createElement('div'); d.className = 'pthumb'; d.draggable = true;
+                    d.title = '點一下設定作品位置；拖曳可換順序';
+                    d.innerHTML = `<img src="${ph.url}">${ph.fx !== 0.5 || ph.fy !== 0.5 || (ph.zoom || 1) !== 1 ? '<span class="aim">🎯</span>' : ''}<button class="x" title="刪除這張">✕</button>${k === 0 ? '<div class="cover">封面</div>' : ''}`;
+                    d.addEventListener('click', () => openFocusEditor(ph, renderPhotoList));
+                    d.querySelector('.x').addEventListener('click', ev => {
+                        ev.preventDefault(); ev.stopPropagation(); URL.revokeObjectURL(ph.url); list.splice(k, 1);
+                        if (!list.length) clearPhotos(); else renderPhotoList();
+                    });
+                    d.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/duet-photo', String(k)); });
+                    d.addEventListener('dragover', ev => { if (ev.dataTransfer.types.includes('text/duet-photo')) { ev.preventDefault(); d.classList.add('dragover'); } });
+                    d.addEventListener('dragleave', () => d.classList.remove('dragover'));
+                    d.addEventListener('drop', ev => {
+                        const from = ev.dataTransfer.getData('text/duet-photo'); d.classList.remove('dragover');
+                        if (from === '') return;
+                        ev.preventDefault(); ev.stopPropagation();
+                        const [moved] = list.splice(+from, 1); list.splice(k, 0, moved); renderPhotoList();
+                    });
+                    plist.appendChild(d);
+                });
+                photoCard.classList.toggle('has', list.length > 0);
+                drop.querySelector('.drop-text').innerHTML = list.length ? '＋ 再加照片' : '拖曳或點擊上傳<br>出貨作品照片（可多張）';
+            };
+            const addPhotos = (files) => {
+                const imgs = [...(files || [])].filter(f => f.type.startsWith('image/'));
+                if (!imgs.length) return;
+                const isNew = !row.photo;
+                if (isNew) row.photo = { list: [], font1: el.querySelector('.pf1').value, font2: el.querySelector('.pf2').value, plating: el.querySelector('.ppl').value };
+                imgs.forEach(file => { const url = URL.createObjectURL(file), img = new Image(); img.src = url; row.photo.list.push({ url, img, fx: 0.5, fy: 0.5, zoom: 1 }); });
+                fileInput.value = '';
+                renderPhotoList();
+                if (isNew) applyPhotoCombo();
+            };
+            const clearPhotos = () => {
+                (row.photo?.list || []).forEach(ph => URL.revokeObjectURL(ph.url));
+                row.photo = null; row.combos[2].locked = false;
+                renderPhotoList(); refreshComboCard(row, 2); saveState();
+            };
+            const applyPhotoCombo = () => {
+                if (!row.photo) return;
+                row.photo.font1 = el.querySelector('.pf1').value; row.photo.font2 = el.querySelector('.pf2').value; row.photo.plating = el.querySelector('.ppl').value;
+                const c = row.combos[2];
+                Object.assign(c, { font1: row.photo.font1, font2: row.photo.font2, plating: row.photo.plating, locked: true });
+                refreshComboCard(row, 2); saveState(); queueThumb(row, 2);
+            };
+            fileInput.addEventListener('change', e => addPhotos(e.target.files));
+            drop.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); drop.classList.add('over'); } });
+            drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+            drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); addPhotos(e.dataTransfer.files); });
+            ['.pf1', '.pf2', '.ppl'].forEach(s => el.querySelector(s).addEventListener('change', applyPhotoCombo));
+            el.querySelector('.clear').addEventListener('click', clearPhotos);
+
+            // 字幕
+            el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
+            el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
+            el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
+            el.querySelector('.story').addEventListener('input', e => { row.story = e.target.value; saveState(); });
+            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo, story: row.story, theme: row.settings['g-theme'] || '' });
+            el.querySelector('.ai-story').addEventListener('click', e => aiSuggest(e.currentTarget, 'story', { ...hookCtx(), current: row.story }, el.querySelector('.story')));
+            el.querySelector('.ai-pline').addEventListener('click', e => aiSuggest(e.currentTarget, 'photoLine', { ...hookCtx(), hook: resolvedHook(row), current: row.photoLine }, el.querySelector('.pline')));
+            el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
+            el.querySelector('.ai-opening').addEventListener('click', e => aiSuggest(e.currentTarget, 'opening', { ...hookCtx(), hook: resolvedHook(row), current: row.opening }, el.querySelector('.opening')));
+            // 動作
+            const layoutSel = el.querySelector('.layout');
+            layoutSel.value = row.layout;
+            layoutSel.addEventListener('change', () => { row.layout = layoutSel.value; saveState(); });
+            el.querySelector('.gen-one').addEventListener('click', () => generateRows([row]));
+            el.querySelector('.del').addEventListener('click', () => {
+                if (rows.length === 1) { alert('至少保留一列'); return; }
+                rows.splice(rows.indexOf(row), 1); el.remove(); selected.delete(row);
+                if (!selected.size) rows.forEach(r => selected.add(r));
+                renumber(); syncPanel(); saveState();
+            });
+
+            refreshComboCard(row, 2); renumber(); saveState();
+            row.combos.forEach((_, i) => queueThumb(row, i));
+            return row;
+        }
+        function refreshComboCard(row, i) {
+            const card = row.el.querySelectorAll('.combo')[i], c = row.combos[i];
+            card.querySelector('.f1').value = c.font1; card.querySelector('.f2').value = c.font2;
+            showSelectFont(card.querySelector('.f1')); showSelectFont(card.querySelector('.f2'));
+            card.querySelector('.pl').value = c.plating; card.querySelector('.fi').value = c.finish;
+            card.querySelector('.lock').textContent = c.locked ? '🔒 客戶作品' : '';
+            card.querySelector('.reroll').disabled = !!c.locked;
+            ['.f1', '.f2', '.pl'].forEach(s => card.querySelector(s).disabled = !!c.locked);
+        }
+        function renumber() { rows.forEach((r, i) => r.el.querySelector('.num').textContent = i + 1); renderTargets(); }
+        const setRowStatus = (row, msg) => { row.el.querySelector('.row-status').textContent = msg; };
+
+        // ════════════════════════════════════════════════════════════════
+        // 影片合成
+        // ════════════════════════════════════════════════════════════════
+        const W = 1080, H = 1920, FPS = 30;
+        const ease = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+        function text(ctx, str, x, y, { size = 40, weight = 700, family = VIDEO_SANS, color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
+            if (alpha <= 0 || !str) return;
+            ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+            ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = spacing;
+            // 給了 maxW 時，句子太長就逐步縮小字級，避免超出畫面
+            while (maxW && size > 24 && ctx.measureText(str).width > maxW) { size -= 2; ctx.font = `${weight} ${size}px ${family}`; }
+            if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4; }
+            ctx.fillText(str, x, y); ctx.restore();
+        }
+        const SERIF = "'Cormorant Garamond', 'Times New Roman', serif";
+        // 影片中文字體：Noto Serif TC 思源宋體（Google Fonts，SIL OFL 可商用，台灣標點置中、字集完整）；載入失敗時退回 PingFang
+        const VIDEO_SANS = "'Noto Serif TC', 'PingFang TC', -apple-system, serif";
+
+        function drawHeader(ctx, row, alpha) {
+            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.155, { size: 170, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
+            text(ctx, hook, W / 2, H * 0.235, { size: 70, weight: 700, alpha, maxW: W - 100 });
+        }
+        // CTA：網址、標語兩行置中；size 預設等於輪播版原本勾子句的字級
+        function drawCTA(ctx, alpha, y = H * 0.785, size = 54) {
+            ctx.save(); ctx.globalAlpha = alpha * 0.7; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(W / 2 - 60, y - size * 0.95); ctx.lineTo(W / 2 + 60, y - size * 0.95); ctx.stroke(); ctx.restore();
+            const opt = { size, weight: 500, alpha: alpha * 0.95, color: '#F3E7D0', spacing: '0.03em', maxW: W - 120 };
+            text(ctx, g('g-cta-url'), W / 2, y, opt);
+            text(ctx, g('g-cta-line'), W / 2, y + size * 1.35, opt);
+        }
+        // 照片鋪滿直式畫面（cover）再乘上取景縮放 zoom，讓取景中心 (fx, fy) 盡量落在畫面中央；推近時也朝這個點放大
+        function photoCrop(ph, scale) {
+            const img = ph.img, ia = img.naturalWidth / img.naturalHeight, ca = W / H, z = scale * (ph.zoom || 1);
+            let dw, dh; if (ia > ca) { dh = H * z; dw = dh * ia; } else { dw = W * z; dh = dw / ia; }
+            const dx = Math.min(0, Math.max(W - dw, W / 2 - ph.fx * dw));
+            const dy = Math.min(0, Math.max(H - dh, H / 2 - ph.fy * dh));
+            return { dx, dy, dw, dh };
+        }
+        function drawPhotoCover(ctx, ph, scale, alpha) {
+            const { dx, dy, dw, dh } = photoCrop(ph, scale);
+            ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(ph.img, dx, dy, dw, dh); ctx.restore();
+        }
+
+        // 取景視窗
+        const focusModal = document.getElementById('focus-modal'), focusImg = document.getElementById('focus-img');
+        const focusFrame = document.getElementById('focus-frame'), focusDot = document.getElementById('focus-dot');
+        let focusTarget = null, focusDone = null;
+        function updateFocusOverlay() {
+            const ph = focusTarget; if (!ph) return;
+            const { dx, dy, dw, dh } = photoCrop(ph, 1);
+            const bw = focusImg.clientWidth, bh = focusImg.clientHeight;
+            Object.assign(focusFrame.style, { left: (-dx / dw * bw) + 'px', top: (-dy / dh * bh) + 'px', width: (W / dw * bw) + 'px', height: (H / dh * bh) + 'px' });
+            Object.assign(focusDot.style, { left: (ph.fx * bw) + 'px', top: (ph.fy * bh) + 'px' });
+            // 框內實際用到的原圖寬度 < 720px 時，影片放大後可能模糊
+            focusFrame.classList.toggle('lowres', ph.img.naturalWidth * (W / dw) < 720);
+        }
+        function openFocusEditor(ph, onDone) {
+            focusTarget = ph; focusDone = onDone;
+            focusImg.onload = updateFocusOverlay; focusImg.src = ph.url;
+            focusModal.classList.add('active');
+            if (focusImg.complete) requestAnimationFrame(updateFocusOverlay);
+        }
+        function closeFocusEditor() { focusModal.classList.remove('active'); const cb = focusDone; focusTarget = null; focusDone = null; if (cb) cb(); }
+        // 取景框幾何（以照片寬高的比例表示）：zoom=1 時的框寬高 → 依 zoom 縮小
+        const MAX_ZOOM = 6;
+        function baseFrame(ph) {
+            const ia = ph.img.naturalWidth / ph.img.naturalHeight, ca = W / H;
+            return ia > ca ? { fw: ca / ia, fh: 1 } : { fw: 1, fh: ia / ca };
+        }
+        // 把中心夾在框不會超出照片的範圍內，存下來的 fx/fy 就是框實際的中心
+        function setFrame(ph, cx, cy, zoom) {
+            const { fw, fh } = baseFrame(ph), z = Math.max(1, Math.min(MAX_ZOOM, zoom));
+            const hw = fw / z / 2, hh = fh / z / 2;
+            ph.zoom = z; ph.fx = Math.max(hw, Math.min(1 - hw, cx)); ph.fy = Math.max(hh, Math.min(1 - hh, cy));
+        }
+        let focusDrag = null;
+        const stage = document.getElementById('focus-stage');
+        stage.addEventListener('pointerdown', e => {
+            const ph = focusTarget; if (!ph) return;
+            e.preventDefault();
+            const r = focusImg.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+            const { fw, fh } = baseFrame(ph), z = ph.zoom || 1, hw = fw / z / 2, hh = fh / z / 2;
+            const corner = e.target.dataset?.c;
+            if (corner) {
+                // 縮放：對角固定不動
+                focusDrag = { mode: 'resize', ax: corner.includes('w') ? ph.fx + hw : ph.fx - hw, ay: corner.includes('n') ? ph.fy + hh : ph.fy - hh, sx: corner.includes('w') ? -1 : 1, sy: corner.includes('n') ? -1 : 1 };
+            } else if (e.target === focusFrame) {
+                focusDrag = { mode: 'move', ox: px - ph.fx, oy: py - ph.fy };
+            } else {
+                // 框外：框中心移到點的位置，並可直接拖著走
+                setFrame(ph, px, py, z); focusDrag = { mode: 'move', ox: px - ph.fx, oy: py - ph.fy };
+            }
+            stage.setPointerCapture(e.pointerId);
+            updateFocusOverlay();
+        });
+        stage.addEventListener('pointermove', e => {
+            const ph = focusTarget; if (!ph || !focusDrag) return;
+            const r = focusImg.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+            if (focusDrag.mode === 'move') {
+                setFrame(ph, px - focusDrag.ox, py - focusDrag.oy, ph.zoom || 1);
+            } else {
+                const { fw, fh } = baseFrame(ph), d = focusDrag;
+                // 依滑鼠到對角的距離決定新框大小（比例固定，取寬、高兩者中較大的需求），再限制不超出照片
+                let wNeed = Math.max(Math.abs(px - d.ax), Math.abs(py - d.ay) * fw / fh);
+                const wRoom = Math.min(d.sx > 0 ? 1 - d.ax : d.ax, (d.sy > 0 ? 1 - d.ay : d.ay) * fw / fh);
+                const newW = Math.max(fw / MAX_ZOOM, Math.min(fw, wRoom, wNeed));
+                const newH = newW * fh / fw;
+                setFrame(ph, d.ax + d.sx * newW / 2, d.ay + d.sy * newH / 2, fw / newW);
+            }
+            updateFocusOverlay();
+        });
+        const endFocusDrag = () => { focusDrag = null; };
+        stage.addEventListener('pointerup', endFocusDrag); stage.addEventListener('pointercancel', endFocusDrag);
+        document.getElementById('focus-reset').addEventListener('click', () => { if (focusTarget) { setFrame(focusTarget, 0.5, 0.5, 1); updateFocusOverlay(); } });
+        document.getElementById('focus-done').addEventListener('click', closeFocusEditor);
+        focusModal.addEventListener('click', e => { if (e.target === focusModal && !focusDrag) closeFocusEditor(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusModal.classList.contains('active')) closeFocusEditor(); });
+        window.addEventListener('resize', updateFocusOverlay);
+
+        // 片尾（兩種版型共用）：lt = 片尾開始後的秒數
+        function drawEnd(row, lt, endSec) {
+            const a = clamp01(lt / 0.4);
+            renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
+            if (row.photo) {
+                // 多張照片依序播放：每張各自緩慢推近，換張時 0.35 秒交叉淡入
+                const list = row.photo.list, per = endSec / list.length, XF = 0.35;
+                const k = Math.min(list.length - 1, Math.floor(lt / per)), lk = lt - k * per;
+                if (k > 0 && lk < XF) drawPhotoCover(cctx, list[k - 1], 1.07, 1);
+                drawPhotoCover(cctx, list[k], 1 + 0.07 * clamp01(lk / per), k === 0 ? a : clamp01(lk / XF));
+                const grad = cctx.createLinearGradient(0, H * 0.55, 0, H * 0.9);
+                grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
+                cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
+                const ta = clamp01((lt - 0.25) / 0.4);
+                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * (row.photoLine ? 0.645 : 0.68), { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
+                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.705, { size: 44, weight: 700, alpha: ta, maxW: W - 100 });
+                drawCTA(cctx, ta);
+            } else {
+                drawHeader(cctx, row, 1);
+                // 沒照片時：這支有寫「片尾補一句」就用它，空白才用全域的片尾句
+                text(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 700, alpha: a, maxW: W - 100 });
+                drawCTA(cctx, 1);
+            }
+        }
+        const endSecOf = (row) => row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
+
+        // 三格版：上方標題 → 三格（作品置中，不放文字）→ CTA；三件同步轉一整圈
+        const TRI_TOP = H * 0.19, TRI_BOTTOM = H * 0.755;
+        function triCells() {
+            const ch = (TRI_BOTTOM - TRI_TOP) / 3;
+            return [0, 1, 2].map(i => ({ x: 0, y: Math.round(TRI_TOP + i * ch), w: W, h: Math.round(ch) }));
+        }
+        function drawTriDividers(ctx, cells, alpha) {
+            ctx.save(); ctx.globalAlpha = alpha * 0.3; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 1.5;
+            [1, 2].forEach(i => { const y = cells[i].y; ctx.beginPath(); ctx.moveTo(240, y); ctx.lineTo(W - 240, y); ctx.stroke(); });
+            ctx.restore();
+        }
+        function drawTriHeader(ctx, row, alpha) {
+            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.105, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
+            text(ctx, hook, W / 2, H * 0.165, { size: 62, weight: 700, alpha, maxW: W - 100 });
+        }
+        function buildTriptychTimeline(row, groups) {
+            const introSec = 0.8, spinSec = parseFloat(g('g-spin')), endSec = endSecOf(row), outSec = 0.35;
+            const total = introSec + spinSec + endSec, totalFrames = Math.round(total * FPS);
+            const cells = triCells(), fit = fitCells(groups, cells[0].w / cells[0].h);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec + spinSec) {
+                    const a = clamp01(t / 0.5);
+                    const st = clamp01((t - introSec) / spinSec);
+                    const out = clamp01((introSec + spinSec - t) / outSec); // 最後一小段淡出，接片尾
+                    renderTriptych(groups, st * Math.PI * 2, Math.min(a, out), cells, fit); cctx.drawImage(glCanvas, 0, 0);
+                    drawTriHeader(cctx, row, Math.min(a, out)); drawTriDividers(cctx, cells, Math.min(a, out)); drawCTA(cctx, a, H * 0.79, 46);
+                } else {
+                    drawEnd(row, t - introSec - spinSec, endSec);
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 軌道版：三件作品等距（120°）放在水平圓形軌道上，輪流公轉到正前方，同時各自自轉。
+        // 鏡頭在軌道前方、俯視 ORBIT_PITCH；每件作品的自轉軸往後傾斜同樣角度，所以看起來永遠正面直立。
+        // 作品分開畫、由遠到近疊上去，離焦點越遠越模糊（景深）。
+        // ════════════════════════════════════════════════════════════════
+        const ORBIT_PITCH = 15 * Math.PI / 180, ORBIT_R = 9, ORBIT_DIST = 100;
+        const orbitCam = new THREE.PerspectiveCamera(30, W / H, 0.1, 2000);
+        orbitCam.up.set(0, 0, 1);
+        // 公轉角度（兩段速度）：作品在前方時以慢速從中央偏左繞到中央偏右（±ORBIT_SWEEP），
+        // 佔每件時間的 ORBIT_SLOW 比例；其餘時間加速轉到下一件。兩段交界速度相同，用 Hermite 曲線平滑銜接。
+        const ORBIT_SWEEP = 15 * Math.PI / 180, ORBIT_SLOW = 0.8, STEP_ANGLE = 2 * Math.PI / 3;
+        function orbitAngle(t, segSec) {
+            const half = ORBIT_SLOW * segSec / 2, vSlow = ORBIT_SWEEP / half, tk = (k) => segSec * (k + 0.5);
+            // 第一件之前、最後一件之後都維持慢速飄移，影片開頭作品就在中央偏左
+            if (t <= tk(0) + half) return (t - tk(0)) * vSlow;
+            if (t >= tk(2) - half) return 2 * STEP_ANGLE + (t - tk(2)) * vSlow;
+            const k = Math.floor((t - tk(0)) / segSec), lt = t - tk(k);
+            if (lt <= half) return k * STEP_ANGLE + lt * vSlow;                 // 慢速：剛過中央、往右
+            if (lt >= segSec - half) return (k + 1) * STEP_ANGLE - (segSec - lt) * vSlow; // 慢速：下一件從左邊進到中央
+            // 快速轉場：從 +SWEEP 轉到下一件的 −SWEEP，起訖速度都等於慢速
+            const T = segSec - 2 * half, u = (lt - half) / T, m = vSlow * T, D = STEP_ANGLE - 2 * ORBIT_SWEEP;
+            const pos = (2 * u ** 3 - 3 * u ** 2 + u) * m + (-2 * u ** 3 + 3 * u ** 2) * D + (u ** 3 - u ** 2) * m;
+            return k * STEP_ANGLE + ORBIT_SWEEP + pos;
+        }
+        function renderOrbit(groups, theta, t, segSec, alpha) {
+            renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0); // 背景（同時清掉 currentGroup）
+            const target = new THREE.Vector3(0, -ORBIT_R, 10 - parseFloat(g('g-voffset')));
+            orbitCam.position.set(0, target.y - ORBIT_DIST * Math.cos(ORBIT_PITCH), target.z + ORBIT_DIST * Math.sin(ORBIT_PITCH));
+            orbitCam.lookAt(target); orbitCam.updateProjectionMatrix();
+            const viewDir = target.clone().sub(orbitCam.position).normalize();
+            const focus = ORBIT_DIST;
+            // 每件的位置、深度、自轉角（每件在自己最正前方的時刻剛好轉到字母 A 正面）
+            const items = groups.map((gp, k) => {
+                const phi = theta - k * 2 * Math.PI / 3; // 角度增加 → 往右移：作品從左邊進來、往右邊離開
+                const pos = new THREE.Vector3(ORBIT_R * Math.sin(phi), -ORBIT_R * Math.cos(phi), 0);
+                const depth = pos.clone().sub(orbitCam.position).dot(viewDir);
+                const spin = (t - segSec * (k + 0.5)) * Math.PI / segSec; // 自轉一圈 = 2 × 每件秒數
+                return { gp, pos, depth, spin };
+            }).sort((a, b) => b.depth - a.depth);
+            const savedBg = scene.background; scene.background = null;
+            renderer.setClearColor(0x000000, 0); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            const tilt = new THREE.Group(); tilt.rotation.x = -ORBIT_PITCH; scene.add(tilt);
+            for (const it of items) {
+                tilt.position.copy(it.pos);
+                it.gp.rotation.z = -it.spin; it.gp.position.z = 0; setGroupOpacity(it.gp, 1);
+                tilt.add(it.gp);
+                renderer.clear(); renderer.render(scene, orbitCam);
+                tilt.remove(it.gp);
+                const off = Math.abs(it.depth - focus);
+                cctx.save();
+                cctx.globalAlpha = alpha;
+                cctx.filter = off > 0.5 ? `blur(${Math.min(14, off * 0.9).toFixed(1)}px) brightness(${(1 - Math.min(0.2, off * 0.015)).toFixed(3)})` : 'none';
+                cctx.drawImage(glCanvas, 0, 0);
+                cctx.restore();
+            }
+            scene.remove(tilt); scene.background = savedBg;
+        }
+        function buildOrbitTimeline(row, groups) {
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row), outSec = 0.35;
+            const orbitSec = segSec * 3, total = introSec + orbitSec + endSec, totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec + orbitSec) {
+                    const a = clamp01(t / 0.5), out = clamp01((introSec + orbitSec - t) / outSec);
+                    const ot = Math.max(0, t - introSec);
+                    renderOrbit(groups, orbitAngle(ot, segSec), ot, segSec, Math.min(a, out));
+                    drawHeader(cctx, row, Math.min(a, out)); drawCTA(cctx, a);
+                } else {
+                    drawEnd(row, t - introSec - orbitSec, endSec);
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
+        // 回傳時間軸描述 + 逐幀繪製函式
+        // 結尾 Logo（兩種版型共用）：片尾最後一格淡入純黑，同時浮現首頁同款 Logo「DUET / by BCAG」
+        const LOGO_SEC = 2, LOGO_FADE = 0.5;
+        function drawLogo(ctx, alpha) {
+            text(ctx, 'DUET', W / 2, H * 0.47, { size: 190, weight: 400, family: "'Cantata One', serif", color: '#F3EDE4', alpha, spacing: '0.12em', shadow: false });
+            text(ctx, 'by BCAG', W / 2, H * 0.47 + 140, { size: 52, weight: 'italic 400', family: "'Libre Caslon Text', serif", color: '#9A948C', alpha, spacing: '0.05em', shadow: false });
+        }
+        function withLogo(tl) {
+            const total = tl.total + LOGO_SEC, totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                if (t < tl.total) { tl.draw(i); return; }
+                const a = clamp01((t - tl.total) / LOGO_FADE);
+                if (a < 1) tl.draw(tl.totalFrames - 1); else cctx.clearRect(0, 0, W, H);
+                cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = '#000'; cctx.fillRect(0, 0, W, H); cctx.restore();
+                drawLogo(cctx, a);
+            }
+            return { totalFrames, total, draw };
+        }
+        function buildTimeline(row, groups) { return withLogo(buildMainTimeline(row, groups)); }
+        function buildMainTimeline(row, groups) {
+            if (row.layout === 'triptych') return buildTriptychTimeline(row, groups);
+            if (row.layout === 'orbit') return buildOrbitTimeline(row, groups);
+            const introSec = 0.9, segSec = parseFloat(g('g-sec')), endSec = endSecOf(row);
+            const holdA = 0.45, holdB = 0.55, fade = 0.3;
+            const total = introSec + segSec * 3 + endSec;
+            const totalFrames = Math.round(total * FPS);
+            function draw(i) {
+                const t = i / FPS;
+                cctx.clearRect(0, 0, W, H);
+                if (t < introSec) {
+                    renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0);
+                    const a = clamp01(t / 0.5);
+                    drawHeader(cctx, row, a); drawCTA(cctx, a);
+                } else if (t < introSec + segSec * 3) {
+                    const seg = Math.min(2, Math.floor((t - introSec) / segSec)), lt = t - introSec - seg * segSec;
+                    const p = lt < holdA ? 0 : lt > segSec - holdB ? 1 : (lt - holdA) / (segSec - holdA - holdB);
+                    const opacity = clamp01(Math.min(lt / fade, (segSec - lt) / fade));
+                    renderGL(groups[seg], ease(p) * Math.PI / 2, opacity, W, H); cctx.drawImage(glCanvas, 0, 0);
+                    drawHeader(cctx, row, 1); drawCTA(cctx, 1);
+                } else {
+                    drawEnd(row, t - introSec - segSec * 3, endSec);
+                }
+            }
+            return { totalFrames, total, draw };
+        }
+
+        async function pickCodec() {
+            for (const codec of ['avc1.640028', 'avc1.64002a', 'avc1.4d0028', 'avc1.42e028']) {
+                const cfg = { codec, width: W, height: H, bitrate: parseInt(g('g-bitrate')) * 1e6, framerate: FPS, latencyMode: 'quality' };
+                try { if ((await VideoEncoder.isConfigSupported(cfg)).supported) return cfg; } catch (e) { /* try next */ }
+            }
+            throw new Error('找不到可用的 H.264 編碼器，請用 Chrome 開啟');
+        }
+
+        async function encodeVideo(timeline, onProgress) {
+            const cfg = await pickCodec();
+            const muxer = new Mp4Muxer.Muxer({
+                target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory', firstTimestampBehavior: 'offset'
+            });
+            let encErr = null;
+            const encoder = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { encErr = e; } });
+            encoder.configure(cfg);
+            const us = 1e6 / FPS;
+            for (let i = 0; i < timeline.totalFrames; i++) {
+                if (encErr) throw encErr;
+                timeline.draw(i);
+                const frame = new VideoFrame(compCanvas, { timestamp: Math.round(i * us), duration: Math.round(us) });
+                encoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
+                frame.close();
+                while (encoder.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+                if (i % 3 === 0) { onProgress(i / timeline.totalFrames); await new Promise(r => requestAnimationFrame(r)); }
+            }
+            await encoder.flush(); encoder.close(); muxer.finalize();
+            return new Blob([muxer.target.buffer], { type: 'video/mp4' });
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // AI 文案按鈕（✨）：呼叫後端 /api/admin/social-copy，需要先在後台登入（共用同網域的 adminToken）
+        // ════════════════════════════════════════════════════════════════
+        function escapeHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function resolvedHook(row) { return (row.hook || row.settings['g-hook'] || '').replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB); }
+        // 呼叫 AI 文案端點：超過 150 秒自動放棄；開始與結束都在 console 留紀錄，卡住時方便判斷卡在哪
+        const AI_TIMEOUT_MS = 150000;
+        async function aiFetch(path, body, token) {
+            const ctrl = new AbortController(), started = performance.now();
+            const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS);
+            console.info(`[AI 文案] → ${path}`, body);
+            try {
+                const res = await fetch(`${window.BACKEND_URL}${path}`, {
+                    method: 'POST', signal: ctrl.signal,
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify(body)
+                });
+                console.info(`[AI 文案] ← ${path} HTTP ${res.status}，${((performance.now() - started) / 1000).toFixed(1)} 秒`);
+                return res;
+            } catch (e) {
+                console.error(`[AI 文案] ✕ ${path}，${((performance.now() - started) / 1000).toFixed(1)} 秒`, e);
+                if (e.name === 'AbortError') throw new Error(`等了 ${AI_TIMEOUT_MS / 1000} 秒還沒有回應`);
+                throw e;
+            } finally { clearTimeout(timer); }
+        }
+        // 等待時每秒更新「已等幾秒」
+        function waitTicker(render, label) {
+            const started = Date.now();
+            render(`${label}（已等 0 秒）`);
+            const id = setInterval(() => render(`${label}（已等 ${Math.round((Date.now() - started) / 1000)} 秒）`), 1000);
+            return () => clearInterval(id);
+        }
+        // 記下 AI 填進某一欄的原稿；影片生成時連同你改過的定稿一起送回後端累積（日後當範例用）
+        function recordAiOriginal(targetEl, field, text) {
+            const row = rows.find(r => r.el.contains(targetEl));
+            if (row && ['story', 'hook', 'photoLine', 'opening'].includes(field)) { row.aiOriginal[field] = text; saveState(); }
+        }
+        let aiPop = null;
+        function closeAiPop() { if (aiPop) aiPop.remove(); aiPop = null; }
+        document.addEventListener('mousedown', e => { if (aiPop && !aiPop.contains(e.target) && !e.target.closest('.ai-btn')) closeAiPop(); });
+        async function aiSuggest(anchor, field, ctx, targetEl) {
+            closeAiPop();
+            const pop = aiPop = document.createElement('div'); pop.id = 'ai-pop';
+            const r = anchor.getBoundingClientRect();
+            pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+            pop.style.left = Math.max(8, Math.min(window.innerWidth - 336, r.right + window.scrollX - 320)) + 'px';
+            document.body.appendChild(pop);
+            const alive = () => aiPop === pop;
+            const envLabel = window.CURRENT_ENV === 'staging' ? '測試' : '正式';
+            const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入（${envLabel}環境）</a>`;
+            const showMsg = (html) => { if (alive()) pop.innerHTML = `<div class="msg">${html}</div>`; };
+            const token = localStorage.getItem('adminToken');
+            if (!token) { showMsg(`請先到後台登入，登入後回到這頁再按一次 ✨。<br>${loginLink}`); return; }
+            const stopTick = waitTicker(showMsg, '✨ 產生中，通常 10 到 40 秒');
+            try {
+                const res = await aiFetch('/api/admin/social-copy', { field, ...ctx }, token).finally(stopTick);
+                if (res.status === 401) { showMsg(`後台登入已過期，請重新登入後再按一次 ✨。<br>${loginLink}`); return; }
+                if (res.status === 429) { showMsg('按得太頻繁了，請等一分鐘再試。'); return; }
+                const data = await res.json();
+                if (!data.success || !data.options?.length) throw new Error(data.error || '沒有拿到選項');
+                if (!alive()) return;
+                pop.innerHTML = '';
+                data.options.forEach(o => {
+                    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o;
+                    b.addEventListener('click', () => {
+                        targetEl.value = o;
+                        targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        recordAiOriginal(targetEl, field, o);
+                        closeAiPop();
+                    });
+                    pop.appendChild(b);
+                });
+                const bar = document.createElement('div'); bar.className = 'bar';
+                const again = document.createElement('button'); again.textContent = '🔄 再產生一次';
+                again.addEventListener('click', () => aiSuggest(anchor, field, ctx, targetEl));
+                const close = document.createElement('button'); close.textContent = '關閉'; close.addEventListener('click', closeAiPop);
+                bar.append(again, close); pop.appendChild(bar);
+            } catch (e) {
+                console.error(e);
+                showMsg('產生失敗：' + escapeHtml(e.message) + '<br>請稍後再試。');
+            }
+        }
+        // 全域設定裡的 ✨：以第一支選取影片的字母與標題當參考，選定後套用到所有選取的影片
+        document.querySelectorAll('#global .ai-btn').forEach(b => b.addEventListener('click', () => {
+            const r0 = rows.find(r => selected.has(r)) || rows[0];
+            const target = document.getElementById(b.dataset.target);
+            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, theme: r0.settings['g-theme'] || '', current: target.value }, target);
+        }));
+
+        // 影片生成時，把每支的 AI 原稿與你的定稿送回後端（有登入才送；失敗不影響生成）
+        function saveCopyEdits(list) {
+            const token = localStorage.getItem('adminToken');
+            const videos = list.filter(r => r.aiOriginal && Object.keys(r.aiOriginal).length).map(r => ({
+                letterA: r.letterA, letterB: r.letterB, layout: r.layout, hasPhoto: !!r.photo, story: r.story,
+                fields: Object.fromEntries(Object.entries(r.aiOriginal).map(([k, ai]) => [k, { ai, final: r[k] || '' }]))
+            }));
+            if (!token || !videos.length) return;
+            aiFetch('/api/admin/social-copy-edits', { videos }, token)
+                .then(res => res.json()).then(d => console.info('[AI 文案] 原稿/定稿已記錄', d))
+                .catch(e => console.warn('[AI 文案] 記錄原稿/定稿失敗', e));
+        }
+
+        // 「✨ 全部產生文案」：一次把所有影片送給 AI，看得到整批內容才能避免各支重複；
+        // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
+        const AI_FIELD_SEL = { story: '.story', hook: '.hook', photoLine: '.pline', opening: '.opening' };
+        document.getElementById('ai-all').addEventListener('click', async () => {
+            const btn = document.getElementById('ai-all'); // 按下就是要新內容：一律重寫所有欄位
+            const list = rows.filter(r => r.letterA && r.letterB);
+            const showStatus = (html) => { progressMsg.innerHTML = html; };
+            const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入</a>`;
+            if (!list.length) { showStatus('沒有可產生文案的影片（請先填字母）。'); return; }
+            const token = localStorage.getItem('adminToken');
+            if (!token) { showStatus(`請先到後台登入，登入後回到這頁再按一次。${loginLink}`); return; }
+            btn.disabled = true;
+            const stopTick = waitTicker(showStatus, `✨ 正在為 ${list.length} 支影片產生故事與文案，通常 30 秒到 1 分半`);
+            try {
+                const theme = (list.map(r => (r.settings['g-theme'] || '').trim()).find(Boolean)) || '';
+                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, theme, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
+                if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
+                if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
+                const data = await res.json();
+                if (!data.success || data.videos?.length !== list.length) throw new Error(data.error || '回傳數量不符');
+                let filled = 0;
+                data.videos.forEach((v, i) => {
+                    const r = list[i]; if (!rows.includes(r)) return;
+                    Object.entries(AI_FIELD_SEL).forEach(([k, sel]) => {
+                        if (!v[k]) return;
+                        const input = r.el.querySelector(sel);
+                        input.value = v[k]; input.dispatchEvent(new Event('input', { bubbles: true }));
+                        r.aiOriginal[k] = v[k];
+                        filled++;
+                    });
+                });
+                showStatus(`✅ 已填入 ${filled} 個欄位。不滿意的欄位可以按旁邊的 ✨ 換其他版本。`);
+            } catch (e) {
+                console.error(e);
+                showStatus('產生失敗：' + escapeHtml(e.message) + '，請稍後再試。');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // 貼文草稿：依使用者定稿格式，不放作品資訊（字體、材質）
+        function captionText(row) {
+            const lines = row.opening.trim() ? [row.opening.trim(), ''] : [];
+            lines.push(
+                '每一件 DUET ',
+                '都是兩個英文字母在立體空間裡的交集',
+                `正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。`,
+                '同樣的字母，換一種字體，就是完全不同的性格。'
+            );
+            if (row.photoLine) lines.push('', row.photoLine);
+            lines.push('', '👉 ' + g('g-cta-url'), g('g-cta-line'), '', g('g-tags'));
+            return lines.join('\n');
+        }
+        function download(blob, name) {
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.textContent = '⬇ ' + name;
+            document.getElementById('results').appendChild(link);
+        }
+
+        let generating = false;
+        const progressMsg = document.getElementById('progress-msg'), progressFill = document.getElementById('progress-fill');
+        const setProgress = (msg, frac) => { progressMsg.textContent = msg; progressFill.style.width = (frac * 100).toFixed(1) + '%'; };
+
+        async function generateRows(list) {
+            if (generating) return;
+            if (!('VideoEncoder' in window)) { alert('這個瀏覽器不支援 WebCodecs，請用 Chrome'); return; }
+            generating = true;
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+            const date = new Date().toLocaleDateString('sv-SE'); // 本地日期 YYYY-MM-DD（toISOString 是 UTC，台灣清晨會變前一天）
+            const nameCount = {};
+            const captions = []; // 這一輪所有影片的貼文文案，最後合併成一個檔案下載
+            try {
+                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'", "500 40px 'Noto Serif TC'", "700 54px 'Noto Serif TC'"].map(f => document.fonts.load(f).catch(() => {})));
+                for (let r = 0; r < list.length; r++) {
+                    const row = list[r];
+                    await useRow(row);
+                    row.el.classList.add('busy');
+                    if (!row.letterA || !row.letterB) { setRowStatus(row, '⚠️ 缺字母，略過'); row.el.classList.remove('busy'); continue; }
+                    const base = `${date}_${row.letterA}${row.letterB}`;
+                    nameCount[base] = (nameCount[base] || 0) + 1;
+                    const name = nameCount[base] > 1 ? `${base}_${nameCount[base]}` : base;
+                    try {
+                        const groups = [];
+                        for (let i = 0; i < 3; i++) {
+                            setProgress(`影片 ${r + 1}/${list.length}（${row.letterA}${row.letterB}）：計算作品 ${i + 1} 幾何…`, r / list.length);
+                            setRowStatus(row, `計算幾何 ${i + 1}/3…`);
+                            groups.push(await buildGroup(row, row.combos[i]));
+                            await new Promise(res => requestAnimationFrame(res));
+                        }
+                        for (const ph of row.photo?.list || []) if (!ph.img.complete) await new Promise(res => { ph.img.onload = res; ph.img.onerror = res; });
+                        const tl = buildTimeline(row, groups);
+                        const blob = await encodeVideo(tl, f => {
+                            setProgress(`影片 ${r + 1}/${list.length}（${row.letterA}${row.letterB}）：渲染 ${Math.round(f * 100)}%`, (r + f) / list.length);
+                            setRowStatus(row, `渲染中 ${Math.round(f * 100)}%`);
+                        });
+                        renderGL(null, 0, 1, W, H);
+                        download(blob, name + '.mp4');
+                        // 故事背景附在貼文後面、用分隔線隔開（虛構設定，可當 Threads 等文字貼文的素材，不屬於貼文本文）
+                        const story = row.story.trim();
+                        captions.push({ name, text: captionText(row) + (story ? `\n\n\n──── 故事背景（虛構設定，不是貼文本文；可當 Threads 素材）────\n${story}` : '') });
+                        setRowStatus(row, `✅ ${name}.mp4（${tl.total.toFixed(1)}s，${(blob.size / 1048576).toFixed(1)} MB）`);
+                    } catch (e) {
+                        console.error(e); setRowStatus(row, '❌ ' + e.message);
+                    }
+                    row.el.classList.remove('busy');
+                }
+                // 文案：只有一支就照影片檔名存；多支合併成一個檔，每段標上對應的影片檔名
+                if (captions.length === 1) {
+                    download(new Blob([captions[0].text], { type: 'text/plain;charset=utf-8' }), captions[0].name + '.txt');
+                } else if (captions.length > 1) {
+                    const merged = captions.map((c, i) => `════════ ${i + 1}. ${c.name}.mp4 ════════\n\n${c.text}`).join('\n\n\n');
+                    download(new Blob([merged], { type: 'text/plain;charset=utf-8' }), `${date}_貼文文案_${captions.length}支.txt`);
+                }
+                setProgress(`完成 ${list.length} 支。檔案已下載（Chrome 第一次會問是否允許多檔下載，請按允許）。`, 1);
+                saveCopyEdits(list);
+            } finally {
+                generating = false;
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
+                rows.forEach(r => r.combos.forEach((c, i) => refreshComboCard(r, i)));
+                processThumbs();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 字體選擇視窗：攔截字體下拉的點擊改開視窗；選定後寫回 <select> 並觸發 change，
+        // 既有的同步／鎖定／重算縮圖邏輯全部照舊（鎖定的 select 是 disabled，點了不會有反應）
+        // ════════════════════════════════════════════════════════════════
+        const FONT_SELECTS = 'select.f1, select.f2, select.pf1, select.pf2';
+        const fontModal = document.getElementById('font-modal');
+        const fmGrid = document.getElementById('font-modal-grid'), fmList = document.getElementById('font-modal-list');
+        const fmChar = document.getElementById('font-modal-char');
+        let fmTarget = null;
+        function showSelectFont(sel) { sel.style.fontFamily = `"${sel.value}", sans-serif`; }
+        function loadGoogleFonts() {
+            for (let i = 0; i < ALL_FONTS.length; i += 50) {
+                const link = document.createElement('link'); link.rel = 'stylesheet';
+                link.href = 'https://fonts.googleapis.com/css2?family=' + ALL_FONTS.slice(i, i + 50).map(f => f.replace(/ /g, '+')).join('&family=') + '&display=swap';
+                document.head.appendChild(link);
+            }
+        }
+        function buildFontModal() {
+            ALL_FONTS.forEach(font => {
+                const item = document.createElement('div'); item.className = 'font-list-item'; item.dataset.font = font;
+                item.textContent = font; item.style.fontFamily = `"${font}", sans-serif`;
+                const card = document.createElement('div'); card.className = 'font-preview-card'; card.dataset.font = font;
+                card.innerHTML = `<div class="preview-char" style='font-family:"${font}", sans-serif'></div><div class="preview-name">${font}</div>`;
+                [item, card].forEach(n => n.addEventListener('click', () => pickFont(font)));
+                fmList.appendChild(item); fmGrid.appendChild(card);
+            });
+        }
+        function openFontModal(sel) {
+            const row = rows.find(r => r.el.contains(sel));
+            const isA = sel.matches('.f1, .pf1');
+            const which = sel.matches('.pf1, .pf2') ? '客戶作品' : '作品 ' + (+sel.closest('.combo').dataset.idx + 1);
+            fmTarget = sel;
+            fmChar.value = (isA ? row?.letterA : row?.letterB) || 'A';
+            document.getElementById('font-modal-title').textContent = `${which} · 字母 ${fmChar.value} 的字體（${isA ? '正面' : '側面'}）`;
+            fmGrid.querySelectorAll('.preview-char').forEach(n => n.textContent = fmChar.value);
+            fontModal.querySelectorAll('[data-font]').forEach(n => n.classList.toggle('selected', n.dataset.font === sel.value));
+            fontModal.classList.add('active');
+            const cur = fmGrid.querySelector('.font-preview-card.selected'), curItem = fmList.querySelector('.selected');
+            if (cur) cur.scrollIntoView({ block: 'center' });
+            if (curItem) curItem.scrollIntoView({ block: 'center' });
+        }
+        function closeFontModal() { fontModal.classList.remove('active'); fmTarget = null; }
+        function pickFont(font) {
+            const sel = fmTarget; closeFontModal();
+            if (!sel || sel.value === font) return;
+            sel.value = font; showSelectFont(sel);
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        fmChar.addEventListener('input', () => fmGrid.querySelectorAll('.preview-char').forEach(n => n.textContent = fmChar.value || 'A'));
+        document.getElementById('font-modal-close').addEventListener('click', closeFontModal);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && fontModal.classList.contains('active')) closeFontModal(); });
+        document.addEventListener('mousedown', e => {
+            const sel = e.target.closest?.(FONT_SELECTS);
+            if (!sel || sel.disabled) return;
+            e.preventDefault(); openFontModal(sel);
+        }, true);
+        document.addEventListener('keydown', e => {
+            const sel = e.target.closest?.(FONT_SELECTS);
+            if (sel && !sel.disabled && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); openFontModal(sel); }
+        }, true);
+
+        // ════════════════════════════════════════════════════════════════
+        // 全域設定事件 + 初始化
+        // ════════════════════════════════════════════════════════════════
+        document.getElementById('toggle-global').addEventListener('click', () => {
+            const s = document.getElementById('global'); s.style.display = s.style.display === 'none' ? 'grid' : 'none';
+        });
+        const rangeLabelUpdaters = [];
+        const bindRange = (id, fmt) => {
+            const el = document.getElementById(id), v = document.getElementById(id + '-v');
+            const upd = () => { v.textContent = fmt(el.value); }; el.addEventListener('input', upd); upd();
+            rangeLabelUpdaters.push(upd);
+        };
+        // 面板上方的影片編號按鈕：點了切換要不要套用到那支；至少保留一支
+        function renderTargets() {
+            const box = document.getElementById('g-targets');
+            box.innerHTML = '<span>套用到：</span>';
+            rows.forEach((r, i) => {
+                const b = document.createElement('button'); b.className = 'chip' + (selected.has(r) ? ' on' : ''); b.textContent = '#' + (i + 1);
+                b.addEventListener('click', () => {
+                    if (selected.has(r)) { if (selected.size > 1) selected.delete(r); } else selected.add(r);
+                    renderTargets(); syncPanel();
+                });
+                box.appendChild(b);
+            });
+            const all = document.createElement('button'); all.textContent = '全選';
+            all.addEventListener('click', () => { rows.forEach(r => selected.add(r)); renderTargets(); syncPanel(); });
+            box.appendChild(all);
+            const tip = document.createElement('span'); tip.className = 'tip';
+            tip.textContent = '金色虛線框 = 所選影片這項設定不同，修改後會統一成新的值';
+            box.appendChild(tip);
+        }
+        // 面板顯示第一支選取影片的設定；選取的影片設定不一致的欄位加虛線框
+        function syncPanel() {
+            const sel = rows.filter(r => selected.has(r));
+            if (!sel.length) return;
+            G_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                el.value = sel[0].settings[id];
+                const mixed = sel.some(r => r.settings[id] !== sel[0].settings[id]);
+                el.classList.toggle('mixed', mixed);
+                el.title = mixed ? '所選影片設定不同' : '';
+            });
+            rangeLabelUpdaters.forEach(f => f());
+        }
+        // 背景「＋ 上傳自訂背景…」：在其他監聽器之前攔截（capture），避免把 __upload__ 當成背景寫進設定
+        const bgSelect = document.getElementById('g-bg'), bgFile = document.getElementById('g-bg-file');
+        let bgBeforeUpload = bgSelect.value;
+        bgSelect.addEventListener('focus', () => { if (bgSelect.value !== '__upload__') bgBeforeUpload = bgSelect.value; });
+        // 下拉選單會先觸發 input 再觸發 change，兩個都要攔，否則 input 那一下就把 __upload__ 寫進設定
+        bgSelect.addEventListener('input', e => { if (bgSelect.value === '__upload__') e.stopImmediatePropagation(); }, true);
+        bgSelect.addEventListener('change', e => {
+            if (bgSelect.value !== '__upload__') { bgBeforeUpload = bgSelect.value; return; }
+            e.stopImmediatePropagation();
+            bgSelect.value = bgBeforeUpload; // 先還原，選好檔案才換
+            bgFile.value = '';
+            bgFile.click();
+        }, true);
+        bgFile.addEventListener('change', () => {
+            const file = bgFile.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            const opt = document.createElement('option');
+            opt.value = url; opt.textContent = '自訂：' + file.name.replace(/\.[^.]+$/, '').slice(0, 20);
+            bgSelect.insertBefore(opt, bgSelect.querySelector('option[value="__upload__"]'));
+            bgSelect.value = url; bgBeforeUpload = url;
+            bgSelect.dispatchEvent(new Event('change', { bubbles: true })); // 交給一般流程：寫進所選影片並重算縮圖
+        });
+
+        G_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            const write = () => {
+                rows.forEach(r => { if (selected.has(r)) r.settings[id] = el.value; });
+                el.classList.remove('mixed'); el.title = '';
+                saveState();
+            };
+            el.addEventListener('input', write);
+            el.addEventListener('change', () => {
+                write();
+                if (VISUAL_IDS.includes(id)) rows.forEach(r => { if (selected.has(r)) r.combos.forEach((_, i) => queueThumb(r, i)); });
+            });
+        });
+        bindRange('g-bg-brightness', v => parseFloat(v).toFixed(2)); bindRange('g-bg-contrast', v => parseFloat(v).toFixed(2));
+        bindRange('g-bg-pan', v => v + '%'); bindRange('g-light', v => parseFloat(v).toFixed(2) + '×');
+        bindRange('g-size', v => v + 'mm'); bindRange('g-voffset', v => v); bindRange('g-sec', v => parseFloat(v).toFixed(1) + 's');
+        bindRange('g-endsec', v => parseFloat(v).toFixed(1) + 's'); bindRange('g-bitrate', v => v);
+        bindRange('g-spin', v => parseFloat(v).toFixed(1) + 's');
+        document.getElementById('add-row').addEventListener('click', () => addRow());
+        document.getElementById('generate-all').addEventListener('click', () => generateRows(rows.slice()));
+
+        (async function init() {
+            const saved = loadState();
+            await initFontMeta();
+            try {
+                const data = await (await fetch('fonts.json')).json();
+                ALL_FONTS = data.fonts.map(f => f.name).sort((a, b) => a.localeCompare(b));
+            } catch (e) { ALL_FONTS = Object.values(FONT_STYLE).flat(); }
+            loadGoogleFonts(); buildFontModal();
+            const missing = ALL_FONTS.filter(f => !Object.values(FONT_STYLE).flat().includes(f));
+            if (missing.length) console.warn('未分類字體（視為 tech）:', missing);
+            initScene();
+            if (saved && saved.length) saved.forEach(addRow); else addRow();
+            syncPanel();
+        })();
+    </script>
+</body>
+</html>
