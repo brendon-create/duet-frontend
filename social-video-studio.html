@@ -244,7 +244,9 @@
                 <option value="assets/images/backgrounds/background1.png">background1</option>
                 <option value="assets/images/backgrounds/Social_media_background/Tech_Guy_desk.png">Tech desk</option>
                 <option value="">攝影棚漸層（無圖）</option>
+                <option value="__upload__">＋ 上傳自訂背景…</option>
             </select>
+            <input type="file" id="g-bg-file" accept="image/*" style="display:none">
             <label class="f">背景亮度 <span class="range-val" id="g-bg-brightness-v">0.50</span></label>
             <input type="range" id="g-bg-brightness" min="0.3" max="1.5" step="0.05" value="0.5">
             <label class="f">背景對比 <span class="range-val" id="g-bg-contrast-v">1.10</span></label>
@@ -427,7 +429,7 @@
         function loadState() {
             try {
                 const gs = JSON.parse(localStorage.getItem('duet_svs_global') || 'null');
-                if (gs) G_IDS.forEach(id => { if (gs[id] !== undefined) document.getElementById(id).value = gs[id]; });
+                if (gs) G_IDS.forEach(id => { if (gs[id] !== undefined && !String(gs[id]).startsWith('blob:')) document.getElementById(id).value = gs[id]; });
                 return JSON.parse(localStorage.getItem('duet_svs_rows') || 'null');
             } catch (e) { return null; }
         }
@@ -760,6 +762,10 @@
                 combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
+            // 臨時上傳的背景只存在這次開啟的頁面裡；重新整理後網址失效，改回預設背景
+            if (String(row.settings['g-bg'] || '').startsWith('blob:') && !document.querySelector(`#g-bg option[value="${row.settings['g-bg']}"]`)) {
+                row.settings['g-bg'] = 'assets/images/backgrounds/LuxuryWoodBackground.png';
+            }
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
             // 照片不會存進瀏覽器，重新載入時一定沒有照片 → 存檔裡殘留的「客戶作品」鎖定要解除
@@ -1636,6 +1642,30 @@
             });
             rangeLabelUpdaters.forEach(f => f());
         }
+        // 背景「＋ 上傳自訂背景…」：在其他監聽器之前攔截（capture），避免把 __upload__ 當成背景寫進設定
+        const bgSelect = document.getElementById('g-bg'), bgFile = document.getElementById('g-bg-file');
+        let bgBeforeUpload = bgSelect.value;
+        bgSelect.addEventListener('focus', () => { if (bgSelect.value !== '__upload__') bgBeforeUpload = bgSelect.value; });
+        // 下拉選單會先觸發 input 再觸發 change，兩個都要攔，否則 input 那一下就把 __upload__ 寫進設定
+        bgSelect.addEventListener('input', e => { if (bgSelect.value === '__upload__') e.stopImmediatePropagation(); }, true);
+        bgSelect.addEventListener('change', e => {
+            if (bgSelect.value !== '__upload__') { bgBeforeUpload = bgSelect.value; return; }
+            e.stopImmediatePropagation();
+            bgSelect.value = bgBeforeUpload; // 先還原，選好檔案才換
+            bgFile.value = '';
+            bgFile.click();
+        }, true);
+        bgFile.addEventListener('change', () => {
+            const file = bgFile.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            const opt = document.createElement('option');
+            opt.value = url; opt.textContent = '自訂：' + file.name.replace(/\.[^.]+$/, '').slice(0, 20);
+            bgSelect.insertBefore(opt, bgSelect.querySelector('option[value="__upload__"]'));
+            bgSelect.value = url; bgBeforeUpload = url;
+            bgSelect.dispatchEvent(new Event('change', { bubbles: true })); // 交給一般流程：寫進所選影片並重算縮圖
+        });
+
         G_IDS.forEach(id => {
             const el = document.getElementById(id);
             const write = () => {
