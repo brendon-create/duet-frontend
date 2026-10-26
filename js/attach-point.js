@@ -12,9 +12,11 @@
 // 可掛條件：圓環底部（u ±0.4、v ±0.3mm）整片有實體、高低差 < 0.6mm；
 //   且從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
 //   掛點高度取這片範圍內的最低點，保證圓環底部不會有一邊懸空。
-// 筆畫靠近但中間空（如襯線 H 頂部）：圓環往下放能同時卡住左右兩筆時，也列為掛點（見 bridgeZ）。
-// 分數：接近最高點（差 0.4mm 內）一律視為同高，改比誰靠近重心 → 淺凹陷（如 m 中央）會掛正中央；
-//   更低的位置照高度計分，每偏離重心 1mm 扣 0.3mm。
+// 筆畫靠近但中間空（如襯線 H 頂部）：圓環往下放能同時卡住左右兩筆、間距 ≤ GAP_MAX 時，也列為掛點（見 bridgeZ）。
+// 挑選（靠近重心優先，高度只當上限）：候選限制在作品最高點往下 BAND 以內；選離重心垂直線最近的；
+//   距離差 TIE 以內算平手，平手選重心「右邊」那個（掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；
+//   掛左邊則像垂下去）；同一邊再比高度。
+//   作品會不會歪只看掛點與重心的水平距離，跟高度無關，所以不再拿高度計分。
 // 網格對齊 0.1mm 的整數倍，回傳的 x、y 可以直接當滑桿值（滑桿 step 0.1）。
 // 回傳 { x, y, z, rot }，rot 為弧度（0 或 π/2）。geometry 需已 computeBoundingBox()。
 
@@ -58,28 +60,29 @@ export function findAttachPoint(geometry) {
     // 從正面看，每個 u 位置上整件作品的最高點（不分前後深度）
     const faceMax = new Float32Array(nu).fill(-Infinity);
     for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const h = H(u, v); if (h > faceMax[u]) faceMax[u] = h; }
-    const R_IN = 1.0, RI = Math.round(R_IN / STEP), TOL = 0.4, LAMBDA = 0.3;
+    const R_IN = 1.0, RI = Math.round(R_IN / STEP), BAND = 3.0, TIE = 0.3;
     // 跨接：把圓環外圈（半徑 R_OUT）從上方放下，左右兩側都碰到筆畫、且正中間是空的（或明顯較低）才算卡住；
     //   卡住後比照平面情況再下沉 R_OUT − RING_CENTER_ABOVE_ATTACH − R_IN（0.4mm）讓圓環與筆畫熔接。
     //   支撐的筆畫在管徑方向（v）必須整段有實體，避免圓環前後懸空。
+    //   兩側接觸點的間距要 ≤ GAP_MAX（平頂兩筆相距 2mm 時圓環只下沉約 0.35mm；襯線、斜頂接觸點較低時下沉較多，由 BAND 限制）。
     //   回傳等效掛點高度（圓環中心 − RING_CENTER_ABOVE_ATTACH），沒有卡住則回傳 null。
-    //   跨接位置只在比最高點低 TOL 以內時採用，這時視為同高、靠近重心者勝出。
-    const R_OUT = 1.6, RO = Math.round(R_OUT / STEP), CONTACT = 0.05;
+    const R_OUT = 1.6, RO = Math.round(R_OUT / STEP), CONTACT = 0.05, GAP_MAX = 2.0;
     function bridgeZ(u, v, fv) {
         const col = uu => { // 這一欄在管徑範圍內整段有實體時回傳最高點，否則 −∞
             let lo = Infinity, hi = -Infinity;
             for (let b = -fv; b <= fv; b++) { const h = H(uu, v + b); if (h < lo) lo = h; if (h > hi) hi = h; }
             return lo === -Infinity ? -Infinity : hi;
         };
-        let zl = -Infinity, zr = -Infinity;
+        let zl = -Infinity, zr = -Infinity, al = 0, ar = 0;
         for (let a = -RO; a <= RO; a++) {
             const uu = u + a; if (a === 0 || uu < 0 || uu >= nu) continue;
             const h = col(uu); if (h === -Infinity) continue;
             const zc = h + Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2));
-            if (a < 0) { if (zc > zl) zl = zc; } else if (zc > zr) zr = zc;
+            if (a < 0) { if (zc > zl) { zl = zc; al = a; } } else if (zc > zr) { zr = zc; ar = a; }
         }
         const zc = Math.max(zl, zr);
         if (zc === -Infinity || zl < zc - CONTACT || zr < zc - CONTACT) return null;
+        if ((ar - al) * STEP > GAP_MAX + 1e-6) return null;
         // 正中間要是空隙：中心點正下方的最高處放上圓環後，必須明顯低於兩側卡住的高度
         let hc = -Infinity; for (let b = -fv; b <= fv; b++) { const h = H(u, v + b); if (h > hc) hc = h; }
         if (hc + R_OUT > zc - CONTACT) return null;
@@ -91,7 +94,7 @@ export function findAttachPoint(geometry) {
         const cands = [];
         for (let u = fu; u < nu - fu; u++) {
             for (let v = fv; v < nv - fv; v++) {
-                let hmin = Infinity, hmax = -Infinity, bridge = false;
+                let hmin = Infinity, hmax = -Infinity;
                 for (let a = -fu; a <= fu && hmin > -Infinity; a++) for (let b = -fv; b <= fv; b++) {
                     const h = H(u + a, v + b); if (h < hmin) hmin = h; if (h > hmax) hmax = h;
                 }
@@ -100,7 +103,7 @@ export function findAttachPoint(geometry) {
                     if (fu !== 4) continue;
                     const zb = bridgeZ(u, v, fv);
                     if (zb === null) continue;
-                    hmin = zb; bridge = true;
+                    hmin = zb;
                 }
                 // 圓環中心在 hmin + RING_CENTER_ABOVE_ATTACH → 洞的下緣在水平偏移 d 處的高度 = 中心 − √(R_IN² − d²)
                 let pierce = false;
@@ -110,17 +113,18 @@ export function findAttachPoint(geometry) {
                     if (faceMax[uu] > hmin + RING_CENTER_ABOVE_ATTACH - Math.sqrt(R_IN * R_IN - d * d) + 0.05) pierce = true;
                 }
                 if (pierce) continue;
+                if (hmin < bb.max.z - BAND) continue;
                 const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
-                cands.push({ x, y, z: hmin, d: Math.hypot(x - mx, y - my), bridge });
+                // right：掛點在重心右邊（字母 A 朝前時 +x；字母 B 朝前時 +y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
+                cands.push({ x, y, z: hmin, d: Math.hypot(x - mx, y - my), right: (rotB ? y - my : x - mx) > 0 });
             }
         }
         if (!cands.length) continue;
-        const zTop = Math.max(...cands.map(c => c.z));
+        const dMin = Math.min(...cands.map(c => c.d));
         let best = null;
         for (const c of cands) {
-            if (c.bridge && c.z < zTop - TOL) continue; // 跨接只接受「降低一點點」：比最高點低 TOL 以內
-            const score = Math.min(c.z, zTop - TOL) - LAMBDA * c.d;
-            if (!best || score > best.score) best = { ...c, score };
+            if (c.d > dMin + TIE) continue;
+            if (!best || (c.right !== best.right ? c.right : c.z > best.z)) best = c;
         }
         return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
     }
