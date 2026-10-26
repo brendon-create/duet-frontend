@@ -421,7 +421,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, layout: r.layout, settings: r.settings
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, aiOriginal: r.aiOriginal, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -758,7 +758,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', layout: data?.layout || 'carousel',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
@@ -1335,6 +1335,11 @@
             const id = setInterval(() => render(`${label}（已等 ${Math.round((Date.now() - started) / 1000)} 秒）`), 1000);
             return () => clearInterval(id);
         }
+        // 記下 AI 填進某一欄的原稿；影片生成時連同你改過的定稿一起送回後端累積（日後當範例用）
+        function recordAiOriginal(targetEl, field, text) {
+            const row = rows.find(r => r.el.contains(targetEl));
+            if (row && ['story', 'hook', 'photoLine', 'opening'].includes(field)) { row.aiOriginal[field] = text; saveState(); }
+        }
         let aiPop = null;
         function closeAiPop() { if (aiPop) aiPop.remove(); aiPop = null; }
         document.addEventListener('mousedown', e => { if (aiPop && !aiPop.contains(e.target) && !e.target.closest('.ai-btn')) closeAiPop(); });
@@ -1366,6 +1371,7 @@
                         targetEl.value = o;
                         targetEl.dispatchEvent(new Event('input', { bubbles: true }));
                         targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        recordAiOriginal(targetEl, field, o);
                         closeAiPop();
                     });
                     pop.appendChild(b);
@@ -1386,6 +1392,19 @@
             const target = document.getElementById(b.dataset.target);
             aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, current: target.value }, target);
         }));
+
+        // 影片生成時，把每支的 AI 原稿與你的定稿送回後端（有登入才送；失敗不影響生成）
+        function saveCopyEdits(list) {
+            const token = localStorage.getItem('adminToken');
+            const videos = list.filter(r => r.aiOriginal && Object.keys(r.aiOriginal).length).map(r => ({
+                letterA: r.letterA, letterB: r.letterB, layout: r.layout, hasPhoto: !!r.photo, story: r.story,
+                fields: Object.fromEntries(Object.entries(r.aiOriginal).map(([k, ai]) => [k, { ai, final: r[k] || '' }]))
+            }));
+            if (!token || !videos.length) return;
+            aiFetch('/api/admin/social-copy-edits', { videos }, token)
+                .then(res => res.json()).then(d => console.info('[AI 文案] 原稿/定稿已記錄', d))
+                .catch(e => console.warn('[AI 文案] 記錄原稿/定稿失敗', e));
+        }
 
         // 「✨ 全部產生文案」：一次把所有影片送給 AI，看得到整批內容才能避免各支重複；
         // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
@@ -1415,6 +1434,7 @@
                         if (!v[k]) return;
                         const input = r.el.querySelector(sel);
                         input.value = v[k]; input.dispatchEvent(new Event('input', { bubbles: true }));
+                        r.aiOriginal[k] = v[k];
                         filled++;
                     });
                 });
@@ -1502,6 +1522,7 @@
                     download(new Blob([merged], { type: 'text/plain;charset=utf-8' }), `${date}_貼文文案_${captions.length}支.txt`);
                 }
                 setProgress(`完成 ${list.length} 支。檔案已下載（Chrome 第一次會問是否允許多檔下載，請按允許）。`, 1);
+                saveCopyEdits(list);
             } finally {
                 generating = false;
                 document.querySelectorAll('button').forEach(b => b.disabled = false);
