@@ -60,7 +60,7 @@ export function findAttachPoint(geometry) {
     // 從正面看，每個 u 位置上整件作品的最高點（不分前後深度）
     const faceMax = new Float32Array(nu).fill(-Infinity);
     for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const h = H(u, v); if (h > faceMax[u]) faceMax[u] = h; }
-    const R_IN = 1.0, RI = Math.round(R_IN / STEP), BAND = 3.0, TIE = 0.3;
+    const R_IN = 1.0, RI = Math.round(R_IN / STEP), BAND = 1.0, TIE = 0.3;
     // 跨接：把圓環外圈（半徑 R_OUT）從上方放下，左右兩側都碰到筆畫、且正中間是空的（或明顯較低）才算卡住；
     //   卡住後比照平面情況再下沉 R_OUT − RING_CENTER_ABOVE_ATTACH − R_IN（0.4mm）讓圓環與筆畫熔接。
     //   支撐的筆畫在管徑方向（v）必須整段有實體，避免圓環前後懸空。
