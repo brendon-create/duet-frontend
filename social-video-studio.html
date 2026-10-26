@@ -12,7 +12,7 @@
     <script src="assets/js/config.js"></script>
     <!-- 影片字幕用的標題襯線字 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Cantata+One&family=Libre+Caslon+Text:ital@1&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
 
     <script type="importmap">
     {
@@ -286,6 +286,8 @@
             <div class="ai-row"><input type="text" id="g-nophoto" value="你會選哪一個？"><button class="ai-btn" data-ai="noPhoto" data-target="g-nophoto" title="AI 產生">✨</button></div>
             <label class="f">貼文 hashtag</label>
             <input type="text" id="g-tags" value="#DUET #客製珠寶 #字母項鍊 #英文字母 #姓名縮寫 #情侶項鍊 #3D設計">
+            <label class="f">檔期主題（給 AI 的氣氛方向，可留空）</label>
+            <input type="text" id="g-theme" placeholder="例：聖誕節：溫馨、家庭、感謝，不用每支都提到聖誕節">
         </div>
     </section>
 
@@ -403,7 +405,7 @@
         // ════════════════════════════════════════════════════════════════
         // 狀態 / 持久化
         // ════════════════════════════════════════════════════════════════
-        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags'];
+        const G_IDS = ['g-bg', 'g-bg-brightness', 'g-bg-contrast', 'g-bg-pan', 'g-hdr', 'g-light', 'g-size', 'g-voffset', 'g-sec', 'g-spin', 'g-endsec', 'g-bitrate', 'g-hook', 'g-cta-url', 'g-cta-line', 'g-nophoto', 'g-tags', 'g-theme'];
         // 每支影片各自有一份設定（row.settings）。畫縮圖、生成影片前用 useRow(row) 切到那支，
         // 之後 g() 讀到的就是那支的設定；沒有作用中的影片時才讀面板上的值
         let activeRow = null;
@@ -931,7 +933,7 @@
             el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
             el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
             el.querySelector('.story').addEventListener('input', e => { row.story = e.target.value; saveState(); });
-            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo, story: row.story });
+            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo, story: row.story, theme: row.settings['g-theme'] || '' });
             el.querySelector('.ai-story').addEventListener('click', e => aiSuggest(e.currentTarget, 'story', { ...hookCtx(), current: row.story }, el.querySelector('.story')));
             el.querySelector('.ai-pline').addEventListener('click', e => aiSuggest(e.currentTarget, 'photoLine', { ...hookCtx(), hook: resolvedHook(row), current: row.photoLine }, el.querySelector('.pline')));
             el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
@@ -971,7 +973,7 @@
         const ease = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
         const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-        function text(ctx, str, x, y, { size = 40, weight = 500, family = VIDEO_SANS, color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
+        function text(ctx, str, x, y, { size = 40, weight = 700, family = VIDEO_SANS, color = '#FFF8F0', alpha = 1, align = 'center', spacing = '0', shadow = true, maxW = 0 } = {}) {
             if (alpha <= 0 || !str) return;
             ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
             ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = spacing;
@@ -981,19 +983,19 @@
             ctx.fillText(str, x, y); ctx.restore();
         }
         const SERIF = "'Cormorant Garamond', 'Times New Roman', serif";
-        // 影片中文字體：Zen Maru Gothic（Google Fonts，SIL OFL 可商用，繁體字集完整）；載入失敗時退回 PingFang
-        const VIDEO_SANS = "'Zen Maru Gothic', 'PingFang TC', -apple-system, sans-serif";
+        // 影片中文字體：Noto Serif TC 思源宋體（Google Fonts，SIL OFL 可商用，台灣標點置中、字集完整）；載入失敗時退回 PingFang
+        const VIDEO_SANS = "'Noto Serif TC', 'PingFang TC', -apple-system, serif";
 
         function drawHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
             text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.155, { size: 170, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.235, { size: 70, weight: 500, alpha, maxW: W - 100 });
+            text(ctx, hook, W / 2, H * 0.235, { size: 70, weight: 700, alpha, maxW: W - 100 });
         }
         // CTA：網址、標語兩行置中；size 預設等於輪播版原本勾子句的字級
         function drawCTA(ctx, alpha, y = H * 0.785, size = 54) {
             ctx.save(); ctx.globalAlpha = alpha * 0.7; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(W / 2 - 60, y - size * 0.95); ctx.lineTo(W / 2 + 60, y - size * 0.95); ctx.stroke(); ctx.restore();
-            const opt = { size, weight: 400, alpha: alpha * 0.95, color: '#F3E7D0', spacing: '0.03em', maxW: W - 120 };
+            const opt = { size, weight: 500, alpha: alpha * 0.95, color: '#F3E7D0', spacing: '0.03em', maxW: W - 120 };
             text(ctx, g('g-cta-url'), W / 2, y, opt);
             text(ctx, g('g-cta-line'), W / 2, y + size * 1.35, opt);
         }
@@ -1103,12 +1105,12 @@
                 cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
                 const ta = clamp01((lt - 0.25) / 0.4);
                 text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * (row.photoLine ? 0.645 : 0.68), { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
-                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.705, { size: 44, weight: 500, alpha: ta, maxW: W - 100 });
+                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.705, { size: 44, weight: 700, alpha: ta, maxW: W - 100 });
                 drawCTA(cctx, ta);
             } else {
                 drawHeader(cctx, row, 1);
                 // 沒照片時：這支有寫「片尾補一句」就用它，空白才用全域的片尾句
-                text(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 600, alpha: a, maxW: W - 100 });
+                text(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 700, alpha: a, maxW: W - 100 });
                 drawCTA(cctx, 1);
             }
         }
@@ -1128,7 +1130,7 @@
         function drawTriHeader(ctx, row, alpha) {
             const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
             text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.105, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.165, { size: 62, weight: 500, alpha, maxW: W - 100 });
+            text(ctx, hook, W / 2, H * 0.165, { size: 62, weight: 700, alpha, maxW: W - 100 });
         }
         function buildTriptychTimeline(row, groups) {
             const introSec = 0.8, spinSec = parseFloat(g('g-spin')), endSec = endSecOf(row), outSec = 0.35;
@@ -1389,7 +1391,7 @@
         document.querySelectorAll('#global .ai-btn').forEach(b => b.addEventListener('click', () => {
             const r0 = rows.find(r => selected.has(r)) || rows[0];
             const target = document.getElementById(b.dataset.target);
-            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, current: target.value }, target);
+            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, theme: r0.settings['g-theme'] || '', current: target.value }, target);
         }));
 
         // 影片生成時，把每支的 AI 原稿與你的定稿送回後端（有登入才送；失敗不影響生成）
@@ -1419,7 +1421,8 @@
             btn.disabled = true;
             const stopTick = waitTicker(showStatus, `✨ 正在為 ${list.length} 支影片產生故事與文案，通常 30 秒到 1 分半`);
             try {
-                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
+                const theme = (list.map(r => (r.settings['g-theme'] || '').trim()).find(Boolean)) || '';
+                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, theme, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
                 if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
                 if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
@@ -1477,7 +1480,7 @@
             const nameCount = {};
             const captions = []; // 這一輪所有影片的貼文文案，最後合併成一個檔案下載
             try {
-                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'", "400 40px 'Zen Maru Gothic'", "500 54px 'Zen Maru Gothic'", "700 54px 'Zen Maru Gothic'"].map(f => document.fonts.load(f).catch(() => {})));
+                await Promise.all(["600 170px 'Cormorant Garamond'", "400 190px 'Cantata One'", "italic 400 52px 'Libre Caslon Text'", "500 40px 'Noto Serif TC'", "700 54px 'Noto Serif TC'"].map(f => document.fonts.load(f).catch(() => {})));
                 for (let r = 0; r < list.length; r++) {
                     const row = list[r];
                     await useRow(row);
