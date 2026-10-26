@@ -1821,13 +1821,14 @@ function captureCurrentRingParams() {
 // fragGeneration 讓「換字體/尺寸 → 又 buildScene()」時，上一輪還在飛的偵測/清理/輪詢自己作廢。
 let fragCleanApplied = false;   // 已清理過（存回作品、傳後端產 STL 用），載入訂單時用 item.cleanFragments 初始化
 let fragNeedsCleanup = false;   // 偵測到分離部件、還沒清完 → 鎖住確認
+let fragLarge = false;          // 有大塊分離部件（清理不切）→ 無法製作，鎖住確認、請換字體/尺寸
 let fragChecking = false;       // 背景偵測進行中 → 鎖住確認
 let fragCleaning = false;       // 自動清理進行中 → 鎖住確認
 let fragGeneration = 0;
 let fragCheckController = null;
 let fragActiveTaskId = null;    // 目前清理任務 id，換字體時對它打 cancel
 
-function fragCanConfirm() { return !fragChecking && !fragNeedsCleanup && !fragCleaning; }
+function fragCanConfirm() { return !fragChecking && !fragNeedsCleanup && !fragCleaning && !fragLarge; }
 
 function refreshConfirmLock() {
     const btn = document.getElementById('mainConfirmBtn');
@@ -1863,6 +1864,7 @@ async function scheduleFragmentCheck() {
     if (fragCheckController) fragCheckController.abort();
     if (fragActiveTaskId) { cancelFragTask(fragActiveTaskId); fragActiveTaskId = null; }
     fragNeedsCleanup = false;
+    fragLarge = false;
     fragCleaning = false;
     fragChecking = true;
     setFragStatus('idle', '分離部件檢查中…', false);
@@ -1889,7 +1891,11 @@ async function scheduleFragmentCheck() {
     }
     if (myGen !== fragGeneration) return;
     fragChecking = false;
-    if (result && result.has_fragments) {
+    if (result && result.large_fragments > 0) {
+        // 大塊分離部件：後端清理不會切它，這個組合做不出來 → 鎖住確認，請換字體/尺寸
+        fragLarge = true;
+        setFragStatus('failed', '這個組合有一部分只靠極細的連結與主體相接，製作時會脫落，無法保留。請為其中一個字母換筆畫較粗的字體，或選擇更大的尺寸。', false);
+    } else if (result && result.has_fragments) {
         fragNeedsCleanup = true;
         refreshConfirmLock();
         showFragmentToast();
