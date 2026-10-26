@@ -296,10 +296,7 @@
 
     <div id="footer">
         <button class="primary" id="generate-all">▶ 全部生成</button>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-            <button id="ai-all" title="一次為每支影片設想故事背景，再寫勾子句、片尾補一句、貼文開頭">✨ 全部產生文案</button>
-            <label style="font-size:11px;color:#8A857D;display:flex;gap:4px;align-items:center;"><input type="checkbox" id="ai-overwrite" style="accent-color:#C9A96E;">覆蓋已填寫的內容</label>
-        </div>
+        <button id="ai-all" title="一次為每支影片重新寫故事、勾子句、片尾那句、貼文開頭（會取代目前的內容）">✨ 全部產生文案</button>
         <div id="progress">
             <div id="progress-msg">就緒。先按「🎲」或直接輸入字母，縮圖會自動算出來。</div>
             <div id="progress-bar"><div id="progress-fill"></div></div>
@@ -1410,27 +1407,25 @@
         // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
         const AI_FIELD_SEL = { story: '.story', hook: '.hook', photoLine: '.pline', opening: '.opening' };
         document.getElementById('ai-all').addEventListener('click', async () => {
-            const btn = document.getElementById('ai-all'), overwrite = document.getElementById('ai-overwrite').checked;
+            const btn = document.getElementById('ai-all'); // 按下就是要新內容：一律重寫所有欄位
             const list = rows.filter(r => r.letterA && r.letterB);
             const showStatus = (html) => { progressMsg.innerHTML = html; };
             const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入</a>`;
             if (!list.length) { showStatus('沒有可產生文案的影片（請先填字母）。'); return; }
-            if (!overwrite && list.every(r => Object.keys(AI_FIELD_SEL).every(k => r[k].trim()))) { showStatus('每支的文案都已經填好了。要重寫請勾選「覆蓋已填寫的內容」。'); return; }
             const token = localStorage.getItem('adminToken');
             if (!token) { showStatus(`請先到後台登入，登入後回到這頁再按一次。${loginLink}`); return; }
             btn.disabled = true;
             const stopTick = waitTicker(showStatus, `✨ 正在為 ${list.length} 支影片產生故事與文案，通常 30 秒到 1 分半`);
             try {
-                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
+                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
                 if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
                 if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
                 if (!data.success || data.videos?.length !== list.length) throw new Error(data.error || '回傳數量不符');
-                let filled = 0, kept = 0;
+                let filled = 0;
                 data.videos.forEach((v, i) => {
                     const r = list[i]; if (!rows.includes(r)) return;
                     Object.entries(AI_FIELD_SEL).forEach(([k, sel]) => {
-                        if (!overwrite && r[k].trim()) { kept++; return; }
                         if (!v[k]) return;
                         const input = r.el.querySelector(sel);
                         input.value = v[k]; input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1438,7 +1433,7 @@
                         filled++;
                     });
                 });
-                showStatus(`✅ 已填入 ${filled} 個欄位。` + (kept ? `另有 ${kept} 個欄位原本就有內容，所以保留沒動；要全部重寫請勾選「覆蓋已填寫的內容」再按一次。` : '不滿意的欄位可以按旁邊的 ✨ 換其他版本。'));
+                showStatus(`✅ 已填入 ${filled} 個欄位。不滿意的欄位可以按旁邊的 ✨ 換其他版本。`);
             } catch (e) {
                 console.error(e);
                 showStatus('產生失敗：' + escapeHtml(e.message) + '，請稍後再試。');
