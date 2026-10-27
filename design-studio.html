@@ -3735,17 +3735,30 @@
         let lastAutoRing = null; // 上次自動帶入的滑桿值；清理分離部件後用來判斷使用者有沒有手動調過
         // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就停止（換作品、重新定位、召回後恢復）
         let ringZManual = false;
+        let lastValidXY = null; // 圓環腳印底下還有作品的最後一個 X/Y，拉進完全沒表面的空處時退回來
         function followRingZ() {
-            if (ringZManual || !mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
+            if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
             const geo = mainMesh.geometry;
             if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
-            const x = parseFloat(document.getElementById('ringX').value), y = parseFloat(document.getElementById('ringY').value);
+            const sx = document.getElementById('ringX'), sy = document.getElementById('ringY'), sz = document.getElementById('ringZ');
+            const x = parseFloat(sx.value), y = parseFloat(sy.value);
             const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
             const r = dropRingAt(geo.userData.ringMap, modelCenter.x + x, modelCenter.y + y, rot);
-            if (!r || !r.supported) return; // 站不住（斜面太陡/懸空）→ Z 保留，等拉回站得住的地方
-            const slider = document.getElementById('ringZ');
-            slider.value = Math.round((r.z - modelTopZ) * 10) / 10;
-            document.getElementById('ringZ-val').textContent = slider.value;
+            if (!r) { // 圓環下面完全沒有作品 → 不讓它拉進空處，退回上一個有效位置
+                if (lastValidXY) {
+                    sx.value = lastValidXY.x; sy.value = lastValidXY.y;
+                    document.getElementById('ringX-val').textContent = sx.value;
+                    document.getElementById('ringY-val').textContent = sy.value;
+                }
+                return;
+            }
+            lastValidXY = { x: sx.value, y: sy.value };
+            if (ringZManual) return; // 使用者自己調過高度 → 不動 Z
+            const dropZ = Math.round((r.z - modelTopZ) * 10) / 10;
+            // 站得住：Z 跟著放下的高度；站不住（斜面太陡/中心懸空）：Z 保留，但不能低於放下的高度（圓環會被筆畫頂上去，不能穿進作品）
+            const newZ = r.supported ? dropZ : Math.max(parseFloat(sz.value), dropZ);
+            sz.value = newZ;
+            document.getElementById('ringZ-val').textContent = sz.value;
         }
         function autoPositionRing() {
             if (!mainMesh) return;
@@ -3753,6 +3766,7 @@
             const vals = { ringX: a.x, ringY: a.y, ringZ: Math.round((a.z - modelTopZ) * 10) / 10, ringRotation: a.rot ? 90 : 0 };
             lastAutoRing = {};
             ringZManual = false;
+            lastValidXY = { x: String(vals.ringX), y: String(vals.ringY) };
             for (const [id, v] of Object.entries(vals)) {
                 const slider = document.getElementById(id);
                 slider.value = v;
@@ -4301,11 +4315,15 @@
             slotScene.environment = window.envMap;
 
             const meshClone = mainMesh.clone();
-            slotScene.add(meshClone);
+            // 主體與圓環包在同一個 group 套目前的佩戴傾斜（跟主畫面一致），墜頭掛在鏈子上保持直立
+            const slotTiltGroup = new THREE.Group();
+            if (pendantGroup) { slotTiltGroup.quaternion.copy(pendantGroup.quaternion); slotTiltGroup.position.copy(pendantGroup.position); }
+            slotTiltGroup.add(meshClone);
+            slotScene.add(slotTiltGroup);
             let ringClone = null, bailClone = null;
             if (ringMesh) {
                 ringClone = ringMesh.clone();
-                slotScene.add(ringClone);
+                slotTiltGroup.add(ringClone);
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
@@ -4379,6 +4397,7 @@
             modelGeneration++; // 取消任何正在飛行中的 generateModel async 結果
             lastAutoRing = null; // 召回的作品照存檔值擺放，不自動定位
             ringZManual = false; // 召回後再拉 X/Y 一樣跟著放下
+            lastValidXY = null;
 
             // 載入槽位數據到主畫面
             document.getElementById('letter1').value = slotData.letter1;
