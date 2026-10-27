@@ -16,8 +16,9 @@
 //      或左右兩側都碰到且間距 ≤ GAP_MAX（跨接）。擋掉的是圓環掛在筆畫邊緣外、中心懸空，以及太陡的斜坡。
 //   4. 不穿洞：從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
 //   5. 不埋太深：掛點不低於作品最高點往下 BAND。
-// 挑選（靠近重心優先，高度只當上限）：選離重心垂直線最近的候選；距離差 TIE 以內算平手，平手選重心「右邊」那個
-//   （掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；掛左邊則像垂下去）；同一邊再比高度。
+// 挑選（正面的左右優先，前後其次，高度只當上限）：
+//   1. 正面看離作品正中央最近 → 2. 正面看離重心近 → 3. 前後離重心近（作品才不會前仰後倒）
+//   → 4. 選重心「右邊」那個（每一關差 TIE 以內算平手、進下一關）（掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；掛左邊則像垂下去）→ 5. 高度高的。
 //   作品會不會歪只看掛點與重心的水平距離，跟高度無關，所以不拿高度計分。
 // 網格對齊 0.1mm 的整數倍，回傳的 x、y 可以直接當滑桿值（滑桿 step 0.1）。
 // 回傳 { x, y, z, rot }，rot 為弧度（0 或 π/2）。geometry 需已 computeBoundingBox()。
@@ -56,6 +57,7 @@ export function findAttachPoint(geometry) {
     }
     if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
     const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → B 朝前
+    const cx = (bb.min.x + bb.max.x) / 2, cy = (bb.min.y + bb.max.y) / 2; // 作品正中央
     // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
     const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
     const H = rotB ? (u, v) => hm[v * ny + u] : (u, v) => hm[u * ny + v];
@@ -113,17 +115,21 @@ export function findAttachPoint(geometry) {
             }
             if (pierce) continue;
             const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
-            // right：掛點在重心右邊（字母 A 朝前時 +x；字母 B 朝前時 +y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
-            cands.push({ x, y, z, d: Math.hypot(x - mx, y - my), right: (rotB ? y - my : x - mx) > 0 });
+            // du：正面看與重心的左右偏移（字母 A 朝前時沿 x；字母 B 朝前時沿 y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
+            // dc：正面看與作品正中央的距離；dv：前後與重心的距離
+            const du = rotB ? y - my : x - mx, dc = Math.abs(rotB ? y - cy : x - cx), dv = Math.abs(rotB ? x - mx : y - my);
+            cands.push({ x, y, z, du: Math.abs(du), dc, dv, right: du > 0 });
         }
     }
     if (!cands.length) return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
-    let dMin = Infinity; for (const c of cands) if (c.d < dMin) dMin = c.d;
-    let best = null;
-    for (const c of cands) {
-        if (c.d > dMin + TIE) continue;
-        if (!best || (c.right !== best.right ? c.right : c.z > best.z)) best = c;
+    // 逐關過濾：每一關只留下「跟最佳值差 TIE 以內」的候選，再進下一關
+    let pool = cands;
+    for (const key of ['dc', 'du', 'dv']) {
+        let m = Infinity; for (const c of pool) if (c[key] < m) m = c[key];
+        pool = pool.filter(c => c[key] <= m + TIE);
     }
+    if (pool.some(c => c.right)) pool = pool.filter(c => c.right);
+    let best = pool[0]; for (const c of pool) if (c.z > best.z) best = c;
     return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
 }
 
