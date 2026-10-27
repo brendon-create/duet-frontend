@@ -56,7 +56,9 @@ export function findAttachPoint(geometry) {
         }
     }
     if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
-    const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → B 朝前
+    // 自動定位一律不轉圓環（rot 0，圓環平面平行字母 A）：使用者定案不依字母寬度自動改朝向，
+    // 否則前後/左右滑桿的意義會跟著變；要轉由使用者自己拉旋轉滑桿（dropRingAt 支援任意角度）
+    const rotB = false;
     const cx = (bb.min.x + bb.max.x) / 2, cy = (bb.min.y + bb.max.y) / 2; // 作品正中央
     // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
     const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
@@ -129,8 +131,16 @@ export function findAttachPoint(geometry) {
         let m = Infinity; for (const c of pool) if (c[key] < m) m = c[key];
         pool = pool.filter(c => c[key] <= m + TIE);
     }
-    if (pool.some(c => c.right)) pool = pool.filter(c => c.right);
-    let best = pool[0]; for (const c of pool) if (c.z > best.z) best = c;
+    // 最後一關：離重心最近（左右、前後一起算），作品才會掛得正；只有幾乎同距離（0.05 內）才用「右邊」與高度決勝。
+    // 之前這裡直接用右邊/高度決勝，會固定偏離重心 0.3mm，有佩戴傾斜後看得出來
+    let best = null, bestD = Infinity;
+    for (const c of pool) {
+        const d = Math.hypot(c.du, c.dv);
+        if (d < bestD - 0.05) { best = c; bestD = d; continue; }
+        if (Math.abs(d - bestD) <= 0.05 && best) {
+            if (c.right !== best.right ? c.right : c.z > best.z) { best = c; bestD = Math.min(bestD, d); }
+        }
+    }
     return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
 }
 
