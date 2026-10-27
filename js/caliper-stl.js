@@ -29,20 +29,30 @@ const S = 10000;  // Clipper 整數座標：1mm = 10000
 /**
  * 投影輪廓：把所有三角形投影到 (h, v) 平面後聯集。h/v 為座標軸索引（0=X, 1=Y, 2=Z）。
  * 三角形之間的浮點縫隙會讓聯集留下極細的縫與碎片：外擴 0.002mm 再內縮 0.002mm 補縫，丟掉 < 0.001mm² 的碎片。
+ * 速度：網格是封閉的，只取朝向同一側的三角形就足以蓋滿投影（背面那一半是重複的）；
+ * 一次聯集數萬個三角形耗時會暴增（3 萬面約 15 秒、整頁凍結），改成每 8 組分批一層層聯集（同一份 STL 約 0.2 秒）。
  * 回傳 contours（mm），可直接給 caliper-geometry 的 buildShape
  */
 export function silhouette(ClipperLib, tri, h, v) {
-    const paths = [];
+    let groups = [];
     for (let i = 0; i < tri.length; i += 9) {
         const p = [0, 1, 2].map(k => ({ X: Math.round(tri[i + k * 3 + h] * S), Y: Math.round(tri[i + k * 3 + v] * S) }));
         const area = (p[1].X - p[0].X) * (p[2].Y - p[0].Y) - (p[2].X - p[0].X) * (p[1].Y - p[0].Y);
-        if (area === 0) continue;                  // 垂直於投影面的三角形投影成線
-        paths.push(area > 0 ? p : p.reverse());     // 統一方向後用 nonzero 聯集
+        if (area > 0) groups.push([p]);            // 只取正面；垂直於投影面的（投影成線）與背面都略過
     }
-    const cl = new ClipperLib.Clipper();
-    cl.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
-    const union = new ClipperLib.Paths();
-    cl.Execute(ClipperLib.ClipType.ctUnion, union, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+    const unite = paths => {
+        const cl = new ClipperLib.Clipper();
+        cl.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
+        const out = new ClipperLib.Paths();
+        cl.Execute(ClipperLib.ClipType.ctUnion, out, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+        return out;
+    };
+    while (groups.length > 1) {
+        const next = [];
+        for (let i = 0; i < groups.length; i += 8) next.push(unite(groups.slice(i, i + 8).flat()));
+        groups = next;
+    }
+    const union = groups.length ? groups[0] : [];
     const offset = (src, d) => {
         const co = new ClipperLib.ClipperOffset();
         co.AddPaths(src, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
