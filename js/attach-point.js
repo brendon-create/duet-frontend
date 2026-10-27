@@ -92,3 +92,22 @@ export function findAttachPoint(geometry) {
     }
     return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
 }
+
+// 體積重心（物件空間）：以原點為頂點的帶號四面體體積加權，跟 findAttachPoint 內部的 2D 重心同一個算法。
+// geometry 需為 non-indexed（indexed 會先轉）。體積趨近 0 時回傳 BBox 中心。
+export function computeCentroid(geometry) {
+    if (geometry.index) geometry = geometry.toNonIndexed();
+    const p = geometry.attributes.position.array;
+    let vol = 0, cx = 0, cy = 0, cz = 0;
+    for (let t = 0; t < p.length; t += 9) {
+        const ax = p[t], ay = p[t + 1], az = p[t + 2], bx = p[t + 3], by = p[t + 4], bz = p[t + 5], qx = p[t + 6], qy = p[t + 7], qz = p[t + 8];
+        const v = (ax * (by * qz - bz * qy) - ay * (bx * qz - bz * qx) + az * (bx * qy - by * qx)) / 6;
+        vol += v; cx += v * (ax + bx + qx) / 4; cy += v * (ay + by + qy) / 4; cz += v * (az + bz + qz) / 4;
+    }
+    if (Math.abs(vol) < 1e-9) {
+        if (!geometry.boundingBox) geometry.computeBoundingBox();
+        const c = geometry.boundingBox.getCenter(new (geometry.boundingBox.min.constructor)());
+        return { x: c.x, y: c.y, z: c.z };
+    }
+    return { x: cx / vol, y: cy / vol, z: cz / vol };
+}
