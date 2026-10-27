@@ -12,6 +12,17 @@ import * as THREE from 'three';
 
 export const SEAM_RADIUS_MM = 0.18;
 
+// 所有已編譯著色器的半徑 uniform，讓 setSeamRadius 可以即時改（驗證/調參用）
+const _radiusUniforms = new Set();
+let _currentRadius = SEAM_RADIUS_MM;
+export function setSeamRadius(r) {
+    _currentRadius = r;
+    for (const u of _radiusUniforms) u.value = r;
+}
+export function getSeamRadius() { return _currentRadius; }
+// console 可用：DUET_setSeamRadius(0.6) 看明顯效果、DUET_setSeamRadius(0) 關掉、DUET_setSeamRadius(0.18) 回預設
+if (typeof window !== 'undefined') window.DUET_setSeamRadius = setSeamRadius;
+
 // 在 non-indexed geometry 上建立著色器需要的屬性。每個三角形的三個頂點存同一組資料：
 //   aBary   頂點的重心座標 (1,0,0)/(0,1,0)/(0,0,1)
 //   aSeamN0/1/2  第 j 條邊（頂點 j 對面那條）另一側面的法向量（物件空間）；不是縫則為 0
@@ -112,7 +123,8 @@ export function buildSeamAttributes(geometry) {
 // clone() 也會帶著這個著色（three 的 Material.copy 不複製 onBeforeCompile，這裡自己接）。
 export function applySeamRounding(material, radius = SEAM_RADIUS_MM) {
     material.onBeforeCompile = (shader) => {
-        shader.uniforms.uSeamR = { value: radius };
+        shader.uniforms.uSeamR = { value: _currentRadius };
+        _radiusUniforms.add(shader.uniforms.uSeamR);
         shader.vertexShader = shader.vertexShader
             .replace('#include <common>', `#include <common>
 attribute vec3 aBary; attribute vec3 aSeamH; attribute vec3 aSeamN0; attribute vec3 aSeamN1; attribute vec3 aSeamN2;

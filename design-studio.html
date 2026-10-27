@@ -934,7 +934,8 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { findAttachPoint } from './js/attach-point.js';
+        import { findAttachPoint, computeCentroid } from './js/attach-point.js';
+        import { applyPendantTilt } from './js/pendant-tilt.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
@@ -2574,6 +2575,26 @@
         // 注意：scene, camera, renderer, controls, envMap 已移至 3d-scene.js
         // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
         let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
+        // 佩戴傾斜：主體/圓環/墜頭掛在這個 Group 底下，傾斜只加在 Group 上（見 pendant-tilt.js）。第一次用到時建立。
+        let pendantGroup = null;
+        function getPendantGroup() {
+            if (!pendantGroup) {
+                pendantGroup = new THREE.Group();
+                pendantGroup.name = 'pendantGroup';
+                window.scene.add(pendantGroup);
+                window.pendantGroup = pendantGroup;
+            }
+            return pendantGroup;
+        }
+        // 依目前圓環位置與主體重心重算傾斜；ring-bail.js 在圓環移動/還原後會呼叫
+        window.applyPendantTilt = function () {
+            const g = getPendantGroup();
+            const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
+            if (isPlaceholder || !ringMesh) { applyPendantTilt(g, null, null); return; }
+            const geo = mainMesh.geometry;
+            if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
+            applyPendantTilt(g, ringMesh.position, geo.userData.centroid);
+        };
         let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
         let isReselect = false;  // 標記是否為重新選擇字體
@@ -3105,21 +3126,22 @@
                 document.getElementById('plating').value
             );
 
+            result.geometry.userData.centroid = computeCentroid(result.geometry); // 佩戴傾斜用的重心（置中後的座標）
             mainMesh = result;
             window.mainMesh = mainMesh; // 橋接給 __captureProductAssets 等使用（跟 slot 召回路徑一致的做法）
-            window.scene.add(mainMesh);
+            getPendantGroup().add(mainMesh);
 
             // 🔧 確保新模型添加後，立即清理任何殘留的圓球（防止並發導致的殘留）
             removeAllPlaceholderSpheres();
 
             // 新物件已添加，現在可以安全移除舊物件
             if (oldMainMesh) {
-                window.scene.remove(oldMainMesh);
+                oldMainMesh.removeFromParent();
                 oldMainMesh.geometry?.dispose();
                 oldMainMesh.material?.dispose();
             }
             if (oldRingMesh) {
-                window.scene.remove(oldRingMesh);
+                oldRingMesh.removeFromParent();
                 oldRingMesh.geometry?.dispose();
                 oldRingMesh.material?.dispose();
             }
@@ -3619,6 +3641,7 @@
                 modelCenter.set(0, 0, 0);  // 強制設為原點（與後端 OpenSCAD 一致）
                 window.modelTopZ = modelTopZ;
                 window.modelCenter = modelCenter;
+                cleanGeometry.userData.centroid = computeCentroid(cleanGeometry); // 幾何換了 → 佩戴傾斜的重心跟著換
 
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
@@ -4384,7 +4407,7 @@
 
             // 清除舊模型
             if (mainMesh) {
-                window.scene.remove(mainMesh);
+                mainMesh.removeFromParent();
                 if (mainMesh.geometry) mainMesh.geometry.dispose();
                 if (mainMesh.material) mainMesh.material.dispose();
             }
@@ -4396,7 +4419,7 @@
             mainMesh = slotData.mesh.clone();
             mainMesh.geometry = slotData.mesh.geometry.clone();
             mainMesh.material = slotData.mesh.material.clone();
-            window.scene.add(mainMesh);
+            getPendantGroup().add(mainMesh);
             window.mainMesh = mainMesh;
 
             // 更新模型中心與頂部 Z，供 ring-bail.js 定位使用
@@ -4552,10 +4575,13 @@
             light2.position.set(5, 5, 10);
             thumbnailScene.add(light1, light2);
 
-            // 複製當前場景的物件
-            thumbnailScene.add(mainMesh.clone());
-            if (ringMesh) thumbnailScene.add(ringMesh.clone());
-            if (bailMesh) thumbnailScene.add(bailMesh.clone());
+            // 複製當前場景的物件，連同佩戴傾斜一起（Slot 預覽要能比較實際佩戴的樣子）
+            const thumbGroup = new THREE.Group();
+            if (pendantGroup) { thumbGroup.quaternion.copy(pendantGroup.quaternion); thumbGroup.position.copy(pendantGroup.position); }
+            thumbGroup.add(mainMesh.clone());
+            if (ringMesh) thumbGroup.add(ringMesh.clone());
+            if (bailMesh) thumbGroup.add(bailMesh.clone());
+            thumbnailScene.add(thumbGroup);
 
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);

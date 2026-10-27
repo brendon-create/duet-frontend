@@ -9,6 +9,9 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 // Ring & Bail 狀態（使用 window.xxx 暴露供外部存取）
+// 主體/圓環/墜頭都掛在 window.pendantGroup（佩戴傾斜用，見 pendant-tilt.js）底下；還沒建立時退回 scene
+const pendantParent = () => window.pendantGroup || window.scene;
+
 export let ringMesh = null;
 export let bailMesh = null;
 export let bailRelativeOffset = new THREE.Vector3();
@@ -37,7 +40,7 @@ function getMaterial(materialType, finish, plating) {
 export function createRing() {
     // 先移除舊的 ringMesh
     if (ringMesh) {
-        window.scene.remove(ringMesh);
+        ringMesh.removeFromParent();
         ringMesh.geometry?.dispose();
         ringMesh.material?.dispose();
         ringMesh = null;
@@ -63,7 +66,7 @@ export function createRing() {
         document.getElementById('plating').value
     );
     ringMesh = new THREE.Mesh(geometry, material);
-    window.scene.add(ringMesh);
+    pendantParent().add(ringMesh);
     // 暴露給佩戴模擬（用於截取墜飾）
     window.ringMesh = ringMesh;
 
@@ -190,14 +193,14 @@ export function createBail() {
             bailInitialized = true;
             console.log('✅ Bail 已初始化，之後將保持相對偏移');
 
-            window.scene.add(bailMesh);
+            pendantParent().add(bailMesh);
             window.bailMesh = bailMesh;
 
             console.log('✅ Bail 已添加到場景');
 
             // 新的 bail 已經加進場景，現在才安全移除舊的（比照主體字母 mesh 的處理方式）
             if (oldBailMesh) {
-                window.scene.remove(oldBailMesh);
+                oldBailMesh.removeFromParent();
                 oldBailMesh.geometry?.dispose();
                 oldBailMesh.material?.dispose();
             }
@@ -226,7 +229,7 @@ export function createBail() {
 
 export function resetRingState() {
     if (ringMesh) {
-        if (window.scene) window.scene.remove(ringMesh);
+        ringMesh.removeFromParent();
         ringMesh.geometry?.dispose();
         ringMesh.material?.dispose();
         ringMesh = null;
@@ -238,7 +241,7 @@ export function resetBailState() {
     bailLoadId++; // 取消任何正在飛行中的 STL 載入
     bailLoading = false; // 上面已把它的 bailLoadId 判斷作廢，它的 resolve/false 設定不會再生效，這裡要自己清掉
     if (bailMesh) {
-        if (window.scene) window.scene.remove(bailMesh);
+        bailMesh.removeFromParent();
         bailMesh.geometry?.dispose();
         bailMesh.material?.dispose();
         bailMesh = null;
@@ -257,15 +260,16 @@ export function resetBailInitFlag() {
 // 直接從儲存資料還原 ring（跳過重新計算，完全複製儲存時的 position/rotation）
 export function restoreRingFromSave(savedRing) {
     if (ringMesh) {
-        if (window.scene) window.scene.remove(ringMesh);
+        ringMesh.removeFromParent();
         ringMesh.geometry?.dispose();
         ringMesh.material?.dispose();
     }
     ringMesh = savedRing.clone();
     ringMesh.geometry = savedRing.geometry.clone();
     ringMesh.material = savedRing.material.clone();
-    if (window.scene) window.scene.add(ringMesh);
+    pendantParent().add(ringMesh);
     window.ringMesh = ringMesh;
+    window.applyPendantTilt?.();
 }
 
 // 直接從儲存資料還原 bail（跳過 async STL 下載，完全複製儲存時的 position/rotation）
@@ -273,14 +277,14 @@ export function restoreBailFromSave(savedBail, savedRelativeOffset) {
     bailLoadId++; // 取消任何正在飛行中的 STL 載入
     bailLoading = false; // 同上，上面已把它的 bailLoadId 判斷作廢，這裡要自己清掉
     if (bailMesh) {
-        if (window.scene) window.scene.remove(bailMesh);
+        bailMesh.removeFromParent();
         bailMesh.geometry?.dispose();
         bailMesh.material?.dispose();
     }
     bailMesh = savedBail.clone();
     bailMesh.geometry = savedBail.geometry.clone();
     bailMesh.material = savedBail.material.clone();
-    if (window.scene) window.scene.add(bailMesh);
+    pendantParent().add(bailMesh);
     window.bailMesh = bailMesh;
     bailRelativeOffset.copy(savedRelativeOffset);
     bailInitialized = true;
@@ -329,4 +333,5 @@ export function updateRingPosition() {
     });
     console.log('🔍 模型頂部 Z:', window.modelTopZ.toFixed(3));
     console.log('═══════════════════════════════════════');
+    window.applyPendantTilt?.(); // 圓環動了 → 重算佩戴傾斜
 }
