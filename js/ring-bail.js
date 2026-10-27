@@ -9,7 +9,9 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 // Ring & Bail 狀態（使用 window.xxx 暴露供外部存取）
-// 主體/圓環/墜頭都掛在 window.pendantGroup（佩戴傾斜用，見 pendant-tilt.js）底下；還沒建立時退回 scene
+// 主體與圓環掛在 window.pendantGroup（佩戴傾斜用，見 pendant-tilt.js）底下；還沒建立時退回 scene。
+// 墜頭不進群組：它掛在鏈子上永遠直立，作品繞著懸掛點（圓環內圈最高點）歪，懸掛點在畫面上不動，
+// 所以墜頭留在 scene、座標照舊就會剛好停在圓環頂點。
 const pendantParent = () => window.pendantGroup || window.scene;
 
 export let ringMesh = null;
@@ -193,7 +195,7 @@ export function createBail() {
             bailInitialized = true;
             console.log('✅ Bail 已初始化，之後將保持相對偏移');
 
-            pendantParent().add(bailMesh);
+            window.scene.add(bailMesh);
             window.bailMesh = bailMesh;
 
             console.log('✅ Bail 已添加到場景');
@@ -284,7 +286,7 @@ export function restoreBailFromSave(savedBail, savedRelativeOffset) {
     bailMesh = savedBail.clone();
     bailMesh.geometry = savedBail.geometry.clone();
     bailMesh.material = savedBail.material.clone();
-    pendantParent().add(bailMesh);
+    window.scene.add(bailMesh);
     window.bailMesh = bailMesh;
     bailRelativeOffset.copy(savedRelativeOffset);
     bailInitialized = true;

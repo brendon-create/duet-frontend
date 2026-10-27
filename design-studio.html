@@ -4580,8 +4580,8 @@
             if (pendantGroup) { thumbGroup.quaternion.copy(pendantGroup.quaternion); thumbGroup.position.copy(pendantGroup.position); }
             thumbGroup.add(mainMesh.clone());
             if (ringMesh) thumbGroup.add(ringMesh.clone());
-            if (bailMesh) thumbGroup.add(bailMesh.clone());
             thumbnailScene.add(thumbGroup);
+            if (bailMesh) thumbnailScene.add(bailMesh.clone()); // 墜頭掛在鏈子上永遠直立，不進傾斜群組
 
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
