@@ -33,7 +33,7 @@
         input[type=number] { width: 72px; }
         button { background: var(--primary); color: #000; border: none; border-radius: 6px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
         button.ghost { background: transparent; color: var(--text-muted); border: 1px solid #333; font-weight: 400; padding: 4px 10px; }
-        button:disabled { opacity: 0.5; cursor: wait; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         details { color: var(--text-muted); }
         details[open] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
         details .rules { display: flex; gap: 8px; margin-top: 6px; }
@@ -352,6 +352,7 @@ $('orderQueryBtn').addEventListener('click', async () => {
         setStatus(stlItems.length ? `找到 ${stlItems.length} 件作品` : '這筆訂單沒有作品', !stlItems.length);
     } catch (e) { setStatus(e.message, true); }
 });
+$('orderId').addEventListener('keydown', e => { if (e.key === 'Enter') $('orderQueryBtn').click(); });
 $('stlItem').addEventListener('change', fillVersions);
 function fillVersions() {
     const it = stlItems.find(x => String(x.item_index) === $('stlItem').value);
