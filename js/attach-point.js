@@ -8,15 +8,17 @@
 //   鏈子穿過墜頭的洞、與圓環平面垂直，戴起來圓環平面會朝前 → 較寬的字母成為正面；
 //   反過來的話作品會被鏈子強制帶著轉 90°，佩戴不順。
 //   以下 u = 圓環所在平面的水平軸、v = 圓環管徑方向的軸。
-// 做法：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖，再挑掛點。
-// 可掛條件：圓環底部（u ±0.4、v ±0.3mm）整片有實體、高低差 < 0.6mm；
-//   且從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
-//   掛點高度取這片範圍內的最低點，保證圓環底部不會有一邊懸空。
-// 筆畫靠近但中間空（如襯線 H 頂部）：圓環往下放能同時卡住左右兩筆、間距 ≤ GAP_MAX 時，也列為掛點（見 bridgeZ）。
-// 挑選（靠近重心優先，高度只當上限）：候選限制在作品最高點往下 BAND 以內；選離重心垂直線最近的；
-//   距離差 TIE 以內算平手，平手選重心「右邊」那個（掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；
-//   掛左邊則像垂下去）；同一邊再比高度。
-//   作品會不會歪只看掛點與重心的水平距離，跟高度無關，所以不再拿高度計分。
+// 做法：從正上方把每個三角形「投影」到 0.1mm 網格上，得到頂面高度圖，然後在每個位置「模擬把圓環放下去」：
+//   1. 放下：圓環垂直往下，降到圓環外緣（半徑 R_OUT）第一次碰到作品為止。平頂碰在正下方、尖頂碰在尖端、
+//      谷底或兩筆之間會同時碰到左右兩邊（m 中央、襯線 H 頂部都是這種）。
+//   2. 熔接：碰到後再下沉 FUSE，讓圓環跟作品接牢。FUSE 由 RING_CENTER_ABOVE_ATTACH 換算（平頂時掛點 = 頂面，與舊公式一致）。
+//   3. 站得住：接觸點要在圓環正下方 SUPPORT_HALF 以內（容許坡度：下坡側懸空 ≤ SUPPORT_SLACK，約 35°），
+//      或左右兩側都碰到且間距 ≤ GAP_MAX（跨接）。擋掉的是圓環掛在筆畫邊緣外、中心懸空，以及太陡的斜坡。
+//   4. 不穿洞：從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
+//   5. 不埋太深：掛點不低於作品最高點往下 BAND。
+// 挑選（靠近重心優先，高度只當上限）：選離重心垂直線最近的候選；距離差 TIE 以內算平手，平手選重心「右邊」那個
+//   （掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；掛左邊則像垂下去）；同一邊再比高度。
+//   作品會不會歪只看掛點與重心的水平距離，跟高度無關，所以不拿高度計分。
 // 網格對齊 0.1mm 的整數倍，回傳的 x、y 可以直接當滑桿值（滑桿 step 0.1）。
 // 回傳 { x, y, z, rot }，rot 為弧度（0 或 π/2）。geometry 需已 computeBoundingBox()。
 
@@ -60,75 +62,69 @@ export function findAttachPoint(geometry) {
     // 從正面看，每個 u 位置上整件作品的最高點（不分前後深度）
     const faceMax = new Float32Array(nu).fill(-Infinity);
     for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const h = H(u, v); if (h > faceMax[u]) faceMax[u] = h; }
-    const R_IN = 1.0, RI = Math.round(R_IN / STEP), BAND = 1.0, TIE = 0.3;
-    // 跨接：把圓環外圈（半徑 R_OUT）從上方放下，左右兩側都碰到筆畫、且正中間是空的（或明顯較低）才算卡住；
-    //   卡住後比照平面情況再下沉 R_OUT − RING_CENTER_ABOVE_ATTACH − R_IN（0.4mm）讓圓環與筆畫熔接。
-    //   支撐的筆畫在管徑方向（v）必須整段有實體，避免圓環前後懸空。
-    //   兩側接觸點的間距要 ≤ GAP_MAX（平頂兩筆相距 2mm 時圓環只下沉約 0.35mm；襯線、斜頂接觸點較低時下沉較多，由 BAND 限制）。
-    //   回傳等效掛點高度（圓環中心 − RING_CENTER_ABOVE_ATTACH），沒有卡住則回傳 null。
-    const R_OUT = 1.6, RO = Math.round(R_OUT / STEP), CONTACT = 0.05, GAP_MAX = 2.0;
-    function bridgeZ(u, v, fv) {
-        const col = uu => { // 這一欄在管徑範圍內整段有實體時回傳最高點，否則 −∞
-            let lo = Infinity, hi = -Infinity;
-            for (let b = -fv; b <= fv; b++) { const h = H(uu, v + b); if (h < lo) lo = h; if (h > hi) hi = h; }
-            return lo === -Infinity ? -Infinity : hi;
-        };
-        let zl = -Infinity, zr = -Infinity, al = 0, ar = 0;
-        for (let a = -RO; a <= RO; a++) {
-            const uu = u + a; if (a === 0 || uu < 0 || uu >= nu) continue;
-            const h = col(uu); if (h === -Infinity) continue;
-            const zc = h + Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2));
-            if (a < 0) { if (zc > zl) { zl = zc; al = a; } } else if (zc > zr) { zr = zc; ar = a; }
-        }
-        const zc = Math.max(zl, zr);
-        if (zc === -Infinity || zl < zc - CONTACT || zr < zc - CONTACT) return null;
-        if ((ar - al) * STEP > GAP_MAX + 1e-6) return null;
-        // 正中間要是空隙：中心點正下方的最高處放上圓環後，必須明顯低於兩側卡住的高度
-        let hc = -Infinity; for (let b = -fv; b <= fv; b++) { const h = H(u, v + b); if (h > hc) hc = h; }
-        if (hc + R_OUT > zc - CONTACT) return null;
-        return zc - R_OUT;
+
+    const R_IN = 1.0, TUBE = 0.3, R_OUT = R_IN + 2 * TUBE;       // 圓環內半徑、管半徑、外半徑（同 ring-bail.js）
+    const FUSE = R_OUT - RING_CENTER_ABOVE_ATTACH;               // 0.4：碰到後再下沉的熔接深度（碰到時中心離表面 R_OUT，最後離掛點 1.2）
+    const BAND = 1.0, TIE = 0.3, GAP_MAX = 2.0, CONTACT = 0.05, SUPPORT_HALF = 0.3, SUPPORT_SLACK = FUSE;
+    const RI = Math.round(R_IN / STEP), RO = Math.round(R_OUT / STEP), RB = Math.round(TUBE / STEP), SH = Math.round(SUPPORT_HALF / STEP);
+    // 每個 u 位置在管徑範圍（v ±TUBE）內的最高點：圓環管子碰到的就是這個
+    const cm = new Float32Array(nu * nv).fill(-Infinity);
+    for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) {
+        let h = -Infinity;
+        for (let b = -RB; b <= RB; b++) { const vv = v + b; if (vv < 0 || vv >= nv) continue; const t = H(u, vv); if (t > h) h = t; }
+        cm[u * nv + v] = h;
     }
+    const off = []; for (let a = -RO; a <= RO; a++) off[a + RO] = Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2)); // 外緣在水平偏移 a 處離中心的垂直距離
     const round1 = n => Math.round(n * 10) / 10;
-    // 先用完整圓環底部尺寸找；筆畫太細找不到時退一步只要求單點有實體
-    for (const [fu, fv, maxDiff] of [[4, 3, 0.6], [1, 1, 1.0]]) {
-        const cands = [];
-        for (let u = fu; u < nu - fu; u++) {
-            for (let v = fv; v < nv - fv; v++) {
-                let hmin = Infinity, hmax = -Infinity;
-                for (let a = -fu; a <= fu && hmin > -Infinity; a++) for (let b = -fv; b <= fv; b++) {
-                    const h = H(u + a, v + b); if (h < hmin) hmin = h; if (h > hmax) hmax = h;
-                }
-                if (hmin === -Infinity || hmax - hmin > maxDiff) {
-                    // 正下方不是整片實體：看圓環往下放時會不會同時卡在左右兩個筆畫上（如襯線 H 頂部兩筆很靠近）
-                    if (fu !== 4) continue;
-                    const zb = bridgeZ(u, v, fv);
-                    if (zb === null) continue;
-                    hmin = zb;
-                }
-                // 圓環中心在 hmin + RING_CENTER_ABOVE_ATTACH → 洞的下緣在水平偏移 d 處的高度 = 中心 − √(R_IN² − d²)
-                let pierce = false;
-                for (let a = -RI + 1; a <= RI - 1 && !pierce; a++) {
-                    const uu = u + a; if (uu < 0 || uu >= nu) continue;
-                    const d = a * STEP;
-                    if (faceMax[uu] > hmin + RING_CENTER_ABOVE_ATTACH - Math.sqrt(R_IN * R_IN - d * d) + 0.05) pierce = true;
-                }
-                if (pierce) continue;
-                if (hmin < bb.max.z - BAND) continue;
-                const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
-                // right：掛點在重心右邊（字母 A 朝前時 +x；字母 B 朝前時 +y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
-                cands.push({ x, y, z: hmin, d: Math.hypot(x - mx, y - my), right: (rotB ? y - my : x - mx) > 0 });
+    const cands = [];
+    for (let u = 0; u < nu; u++) {
+        for (let v = 0; v < nv; v++) {
+            // 1. 放下：圓環中心能降到的最低高度 = 各欄「表面高度 + 外緣垂直距離」的最大值
+            let zc = -Infinity;
+            for (let a = -RO; a <= RO; a++) {
+                const uu = u + a; if (uu < 0 || uu >= nu) continue;
+                const h = cm[uu * nv + v]; if (h === -Infinity) continue;
+                const z = h + off[a + RO]; if (z > zc) zc = z;
             }
+            if (zc === -Infinity) continue;
+            // 3. 站得住：正下方 ±SUPPORT_HALF 內有實體貼著（容許 SUPPORT_SLACK 的縫，熔接會填掉），或左右兩側都碰到
+            let supported = false, aL = Infinity, aR = -Infinity;
+            for (let a = -RO; a <= RO; a++) {
+                const uu = u + a; if (uu < 0 || uu >= nu) continue;
+                const h = cm[uu * nv + v]; if (h === -Infinity) continue;
+                const gap = zc - off[a + RO] - h; // 圓環外緣在這欄離表面的距離
+                if (Math.abs(a) <= SH && gap <= SUPPORT_SLACK) supported = true;
+                if (gap <= CONTACT) { if (a < aL) aL = a; if (a > aR) aR = a; }
+            }
+            if (!supported) {
+                const bridged = aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6;
+                if (!bridged) continue;
+            }
+            // 2. 熔接：下沉 FUSE → 掛點 = 圓環中心 − RING_CENTER_ABOVE_ATTACH
+            const z = zc - FUSE - RING_CENTER_ABOVE_ATTACH;
+            // 5. 不埋太深
+            if (z < bb.max.z - BAND) continue;
+            // 4. 不穿洞：洞的下緣在水平偏移 d 處的高度 = 中心 − √(R_IN² − d²)
+            let pierce = false;
+            for (let a = -RI + 1; a <= RI - 1 && !pierce; a++) {
+                const uu = u + a; if (uu < 0 || uu >= nu) continue;
+                const d = a * STEP;
+                if (faceMax[uu] > z + RING_CENTER_ABOVE_ATTACH - Math.sqrt(R_IN * R_IN - d * d) + CONTACT) pierce = true;
+            }
+            if (pierce) continue;
+            const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
+            // right：掛點在重心右邊（字母 A 朝前時 +x；字母 B 朝前時 +y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
+            cands.push({ x, y, z, d: Math.hypot(x - mx, y - my), right: (rotB ? y - my : x - mx) > 0 });
         }
-        if (!cands.length) continue;
-        const dMin = Math.min(...cands.map(c => c.d));
-        let best = null;
-        for (const c of cands) {
-            if (c.d > dMin + TIE) continue;
-            if (!best || (c.right !== best.right ? c.right : c.z > best.z)) best = c;
-        }
-        return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
     }
-    return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
+    if (!cands.length) return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
+    let dMin = Infinity; for (const c of cands) if (c.d < dMin) dMin = c.d;
+    let best = null;
+    for (const c of cands) {
+        if (c.d > dMin + TIE) continue;
+        if (!best || (c.right !== best.right ? c.right : c.z > best.z)) best = c;
+    }
+    return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
 }
 
 // 體積重心（物件空間）：以原點為頂點的帶號四面體體積加權，跟 findAttachPoint 內部的 2D 重心同一個算法。
