@@ -109,6 +109,13 @@ export function findAttachPoint(geometry) {
             const z = zc - FUSE - RING_CENTER_ABOVE_ATTACH;
             // 5. 不埋太深
             if (z < bb.max.z - BAND) continue;
+            // 6. 前後不被夾住：圓環平面前後（管徑外 0.4～1.3mm）若有比掛點高 0.5mm 以上的壁，圓環等於陷在兩筆之間的縫裡（V×V 的凹口）
+            let pinched = false;
+            for (let b = RB + 1; b <= RB + 10 && !pinched; b++) for (const sgn of [-1, 1]) {
+                const vv = v + sgn * b; if (vv < 0 || vv >= nv) continue;
+                if (H(u, vv) > z + 0.5) { pinched = true; break; }
+            }
+            if (pinched) continue;
             // 4. 不穿洞：洞的下緣在水平偏移 d 處的高度 = 中心 − √(R_IN² − d²)
             let pierce = false;
             for (let a = -RI + 1; a <= RI - 1 && !pierce; a++) {
@@ -117,19 +124,31 @@ export function findAttachPoint(geometry) {
                 if (faceMax[uu] > z + RING_CENTER_ABOVE_ATTACH - Math.sqrt(R_IN * R_IN - d * d) + CONTACT) pierce = true;
             }
             if (pierce) continue;
+            // 管子有沒有整個坐實：接觸欄在前後 ±TUBE 內的高度落差（坐在筆畫邊角上落差大，V×V 字母 2 臂尖的斜肩就是）
+            let edge = 0;
+            for (let a = -RO; a <= RO; a++) {
+                const uu = u + a; if (uu < 0 || uu >= nu) continue;
+                const h = cm[uu * nv + v]; if (h === -Infinity) continue;
+                if (zc - off[a + RO] - h > CONTACT) continue;      // 只看真的碰到的欄
+                let lo = Infinity; for (let b = -RB; b <= RB; b++) { const vv = v + b; const t = (vv < 0 || vv >= nv) ? -Infinity : H(uu, vv); if (t < lo) lo = t; }
+                const drop = lo === -Infinity ? 10 : h - lo; if (drop > edge) edge = drop;
+            }
             const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
             // du：正面看與重心的左右偏移（字母 A 朝前時沿 x；字母 B 朝前時沿 y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
             // dc：正面看與作品正中央的距離；dv：前後與重心的距離
             const du = rotB ? y - my : x - mx, dc = Math.abs(rotB ? y - cy : x - cx), dv = Math.abs(rotB ? x - mx : y - my);
-            cands.push({ x, y, z, du: Math.abs(du), dc, dv, right: du > 0 });
+            cands.push({ x, y, z, du: Math.abs(du), dc, dv, zTop: bb.max.z - z, edge, right: du > 0 });
         }
     }
     if (!cands.length) return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
     // 逐關過濾：每一關只留下「跟最佳值差 TIE 以內」的候選，再進下一關
     let pool = cands;
-    for (const key of ['dc', 'du', 'dv']) {
+    // zTop：左右定了之後先比高度；edge：管子要坐實，只淘汰落差比最好的多 2mm 以上的（半邊懸在斷崖外），不要為了坐實離重心太遠；最後才比前後
+    //   ——V×V 要選字母 2 的臂頂（y 1.3）而不是凹口邊緣（y 0.7，接觸欄前後半邊懸空）
+    const TIES = { dc: TIE, du: TIE, zTop: TIE, edge: 2.0, dv: TIE };
+    for (const key of ['dc', 'du', 'zTop', 'edge', 'dv']) {
         let m = Infinity; for (const c of pool) if (c[key] < m) m = c[key];
-        pool = pool.filter(c => c[key] <= m + TIE);
+        pool = pool.filter(c => c[key] <= m + TIES[key]);
     }
     // 最後一關：離重心最近（左右、前後一起算），作品才會掛得正；只有幾乎同距離（0.05 內）才用「右邊」與高度決勝。
     // 之前這裡直接用右邊/高度決勝，會固定偏離重心 0.3mm，有佩戴傾斜後看得出來
@@ -232,5 +251,12 @@ export function dropRingAt(map, x, y, rot = 0) {
         if (gap < best) { best = gap; contact = a * STEP; }
     }
     if (!supported && aL > -Infinity && aR < Infinity && aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6) supported = true; // 跨接兩筆
-    return { z: zc - FUSE - RING_CENTER_ABOVE_ATTACH, supported, contact };
+    const z = zc - FUSE - RING_CENTER_ABOVE_ATTACH;
+    // 坑深：圓環周圍 2.5mm（各方向）內的最高點比掛點高多少。掉進 U 的杯底、貼在高牆旁邊時會很大；m 左右弧的高低差不到 2mm
+    let pit = 0; const PR = Math.round(2.5 / STEP);
+    for (let a = -PR; a <= PR; a++) for (let b = -PR; b <= PR; b++) {
+        if (a * a + b * b > PR * PR) continue;
+        const h = sample(x + a * STEP, y + b * STEP); if (h - z > pit) pit = h - z;
+    }
+    return { z, supported, contact, pit };
 }

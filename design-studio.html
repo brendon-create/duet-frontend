@@ -3779,9 +3779,10 @@
             if (ringZManual) return; // 使用者自己調過高度 → 不動 Z
             const dropZ = Math.round((r.z - modelTopZ) * 10) / 10;
             // 站得住：Z 跟著放下的高度；站不住（斜面太陡/中心懸空）：Z 保留，但不能低於放下的高度（圓環會被筆畫頂上去，不能穿進作品）
-            // 貼上去的條件：接觸面不接近垂直（接觸點離正下方 ≤ 1.3mm，約 55° 以內）且不埋太深（放下的掛點不低於最高點 1mm，同自動定位的 BAND）。
-            // 不符合（垂直面旁、U 的杯底、M 以外的深谷）就不黏：Z 不動、圓環只水平移動，跟主體分開；但永遠不能低於放下高度（不穿進作品）
-            const newZ = (Math.abs(r.contact) <= 1.3 && dropZ >= -1.0) ? dropZ : Math.max(parseFloat(sz.value), dropZ);
+            // 貼上去的條件：站得住（中心正下方有支撐或跨接兩筆，同自動定位）且不在坑裡（周圍 2.5mm 內沒有比掛點高 2.5mm 的壁）。
+            // 站不住（只用筆畫肩膀撐、圓環中心懸空）或在坑裡（U 的杯底、垂直面旁）就不黏：Z 不動、圓環只水平移動，跟主體分開；
+            // 但永遠不能低於放下高度（不穿進作品）
+            const newZ = (r.supported && r.pit <= 2.5) ? dropZ : Math.max(parseFloat(sz.value), dropZ);
             sz.value = newZ;
             document.getElementById('ringZ-val').textContent = sz.value;
         }
@@ -4564,6 +4565,12 @@
             // 這裡是防呆，避免之後有其他路徑繞過 generateModel() 直接呼叫 createBail()）
             if (bailLoading) {
                 showToast(window.t('studio.model.updating'));
+                return;
+            }
+
+            // ⛔ 墜頭跟作品分開（圓環沒碰到也沒套住）：做不出來，請先移回作品上
+            if (ringMesh && ringContactState() === 'none') {
+                showToast(window.t('studio.ring.detached'));
                 return;
             }
 
