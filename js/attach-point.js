@@ -16,10 +16,8 @@
 //      或左右兩側都碰到且間距 ≤ GAP_MAX（跨接）。擋掉的是圓環掛在筆畫邊緣外、中心懸空，以及太陡的斜坡。
 //   4. 不穿洞：從正面看，沒有任何筆畫伸進圓環的洞（避免圓環看起來被金屬穿過）。
 //   5. 不埋太深：掛點不低於作品最高點往下 BAND。
-// 挑選（正面的左右優先，前後其次，高度只當上限）：
-//   1. 正面看離作品正中央最近 → 2. 正面看離重心近 → 3. 前後離重心近（作品才不會前仰後倒）
-//   → 4. 選重心「右邊」那個（每一關差 TIE 以內算平手、進下一關）（掛點在重心右邊，作品會逆時針轉成仰角，像往上寫；掛左邊則像垂下去）→ 5. 高度高的。
-//   作品會不會歪只看掛點與重心的水平距離，跟高度無關，所以不拿高度計分。
+// 挑選（作品擺正優先）：在合格候選裡選離重心垂直線最近的；幾乎同距離才用「右邊」與高度決勝。
+//   作品會不會歪只看掛點與重心的水平距離，跟高度無關，高度只當上限（BAND）。
 // 網格對齊 0.1mm 的整數倍，回傳的 x、y 可以直接當滑桿值（滑桿 step 0.1）。
 // 回傳 { x, y, z, rot }，rot 為弧度（0 或 π/2）。geometry 需已 computeBoundingBox()。
 
@@ -69,7 +67,7 @@ export function findAttachPoint(geometry) {
 
     const R_IN = 1.0, TUBE = 0.3, R_OUT = R_IN + 2 * TUBE;       // 圓環內半徑、管半徑、外半徑（同 ring-bail.js）
     const FUSE = R_OUT - RING_CENTER_ABOVE_ATTACH;               // 0.4：碰到後再下沉的熔接深度（碰到時中心離表面 R_OUT，最後離掛點 1.2）
-    const BAND = 1.0, TIE = 0.3, GAP_MAX = 2.0, CONTACT = 0.05, SUPPORT_HALF = 0.3, SUPPORT_SLACK = FUSE;
+    const BAND = 1.0, TIE = 0.3, GAP_MAX = 2.0, CONTACT = 0.05, SUPPORT_HALF = 0.3, SUPPORT_SLACK = FUSE, SEAT_DROP = 1.0;
     const RI = Math.round(R_IN / STEP), RO = Math.round(R_OUT / STEP), RB = Math.round(TUBE / STEP), SH = Math.round(SUPPORT_HALF / STEP);
     // 每個 u 位置在管徑範圍（v ±TUBE）內的最高點：圓環管子碰到的就是這個
     const cm = new Float32Array(nu * nv).fill(-Infinity);
@@ -124,41 +122,34 @@ export function findAttachPoint(geometry) {
                 if (faceMax[uu] > z + RING_CENTER_ABOVE_ATTACH - Math.sqrt(R_IN * R_IN - d * d) + CONTACT) pierce = true;
             }
             if (pierce) continue;
-            // 管子有沒有整個坐實：接觸欄在前後 ±TUBE 內的高度落差（坐在筆畫邊角上落差大，V×V 字母 2 臂尖的斜肩就是）
-            let edge = 0;
-            for (let a = -RO; a <= RO; a++) {
+            // 7. 管子要坐實：接觸欄在前後 ±TUBE 內若有比接觸面低 SEAT_DROP 以上的格子（沒作品也算），管子就有半邊懸空，不算候選。
+            //    凹口邊緣（V×V、M×M 字母 2 的凹口）和筆畫外緣一視同仁；V 會落在臂尖最寬處
+            let cliff = false;
+            for (let a = -RO; a <= RO && !cliff; a++) {
                 const uu = u + a; if (uu < 0 || uu >= nu) continue;
                 const h = cm[uu * nv + v]; if (h === -Infinity) continue;
                 if (zc - off[a + RO] - h > CONTACT) continue;      // 只看真的碰到的欄
-                let lo = Infinity; for (let b = -RB; b <= RB; b++) { const vv = v + b; const t = (vv < 0 || vv >= nv) ? -Infinity : H(uu, vv); if (t < lo) lo = t; }
-                const drop = lo === -Infinity ? 10 : h - lo; if (drop > edge) edge = drop;
+                for (let b = -RB; b <= RB; b++) { const vv = v + b; const t = (vv < 0 || vv >= nv) ? -Infinity : H(uu, vv); if (h - t > SEAT_DROP) { cliff = true; break; } }
             }
+            if (cliff) continue;
             const i = rotB ? v : u, j = rotB ? u : v, x = x0 + i * STEP, y = y0 + j * STEP;
             // du：正面看與重心的左右偏移（字母 A 朝前時沿 x；字母 B 朝前時沿 y，B 是由 A 繞 Z 轉 90° 而來，從 +X 看時右手邊是 +y）
             // dc：正面看與作品正中央的距離；dv：前後與重心的距離
-            const du = rotB ? y - my : x - mx, dc = Math.abs(rotB ? y - cy : x - cx), dv = Math.abs(rotB ? x - mx : y - my);
-            cands.push({ x, y, z, du: Math.abs(du), dc, dv, zTop: bb.max.z - z, edge, right: du > 0 });
+            const du = rotB ? y - my : x - mx, dc = Math.abs(rotB ? y - cy : x - cx), dcy = Math.abs(rotB ? x - cx : y - cy), dv = Math.abs(rotB ? x - mx : y - my);
+            cands.push({ x, y, z, du: Math.abs(du), dc, dcy, dv, zTop: bb.max.z - z, right: du > 0 });
         }
     }
     if (!cands.length) return { x: 0, y: 0, z: bb.max.z, rot: rotB ? Math.PI / 2 : 0 };
     // 逐關過濾：每一關只留下「跟最佳值差 TIE 以內」的候選，再進下一關
     let pool = cands;
-    // zTop：左右定了之後先比高度；edge：管子要坐實，只淘汰落差比最好的多 2mm 以上的（半邊懸在斷崖外），不要為了坐實離重心太遠；最後才比前後
-    //   ——V×V 要選字母 2 的臂頂（y 1.3）而不是凹口邊緣（y 0.7，接觸欄前後半邊懸空）
-    const TIES = { dc: TIE, du: TIE, zTop: TIE, edge: 2.0, dv: TIE };
-    for (const key of ['dc', 'du', 'zTop', 'edge', 'dv']) {
-        let m = Infinity; for (const c of pool) if (c[key] < m) m = c[key];
-        pool = pool.filter(c => c[key] <= m + TIES[key]);
-    }
-    // 最後一關：離重心最近（左右、前後一起算），作品才會掛得正；只有幾乎同距離（0.05 內）才用「右邊」與高度決勝。
-    // 之前這裡直接用右邊/高度決勝，會固定偏離重心 0.3mm，有佩戴傾斜後看得出來
+    // 挑選：作品擺正優先——在合格候選（站得住、不穿洞、不埋太深、坐實）裡直接選離重心垂直線最近的（左右、前後一起算），
+    // 作品掛起來才不會歪。I、B、D 這類字會剛好落在重心正上方；V×V 中央是凹口（太深/懸空）就自然往外到臂尖。
+    // 幾乎同距離（0.05 內）才用「右邊」（掛點在重心右邊，作品逆時針成仰角，像往上寫）與高度決勝。
     let best = null, bestD = Infinity;
-    for (const c of pool) {
+    for (const c of cands) {
         const d = Math.hypot(c.du, c.dv);
         if (d < bestD - 0.05) { best = c; bestD = d; continue; }
-        if (Math.abs(d - bestD) <= 0.05 && best) {
-            if (c.right !== best.right ? c.right : c.z > best.z) { best = c; bestD = Math.min(bestD, d); }
-        }
+        if (Math.abs(d - bestD) <= 0.05 && best && (c.right !== best.right ? c.right : c.z > best.z)) { best = c; bestD = Math.min(bestD, d); }
     }
     return { x: round1(best.x), y: round1(best.y), z: best.z, rot: rotB ? Math.PI / 2 : 0 };
 }
