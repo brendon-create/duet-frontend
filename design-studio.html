@@ -4316,7 +4316,9 @@
                 letter2BBox: window.letter2BBox ? { ...window.letter2BBox } : null
             };
 
-            // 創建縮略圖
+            // 創建縮略圖（先釋放這個版位上一次的 renderer，否則每存一次就多佔一個 WebGL context，累積到上限主畫面會被收掉）
+            const prevSlotRenderer = slotIndex === 0 ? window.slot1Renderer : window.slot2Renderer;
+            if (prevSlotRenderer) { prevSlotRenderer.forceContextLoss(); prevSlotRenderer.dispose(); }
             slotElement.innerHTML = '';
             const canvas = document.createElement('canvas');
             slotElement.appendChild(canvas);
@@ -4662,6 +4664,7 @@
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
             const thumbnailDataURL = thumbnailCanvas.toDataURL('image/png');
+            thumbnailRenderer.forceContextLoss(); thumbnailRenderer.dispose(); // 一次性 renderer 用完就釋放 WebGL context
 
             const item = {
                 id: Date.now(),
