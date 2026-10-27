@@ -4520,15 +4520,21 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const distance = maxDim * 3;
 
-            // 建立獨立的 off-screen renderer，完全不影響主畫面
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = 1200;   // 廠商靠照片判斷圓環/墜頭位置與角度，解析度放大三倍
-            offCanvas.height = 1200;
-            const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
-            offRenderer.setSize(1200, 1200);
-            offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-            offRenderer.toneMappingExposure = 1.2;
-            offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+            // off-screen renderer 只建一次重複使用：每個 WebGLRenderer 都佔一個 WebGL context，瀏覽器上限約 16 個，
+            // 以前每次生成都 new 一個（dispose 不會立刻釋放 context），作品生成十幾次後主畫面的 context 會被瀏覽器收掉、整個畫面消失
+            if (!window.__threeViewRenderer) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = 1200;   // 廠商靠照片判斷圓環/墜頭位置與角度，解析度放大三倍
+                offCanvas.height = 1200;
+                const r = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
+                r.setSize(1200, 1200);
+                r.toneMapping = THREE.ACESFilmicToneMapping;
+                r.toneMappingExposure = 1.2;
+                r.outputColorSpace = THREE.SRGBColorSpace;
+                window.__threeViewRenderer = r;
+            }
+            const offRenderer = window.__threeViewRenderer;
+            const offCanvas = offRenderer.domElement;
 
             const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             offCamera.up.set(0, 0, 1);
@@ -4547,7 +4553,6 @@
                 views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
             }
 
-            offRenderer.dispose();
             console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
         }
