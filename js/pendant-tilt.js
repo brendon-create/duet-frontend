@@ -16,14 +16,15 @@ const _q = new THREE.Quaternion(), _qInv = new THREE.Quaternion(), _qId = new TH
 // 做法：group（主體）套 q、以 F 為軸；ringHolder（圓環，是 group 的子物件）套 q⁻¹ 同樣以 F 為軸，
 //   兩者相乘圓環在世界座標回到直立、焊點仍貼著作品。mesh 自己的座標一律不動。
 // 回傳傾斜角度（度）。沒有圓環或重心就回到不傾斜。
-export function applyPendantTilt(group, ringHolder, ringPos, centroid) {
+// pivotBelow：轉軸在圓環中心下方多少。焊接 = R_OUTER（焊點）；套住 = 1.0（內圈最低點，筆畫靠在那裡）
+export function applyPendantTilt(group, ringHolder, ringPos, centroid, pivotBelow = RING_OUTER_R) {
     if (!group) return 0;
     const reset = () => {
         group.quaternion.identity(); group.position.set(0, 0, 0);
         if (ringHolder) { ringHolder.quaternion.identity(); ringHolder.position.set(0, 0, 0); }
     };
     if (!ringPos || !centroid) { reset(); return 0; }
-    _f.set(ringPos.x, ringPos.y, ringPos.z - RING_OUTER_R);
+    _f.set(ringPos.x, ringPos.y, ringPos.z - pivotBelow);
     _v.set(centroid.x, centroid.y, centroid.z).sub(_f);
     const len = _v.length();
     if (len < 1e-6) { reset(); return 0; }

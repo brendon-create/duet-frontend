@@ -936,6 +936,7 @@
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
         import { applyPendantTilt } from './js/pendant-tilt.js';
+        import { captureLetterMasks, shiftMasks, ringLinkState } from './js/ring-link.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
@@ -2597,7 +2598,20 @@
             if (isPlaceholder || !ringMesh) { applyPendantTilt(g, ringHolder, null, null); return; }
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            applyPendantTilt(g, ringHolder, ringMesh.position, geo.userData.centroid);
+            // 圓環跟作品的關係：焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉；都不是 → 懸空，作品回正
+            const state = ringContactState();
+            if (state === 'none') { applyPendantTilt(g, ringHolder, null, null); return; }
+            applyPendantTilt(g, ringHolder, ringMesh.position, geo.userData.centroid, state === 'threaded' ? 1.0 : 1.6);
+        };
+        function ringContactState() {
+            const geo = mainMesh.geometry;
+            if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
+            const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
+            const r = dropRingAt(geo.userData.ringMap, ringMesh.position.x, ringMesh.position.y, rot);
+            // 圓環中心就在「放下去會停」的高度（±0.15mm）→ 管子貼著作品 = 焊接；更低代表穿進作品或套住，交給 3D 判斷
+            if (r && Math.abs(ringMesh.position.z - (r.z + 1.2)) <= 0.15) return 'touch';
+            if (!geo.userData.masks) return 'none';
+            return ringLinkState(geo.userData.masks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value));
         };
         let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
@@ -3029,6 +3043,9 @@
 
             // 布林交集運算
             let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+            // 兩個字母的 2D 遮罩（套住判斷用的實心定義），座標等下面平移到原點後再 shiftMasks
+            let letterMasks = null;
+            try { letterMasks = captureLetterMasks(window.renderer, geo1, geo2); } catch (e) { console.warn('[ring-link] 遮罩擷取失敗', e); }
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
@@ -3131,6 +3148,7 @@
             );
 
             result.geometry.userData.centroid = computeCentroid(result.geometry); // 佩戴傾斜用的重心（置中後的座標）
+            if (letterMasks) { shiftMasks(letterMasks, center); result.geometry.userData.masks = letterMasks; }
             mainMesh = result;
             window.mainMesh = mainMesh; // 橋接給 __captureProductAssets 等使用（跟 slot 召回路徑一致的做法）
             getPendantGroup().add(mainMesh);
@@ -3646,6 +3664,7 @@
                 window.modelTopZ = modelTopZ;
                 window.modelCenter = modelCenter;
                 cleanGeometry.userData.centroid = computeCentroid(cleanGeometry); // 幾何換了 → 佩戴傾斜的重心跟著換
+                if (oldGeometry.userData?.masks) cleanGeometry.userData.masks = oldGeometry.userData.masks; // 字母輪廓沒變，遮罩沿用
 
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
@@ -3760,7 +3779,8 @@
             if (ringZManual) return; // 使用者自己調過高度 → 不動 Z
             const dropZ = Math.round((r.z - modelTopZ) * 10) / 10;
             // 站得住：Z 跟著放下的高度；站不住（斜面太陡/中心懸空）：Z 保留，但不能低於放下的高度（圓環會被筆畫頂上去，不能穿進作品）
-            const newZ = r.supported ? dropZ : Math.max(parseFloat(sz.value), dropZ);
+            // 接觸面不接近垂直（接觸點離正下方 ≤ 1.3mm，約 55° 以內）就貼上去；更陡的只擋不穿進作品
+            const newZ = Math.abs(r.contact) <= 1.3 ? dropZ : Math.max(parseFloat(sz.value), dropZ);
             sz.value = newZ;
             document.getElementById('ringZ-val').textContent = sz.value;
         }
@@ -4500,10 +4520,10 @@
 
             // 建立獨立的 off-screen renderer，完全不影響主畫面
             const offCanvas = document.createElement('canvas');
-            offCanvas.width = 400;
-            offCanvas.height = 400;
+            offCanvas.width = 1200;   // 廠商靠照片判斷圓環/墜頭位置與角度，解析度放大三倍
+            offCanvas.height = 1200;
             const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
-            offRenderer.setSize(400, 400);
+            offRenderer.setSize(1200, 1200);
             offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
             offRenderer.toneMappingExposure = 1.2;
             offRenderer.outputColorSpace = THREE.SRGBColorSpace;
