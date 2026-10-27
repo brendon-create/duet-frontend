@@ -2592,7 +2592,7 @@
             if (isPlaceholder || !ringMesh) { applyPendantTilt(g, null, null); return; }
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            applyPendantTilt(g, ringMesh.position, geo.userData.centroid);
+            applyPendantTilt(g, ringMesh.position, ringMesh.rotation.z, geo.userData.centroid);
         };
         let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
