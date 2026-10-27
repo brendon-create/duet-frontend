@@ -8,7 +8,7 @@ export const TILT_MAX_DEG = 60;             // 顯示上限：懸掛點比重心
 const RING_OUTER_R = 1.6;                   // 圓環外半徑（內半徑 1.0 + 管徑 0.3×2，同 ring-bail.js）
 
 const _f = new THREE.Vector3(), _v = new THREE.Vector3(), _down = new THREE.Vector3(0, 0, -1), _tmp = new THREE.Vector3();
-const _q = new THREE.Quaternion(), _qInv = new THREE.Quaternion(), _qId = new THREE.Quaternion();
+const _q = new THREE.Quaternion(), _qInv = new THREE.Quaternion(), _qId = new THREE.Quaternion(), _qTmp = new THREE.Quaternion();
 
 // 圓環是焊在作品上的，師傅會把它焊成「掛起來時圓環垂直於地面」的角度。所以畫面上：
 //   墜頭、圓環都保持直立不動；焊點 F = 圓環最低點（物件空間 ringPos − R_OUTER）在畫面上固定；
@@ -32,7 +32,8 @@ export function applyPendantTilt(group, ringHolder, ringPos, centroid, pivotBelo
     _q.setFromUnitVectors(_v, _down);
     let angle = 2 * Math.acos(Math.min(1, Math.abs(_q.w)));
     const maxRad = THREE.MathUtils.degToRad(TILT_MAX_DEG);
-    if (angle > maxRad) { _q.slerpQuaternions(_qId, _q, maxRad / angle); angle = maxRad; }
+    // 注意不能寫 _q.slerpQuaternions(_qId, _q, t)：three 會先 copy(_qId) 把 _q 蓋成單位四元數再 slerp，結果永遠是 0°
+    if (angle > maxRad) { _qTmp.copy(_q); _q.slerpQuaternions(_qId, _qTmp, maxRad / angle); angle = maxRad; }
     group.quaternion.copy(_q);
     group.position.copy(_f).sub(_tmp.copy(_f).applyQuaternion(_q));          // 以 F 為軸：pos = F − q·F
     if (ringHolder) {
