@@ -935,6 +935,7 @@
 
         // Ring & Bail 系統
         import { findAttachPoint } from './js/attach-point.js';
+        import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
         // 字體載入系統
@@ -2992,7 +2993,7 @@
 
             const brush1 = new Brush(geo1, baseMat);
             brush1.updateMatrixWorld();
-            const brush2 = new Brush(geo2, baseMat);
+            const brush2 = new Brush(geo2, baseMat.clone()); // 不同材質 → CSG 結果的 groups 會標每個面來自哪個字母（縫倒圓角著色要用）
             brush2.updateMatrixWorld();
 
             debug('[V3] 執行 CSG 聯集（DEBUG MODE）...');
@@ -3026,6 +3027,9 @@
             result.geometry = result.geometry.toNonIndexed();
             result.geometry.deleteAttribute('normal');
             result.geometry.computeVertexNormals();
+            // 交接縫倒圓角著色的屬性：要在下面的法向偏移之前建（偏移後縫兩側頂點會分開，對不上邊）
+            const seamCount = buildSeamAttributes(result.geometry);
+            debug(`[seam] 縫邊 ${seamCount} 條`);
 
             const offset = 0.001;
             const positions = result.geometry.attributes.position;
@@ -3578,6 +3582,7 @@
                 const cleanGeometry = loader.parse(arrayBuffer);
                 console.log(`${timestamp()} 🔧 計算 normals... ${elapsed()}`);
                 cleanGeometry.computeVertexNormals();
+                buildSeamAttributes(cleanGeometry); // 後端 STL 沒有 groups，模組內會改用法向量判斷縫
                 console.log(`${timestamp()} ✅ STL 解析完成 ${elapsed()}`);
 
                 // 換掉幾何前最後檢查一次：這輪若已被新的 generateModel() 取代就不要動場景
