@@ -934,7 +934,7 @@
         import { fontMetaMap, loadedTTFBuffers, loadingTTFState, v3FontDataCache, initFontMeta, createV3LetterGeometry, loadV3FontData } from './js/geometry-engine.js';
 
         // Ring & Bail 系統
-        import { findAttachPoint, computeCentroid } from './js/attach-point.js';
+        import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
         import { applyPendantTilt } from './js/pendant-tilt.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
@@ -3710,11 +3710,26 @@
         // 換算：圓環中心 = modelTopZ + 1.2 + 滑桿 Z，掛點規則是圓環中心在掛點上方 1.2 → 滑桿 Z = 掛點 z − modelTopZ。
         // 旋轉：較寬的字母當佩戴正面，圓環轉成與它平行（0° 或 90°）。
         let lastAutoRing = null; // 上次自動帶入的滑桿值；清理分離部件後用來判斷使用者有沒有手動調過
+        // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就停止（換作品、重新定位、召回後恢復）
+        let ringZManual = false;
+        function followRingZ() {
+            if (ringZManual || !mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
+            const geo = mainMesh.geometry;
+            if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
+            const x = parseFloat(document.getElementById('ringX').value), y = parseFloat(document.getElementById('ringY').value);
+            const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
+            const r = dropRingAt(geo.userData.ringMap, modelCenter.x + x, modelCenter.y + y, rot);
+            if (!r || !r.supported) return; // 站不住（斜面太陡/懸空）→ Z 保留，等拉回站得住的地方
+            const slider = document.getElementById('ringZ');
+            slider.value = Math.round((r.z - modelTopZ) * 10) / 10;
+            document.getElementById('ringZ-val').textContent = slider.value;
+        }
         function autoPositionRing() {
             if (!mainMesh) return;
             const a = findAttachPoint(mainMesh.geometry);
             const vals = { ringX: a.x, ringY: a.y, ringZ: Math.round((a.z - modelTopZ) * 10) / 10, ringRotation: a.rot ? 90 : 0 };
             lastAutoRing = {};
+            ringZManual = false;
             for (const [id, v] of Object.entries(vals)) {
                 const slider = document.getElementById(id);
                 slider.value = v;
@@ -4340,6 +4355,7 @@
             if (!slotData) return;
             modelGeneration++; // 取消任何正在飛行中的 generateModel async 結果
             lastAutoRing = null; // 召回的作品照存檔值擺放，不自動定位
+            ringZManual = false; // 召回後再拉 X/Y 一樣跟著放下
 
             // 載入槽位數據到主畫面
             document.getElementById('letter1').value = slotData.letter1;
@@ -7064,6 +7080,8 @@
                 slider.addEventListener('input', (e) => {
                     const suffix = id === 'ringRotation' ? '°' : '';
                     document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
+                    if (id === 'ringZ') ringZManual = true;   // 使用者自己調高度 → 之後不再自動跟
+                    else followRingZ();                        // 拉左右/前後/旋轉 → 圓環在新位置「放下去」，Z 跟著
                     // 只更新位置，不重新創建
                     updateRingPosition();
                 });

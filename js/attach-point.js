@@ -145,3 +145,75 @@ export function computeCentroid(geometry) {
     }
     return { x: cx / vol, y: cy / vol, z: cz / vol };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 使用者拉 X/Y 滑桿時的「跟著放下」：同一套放下模擬，但只在指定位置算一次。
+// buildRingHeightMap 每個作品算一次高度圖（與 findAttachPoint 相同的投影，之後可共用重構），
+// dropRingAt 在 (x, y)、圓環平面角 rot 處把圓環放下，回傳 { z: 掛點高度, supported: 站不站得住, contact: 接觸點偏移mm }。
+// 站不住（斜面太陡、中心懸空）時呼叫端應保留原本的 Z。沒有任何表面可碰時回傳 null。
+export function buildRingHeightMap(geometry) {
+    if (geometry.index) geometry = geometry.toNonIndexed();
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const STEP = 0.1, bb = geometry.boundingBox, p = geometry.attributes.position.array;
+    const x0 = Math.floor(bb.min.x / STEP) * STEP, y0 = Math.floor(bb.min.y / STEP) * STEP;
+    const nx = Math.ceil((bb.max.x - x0) / STEP) + 1, ny = Math.ceil((bb.max.y - y0) / STEP) + 1;
+    const hm = new Float32Array(nx * ny).fill(-Infinity);
+    for (let t = 0; t < p.length; t += 9) {
+        const ax = p[t], ay = p[t + 1], az = p[t + 2], bx = p[t + 3], by = p[t + 4], bz = p[t + 5], qx = p[t + 6], qy = p[t + 7], qz = p[t + 8];
+        const d = (by - qy) * (ax - qx) + (qx - bx) * (ay - qy);
+        if (Math.abs(d) < 1e-12) continue;
+        const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, qx) - x0) / STEP)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, qx) - x0) / STEP));
+        const j0 = Math.max(0, Math.ceil((Math.min(ay, by, qy) - y0) / STEP)), j1 = Math.min(ny - 1, Math.floor((Math.max(ay, by, qy) - y0) / STEP));
+        for (let i = i0; i <= i1; i++) {
+            const px = x0 + i * STEP;
+            for (let j = j0; j <= j1; j++) {
+                const py = y0 + j * STEP;
+                const l1 = ((by - qy) * (px - qx) + (qx - bx) * (py - qy)) / d;
+                const l2 = ((qy - ay) * (px - qx) + (ax - qx) * (py - qy)) / d;
+                const l3 = 1 - l1 - l2;
+                if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+                const z = l1 * az + l2 * bz + l3 * qz, k = i * ny + j;
+                if (z > hm[k]) hm[k] = z;
+            }
+        }
+    }
+    return { hm, x0, y0, nx, ny, step: STEP };
+}
+
+export function dropRingAt(map, x, y, rot = 0) {
+    const { hm, x0, y0, nx, ny, step: STEP } = map;
+    const R_IN = 1.0, TUBE = 0.3, R_OUT = R_IN + 2 * TUBE;
+    const FUSE = R_OUT - RING_CENTER_ABOVE_ATTACH, CONTACT = 0.05, SUPPORT_HALF = 0.3, SUPPORT_SLACK = FUSE, GAP_MAX = 2.0;
+    const RO = Math.round(R_OUT / STEP), RB = Math.round(TUBE / STEP), SH = Math.round(SUPPORT_HALF / STEP);
+    const cu = Math.cos(rot), su = Math.sin(rot);          // u：圓環平面的水平軸；v：管徑方向
+    const sample = (px, py) => {
+        const i = Math.round((px - x0) / STEP), j = Math.round((py - y0) / STEP);
+        return (i < 0 || i >= nx || j < 0 || j >= ny) ? -Infinity : hm[i * ny + j];
+    };
+    // 每個 u 偏移在管徑範圍內的最高點
+    const col = new Float32Array(2 * RO + 1).fill(-Infinity);
+    for (let a = -RO; a <= RO; a++) {
+        let h = -Infinity;
+        for (let b = -RB; b <= RB; b++) {
+            const t = sample(x + (a * cu - b * su) * STEP, y + (a * su + b * cu) * STEP);
+            if (t > h) h = t;
+        }
+        col[a + RO] = h;
+    }
+    let zc = -Infinity;
+    for (let a = -RO; a <= RO; a++) {
+        const h = col[a + RO]; if (h === -Infinity) continue;
+        const z = h + Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2)); if (z > zc) zc = z;
+    }
+    if (zc === -Infinity) return null;
+    let supported = false, aL = Infinity, aR = -Infinity, contact = 0, best = Infinity;
+    for (let a = -RO; a <= RO; a++) {
+        const h = col[a + RO]; if (h === -Infinity) continue;
+        const gap = zc - Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2)) - h;
+        if (Math.abs(a) <= SH && gap <= SUPPORT_SLACK) supported = true;
+        if (gap <= CONTACT) { if (a < aL) aL = a; if (a > aR) aR = a; }
+        if (gap < best) { best = gap; contact = a * STEP; }
+    }
+    if (!supported && aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6) supported = true; // 跨接兩筆
+    return { z: zc - FUSE - RING_CENTER_ABOVE_ATTACH, supported, contact };
+}
