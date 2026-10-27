@@ -2576,13 +2576,17 @@
         // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
         let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
         // 佩戴傾斜：主體/圓環/墜頭掛在這個 Group 底下，傾斜只加在 Group 上（見 pendant-tilt.js）。第一次用到時建立。
-        let pendantGroup = null;
+        let pendantGroup = null, ringHolder = null;
         function getPendantGroup() {
             if (!pendantGroup) {
                 pendantGroup = new THREE.Group();
                 pendantGroup.name = 'pendantGroup';
                 window.scene.add(pendantGroup);
                 window.pendantGroup = pendantGroup;
+                ringHolder = new THREE.Group();          // 圓環放這裡：反轉 group 的傾斜，讓圓環在畫面上保持直立
+                ringHolder.name = 'ringHolder';
+                pendantGroup.add(ringHolder);
+                window.ringHolder = ringHolder;
             }
             return pendantGroup;
         }
@@ -2590,10 +2594,10 @@
         window.applyPendantTilt = function () {
             const g = getPendantGroup();
             const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
-            if (isPlaceholder || !ringMesh) { applyPendantTilt(g, null, null); return; }
+            if (isPlaceholder || !ringMesh) { applyPendantTilt(g, ringHolder, null, null); return; }
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            applyPendantTilt(g, ringMesh.position, ringMesh.rotation.z, geo.userData.centroid);
+            applyPendantTilt(g, ringHolder, ringMesh.position, geo.userData.centroid);
         };
         let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
@@ -4316,14 +4320,16 @@
 
             const meshClone = mainMesh.clone();
             // 主體與圓環包在同一個 group 套目前的佩戴傾斜（跟主畫面一致），墜頭掛在鏈子上保持直立
-            const slotTiltGroup = new THREE.Group();
+            const slotTiltGroup = new THREE.Group(), slotRingHolder = new THREE.Group();
             if (pendantGroup) { slotTiltGroup.quaternion.copy(pendantGroup.quaternion); slotTiltGroup.position.copy(pendantGroup.position); }
+            if (ringHolder) { slotRingHolder.quaternion.copy(ringHolder.quaternion); slotRingHolder.position.copy(ringHolder.position); }
             slotTiltGroup.add(meshClone);
+            slotTiltGroup.add(slotRingHolder);
             slotScene.add(slotTiltGroup);
             let ringClone = null, bailClone = null;
             if (ringMesh) {
                 ringClone = ringMesh.clone();
-                slotTiltGroup.add(ringClone);
+                slotRingHolder.add(ringClone);   // 圓環跟主畫面一樣保持直立
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
@@ -4611,10 +4617,12 @@
             thumbnailScene.add(light1, light2);
 
             // 複製當前場景的物件，連同佩戴傾斜一起（Slot 預覽要能比較實際佩戴的樣子）
-            const thumbGroup = new THREE.Group();
+            const thumbGroup = new THREE.Group(), thumbRingHolder = new THREE.Group();
             if (pendantGroup) { thumbGroup.quaternion.copy(pendantGroup.quaternion); thumbGroup.position.copy(pendantGroup.position); }
+            if (ringHolder) { thumbRingHolder.quaternion.copy(ringHolder.quaternion); thumbRingHolder.position.copy(ringHolder.position); }
             thumbGroup.add(mainMesh.clone());
-            if (ringMesh) thumbGroup.add(ringMesh.clone());
+            thumbGroup.add(thumbRingHolder);
+            if (ringMesh) thumbRingHolder.add(ringMesh.clone());
             thumbnailScene.add(thumbGroup);
             if (bailMesh) thumbnailScene.add(bailMesh.clone()); // 墜頭掛在鏈子上永遠直立，不進傾斜群組
 
