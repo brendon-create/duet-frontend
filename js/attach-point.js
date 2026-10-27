@@ -90,16 +90,17 @@ export function findAttachPoint(geometry) {
             }
             if (zc === -Infinity) continue;
             // 3. 站得住：正下方 ±SUPPORT_HALF 內有實體貼著（容許 SUPPORT_SLACK 的縫，熔接會填掉），或左右兩側都碰到
-            let supported = false, aL = Infinity, aR = -Infinity;
+            let supported = false, aL = -Infinity, aR = Infinity;
             for (let a = -RO; a <= RO; a++) {
                 const uu = u + a; if (uu < 0 || uu >= nu) continue;
                 const h = cm[uu * nv + v]; if (h === -Infinity) continue;
                 const gap = zc - off[a + RO] - h; // 圓環外緣在這欄離表面的距離
                 if (Math.abs(a) <= SH && gap <= SUPPORT_SLACK) supported = true;
-                if (gap <= CONTACT) { if (a < aL) aL = a; if (a > aR) aR = a; }
+                // 跨接：記兩側「最靠近中心」的接觸欄；容差用熔接深度（碰到高的一側後再下沉 FUSE，差 FUSE 以內的另一側也會焊到，Amatic SC U 左右臂差 0.2 要掛中央）
+                if (gap <= SUPPORT_SLACK) { if (a < 0 && a > aL) aL = a; if (a > 0 && a < aR) aR = a; }
             }
             if (!supported) {
-                const bridged = aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6;
+                const bridged = aL > -Infinity && aR < Infinity && aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6;
                 if (!bridged) continue;
             }
             // 2. 熔接：下沉 FUSE → 掛點 = 圓環中心 − RING_CENTER_ABOVE_ATTACH
@@ -212,14 +213,14 @@ export function dropRingAt(map, x, y, rot = 0) {
         const z = h + Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2)); if (z > zc) zc = z;
     }
     if (zc === -Infinity) return null;
-    let supported = false, aL = Infinity, aR = -Infinity, contact = 0, best = Infinity;
+    let supported = false, aL = -Infinity, aR = Infinity, contact = 0, best = Infinity;
     for (let a = -RO; a <= RO; a++) {
         const h = col[a + RO]; if (h === -Infinity) continue;
         const gap = zc - Math.sqrt(Math.max(0, R_OUT * R_OUT - (a * STEP) ** 2)) - h;
         if (Math.abs(a) <= SH && gap <= SUPPORT_SLACK) supported = true;
-        if (gap <= CONTACT) { if (a < aL) aL = a; if (a > aR) aR = a; }
+        if (gap <= SUPPORT_SLACK) { if (a < 0 && a > aL) aL = a; if (a > 0 && a < aR) aR = a; } // 跨接：兩側最靠近中心的接觸欄，容差同 findAttachPoint
         if (gap < best) { best = gap; contact = a * STEP; }
     }
-    if (!supported && aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6) supported = true; // 跨接兩筆
+    if (!supported && aL > -Infinity && aR < Infinity && aL < -SH && aR > SH && (aR - aL) * STEP <= GAP_MAX + 1e-6) supported = true; // 跨接兩筆
     return { z: zc - FUSE - RING_CENTER_ABOVE_ATTACH, supported, contact };
 }
