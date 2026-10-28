@@ -12,7 +12,7 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 // 主體與圓環掛在 window.pendantGroup（佩戴傾斜用，見 pendant-tilt.js）底下；還沒建立時退回 scene。
 // 墜頭不進群組：它掛在鏈子上永遠直立，作品繞著懸掛點（圓環內圈最高點）歪，懸掛點在畫面上不動，
 // 所以墜頭留在 scene、座標照舊就會剛好停在圓環頂點。
-const pendantParent = () => window.pendantGroup || window.scene;
+const pendantParent = () => window.ringHolder || window.pendantGroup || window.scene; // 圓環掛在 ringHolder（pendantGroup 的子物件，跟作品一起傾斜）
 
 export let ringMesh = null;
 export let bailMesh = null;
