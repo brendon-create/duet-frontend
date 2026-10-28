@@ -2591,18 +2591,31 @@
             }
             return pendantGroup;
         }
+        // 主畫面平常不傾斜（作品一直動會干擾看美感，2026-10-28 使用者決定）；只有按住「看配戴傾斜」按鈕時才套用
+        let wearPreview = false;
         // 依目前圓環位置與主體重心重算傾斜；ring-bail.js 在圓環移動/還原後會呼叫
         window.applyPendantTilt = function () {
             const g = getPendantGroup();
             const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
-            if (isPlaceholder || !ringMesh) { applyPendantTilt(g, ringHolder, null, null); return; }
+            document.getElementById('wear-tilt-btn')?.classList.toggle('visible', !isPlaceholder && !!ringMesh); // 初始圓球階段不顯示
+            if (!wearPreview || isPlaceholder || !ringMesh) { applyPendantTilt(g, ringHolder, null, null); return; }
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            // 圓環跟作品的關係：焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉；都不是 → 懸空，作品回正
+            // 圓環跟作品的關係：焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉；都不是 → 懸空，角度沒定義，維持直立
             const state = ringContactState();
-            if (state === 'none') return; // 圓環跟主體分開：物理上角度沒定義，保留分開前一刻的傾斜（使用者決定），不跳回正
+            if (state === 'none') { applyPendantTilt(g, ringHolder, null, null); return; }
             applyPendantTilt(g, ringHolder, ringMesh.position, geo.userData.centroid, state === 'threaded' ? 1.0 : 1.6);
         };
+        // 「按住看配戴時的傾斜角度」：按下傾斜、放開（或手指滑出、被系統取消）回正
+        (function setupWearTiltButton() {
+            const btn = document.getElementById('wear-tilt-btn');
+            if (!btn) return;
+            const set = (on) => { if (wearPreview === on) return; wearPreview = on; btn.classList.toggle('active', on); window.applyPendantTilt(); };
+            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); set(true); });
+            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, () => set(false)));
+            btn.addEventListener('contextmenu', (e) => e.preventDefault()); // 手機長按不跳選單
+            window.addEventListener('blur', () => set(false));
+        })();
         function ringContactState() {
             const geo = mainMesh.geometry;
             if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
@@ -3758,7 +3771,6 @@
         let lastAutoRing = null; // 上次自動帶入的滑桿值；清理分離部件後用來判斷使用者有沒有手動調過
         // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就停止（換作品、重新定位、召回後恢復）
         let ringZManual = false;
-        let lastValidXY = null; // 圓環腳印底下還有作品的最後一個 X/Y，拉進完全沒表面的空處時退回來
         function followRingZ() {
             if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
             const geo = mainMesh.geometry;
@@ -3767,15 +3779,7 @@
             const x = parseFloat(sx.value), y = parseFloat(sy.value);
             const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
             const r = dropRingAt(geo.userData.ringMap, modelCenter.x + x, modelCenter.y + y, rot);
-            if (!r) { // 圓環下面完全沒有作品 → 不讓它拉進空處，退回上一個有效位置
-                if (lastValidXY) {
-                    sx.value = lastValidXY.x; sy.value = lastValidXY.y;
-                    document.getElementById('ringX-val').textContent = sx.value;
-                    document.getElementById('ringY-val').textContent = sy.value;
-                }
-                return;
-            }
-            lastValidXY = { x: sx.value, y: sy.value };
+            if (!r) return; // 圓環下面完全沒有作品 → Z 保留不動（X/Y 照使用者拉的位置，不退回）
             if (ringZManual) return; // 使用者自己調過高度 → 不動 Z
             const dropZ = Math.round((r.z - modelTopZ) * 10) / 10;
             // 站得住：Z 跟著放下的高度；站不住（斜面太陡/中心懸空）：Z 保留，但不能低於放下的高度（圓環會被筆畫頂上去，不能穿進作品）
@@ -3792,7 +3796,6 @@
             const vals = { ringX: a.x, ringY: a.y, ringZ: Math.round((a.z - modelTopZ) * 10) / 10, ringRotation: a.rot ? 90 : 0 };
             lastAutoRing = {};
             ringZManual = false;
-            lastValidXY = { x: String(vals.ringX), y: String(vals.ringY) };
             for (const [id, v] of Object.entries(vals)) {
                 const slider = document.getElementById(id);
                 slider.value = v;
@@ -4427,7 +4430,6 @@
             modelGeneration++; // 取消任何正在飛行中的 generateModel async 結果
             lastAutoRing = null; // 召回的作品照存檔值擺放，不自動定位
             ringZManual = false; // 召回後再拉 X/Y 一樣跟著放下
-            lastValidXY = null;
 
             // 載入槽位數據到主畫面
             document.getElementById('letter1').value = slotData.letter1;
@@ -4707,6 +4709,8 @@
                 ringSliderY: parseFloat(document.getElementById('ringY').value),
                 ringSliderZ: parseFloat(document.getElementById('ringZ').value),
                 ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
+                // 自動定位幫使用者把墜頭轉向較寬的字母 B、使用者也沒改旋轉 → 購物車提醒確認方向
+                bailAutoTurned: lastAutoRing?.ringRotation === '90' && document.getElementById('ringRotation').value === '90',
                 // 儲存字母 BBox 信息（用於後端精確建模）
                 letter1BBox: window.letter1BBox || {},
                 letter2BBox: window.letter2BBox || {},
@@ -4828,6 +4832,13 @@
                         ${window.t('cart.item.size.label')}: ${item.size}mm | ${window.t('cart.item.weight.label')}: ${item.weight}
                     </div>
                 `;
+                // 墜頭被自動轉向較寬的字母：提醒確認方向
+                if (item.bailAutoTurned) {
+                    const note = document.createElement('div');
+                    note.style.cssText = 'margin-top:8px;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;color:rgba(212,175,55,0.9);background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);';
+                    note.textContent = window.t('cart.item.autoTurned').replaceAll('{wide}', item.letter2).replaceAll('{narrow}', item.letter1);
+                    infoDiv.appendChild(note);
+                }
                 // 項鍊材質選擇按鈕
                 if (!item.isPreciousMetal) {
                     const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
@@ -7663,6 +7674,9 @@
             <span class="custom-toast-message"></span>
         </div>
     </div>
+
+    <!-- 按住看配戴傾斜：主畫面平常直立，按住才顯示戴起來的自然角度 -->
+    <button id="wear-tilt-btn" type="button" data-i18n="studio.wearTilt.btn">按住看配戴時的傾斜角度</button>
 
     <!-- 背景切換器 -->
     <div id="bg-switcher-hint" data-i18n="studio.bg.hint">可切換背景 ↘</div>

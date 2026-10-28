@@ -22,6 +22,7 @@
 // 回傳 { x, y, z, rot }，rot 為弧度（0 或 π/2）。geometry 需已 computeBoundingBox()。
 
 export const RING_CENTER_ABOVE_ATTACH = 1.2;
+export const AUTO_TURN_WIDTH_RATIO = 1.4; // 字母 B 寬度 > 字母 A × 1.4 才自動轉向
 
 export function findAttachPoint(geometry) {
     if (geometry.index) geometry = geometry.toNonIndexed();
@@ -55,7 +56,8 @@ export function findAttachPoint(geometry) {
     }
     if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
     // 圓環＋墜頭轉向較寬的字母（作品本體不轉）：鏈子會讓圓環平面朝前，窄字母當正面時戴起來會被帶著轉 90°
-    const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → 圓環平面平行字母 B
+    // 字母 B 明顯較寬（寬 40% 以上）才轉 → 圓環平面平行字母 B；寬度差不多就維持預設方向（2026-10-28 使用者定 40%）
+    const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x) * AUTO_TURN_WIDTH_RATIO;
     const cx = (bb.min.x + bb.max.x) / 2, cy = (bb.min.y + bb.max.y) / 2; // 作品正中央
     // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
     const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
