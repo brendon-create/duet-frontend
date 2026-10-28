@@ -517,7 +517,7 @@ import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } fr
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { computeCentroid } from './js/attach-point.js';
-import { computePendantTilt } from './js/pendant-tilt.js';
+import { computePendantTilt, setPendantPose } from './js/pendant-tilt.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
@@ -2165,12 +2165,12 @@ document.getElementById('finalCheckbox').addEventListener('change', (e) => {
 
 // 重新截取四視圖（含調整後的圓環/墜頭位置），比照 design-studio.html 的 captureThreeViews()
 // 四視圖一律拍「掛起來的物理傾斜」，跟 design-studio 一致（顧客、廠商看到的照片 = 戴起來的樣子，2026-10-29 使用者決定）。
-// 圓環跟作品鎖成一體、繞墜頭勾住圓環的地方轉（墜頭不動）：拍的當下暫時轉 mainMesh 和圓環，拍完還原。
+// 圓環跟作品鎖成一體、圓環內圈當下最高點貼著墜頭（墜頭不動）：拍的當下暫時轉 mainMesh 和圓環，拍完還原。
 function wearTiltForCapture(mainMesh) {
     if (!ringMesh || !mainMesh) return null;
     const geo = mainMesh.geometry;
     if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-    return computePendantTilt(ringMesh.position, geo.userData.centroid);
+    return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
 }
 function captureThreeViews() {
     const views = [];
@@ -2178,10 +2178,14 @@ function captureThreeViews() {
     const wear = wearTiltForCapture(mainMesh);
     const tilted = wear ? [mainMesh, ringMesh] : [];
     const saved = tilted.map(o => ({ o, q: o.quaternion.clone(), p: o.position.clone() }));
-    for (const o of tilted) { // 以 F 為軸轉：pos' = F + q·(pos − F)、朝向 q·原朝向
-        o.position.sub(wear.f).applyQuaternion(wear.q).add(wear.f);
-        o.quaternion.premultiply(wear.q);
-        o.updateMatrixWorld(true);
+    if (wear) { // 跟 design-studio 同一套姿勢（圓環內圈當下最高點貼著墜頭）：用一個暫時的 group 算出變換，套到作品和圓環上
+        const pose = new THREE.Object3D();
+        setPendantPose(pose, null, wear.q, wear.contact);
+        for (const o of tilted) { // x' = q·x + pose.position
+            o.position.applyQuaternion(wear.q).add(pose.position);
+            o.quaternion.premultiply(wear.q);
+            o.updateMatrixWorld(true);
+        }
     }
     const bbox = new THREE.Box3().setFromObject(mainMesh);
     const center = bbox.getCenter(new THREE.Vector3());

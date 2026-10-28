@@ -2596,7 +2596,7 @@
         // 兩個版位預覽也跟著同一個切換一起傾斜／擺正（2026-10-29 使用者決定），角度用存版位當下算好的
         let wearPreview = false;
         const TILT_ANIM_MS = 600;
-        const newTiltAnim = (group, holder) => ({ group, holder, from: new THREE.Quaternion(), to: new THREE.Quaternion(), f: new THREE.Vector3(), start: 0 });
+        const newTiltAnim = (group, holder) => ({ group, holder, from: new THREE.Quaternion(), to: new THREE.Quaternion(), contact: null, start: 0 });
         const mainTiltAnim = newTiltAnim(null, null);
         const slotTiltAnims = [null, null];       // 每個版位：newTiltAnim(...) + wear（存版位時的配戴姿勢，null = 直立）
         const runningTilts = new Set();
@@ -2607,7 +2607,7 @@
                 const t = Math.min(1, (now - a.start) / TILT_ANIM_MS);
                 const e = 1 - Math.pow(1 - t, 3); // ease-out
                 _tiltQ.slerpQuaternions(a.from, a.to, e);
-                setPendantPose(a.group, a.holder, _tiltQ, a.f);
+                setPendantPose(a.group, a.holder, _tiltQ, a.contact);
                 if (t >= 1) runningTilts.delete(a);
             }
             tiltRaf = runningTilts.size ? requestAnimationFrame(tiltStep) : 0;
@@ -2615,8 +2615,8 @@
         // 從目前姿勢轉到 target（{q,f}；null = 直立）
         function animateTilt(a, target, instant = false) {
             a.from.copy(a.group.quaternion);
-            if (target) { a.to.copy(target.q); a.f.copy(target.f); } else a.to.identity();
-            if (instant || a.from.angleTo(a.to) < 1e-4) { runningTilts.delete(a); setPendantPose(a.group, a.holder, a.to, a.f); return; }
+            if (target) { a.to.copy(target.q); a.contact = target.contact; } else a.to.identity(); // 回直立時沿用上一次的圓環資訊，過程中照樣貼著墜頭滾
+            if (instant || a.from.angleTo(a.to) < 1e-4) { runningTilts.delete(a); setPendantPose(a.group, a.holder, a.to, a.contact); return; }
             a.start = performance.now();
             runningTilts.add(a);
             if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltStep);
@@ -2628,7 +2628,7 @@
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
             // 焊接或套住都一樣：圓環跟作品鎖成一體，繞墜頭勾住圓環的地方轉
             if (ringContactState() === 'none') return null;
-            return computePendantTilt(ringMesh.position, geo.userData.centroid);
+            return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
         }
         // ring-bail.js 在圓環移動/還原後會呼叫；instant = true 時不做過渡（換作品、召回版位）
         window.applyPendantTilt = function (instant = false) {
@@ -4558,7 +4558,7 @@
             const savedQ = g.quaternion.clone(), savedP = g.position.clone();
             const savedHQ = ringHolder.quaternion.clone(), savedHP = ringHolder.position.clone();
             const wear = currentWearTilt();
-            if (wear) setPendantPose(g, ringHolder, wear.q, wear.f); else setPendantPose(g, ringHolder, new THREE.Quaternion(), new THREE.Vector3());
+            setPendantPose(g, ringHolder, wear ? wear.q : new THREE.Quaternion(), wear ? wear.contact : null);
             g.updateMatrixWorld(true);
 
             // 計算模型（傾斜後、世界座標）的 BBox 中心和大小
