@@ -54,9 +54,8 @@ export function findAttachPoint(geometry) {
         }
     }
     if (Math.abs(vol) > 1e-9) { mx /= vol; my /= vol; } else { mx = 0; my = 0; }
-    // 自動定位一律不轉圓環（rot 0，圓環平面平行字母 A）：使用者定案不依字母寬度自動改朝向，
-    // 否則前後/左右滑桿的意義會跟著變；要轉由使用者自己拉旋轉滑桿（dropRingAt 支援任意角度）
-    const rotB = false;
+    // 圓環＋墜頭轉向較寬的字母（作品本體不轉）：鏈子會讓圓環平面朝前，窄字母當正面時戴起來會被帶著轉 90°
+    const rotB = (bb.max.y - bb.min.y) > (bb.max.x - bb.min.x); // 字母 B 較寬 → 圓環平面平行字母 B
     const cx = (bb.min.x + bb.max.x) / 2, cy = (bb.min.y + bb.max.y) / 2; // 作品正中央
     // 以 (u, v) 存取高度圖：u 沿圓環平面、v 沿管徑方向
     const nu = rotB ? ny : nx, nv = rotB ? nx : ny;
