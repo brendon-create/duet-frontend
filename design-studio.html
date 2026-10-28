@@ -3802,7 +3802,7 @@
         // 換算：圓環中心 = modelTopZ + 1.2 + 滑桿 Z，掛點規則是圓環中心在掛點上方 1.2 → 滑桿 Z = 掛點 z − modelTopZ。
         // 旋轉：較寬的字母當佩戴正面，圓環轉成與它平行（0° 或 90°）。
         let lastAutoRing = null; // 上次自動帶入的滑桿值；清理分離部件後用來判斷使用者有沒有手動調過
-        // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就停止（換作品、重新定位、召回後恢復）
+        // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就暫停，下一次拉 X/Y 恢復（旋轉不恢復）
         let ringZManual = false;
         function followRingZ() {
             if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
@@ -7229,8 +7229,12 @@
                 slider.addEventListener('input', (e) => {
                     const suffix = id === 'ringRotation' ? '°' : '';
                     document.getElementById(`${id}-val`).textContent = e.target.value + suffix;
-                    if (id === 'ringZ') ringZManual = true;   // 使用者自己調高度 → 之後不再自動跟
-                    else followRingZ();                        // 拉左右/前後/旋轉 → 圓環在新位置「放下去」，Z 跟著
+                    if (id === 'ringZ') ringZManual = true;   // 使用者自己調高度 → 先保留，直到下次拉 X/Y
+                    else {
+                        // 手動 Z 只維持到下一次拉 X/Y：一拉就恢復吸附（2026-10-29 使用者決定，以前是調過 Z 就永久停止跟隨）
+                        if (id === 'ringX' || id === 'ringY') ringZManual = false;
+                        followRingZ();                         // 拉左右/前後/旋轉 → 圓環在新位置「放下去」，Z 跟著
+                    }
                     // 只更新位置，不重新創建
                     updateRingPosition();
                 });
