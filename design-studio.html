@@ -935,7 +935,7 @@
 
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-        import { applyPendantTilt } from './js/pendant-tilt.js';
+        import { computePendantTilt, setPendantPose } from './js/pendant-tilt.js';
         import { captureLetterMasks, shiftMasks, ringLinkState } from './js/ring-link.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
@@ -2591,30 +2591,49 @@
             }
             return pendantGroup;
         }
-        // 主畫面平常不傾斜（作品一直動會干擾看美感，2026-10-28 使用者決定）；只有按住「看配戴傾斜」按鈕時才套用
+        // 主畫面平常不傾斜（作品一直動會干擾看美感，2026-10-28 使用者決定）；點「看配戴時的傾斜」進入傾斜模式，
+        // 模式中可以自由旋轉鏡頭看各個面，移動墜頭時角度即時更新；再點「擺正」回直立。進出與更新都用 0.6 秒平順轉過去（不擺盪）
         let wearPreview = false;
-        // 依目前圓環位置與主體重心重算傾斜；ring-bail.js 在圓環移動/還原後會呼叫
-        window.applyPendantTilt = function () {
+        const TILT_ANIM_MS = 600;
+        const tiltAnim = { from: new THREE.Quaternion(), to: new THREE.Quaternion(), f: new THREE.Vector3(), start: 0, raf: 0 };
+        const _tiltQ = new THREE.Quaternion();
+        function tiltStep(now) {
+            const g = getPendantGroup();
+            const t = Math.min(1, (now - tiltAnim.start) / TILT_ANIM_MS);
+            const e = 1 - Math.pow(1 - t, 3); // ease-out
+            _tiltQ.slerpQuaternions(tiltAnim.from, tiltAnim.to, e);
+            setPendantPose(g, ringHolder, _tiltQ, tiltAnim.f);
+            tiltAnim.raf = t < 1 ? requestAnimationFrame(tiltStep) : 0;
+        }
+        // 圓環目前位置對應的佩戴姿勢；圓環懸空（沒碰到也沒套住）角度沒定義 → null（直立）
+        function currentWearTilt() {
+            if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) return null;
+            const geo = mainMesh.geometry;
+            if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
+            // 焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉
+            const state = ringContactState();
+            if (state === 'none') return null;
+            return computePendantTilt(ringMesh.position, geo.userData.centroid, state === 'threaded' ? 1.0 : 1.6);
+        }
+        // ring-bail.js 在圓環移動/還原後會呼叫；instant = true 時不做過渡（換作品、召回版位）
+        window.applyPendantTilt = function (instant = false) {
             const g = getPendantGroup();
             const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
             document.getElementById('wear-tilt-btn')?.classList.toggle('visible', !isPlaceholder && !!ringMesh); // 初始圓球階段不顯示
-            if (!wearPreview || isPlaceholder || !ringMesh) { applyPendantTilt(g, ringHolder, null, null); return; }
-            const geo = mainMesh.geometry;
-            if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            // 圓環跟作品的關係：焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉；都不是 → 懸空，角度沒定義，維持直立
-            const state = ringContactState();
-            if (state === 'none') { applyPendantTilt(g, ringHolder, null, null); return; }
-            applyPendantTilt(g, ringHolder, ringMesh.position, geo.userData.centroid, state === 'threaded' ? 1.0 : 1.6);
+            const target = wearPreview ? currentWearTilt() : null;
+            tiltAnim.from.copy(g.quaternion);
+            if (target) { tiltAnim.to.copy(target.q); tiltAnim.f.copy(target.f); } else tiltAnim.to.identity();
+            if (tiltAnim.raf) { cancelAnimationFrame(tiltAnim.raf); tiltAnim.raf = 0; }
+            if (instant || tiltAnim.from.angleTo(tiltAnim.to) < 1e-4) { setPendantPose(g, ringHolder, tiltAnim.to, tiltAnim.f); return; }
+            tiltAnim.start = performance.now();
+            tiltAnim.raf = requestAnimationFrame(tiltStep);
         };
-        // 「按住看配戴時的傾斜角度」：按下傾斜、放開（或手指滑出、被系統取消）回正
+        // 「看配戴時的傾斜」／「擺正」切換
         (function setupWearTiltButton() {
             const btn = document.getElementById('wear-tilt-btn');
             if (!btn) return;
-            const set = (on) => { if (wearPreview === on) return; wearPreview = on; btn.classList.toggle('active', on); window.applyPendantTilt(); };
-            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); set(true); });
-            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, () => set(false)));
-            btn.addEventListener('contextmenu', (e) => e.preventDefault()); // 手機長按不跳選單
-            window.addEventListener('blur', () => set(false));
+            const label = () => { btn.textContent = window.t(wearPreview ? 'studio.wearTilt.upright' : 'studio.wearTilt.btn'); btn.setAttribute('data-i18n', wearPreview ? 'studio.wearTilt.upright' : 'studio.wearTilt.btn'); };
+            btn.addEventListener('click', () => { wearPreview = !wearPreview; btn.classList.toggle('active', wearPreview); label(); window.applyPendantTilt(); });
         })();
         function ringContactState() {
             const geo = mainMesh.geometry;
@@ -4346,10 +4365,8 @@
             slotScene.environment = window.envMap;
 
             const meshClone = mainMesh.clone();
-            // 主體與圓環包在同一個 group 套目前的佩戴傾斜（跟主畫面一致），墜頭掛在鏈子上保持直立
+            // 版位預覽一律直立（不跟主畫面的傾斜模式），墜頭掛在鏈子上保持直立
             const slotTiltGroup = new THREE.Group(), slotRingHolder = new THREE.Group();
-            if (pendantGroup) { slotTiltGroup.quaternion.copy(pendantGroup.quaternion); slotTiltGroup.position.copy(pendantGroup.position); }
-            if (ringHolder) { slotRingHolder.quaternion.copy(ringHolder.quaternion); slotRingHolder.position.copy(ringHolder.position); }
             slotTiltGroup.add(meshClone);
             slotTiltGroup.add(slotRingHolder);
             slotScene.add(slotTiltGroup);
@@ -4516,9 +4533,17 @@
         function captureThreeViews() {
             const views = [];
 
-            // 計算模型的 BBox 中心和大小
-            mainMesh.geometry.computeBoundingBox();
-            const bbox = mainMesh.geometry.boundingBox;
+            // 四視圖一律拍「掛起來的物理傾斜」：顧客確認畫面、確認信、廠商委託信都用這組，收到的作品要跟照片一樣（2026-10-29 使用者決定）。
+            // 不管主畫面目前在不在傾斜模式，拍的當下暫時套上傾斜，拍完還原
+            const g = getPendantGroup();
+            const savedQ = g.quaternion.clone(), savedP = g.position.clone();
+            const savedHQ = ringHolder.quaternion.clone(), savedHP = ringHolder.position.clone();
+            const wear = currentWearTilt();
+            if (wear) setPendantPose(g, ringHolder, wear.q, wear.f); else setPendantPose(g, ringHolder, new THREE.Quaternion(), new THREE.Vector3());
+            g.updateMatrixWorld(true);
+
+            // 計算模型（傾斜後、世界座標）的 BBox 中心和大小
+            const bbox = new THREE.Box3().setFromObject(mainMesh);
             const center = bbox.getCenter(new THREE.Vector3());
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
@@ -4557,7 +4582,9 @@
                 views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
             }
 
-            console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
+            g.quaternion.copy(savedQ); g.position.copy(savedP);
+            ringHolder.quaternion.copy(savedHQ); ringHolder.position.copy(savedHP);
+            console.log('📸 四視圖已生成（正視/側視/俯視/Hero，含佩戴傾斜）');
             return views;
         }
 
@@ -4653,10 +4680,8 @@
             light2.position.set(5, 5, 10);
             thumbnailScene.add(light1, light2);
 
-            // 複製當前場景的物件，連同佩戴傾斜一起（Slot 預覽要能比較實際佩戴的樣子）
+            // 複製當前場景的物件；購物車縮圖一律直立（不跟主畫面的傾斜模式）
             const thumbGroup = new THREE.Group(), thumbRingHolder = new THREE.Group();
-            if (pendantGroup) { thumbGroup.quaternion.copy(pendantGroup.quaternion); thumbGroup.position.copy(pendantGroup.position); }
-            if (ringHolder) { thumbRingHolder.quaternion.copy(ringHolder.quaternion); thumbRingHolder.position.copy(ringHolder.position); }
             thumbGroup.add(mainMesh.clone());
             thumbGroup.add(thumbRingHolder);
             if (ringMesh) thumbRingHolder.add(ringMesh.clone());
@@ -7675,8 +7700,8 @@
         </div>
     </div>
 
-    <!-- 按住看配戴傾斜：主畫面平常直立，按住才顯示戴起來的自然角度 -->
-    <button id="wear-tilt-btn" type="button" data-i18n="studio.wearTilt.btn">按住看配戴時的傾斜角度</button>
+    <!-- 看配戴傾斜：主畫面平常直立，點一下切換成戴起來的自然角度，再點擺正 -->
+    <button id="wear-tilt-btn" type="button" data-i18n="studio.wearTilt.btn">看配戴時的傾斜</button>
 
     <!-- 背景切換器 -->
     <div id="bg-switcher-hint" data-i18n="studio.bg.hint">可切換背景 ↘</div>

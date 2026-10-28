@@ -516,6 +516,8 @@ import { getMaterial, MATERIALS, PLATING_COLORS } from './js/materials.js';
 import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } from './js/3d-scene.js';
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
+import { computePendantTilt } from './js/pendant-tilt.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
@@ -2162,11 +2164,30 @@ document.getElementById('finalCheckbox').addEventListener('change', (e) => {
 });
 
 // 重新截取四視圖（含調整後的圓環/墜頭位置），比照 design-studio.html 的 captureThreeViews()
+// 四視圖一律拍「掛起來的物理傾斜」，跟 design-studio 一致（顧客、廠商看到的照片 = 戴起來的樣子，2026-10-29 使用者決定）。
+// 傾斜時圓環、墜頭在畫面上不動，只有作品本體繞轉軸 F 轉：拍的當下暫時轉 mainMesh，拍完還原。
+// 這個工具沒有字母遮罩判斷「套住」：圓環貼著作品 → 繞焊點（圓環中心下 1.6）；否則當作套住 → 繞內圈最低點（下 1.0）
+function wearTiltForCapture(mainMesh) {
+    if (!ringMesh || !mainMesh) return null;
+    const geo = mainMesh.geometry;
+    if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
+    if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
+    const rot = ringMesh.rotation.z;
+    const r = dropRingAt(geo.userData.ringMap, ringMesh.position.x, ringMesh.position.y, rot);
+    const touch = r && Math.abs(ringMesh.position.z - (r.z + 1.2)) <= 0.15;
+    return computePendantTilt(ringMesh.position, geo.userData.centroid, touch ? 1.6 : 1.0);
+}
 function captureThreeViews() {
     const views = [];
     const mainMesh = window.mainMesh;
-    mainMesh.geometry.computeBoundingBox();
-    const bbox = mainMesh.geometry.boundingBox;
+    const savedQ = mainMesh.quaternion.clone(), savedP = mainMesh.position.clone();
+    const wear = wearTiltForCapture(mainMesh);
+    if (wear) {
+        mainMesh.quaternion.copy(wear.q);
+        mainMesh.position.copy(wear.f).sub(wear.f.clone().applyQuaternion(wear.q)); // 以 F 為軸：pos = F − q·F
+    }
+    mainMesh.updateMatrixWorld(true);
+    const bbox = new THREE.Box3().setFromObject(mainMesh);
     const center = bbox.getCenter(new THREE.Vector3());
     const size = bbox.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
@@ -2199,6 +2220,7 @@ function captureThreeViews() {
     }
 
     offRenderer.dispose();
+    mainMesh.quaternion.copy(savedQ); mainMesh.position.copy(savedP); mainMesh.updateMatrixWorld(true);
     return views;
 }
 
