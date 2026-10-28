@@ -2584,7 +2584,7 @@
                 pendantGroup.name = 'pendantGroup';
                 window.scene.add(pendantGroup);
                 window.pendantGroup = pendantGroup;
-                ringHolder = new THREE.Group();          // 圓環放這裡：反轉 group 的傾斜，讓圓環在畫面上保持直立
+                ringHolder = new THREE.Group();          // 圓環放這裡：跟作品一起傾斜（相對位置鎖定）
                 ringHolder.name = 'ringHolder';
                 pendantGroup.add(ringHolder);
                 window.ringHolder = ringHolder;
@@ -2626,10 +2626,9 @@
             if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) return null;
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            // 焊接（圓環碰到作品）→ 繞焊點轉；套住（勾在封閉迴圈裡）→ 繞內圈最低點轉
-            const state = ringContactState();
-            if (state === 'none') return null;
-            return computePendantTilt(ringMesh.position, geo.userData.centroid, state === 'threaded' ? 1.0 : 1.6);
+            // 焊接或套住都一樣：圓環跟作品鎖成一體，繞墜頭勾住圓環的地方轉
+            if (ringContactState() === 'none') return null;
+            return computePendantTilt(ringMesh.position, geo.userData.centroid);
         }
         // ring-bail.js 在圓環移動/還原後會呼叫；instant = true 時不做過渡（換作品、召回版位）
         window.applyPendantTilt = function (instant = false) {
@@ -4392,7 +4391,7 @@
             let ringClone = null, bailClone = null;
             if (ringMesh) {
                 ringClone = ringMesh.clone();
-                slotRingHolder.add(ringClone);   // 圓環跟主畫面一樣保持直立
+                slotRingHolder.add(ringClone);   // 圓環跟主畫面一樣隨作品一起傾斜
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
