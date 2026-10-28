@@ -1641,7 +1641,7 @@ function saveToFontSlot(slotIndex) {
     // 覆蓋舊版本時先釋放舊的 WebGL context，避免使用者反覆換來換去存同一格時，
     // 瀏覽器同時存在的 WebGL context 數量超過上限（design-studio.html 目前也還沒補這個，順手修掉）
     const oldRenderer = slotIndex === 0 ? window.slot1Renderer : window.slot2Renderer;
-    if (oldRenderer) oldRenderer.dispose();
+    if (oldRenderer) { oldRenderer.forceContextLoss(); oldRenderer.dispose(); } // dispose() 不會立刻交還 context，要 forceContextLoss() 才會
 
     slotElement.innerHTML = '';
     const canvas = document.createElement('canvas');
@@ -2193,14 +2193,21 @@ function captureThreeViews() {
     const maxDim = Math.max(size.x, size.y, size.z);
     const distance = maxDim * 3;
 
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = 400;
-    offCanvas.height = 400;
-    const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
-    offRenderer.setSize(400, 400);
-    offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    offRenderer.toneMappingExposure = 1.2;
-    offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    // off-screen renderer 只建一次重複使用（比照 design-studio）：每個 WebGLRenderer 佔一個 WebGL context，
+    // dispose() 不會立刻釋放，連續重拍十幾次會耗盡瀏覽器上限（約 16 個），主畫面 context 被收掉、整個場景消失
+    if (!window.__threeViewRenderer) {
+        const c = document.createElement('canvas');
+        c.width = 400;
+        c.height = 400;
+        const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
+        r.setSize(400, 400);
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.2;
+        r.outputColorSpace = THREE.SRGBColorSpace;
+        window.__threeViewRenderer = r;
+    }
+    const offRenderer = window.__threeViewRenderer;
+    const offCanvas = offRenderer.domElement;
 
     const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
     offCamera.up.set(0, 0, 1);
@@ -2219,7 +2226,6 @@ function captureThreeViews() {
         views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
     }
 
-    offRenderer.dispose();
     mainMesh.quaternion.copy(savedQ); mainMesh.position.copy(savedP); mainMesh.updateMatrixWorld(true);
     return views;
 }
