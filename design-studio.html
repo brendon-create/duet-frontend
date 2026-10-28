@@ -935,7 +935,8 @@
 
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-        import { applyPendantTilt } from './js/pendant-tilt.js';
+        import { computePendantTilt, setPendantPose } from './js/pendant-tilt.js';
+        import { captureLetterMasks, shiftMasks, ringLinkState } from './js/ring-link.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
         // 字體載入系統
@@ -2575,24 +2576,87 @@
         // 注意：slot1Scene 等 slot 預覽變數已移至 3d-scene.js（使用 window.xxx 暴露）
         let mainMesh = null;  // 注意：ringMesh, bailMesh, bailRelativeOffset, bailInitialized 已移至 ring-bail.js
         // 佩戴傾斜：主體/圓環/墜頭掛在這個 Group 底下，傾斜只加在 Group 上（見 pendant-tilt.js）。第一次用到時建立。
-        let pendantGroup = null;
+        let pendantGroup = null, ringHolder = null;
         function getPendantGroup() {
             if (!pendantGroup) {
                 pendantGroup = new THREE.Group();
                 pendantGroup.name = 'pendantGroup';
                 window.scene.add(pendantGroup);
                 window.pendantGroup = pendantGroup;
+                ringHolder = new THREE.Group();          // 圓環放這裡：跟作品一起傾斜（相對位置鎖定）
+                ringHolder.name = 'ringHolder';
+                pendantGroup.add(ringHolder);
+                window.ringHolder = ringHolder;
             }
             return pendantGroup;
         }
-        // 依目前圓環位置與主體重心重算傾斜；ring-bail.js 在圓環移動/還原後會呼叫
-        window.applyPendantTilt = function () {
-            const g = getPendantGroup();
-            const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
-            if (isPlaceholder || !ringMesh) { applyPendantTilt(g, null, null); return; }
+        // 主畫面平常不傾斜（作品一直動會干擾看美感，2026-10-28 使用者決定）；點「看配戴時的傾斜」進入傾斜模式，
+        // 模式中可以自由旋轉鏡頭看各個面，移動墜頭時角度即時更新；再點「擺正」回直立。進出與更新都用 0.6 秒平順轉過去（不擺盪）
+        // 兩個版位預覽也跟著同一個切換一起傾斜／擺正（2026-10-29 使用者決定），角度用存版位當下算好的
+        let wearPreview = false;
+        const TILT_ANIM_MS = 600;
+        const newTiltAnim = (group, holder) => ({ group, holder, from: new THREE.Quaternion(), to: new THREE.Quaternion(), contact: null, start: 0 });
+        const mainTiltAnim = newTiltAnim(null, null);
+        const slotTiltAnims = [null, null];       // 每個版位：newTiltAnim(...) + wear（存版位時的配戴姿勢，null = 直立）
+        const runningTilts = new Set();
+        let tiltRaf = 0;
+        const _tiltQ = new THREE.Quaternion();
+        function tiltStep(now) {
+            for (const a of runningTilts) {
+                const t = Math.min(1, (now - a.start) / TILT_ANIM_MS);
+                const e = 1 - Math.pow(1 - t, 3); // ease-out
+                _tiltQ.slerpQuaternions(a.from, a.to, e);
+                setPendantPose(a.group, a.holder, _tiltQ, a.contact);
+                if (t >= 1) runningTilts.delete(a);
+            }
+            tiltRaf = runningTilts.size ? requestAnimationFrame(tiltStep) : 0;
+        }
+        // 從目前姿勢轉到 target（{q,f}；null = 直立）
+        function animateTilt(a, target, instant = false) {
+            a.from.copy(a.group.quaternion);
+            if (target) { a.to.copy(target.q); a.contact = target.contact; } else a.to.identity(); // 回直立時沿用上一次的圓環資訊，過程中照樣貼著墜頭滾
+            if (instant || a.from.angleTo(a.to) < 1e-4) { runningTilts.delete(a); setPendantPose(a.group, a.holder, a.to, a.contact); return; }
+            a.start = performance.now();
+            runningTilts.add(a);
+            if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltStep);
+        }
+        // 圓環目前位置對應的佩戴姿勢；圓環懸空（沒碰到也沒套住）角度沒定義 → null（直立）
+        function currentWearTilt() {
+            if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) return null;
             const geo = mainMesh.geometry;
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-            applyPendantTilt(g, ringMesh.position, ringMesh.rotation.z, geo.userData.centroid);
+            // 焊接或套住都一樣：圓環跟作品鎖成一體，繞墜頭勾住圓環的地方轉
+            if (ringContactState() === 'none') return null;
+            return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
+        }
+        // ring-bail.js 在圓環移動/還原後會呼叫；instant = true 時不做過渡（換作品、召回版位）
+        window.applyPendantTilt = function (instant = false) {
+            const g = getPendantGroup();
+            const isPlaceholder = !mainMesh || mainMesh.geometry?.type === 'SphereGeometry';
+            document.getElementById('wear-tilt-btn')?.classList.toggle('visible', !isPlaceholder && !!ringMesh); // 初始圓球階段不顯示
+            mainTiltAnim.group = g; mainTiltAnim.holder = ringHolder;
+            animateTilt(mainTiltAnim, wearPreview ? currentWearTilt() : null, instant);
+        };
+        // 「看配戴時的傾斜」／「擺正」切換
+        (function setupWearTiltButton() {
+            const btn = document.getElementById('wear-tilt-btn');
+            if (!btn) return;
+            const label = () => { btn.textContent = window.t(wearPreview ? 'studio.wearTilt.upright' : 'studio.wearTilt.btn'); btn.setAttribute('data-i18n', wearPreview ? 'studio.wearTilt.upright' : 'studio.wearTilt.btn'); };
+            btn.addEventListener('click', () => {
+                wearPreview = !wearPreview; btn.classList.toggle('active', wearPreview); label();
+                window.applyPendantTilt();
+                for (const a of slotTiltAnims) if (a) animateTilt(a, wearPreview ? a.wear : null);
+            });
+        })();
+        function ringContactState() {
+            const geo = mainMesh.geometry;
+            if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
+            const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
+            const r = dropRingAt(geo.userData.ringMap, ringMesh.position.x, ringMesh.position.y, rot);
+            // 圓環中心就在「放下去會停」的高度（±0.15mm）→ 管子貼著作品 = 焊接；更低代表穿進作品或套住，交給 3D 判斷
+            if (r && Math.abs(ringMesh.position.z - (r.z + 1.2)) <= 0.15) return 'touch';
+            if (!geo.userData.masks) return 'none';
+            return ringLinkState(geo.userData.masks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value));
         };
         let modelGeneration = 0; // 每次 generateModel 或 loadFromSlot 遞增，用於取消過期的 async 結果
         let checkedFonts = new Set();
@@ -3023,6 +3087,9 @@
 
             // 布林交集運算
             let result = evaluator.evaluate(brush1, brush2, INTERSECTION);
+            // 兩個字母的 2D 遮罩（套住判斷用的實心定義），座標等下面平移到原點後再 shiftMasks
+            let letterMasks = null;
+            try { letterMasks = captureLetterMasks(window.renderer, geo1, geo2); } catch (e) { console.warn('[ring-link] 遮罩擷取失敗', e); }
 
             // 🔍 Debug: CSG 後檢查結果
             result.geometry.computeBoundingBox();
@@ -3122,6 +3189,7 @@
             );
 
             result.geometry.userData.centroid = computeCentroid(result.geometry); // 佩戴傾斜用的重心（置中後的座標）
+            if (letterMasks) { shiftMasks(letterMasks, center); result.geometry.userData.masks = letterMasks; }
             mainMesh = result;
             window.mainMesh = mainMesh; // 橋接給 __captureProductAssets 等使用（跟 slot 召回路徑一致的做法）
             getPendantGroup().add(mainMesh);
@@ -3619,6 +3687,7 @@
                 window.modelTopZ = modelTopZ;
                 window.modelCenter = modelCenter;
                 cleanGeometry.userData.centroid = computeCentroid(cleanGeometry); // 幾何換了 → 佩戴傾斜的重心跟著換
+                if (oldGeometry.userData?.masks) cleanGeometry.userData.masks = oldGeometry.userData.masks; // 字母輪廓沒變，遮罩沿用
 
                 console.log(`${timestamp()} 📐 移到原點後的中心: (${modelCenter.x.toFixed(3)}, ${modelCenter.y.toFixed(3)}, ${modelCenter.z.toFixed(3)}) ${elapsed()}`);
                 console.log(`${timestamp()} 📐 新的 modelTopZ: ${modelTopZ.toFixed(3)} ${elapsed()}`);
@@ -3713,16 +3782,23 @@
         // 拉 X/Y/旋轉時 Z 自動跟著「放下圓環」：使用者自己動過 Z 滑桿就暫停，下一次拉 X/Y 恢復（旋轉不恢復）
         let ringZManual = false;
         function followRingZ() {
-            if (ringZManual || !mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
+            if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry') return;
             const geo = mainMesh.geometry;
             if (!geo.userData.ringMap) geo.userData.ringMap = buildRingHeightMap(geo);
-            const x = parseFloat(document.getElementById('ringX').value), y = parseFloat(document.getElementById('ringY').value);
+            const sx = document.getElementById('ringX'), sy = document.getElementById('ringY'), sz = document.getElementById('ringZ');
+            const x = parseFloat(sx.value), y = parseFloat(sy.value);
             const rot = parseFloat(document.getElementById('ringRotation').value) * Math.PI / 180;
             const r = dropRingAt(geo.userData.ringMap, modelCenter.x + x, modelCenter.y + y, rot);
-            if (!r || !r.supported) return; // 站不住（斜面太陡/懸空）→ Z 保留，等拉回站得住的地方
-            const slider = document.getElementById('ringZ');
-            slider.value = Math.round((r.z - modelTopZ) * 10) / 10;
-            document.getElementById('ringZ-val').textContent = slider.value;
+            if (!r) return; // 圓環下面完全沒有作品 → Z 保留不動（X/Y 照使用者拉的位置，不退回）
+            if (ringZManual) return; // 使用者自己調過高度 → 不動 Z
+            const dropZ = Math.round((r.z - modelTopZ) * 10) / 10;
+            // 站得住：Z 跟著放下的高度；站不住（斜面太陡/中心懸空）：Z 保留，但不能低於放下的高度（圓環會被筆畫頂上去，不能穿進作品）
+            // 貼上去的條件：站得住（中心正下方有支撐或跨接兩筆，同自動定位）且不在坑裡（周圍 2.5mm 內沒有比掛點高 2.5mm 的壁）。
+            // 站不住（只用筆畫肩膀撐、圓環中心懸空）或在坑裡（U 的杯底、垂直面旁）就不黏：Z 不動、圓環只水平移動，跟主體分開；
+            // 但永遠不能低於放下高度（不穿進作品）
+            const newZ = (r.supported && r.pit <= 2.5) ? dropZ : Math.max(parseFloat(sz.value), dropZ);
+            sz.value = newZ;
+            document.getElementById('ringZ-val').textContent = sz.value;
         }
         function autoPositionRing() {
             if (!mainMesh) return;
@@ -4253,7 +4329,9 @@
                 letter2BBox: window.letter2BBox ? { ...window.letter2BBox } : null
             };
 
-            // 創建縮略圖
+            // 創建縮略圖（先釋放這個版位上一次的 renderer，否則每存一次就多佔一個 WebGL context，累積到上限主畫面會被收掉）
+            const prevSlotRenderer = slotIndex === 0 ? window.slot1Renderer : window.slot2Renderer;
+            if (prevSlotRenderer) { prevSlotRenderer.forceContextLoss(); prevSlotRenderer.dispose(); }
             slotElement.innerHTML = '';
             const canvas = document.createElement('canvas');
             slotElement.appendChild(canvas);
@@ -4278,11 +4356,19 @@
             slotScene.environment = window.envMap;
 
             const meshClone = mainMesh.clone();
-            slotScene.add(meshClone);
+            // 版位預覽跟主畫面的傾斜切換同步：主體與圓環包在 group 裡，配戴姿勢在存版位當下算好；墜頭掛在鏈子上保持直立
+            const slotTiltGroup = new THREE.Group(), slotRingHolder = new THREE.Group();
+            slotTiltGroup.add(meshClone);
+            slotTiltGroup.add(slotRingHolder);
+            slotScene.add(slotTiltGroup);
+            if (slotTiltAnims[slotIndex]) runningTilts.delete(slotTiltAnims[slotIndex]);
+            const slotAnim = newTiltAnim(slotTiltGroup, slotRingHolder);
+            slotAnim.wear = currentWearTilt();
+            slotTiltAnims[slotIndex] = slotAnim;
             let ringClone = null, bailClone = null;
             if (ringMesh) {
                 ringClone = ringMesh.clone();
-                slotScene.add(ringClone);
+                slotRingHolder.add(ringClone);   // 圓環跟主畫面一樣隨作品一起傾斜
             }
             // 🔧 添加 Bail 到 Slot 預覽
             if (bailMesh) {
@@ -4313,6 +4399,7 @@
             slotCamera.position.copy(previewCenter).addScaledVector(initialDir, previewDist);
             slotCamera.lookAt(previewCenter);
 
+            if (wearPreview) animateTilt(slotAnim, slotAnim.wear, true); // 取景用直立的外框算，之後才套傾斜（跟主畫面一樣，切換時鏡頭不動）
             slotRenderer.render(slotScene, slotCamera);
 
             // 保存到全域變數以便同步旋轉+縮放（含置中目標與縮放距離，供 3d-scene.js 動畫迴圈使用；
@@ -4442,23 +4529,35 @@
         function captureThreeViews() {
             const views = [];
 
+            // 四視圖拍直立的樣子：主畫面若正在傾斜模式，拍的當下暫時擺正，拍完還原
+            const g = getPendantGroup();
+            const savedQ = g.quaternion.clone(), savedP = g.position.clone();
+            const savedHQ = ringHolder.quaternion.clone(), savedHP = ringHolder.position.clone();
+            setPendantPose(g, ringHolder, new THREE.Quaternion(), null);
+            g.updateMatrixWorld(true);
+
             // 計算模型的 BBox 中心和大小
-            mainMesh.geometry.computeBoundingBox();
-            const bbox = mainMesh.geometry.boundingBox;
+            const bbox = new THREE.Box3().setFromObject(mainMesh);
             const center = bbox.getCenter(new THREE.Vector3());
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             const distance = maxDim * 3;
 
-            // 建立獨立的 off-screen renderer，完全不影響主畫面
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = 400;
-            offCanvas.height = 400;
-            const offRenderer = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
-            offRenderer.setSize(400, 400);
-            offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-            offRenderer.toneMappingExposure = 1.2;
-            offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+            // off-screen renderer 只建一次重複使用：每個 WebGLRenderer 都佔一個 WebGL context，瀏覽器上限約 16 個，
+            // 以前每次生成都 new 一個（dispose 不會立刻釋放 context），作品生成十幾次後主畫面的 context 會被瀏覽器收掉、整個畫面消失
+            if (!window.__threeViewRenderer) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = 400;
+                offCanvas.height = 400;
+                const r = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, alpha: true });
+                r.setSize(400, 400);
+                r.toneMapping = THREE.ACESFilmicToneMapping;
+                r.toneMappingExposure = 1.2;
+                r.outputColorSpace = THREE.SRGBColorSpace;
+                window.__threeViewRenderer = r;
+            }
+            const offRenderer = window.__threeViewRenderer;
+            const offCanvas = offRenderer.domElement;
 
             const offCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
             offCamera.up.set(0, 0, 1);
@@ -4477,7 +4576,8 @@
                 views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
             }
 
-            offRenderer.dispose();
+            g.quaternion.copy(savedQ); g.position.copy(savedP);
+            ringHolder.quaternion.copy(savedHQ); ringHolder.position.copy(savedHP);
             console.log('📸 四視圖已生成（正視/側視/俯視/Hero）');
             return views;
         }
@@ -4495,6 +4595,12 @@
             // 這裡是防呆，避免之後有其他路徑繞過 generateModel() 直接呼叫 createBail()）
             if (bailLoading) {
                 showToast(window.t('studio.model.updating'));
+                return;
+            }
+
+            // ⛔ 墜頭跟作品分開（圓環沒碰到也沒套住）：做不出來，請先移回作品上
+            if (ringMesh && ringContactState() === 'none') {
+                showToast(window.t('studio.ring.detached'));
                 return;
             }
 
@@ -4560,17 +4666,18 @@
             light2.position.set(5, 5, 10);
             thumbnailScene.add(light1, light2);
 
-            // 複製當前場景的物件，連同佩戴傾斜一起（Slot 預覽要能比較實際佩戴的樣子）
-            const thumbGroup = new THREE.Group();
-            if (pendantGroup) { thumbGroup.quaternion.copy(pendantGroup.quaternion); thumbGroup.position.copy(pendantGroup.position); }
+            // 複製當前場景的物件；購物車縮圖一律直立（不跟主畫面的傾斜模式）
+            const thumbGroup = new THREE.Group(), thumbRingHolder = new THREE.Group();
             thumbGroup.add(mainMesh.clone());
-            if (ringMesh) thumbGroup.add(ringMesh.clone());
+            thumbGroup.add(thumbRingHolder);
+            if (ringMesh) thumbRingHolder.add(ringMesh.clone());
             thumbnailScene.add(thumbGroup);
             if (bailMesh) thumbnailScene.add(bailMesh.clone()); // 墜頭掛在鏈子上永遠直立，不進傾斜群組
 
             // 渲染
             thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
             const thumbnailDataURL = thumbnailCanvas.toDataURL('image/png');
+            thumbnailRenderer.forceContextLoss(); thumbnailRenderer.dispose(); // 一次性 renderer 用完就釋放 WebGL context
 
             const item = {
                 id: Date.now(),
@@ -4613,6 +4720,8 @@
                 ringSliderY: parseFloat(document.getElementById('ringY').value),
                 ringSliderZ: parseFloat(document.getElementById('ringZ').value),
                 ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
+                // 自動定位幫使用者把墜頭轉向較寬的字母 B、使用者也沒改旋轉 → 購物車提醒確認方向
+                bailAutoTurned: lastAutoRing?.ringRotation === '90' && document.getElementById('ringRotation').value === '90',
                 // 儲存字母 BBox 信息（用於後端精確建模）
                 letter1BBox: window.letter1BBox || {},
                 letter2BBox: window.letter2BBox || {},
@@ -4734,6 +4843,13 @@
                         ${window.t('cart.item.size.label')}: ${item.size}mm | ${window.t('cart.item.weight.label')}: ${item.weight}
                     </div>
                 `;
+                // 墜頭被自動轉向較寬的字母：提醒確認方向
+                if (item.bailAutoTurned) {
+                    const note = document.createElement('div');
+                    note.style.cssText = 'margin-top:8px;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;color:rgba(212,175,55,0.9);background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);';
+                    note.textContent = window.t('cart.item.autoTurned').replaceAll('{wide}', item.letter2).replaceAll('{narrow}', item.letter1);
+                    infoDiv.appendChild(note);
+                }
                 // 項鍊材質選擇按鈕
                 if (!item.isPreciousMetal) {
                     const chainOpt = CHAIN_OPTIONS.find(o => o.value === item.chainType);
@@ -7573,6 +7689,9 @@
             <span class="custom-toast-message"></span>
         </div>
     </div>
+
+    <!-- 看配戴傾斜：主畫面平常直立，點一下切換成戴起來的自然角度，再點擺正 -->
+    <button id="wear-tilt-btn" type="button" data-i18n="studio.wearTilt.btn">看配戴時的傾斜</button>
 
     <!-- 背景切換器 -->
     <div id="bg-switcher-hint" data-i18n="studio.bg.hint">可切換背景 ↘</div>
