@@ -75,12 +75,14 @@
         .ai-row > input, .ai-row > textarea { flex: 1; min-width: 0; }
         .ai-btn { flex: 0 0 auto; padding: 0 8px; font-size: 13px; }
         .caption textarea { font: inherit; font-size: 12px; background: #1C1B18; color: #E8E4DF; border: 1px solid #3A3830; border-radius: 5px; padding: 5px 7px; resize: vertical; min-height: 54px; }
-        #ai-pop { position: absolute; z-index: 2200; width: 320px; background: #1C1B18; border: 1px solid #C9A96E; border-radius: 8px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 12px; }
+        .ai-panel { font-size: 12px; }
+        .ai-panel:not(:empty) { margin-top: 4px; }
         .caption textarea.story { min-height: 72px; }
-        #ai-pop .opt { display: block; width: 100%; text-align: left; white-space: pre-wrap; line-height: 1.5; margin-bottom: 6px; padding: 7px 9px; }
-        #ai-pop .opt:hover { border-color: #C9A96E; }
-        #ai-pop .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
-        #ai-pop .msg { color: #8A857D; margin-bottom: 8px; line-height: 1.5; }
+        .ai-panel .opt { display: block; width: 100%; text-align: left; white-space: pre-wrap; line-height: 1.5; margin-bottom: 6px; padding: 7px 9px; }
+        .ai-panel .opt:hover { border-color: #C9A96E; }
+        .ai-panel .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+        .ai-panel .msg { color: #8A857D; line-height: 1.5; }
+        .ai-panel .msg.link { color: #C9A96E; cursor: pointer; }
 
         /* 列 */
         #rows { padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
@@ -422,7 +424,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, aiOriginal: r.aiOriginal, layout: r.layout, settings: r.settings
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, aiOriginal: r.aiOriginal, copyFor: r.copyFor, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -759,7 +761,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, layout: data?.layout || 'carousel',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, copyFor: data?.copyFor || null, layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
             // 臨時上傳的背景只存在這次開啟的頁面裡；重新整理後網址失效，改回預設背景
@@ -768,6 +770,8 @@
             }
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
+            // 舊存檔沒有 copyFor：當作是為目前的字母寫的
+            if (!row.copyFor) row.copyFor = Object.fromEntries(['story', 'hook', 'photoLine', 'opening'].map(k => [k, row.letterA + row.letterB]));
             // 照片不會存進瀏覽器，重新載入時一定沒有照片 → 存檔裡殘留的「客戶作品」鎖定要解除
             row.combos.forEach(c => { c.locked = false; });
             if (row.combos.length !== 3) {
@@ -935,15 +939,16 @@
             el.querySelector('.clear').addEventListener('click', clearPhotos);
 
             // 字幕
-            el.querySelector('.hook').addEventListener('input', e => { row.hook = e.target.value; saveState(); });
-            el.querySelector('.pline').addEventListener('input', e => { row.photoLine = e.target.value; saveState(); });
-            el.querySelector('.opening').addEventListener('input', e => { row.opening = e.target.value; saveState(); });
-            el.querySelector('.story').addEventListener('input', e => { row.story = e.target.value; saveState(); });
-            const hookCtx = () => ({ letterA: row.letterA, letterB: row.letterB, hook: row.hook, photoLine: row.photoLine, hasPhoto: !!row.photo, story: row.story, theme: row.settings['g-theme'] || '' });
-            el.querySelector('.ai-story').addEventListener('click', e => aiSuggest(e.currentTarget, 'story', { ...hookCtx(), current: row.story }, el.querySelector('.story')));
-            el.querySelector('.ai-pline').addEventListener('click', e => aiSuggest(e.currentTarget, 'photoLine', { ...hookCtx(), hook: resolvedHook(row), current: row.photoLine }, el.querySelector('.pline')));
-            el.querySelector('.ai-hook').addEventListener('click', e => aiSuggest(e.currentTarget, 'hook', { ...hookCtx(), current: row.hook }, el.querySelector('.hook')));
-            el.querySelector('.ai-opening').addEventListener('click', e => aiSuggest(e.currentTarget, 'opening', { ...hookCtx(), hook: resolvedHook(row), current: row.opening }, el.querySelector('.opening')));
+            // 填欄位（手打或 AI）時記下是為哪組字母寫的
+            [['hook', '.hook'], ['photoLine', '.pline'], ['opening', '.opening'], ['story', '.story']].forEach(([k, sel]) =>
+                el.querySelector(sel).addEventListener('input', e => { row[k] = e.target.value; row.copyFor[k] = row.letterA + row.letterB; saveState(); }));
+            const ctxFor = (field) => () => {
+                const c = copyCtx(row), useResolved = field === 'photoLine' || field === 'opening';
+                return { letterA: row.letterA, letterB: row.letterB, hasPhoto: !!row.photo, theme: row.settings['g-theme'] || '',
+                    story: c.story, photoLine: c.photoLine, hook: useResolved ? c.resolvedHook : c.hook, current: c[field] };
+            };
+            [['story', '.ai-story', '.story'], ['photoLine', '.ai-pline', '.pline'], ['hook', '.ai-hook', '.hook'], ['opening', '.ai-opening', '.opening']].forEach(([field, btn, sel]) =>
+                el.querySelector(btn).addEventListener('click', e => aiSuggest(e.currentTarget, field, ctxFor(field), el.querySelector(sel))));
             // 動作
             const layoutSel = el.querySelector('.layout');
             layoutSel.value = row.layout;
@@ -1347,57 +1352,95 @@
             const row = rows.find(r => r.el.contains(targetEl));
             if (row && ['story', 'hook', 'photoLine', 'opening'].includes(field)) { row.aiOriginal[field] = text; saveState(); }
         }
-        let aiPop = null;
-        function closeAiPop() { if (aiPop) aiPop.remove(); aiPop = null; }
-        document.addEventListener('mousedown', e => { if (aiPop && !aiPop.contains(e.target) && !e.target.closest('.ai-btn')) closeAiPop(); });
-        async function aiSuggest(anchor, field, ctx, targetEl) {
-            closeAiPop();
-            const pop = aiPop = document.createElement('div'); pop.id = 'ai-pop';
-            const r = anchor.getBoundingClientRect();
-            pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
-            pop.style.left = Math.max(8, Math.min(window.innerWidth - 336, r.right + window.scrollX - 320)) + 'px';
-            document.body.appendChild(pop);
-            const alive = () => aiPop === pop;
+        // 每一欄各自的 AI 狀態掛在該欄位元素上（targetEl._ai），顯示在欄位正下方：
+        // 各欄互不影響、點別處也不會中斷；產生完點欄位展開三個版本
+        function aiPanelOf(targetEl, anchor) {
+            if (!targetEl._ai) {
+                const panel = document.createElement('div'); panel.className = 'ai-panel';
+                anchor.closest('.ai-row').after(panel);
+                targetEl._ai = { panel, anchor, status: 'idle', options: [], open: false, picked: false };
+                targetEl.addEventListener('click', () => {
+                    const s = targetEl._ai;
+                    if (s.status === 'done' && !s.picked && !s.open) { s.open = true; renderAiPanel(targetEl); }
+                });
+            }
+            return targetEl._ai;
+        }
+        function renderAiPanel(targetEl) {
+            const s = targetEl._ai, p = s.panel;
+            s.anchor.disabled = s.status === 'loading';
+            p.innerHTML = '';
+            const msg = (html) => { const d = document.createElement('div'); d.className = 'msg'; d.innerHTML = html; p.appendChild(d); return d; };
+            const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.addEventListener('click', fn); return b; };
+            if (s.status === 'loading') { msg(`✨ 產生中（已等 ${Math.round((Date.now() - s.started) / 1000)} 秒）`); return; }
+            if (s.status === 'error') {
+                msg(s.error);
+                const bar = document.createElement('div'); bar.className = 'bar';
+                bar.append(btn('🔄 再試一次', () => s.run()), btn('關閉', () => { s.status = 'idle'; renderAiPanel(targetEl); }));
+                p.appendChild(bar); return;
+            }
+            if (s.status !== 'done') return;
+            if (!s.open) {
+                const m = msg(s.picked ? '▾ 看其他版本' : `✨ ${s.options.length} 個版本，點欄位展開`);
+                m.classList.add('link'); m.addEventListener('click', () => { s.open = true; renderAiPanel(targetEl); });
+                return;
+            }
+            s.options.forEach(o => {
+                const b = btn(o, () => {
+                    targetEl.value = o;
+                    targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    recordAiOriginal(targetEl, s.field, o);
+                    s.picked = true; s.open = false; renderAiPanel(targetEl);
+                });
+                b.className = 'opt'; p.appendChild(b);
+            });
+            const bar = document.createElement('div'); bar.className = 'bar';
+            bar.append(btn('🔄 再產生一次', () => s.run()), btn('收起', () => { s.open = false; renderAiPanel(targetEl); }));
+            p.appendChild(bar);
+        }
+        // getCtx 每次送出前才呼叫，抓的是「按下當下」的字母與欄位內容（「再產生一次」也一樣）
+        async function aiSuggest(anchor, field, getCtx, targetEl) {
+            const s = aiPanelOf(targetEl, anchor);
+            if (s.status === 'loading') return;
+            s.field = field; s.run = () => aiSuggest(anchor, field, getCtx, targetEl);
             const envLabel = window.CURRENT_ENV === 'staging' ? '測試' : '正式';
             const loginLink = `<a href="admin.html${window.CURRENT_ENV === 'staging' ? '?env=staging' : ''}" target="_blank">開啟後台登入（${envLabel}環境）</a>`;
-            const showMsg = (html) => { if (alive()) pop.innerHTML = `<div class="msg">${html}</div>`; };
+            const fail = (html) => { s.status = 'error'; s.error = html; renderAiPanel(targetEl); };
             const token = localStorage.getItem('adminToken');
-            if (!token) { showMsg(`請先到後台登入，登入後回到這頁再按一次 ✨。<br>${loginLink}`); return; }
-            const stopTick = waitTicker(showMsg, '✨ 產生中，通常 10 到 40 秒');
+            if (!token) { fail(`請先到後台登入，登入後回到這頁再按一次 ✨。<br>${loginLink}`); return; }
+            Object.assign(s, { status: 'loading', started: Date.now(), open: false });
+            renderAiPanel(targetEl);
+            const tick = setInterval(() => renderAiPanel(targetEl), 1000);
             try {
-                const res = await aiFetch('/api/admin/social-copy', { field, ...ctx }, token).finally(stopTick);
-                if (res.status === 401) { showMsg(`後台登入已過期，請重新登入後再按一次 ✨。<br>${loginLink}`); return; }
-                if (res.status === 429) { showMsg('按得太頻繁了，請等一分鐘再試。'); return; }
+                const res = await aiFetch('/api/admin/social-copy', { field, ...getCtx() }, token).finally(() => clearInterval(tick));
+                if (res.status === 401) { fail(`後台登入已過期，請重新登入後再按一次 ✨。<br>${loginLink}`); return; }
+                if (res.status === 429) { fail('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
                 if (!data.success || !data.options?.length) throw new Error(data.error || '沒有拿到選項');
-                if (!alive()) return;
-                pop.innerHTML = '';
-                data.options.forEach(o => {
-                    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o;
-                    b.addEventListener('click', () => {
-                        targetEl.value = o;
-                        targetEl.dispatchEvent(new Event('input', { bubbles: true }));
-                        targetEl.dispatchEvent(new Event('change', { bubbles: true }));
-                        recordAiOriginal(targetEl, field, o);
-                        closeAiPop();
-                    });
-                    pop.appendChild(b);
-                });
-                const bar = document.createElement('div'); bar.className = 'bar';
-                const again = document.createElement('button'); again.textContent = '🔄 再產生一次';
-                again.addEventListener('click', () => aiSuggest(anchor, field, ctx, targetEl));
-                const close = document.createElement('button'); close.textContent = '關閉'; close.addEventListener('click', closeAiPop);
-                bar.append(again, close); pop.appendChild(bar);
+                Object.assign(s, { status: 'done', options: data.options, picked: false, open: false });
+                renderAiPanel(targetEl);
             } catch (e) {
                 console.error(e);
-                showMsg('產生失敗：' + escapeHtml(e.message) + '<br>請稍後再試。');
+                fail('產生失敗：' + escapeHtml(e.message));
             }
+        }
+        // 欄位內容是為哪組字母寫的（row.copyFor）；字母改過後，舊字母寫的欄位不再送給 AI 參考
+        function copyCtx(row) {
+            const key = row.letterA + row.letterB, fresh = k => (row.copyFor?.[k] === key ? row[k] : '');
+            const hook = fresh('hook');
+            return {
+                story: fresh('story'), hook, photoLine: fresh('photoLine'), opening: fresh('opening'),
+                resolvedHook: (hook || row.settings['g-hook'] || '').replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB)
+            };
         }
         // 全域設定裡的 ✨：以第一支選取影片的字母與標題當參考，選定後套用到所有選取的影片
         document.querySelectorAll('#global .ai-btn').forEach(b => b.addEventListener('click', () => {
-            const r0 = rows.find(r => selected.has(r)) || rows[0];
             const target = document.getElementById(b.dataset.target);
-            aiSuggest(b, b.dataset.ai, { letterA: r0.letterA, letterB: r0.letterB, hook: resolvedHook(r0), photoLine: r0.photoLine, story: r0.story, theme: r0.settings['g-theme'] || '', current: target.value }, target);
+            aiSuggest(b, b.dataset.ai, () => {
+                const r0 = rows.find(r => selected.has(r)) || rows[0], c = copyCtx(r0);
+                return { letterA: r0.letterA, letterB: r0.letterB, hook: c.resolvedHook, photoLine: c.photoLine, story: c.story, theme: r0.settings['g-theme'] || '', current: target.value };
+            }, target);
         }));
 
         // 影片生成時，把每支的 AI 原稿與你的定稿送回後端（有登入才送；失敗不影響生成）
