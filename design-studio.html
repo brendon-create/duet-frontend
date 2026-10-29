@@ -936,7 +936,7 @@
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
         import { computePendantTilt, weldTiltAngle, setPendantPose, newTiltAnim, animateTilt, stopTiltAnim } from './js/pendant-tilt.js';
-        import { captureLetterMasks, shiftMasks, ringLinkState, clampWeldTilt } from './js/ring-link.js';
+        import { captureLetterMasks, shiftMasks, ringLinkState, weldTopClear } from './js/ring-link.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
 
@@ -2607,12 +2607,16 @@
             if (state === 'none') return null;
             return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, state === 'touch' ? currentWeldTilt() : 0);
         }
-        // 斜焊角度（弧度）：圓環對準「重心 → 焊接點」，頂端碰到其他筆畫時往直立縮小（ring-link.js）；套住沒焊 → 0
+        // 斜焊角度（弧度）：圓環對準「重心 → 焊接點」，一律照重心算（不為了避開筆畫縮小）；套住沒焊 → 0
         function currentWeldTilt() {
+            return weldTiltAngle(ringMesh.position, mainMesh.geometry.userData.centroid, ringMesh.rotation.z);
+        }
+        // 斜焊後頂端（掛墜頭的地方）被筆畫擋住 → 墜頭掛不上去。設計過程照常擺，加入購物車時才擋
+        function weldTopBlocked() {
             const geo = mainMesh.geometry;
-            const rotDeg = parseFloat(document.getElementById('ringRotation').value);
-            const weld = weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
-            return geo.userData.masks ? clampWeldTilt(geo.userData.masks, ringMesh.position, rotDeg, weld) : weld;
+            if (!geo.userData.masks || ringContactState() !== 'touch') return false;
+            if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
+            return !weldTopClear(geo.userData.masks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), currentWeldTilt());
         }
         // 存進購物車／訂單的斜焊角度（度）：後端產圓環 STL 時照這個角度以焊接點為圓心轉
         function weldTiltDegForOrder() {
@@ -4616,6 +4620,11 @@
             // ⛔ 墜頭跟作品分開（圓環沒碰到也沒套住）：做不出來，請先移回作品上
             if (ringMesh && ringContactState() === 'none') {
                 showToast(window.t('studio.ring.detached'));
+                return;
+            }
+            // ⛔ 斜焊後圓環頂端被筆畫擋住：墜頭掛不上去
+            if (ringMesh && weldTopBlocked()) {
+                showToast(window.t('studio.ring.weldBlocked'));
                 return;
             }
 

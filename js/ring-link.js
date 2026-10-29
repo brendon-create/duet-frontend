@@ -138,6 +138,7 @@ export function ringLinkState(masks, ringPos, rotDeg) {
 
 // 斜焊碰撞檢查（2026-10-29 使用者決定）：圓環側邊、下半圈碰到其他筆畫沒關係（多一點熔接），
 // 但頂端是掛墜頭的地方，不能被筆畫擋住。禁區 = 頂端左右各 60° 的管子 + 洞的上半部 + 墜頭下緣會佔的空間。
+// 斜焊角度一律照重心（不為了避開筆畫縮小）；擋到時設計過程照常擺，加入購物車／修改工具確認時才擋下提示。
 // ringPos = 擺正時的圓環中心（焊接點在正下方 1.2mm），weld = 斜焊角度（弧度，繞圓環平面法向量轉）。
 export function weldTopClear(masks, ringPos, rotDeg, weld) {
     if (!masks) return true;
@@ -165,10 +166,4 @@ export function weldTopClear(masks, ringPos, rotDeg, weld) {
     for (let s = R_OUT; s <= 3.0; s += H) for (let t = -0.5; t <= 0.5 + 1e-6; t += H) for (let l = -1.0; l <= 1.0 + 1e-6; l += H)
         if (solid(s, t, l)) return false;                                    // 墜頭下緣
     return true;
-}
-
-// 斜焊角度碰到禁區時往直立方向縮小，直到頂端淨空（直立 = 舊焊法，已通過既有檢查，所以一定有解）
-export function clampWeldTilt(masks, ringPos, rotDeg, weld) {
-    for (let k = 20; k > 0; k--) { const w = weld * k / 20; if (weldTopClear(masks, ringPos, rotDeg, w)) return w; }
-    return 0;
 }

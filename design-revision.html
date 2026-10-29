@@ -538,7 +538,7 @@ import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
 import { computePendantTilt, weldTiltAngle, setPendantPose, newTiltAnim, animateTilt } from './js/pendant-tilt.js';
-import { captureLetterMasks, shiftMasks, ringLinkState, clampWeldTilt } from './js/ring-link.js';
+import { captureLetterMasks, shiftMasks, ringLinkState, weldTopClear } from './js/ring-link.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
@@ -2057,6 +2057,10 @@ function proceedFromMainPanel() {
         showRevisionToast(window.t('revision.ring.detached'));
         return;
     }
+    if ((unlockedFields.includes('ring') || unlockedFields.includes('font')) && weldTopBlocked()) {
+        showRevisionToast(window.t('revision.ring.weldBlocked'));
+        return;
+    }
     if (unlockedFields.includes('font') && (item.font1 !== originalFont1 || item.font2 !== originalFont2)) {
         document.getElementById('storyRegenAskModal').style.display = 'flex';
         return;
@@ -2263,13 +2267,15 @@ function currentWearTilt() {
     if (state === 'none') return null;
     const geo = mainMesh.geometry;
     if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-    // 斜焊角度（同 design-studio）：圓環對準「重心 → 焊接點」，頂端碰到其他筆畫時往直立縮小；套住沒焊 → 0
-    let weld = 0;
-    if (state === 'touch') {
-        weld = weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
-        if (currentMasks) weld = clampWeldTilt(currentMasks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), weld);
-    }
+    // 斜焊角度（同 design-studio）：圓環對準「重心 → 焊接點」，一律照重心算；套住沒焊 → 0
+    const weld = state === 'touch' ? weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z) : 0;
     return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, weld);
+}
+// 斜焊後頂端（掛墜頭的地方）被筆畫擋住 → 墜頭掛不上去（同 design-studio，調整過程照常，確認時才擋）
+function weldTopBlocked() {
+    const wear = currentWearTilt();
+    if (!wear || !currentMasks || !wear.contact.weld) return false;
+    return !weldTopClear(currentMasks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), wear.contact.weld);
 }
 const mainTiltAnim = newTiltAnim(null, null);
 // ring-bail.js 在圓環移動/還原後會呼叫
