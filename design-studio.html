@@ -935,7 +935,7 @@
 
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-        import { computePendantTilt, weldTiltAngle, setPendantPose, newTiltAnim, animateTilt, stopTiltAnim } from './js/pendant-tilt.js';
+        import { computePendantTilt, weldTiltAngle, WELD0, setPendantPose, newTiltAnim, animateTilt, stopTiltAnim } from './js/pendant-tilt.js';
         import { captureLetterMasks, shiftMasks, ringLinkState, weldTopClear } from './js/ring-link.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
@@ -2605,9 +2605,9 @@
             // 焊接或套住都一樣：圓環跟作品鎖成一體，繞墜頭勾住圓環的地方轉
             const state = ringContactState();
             if (state === 'none') return null;
-            return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, state === 'touch' ? currentWeldTilt() : 0);
+            return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, state === 'touch' ? currentWeldTilt() : WELD0);
         }
-        // 斜焊角度（弧度）：圓環對準「重心 → 焊接點」，一律照重心算（不為了避開筆畫縮小）；套住沒焊 → 0
+        // 斜焊角度 { t 左右, l 前後 }（弧度）：圓環對準「重心 → 焊接點」，一律照重心算（不為了避開筆畫縮小）；套住沒焊 → WELD0
         function currentWeldTilt() {
             return weldTiltAngle(ringMesh.position, mainMesh.geometry.userData.centroid, ringMesh.rotation.z);
         }
@@ -2618,11 +2618,11 @@
             if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
             return !weldTopClear(geo.userData.masks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), currentWeldTilt());
         }
-        // 存進購物車／訂單的斜焊角度（度）：後端產圓環 STL 時照這個角度以焊接點為圓心轉
-        function weldTiltDegForOrder() {
-            if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) return 0;
-            const wear = currentWearTilt();
-            return wear ? Math.round(wear.contact.weld * 180 / Math.PI * 10) / 10 : 0;
+        // 存進購物車／訂單的斜焊角度（度）：後端產圓環 STL 時照這兩個角度以焊接點為圓心轉
+        function weldFieldsForOrder() {
+            const wear = (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) ? null : currentWearTilt();
+            const deg = r => Math.round(r * 180 / Math.PI * 10) / 10;
+            return { ringWeldTilt: wear ? deg(wear.contact.weld.t) : 0, ringWeldLean: wear ? deg(wear.contact.weld.l) : 0 };
         }
         // ring-bail.js 在圓環移動/還原後會呼叫；instant = true 時不做過渡（換作品、召回版位）
         window.applyPendantTilt = function (instant = false) {
@@ -4743,7 +4743,7 @@
                 ringRelativeY: ringRelativeY,
                 ringRelativeZ: ringRelativeZ,
                 ringRotation: ringRot,
-                ringWeldTilt: weldTiltDegForOrder(), // 斜焊角度（度）：以焊接點為圓心在圓環平面內轉，戴起來圓環垂直
+                ...weldFieldsForOrder(), // 斜焊角度（度）：左右 ringWeldTilt、前後 ringWeldLean，以焊接點為圓心轉，戴起來圓環垂直
                 // 儲存圓環絕對座標（用於後端精確定位）
                 ringAbsoluteX: ringMesh ? ringMesh.position.x : 0,
                 ringAbsoluteY: ringMesh ? ringMesh.position.y : 0,
@@ -7612,7 +7612,7 @@
                 size: parseInt(document.getElementById('size').value),
                 ringRelativeX, ringRelativeY, ringRelativeZ,
                 ringRotation: ringRot,
-                ringWeldTilt: weldTiltDegForOrder(),
+                ...weldFieldsForOrder(),
                 bailRelativeX, bailRelativeY, bailRelativeZ,
                 cleanFragments: cleanFragmentsApplied,
                 include_ring,

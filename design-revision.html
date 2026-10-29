@@ -537,7 +537,7 @@ import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } fr
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-import { computePendantTilt, weldTiltAngle, setPendantPose, newTiltAnim, animateTilt } from './js/pendant-tilt.js';
+import { computePendantTilt, weldTiltAngle, WELD0, setPendantPose, newTiltAnim, animateTilt } from './js/pendant-tilt.js';
 import { captureLetterMasks, shiftMasks, ringLinkState, weldTopClear } from './js/ring-link.js';
 import {
     createRing, createBail, updateRingPosition,
@@ -1849,8 +1849,9 @@ function captureCurrentRingParams() {
         ringSliderY: parseFloat(document.getElementById('ringY').value),
         ringSliderZ: parseFloat(document.getElementById('ringZ').value),
         ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
-        // 斜焊角度（度），後端產圓環 STL 時以焊接點為圓心照這個角度轉（同 design-studio 下單存的欄位）
-        ringWeldTilt: (() => { const w = currentWearTilt(); return w ? Math.round(w.contact.weld * 180 / Math.PI * 10) / 10 : 0; })(),
+        // 斜焊角度（度）：左右、前後，後端產圓環 STL 時以焊接點為圓心照這兩個角度轉（同 design-studio 下單存的欄位）
+        ...(() => { const w = currentWearTilt(), deg = r => Math.round(r * 180 / Math.PI * 10) / 10;
+            return { ringWeldTilt: w ? deg(w.contact.weld.t) : 0, ringWeldLean: w ? deg(w.contact.weld.l) : 0 }; })(),
         // 分離部件清理結果一律帶上（後端 generate_stl_for_item 產正式 STL 時會讀）；
         // ring 類別白名單也收這個 key，chain/ack 類別會被後端過濾掉，帶著無害
         cleanFragments: fragCleanApplied,
@@ -2267,14 +2268,14 @@ function currentWearTilt() {
     if (state === 'none') return null;
     const geo = mainMesh.geometry;
     if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-    // 斜焊角度（同 design-studio）：圓環對準「重心 → 焊接點」，一律照重心算；套住沒焊 → 0
-    const weld = state === 'touch' ? weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z) : 0;
+    // 斜焊角度（同 design-studio）：圓環對準「重心 → 焊接點」，一律照重心算；套住沒焊 → WELD0
+    const weld = state === 'touch' ? weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z) : WELD0;
     return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, weld);
 }
 // 斜焊後頂端（掛墜頭的地方）被筆畫擋住 → 墜頭掛不上去（同 design-studio，調整過程照常，確認時才擋）
 function weldTopBlocked() {
     const wear = currentWearTilt();
-    if (!wear || !currentMasks || !wear.contact.weld) return false;
+    if (!wear || !currentMasks || !(wear.contact.weld.t || wear.contact.weld.l)) return false;
     return !weldTopClear(currentMasks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), wear.contact.weld);
 }
 const mainTiltAnim = newTiltAnim(null, null);
