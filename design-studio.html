@@ -935,7 +935,7 @@
 
         // Ring & Bail 系統
         import { findAttachPoint, computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-        import { computePendantTilt, setPendantPose } from './js/pendant-tilt.js';
+        import { computePendantTilt, setPendantPose, newTiltAnim, animateTilt, stopTiltAnim } from './js/pendant-tilt.js';
         import { captureLetterMasks, shiftMasks, ringLinkState } from './js/ring-link.js';
         import { buildSeamAttributes } from './js/seam-rounding.js';
         import { createRing, createBail, updateRingPosition, resetRingState, resetBailState, restoreRingFromSave, restoreBailFromSave, ringMesh, bailMesh, bailRelativeOffset, bailInitialized, bailLoading } from './js/ring-bail.js';
@@ -2595,32 +2595,8 @@
         // 模式中可以自由旋轉鏡頭看各個面，移動墜頭時角度即時更新；再點「擺正」回直立。進出與更新都用 0.6 秒平順轉過去（不擺盪）
         // 兩個版位預覽也跟著同一個切換一起傾斜／擺正（2026-10-29 使用者決定），角度用存版位當下算好的
         let wearPreview = false;
-        const TILT_ANIM_MS = 600;
-        const newTiltAnim = (group, holder) => ({ group, holder, from: new THREE.Quaternion(), to: new THREE.Quaternion(), contact: null, start: 0 });
-        const mainTiltAnim = newTiltAnim(null, null);
+        const mainTiltAnim = newTiltAnim(null, null);   // 切換與過渡動畫在 pendant-tilt.js（design-revision 共用）
         const slotTiltAnims = [null, null];       // 每個版位：newTiltAnim(...) + wear（存版位時的配戴姿勢，null = 直立）
-        const runningTilts = new Set();
-        let tiltRaf = 0;
-        const _tiltQ = new THREE.Quaternion();
-        function tiltStep(now) {
-            for (const a of runningTilts) {
-                const t = Math.min(1, (now - a.start) / TILT_ANIM_MS);
-                const e = 1 - Math.pow(1 - t, 3); // ease-out
-                _tiltQ.slerpQuaternions(a.from, a.to, e);
-                setPendantPose(a.group, a.holder, _tiltQ, a.contact);
-                if (t >= 1) runningTilts.delete(a);
-            }
-            tiltRaf = runningTilts.size ? requestAnimationFrame(tiltStep) : 0;
-        }
-        // 從目前姿勢轉到 target（{q,f}；null = 直立）
-        function animateTilt(a, target, instant = false) {
-            a.from.copy(a.group.quaternion);
-            if (target) { a.to.copy(target.q); a.contact = target.contact; } else a.to.identity(); // 回直立時沿用上一次的圓環資訊，過程中照樣貼著墜頭滾
-            if (instant || a.from.angleTo(a.to) < 1e-4) { runningTilts.delete(a); setPendantPose(a.group, a.holder, a.to, a.contact); return; }
-            a.start = performance.now();
-            runningTilts.add(a);
-            if (!tiltRaf) tiltRaf = requestAnimationFrame(tiltStep);
-        }
         // 圓環目前位置對應的佩戴姿勢；圓環懸空（沒碰到也沒套住）角度沒定義 → null（直立）
         function currentWearTilt() {
             if (!mainMesh || mainMesh.geometry?.type === 'SphereGeometry' || !ringMesh) return null;
@@ -4384,7 +4360,7 @@
             slotTiltGroup.add(meshClone);
             slotTiltGroup.add(slotRingHolder);
             slotScene.add(slotTiltGroup);
-            if (slotTiltAnims[slotIndex]) runningTilts.delete(slotTiltAnims[slotIndex]);
+            stopTiltAnim(slotTiltAnims[slotIndex]);
             const slotAnim = newTiltAnim(slotTiltGroup, slotRingHolder);
             slotAnim.wear = currentWearTilt();
             slotTiltAnims[slotIndex] = slotAnim;
@@ -4880,7 +4856,21 @@
                 if (item.bailAutoTurned) {
                     const note = document.createElement('div');
                     note.style.cssText = 'margin-top:8px;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.5;color:rgba(212,175,55,0.9);background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);';
-                    note.textContent = window.t('cart.item.autoTurned').replaceAll('{wide}', item.letter2).replaceAll('{narrow}', item.letter1);
+                    const noteText = document.createElement('div');
+                    noteText.textContent = window.t('cart.item.autoTurned').replaceAll('{wide}', item.letter2).replaceAll('{narrow}', item.letter1);
+                    note.appendChild(noteText);
+                    // 確認按鈕：沒按就結帳會被擋下、按鈕慢速閃爍（bailTurnNeedsAttention 由 checkout() 設定）
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.type = 'button';
+                    confirmBtn.className = 'bail-turn-confirm-btn' + (item.bailTurnConfirmed ? ' confirmed' : (item.bailTurnNeedsAttention ? ' blink' : ''));
+                    confirmBtn.textContent = window.t(item.bailTurnConfirmed ? 'cart.item.autoTurned.confirmed' : 'cart.item.autoTurned.confirm');
+                    confirmBtn.disabled = !!item.bailTurnConfirmed;
+                    confirmBtn.addEventListener('click', () => {
+                        item.bailTurnConfirmed = true;
+                        item.bailTurnNeedsAttention = false;
+                        renderCart();
+                    });
+                    note.appendChild(confirmBtn);
                     infoDiv.appendChild(note);
                 }
                 // 項鍊材質選擇按鈕
@@ -6096,6 +6086,15 @@
                     alert(window.t('checkout.redemption.needAllVerified'));
                     return;
                 }
+            }
+
+            // 自動轉向墜頭的作品要先按「確認方向」：沒按的跳提醒、讓那件的確認按鈕慢速閃爍
+            const unconfirmedTurn = cartItems.filter(i => i.bailAutoTurned && !i.bailTurnConfirmed);
+            if (unconfirmedTurn.length) {
+                unconfirmedTurn.forEach(i => { i.bailTurnNeedsAttention = true; });
+                renderCart();
+                showToast(window.t('checkout.bailTurn.needConfirm'));
+                return;
             }
 
             posthog.capture('checkout_clicked');

@@ -62,3 +62,34 @@ export function setPendantPose(group, ringHolder, q, contact) {
     } else group.position.set(0, 0, 0);
     if (ringHolder) { ringHolder.quaternion.identity(); ringHolder.position.set(0, 0, 0); } // 圓環跟著作品一起轉
 }
+
+// ── 「看配戴時的傾斜／擺正」切換的過渡動畫（design-studio、design-revision 共用） ──
+// 每個要傾斜的對象一個 anim：newTiltAnim(group, holder)；animateTilt(anim, target) 從目前姿勢 0.6 秒轉到 target（null = 直立），不擺盪
+export const TILT_ANIM_MS = 600;
+export function newTiltAnim(group, holder) {
+    return { group, holder, from: new THREE.Quaternion(), to: new THREE.Quaternion(), contact: null, start: 0 };
+}
+const _running = new Set();
+let _raf = 0;
+const _animQ = new THREE.Quaternion();
+function _step(now) {
+    for (const a of _running) {
+        const t = Math.min(1, (now - a.start) / TILT_ANIM_MS);
+        const e = 1 - Math.pow(1 - t, 3); // ease-out
+        _animQ.slerpQuaternions(a.from, a.to, e);
+        setPendantPose(a.group, a.holder, _animQ, a.contact);
+        if (t >= 1) _running.delete(a);
+    }
+    _raf = _running.size ? requestAnimationFrame(_step) : 0;
+}
+export function animateTilt(a, target, instant = false) {
+    if (!a.group) return;
+    a.from.copy(a.group.quaternion);
+    if (target) { a.to.copy(target.q); a.contact = target.contact; } else a.to.identity(); // 回直立時沿用上一次的圓環資訊，過程中照樣貼著墜頭滾
+    if (instant || a.from.angleTo(a.to) < 1e-4) { _running.delete(a); setPendantPose(a.group, a.holder, a.to, a.contact); return; }
+    a.start = performance.now();
+    _running.add(a);
+    if (!_raf) _raf = requestAnimationFrame(_step);
+}
+// 不再需要的對象（例如版位被取代）停止動畫
+export function stopTiltAnim(a) { if (a) _running.delete(a); }

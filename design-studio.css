@@ -1772,3 +1772,32 @@
     }
 }
 
+
+/* ── 購物車：自動轉向墜頭的「確認方向」按鈕 ── */
+.bail-turn-confirm-btn {
+    display: inline-block;
+    width: auto;
+    margin-top: 6px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: #d4af37;
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.6);
+    cursor: pointer;
+}
+.bail-turn-confirm-btn:hover { background: rgba(212,175,55,0.2); }
+.bail-turn-confirm-btn.confirmed {
+    color: rgba(212,175,55,0.7);
+    background: transparent;
+    border-color: rgba(212,175,55,0.25);
+    cursor: default;
+}
+/* 結帳時還沒確認 → 慢速閃爍（一次約 2 秒），按下就停 */
+@keyframes bailTurnBlink {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); background: rgba(212,175,55,0.1); }
+    50%      { box-shadow: 0 0 0 3px rgba(212,175,55,0.35), 0 0 14px rgba(212,175,55,0.55); background: rgba(212,175,55,0.3); }
+}
+.bail-turn-confirm-btn.blink { animation: bailTurnBlink 2s ease-in-out infinite; }
