@@ -537,8 +537,8 @@ import { initScene, animate, sceneReadyPromise, removeAllPlaceholderSpheres } fr
 import { initFontMeta, createV3LetterGeometry } from './js/geometry-engine.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { computeCentroid, buildRingHeightMap, dropRingAt } from './js/attach-point.js';
-import { computePendantTilt, setPendantPose, newTiltAnim, animateTilt } from './js/pendant-tilt.js';
-import { captureLetterMasks, shiftMasks, ringLinkState } from './js/ring-link.js';
+import { computePendantTilt, weldTiltAngle, setPendantPose, newTiltAnim, animateTilt } from './js/pendant-tilt.js';
+import { captureLetterMasks, shiftMasks, ringLinkState, clampWeldTilt } from './js/ring-link.js';
 import {
     createRing, createBail, updateRingPosition,
     resetBailInitFlag,
@@ -1849,6 +1849,8 @@ function captureCurrentRingParams() {
         ringSliderY: parseFloat(document.getElementById('ringY').value),
         ringSliderZ: parseFloat(document.getElementById('ringZ').value),
         ringSliderRotation: parseFloat(document.getElementById('ringRotation').value),
+        // 斜焊角度（度），後端產圓環 STL 時以焊接點為圓心照這個角度轉（同 design-studio 下單存的欄位）
+        ringWeldTilt: (() => { const w = currentWearTilt(); return w ? Math.round(w.contact.weld * 180 / Math.PI * 10) / 10 : 0; })(),
         // 分離部件清理結果一律帶上（後端 generate_stl_for_item 產正式 STL 時會讀）；
         // ring 類別白名單也收這個 key，chain/ack 類別會被後端過濾掉，帶著無害
         cleanFragments: fragCleanApplied,
@@ -2256,10 +2258,18 @@ function ringContactState() {
 // 圓環目前位置對應的配戴姿勢；分開時角度沒定義 → null（直立）
 function currentWearTilt() {
     const mainMesh = window.mainMesh;
-    if (!mainMesh || !ringMesh || ringContactState() === 'none') return null;
+    if (!mainMesh || !ringMesh) return null;
+    const state = ringContactState();
+    if (state === 'none') return null;
     const geo = mainMesh.geometry;
     if (!geo.userData.centroid) geo.userData.centroid = computeCentroid(geo);
-    return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
+    // 斜焊角度（同 design-studio）：圓環對準「重心 → 焊接點」，頂端碰到其他筆畫時往直立縮小；套住沒焊 → 0
+    let weld = 0;
+    if (state === 'touch') {
+        weld = weldTiltAngle(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z);
+        if (currentMasks) weld = clampWeldTilt(currentMasks, ringMesh.position, parseFloat(document.getElementById('ringRotation').value), weld);
+    }
+    return computePendantTilt(ringMesh.position, geo.userData.centroid, ringMesh.rotation.z, weld);
 }
 const mainTiltAnim = newTiltAnim(null, null);
 // ring-bail.js 在圓環移動/還原後會呼叫
@@ -2292,6 +2302,7 @@ function captureThreeViews() {
     const mainMesh = window.mainMesh;
     const g = getPendantGroup(), holder = window.ringHolder;
     const savedQ = g.quaternion.clone(), savedP = g.position.clone();
+    const savedHQ = holder.quaternion.clone(), savedHP = holder.position.clone(); // 斜焊時圓環也會被轉，拍完一起還原
     const wear = currentWearTilt();
     setPendantPose(g, holder, wear ? wear.q : new THREE.Quaternion(), wear ? wear.contact : null);
     g.updateMatrixWorld(true);
@@ -2334,7 +2345,8 @@ function captureThreeViews() {
         views.push({ name: angle.name, label: angle.label, dataURL: offCanvas.toDataURL('image/png') });
     }
 
-    g.quaternion.copy(savedQ); g.position.copy(savedP); g.updateMatrixWorld(true);
+    g.quaternion.copy(savedQ); g.position.copy(savedP);
+    holder.quaternion.copy(savedHQ); holder.position.copy(savedHP); g.updateMatrixWorld(true);
     return views;
 }
 

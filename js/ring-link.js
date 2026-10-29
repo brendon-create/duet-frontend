@@ -135,3 +135,40 @@ export function ringLinkState(masks, ringPos, rotDeg) {
     }
     return 'none';
 }
+
+// 斜焊碰撞檢查（2026-10-29 使用者決定）：圓環側邊、下半圈碰到其他筆畫沒關係（多一點熔接），
+// 但頂端是掛墜頭的地方，不能被筆畫擋住。禁區 = 頂端左右各 60° 的管子 + 洞的上半部 + 墜頭下緣會佔的空間。
+// ringPos = 擺正時的圓環中心（焊接點在正下方 1.2mm），weld = 斜焊角度（弧度，繞圓環平面法向量轉）。
+export function weldTopClear(masks, ringPos, rotDeg, weld) {
+    if (!masks) return true;
+    const g = getOccupancy(masks), { occ, nx, ny, nz, x0, y0, z0, S } = g;
+    const rz = rotDeg * Math.PI / 180, cr = Math.cos(rz), sr = Math.sin(rz);
+    const u = [cr, sr, 0], n = [-sr, cr, 0], cw = Math.cos(weld), sw = Math.sin(weld);
+    const w = [sw * u[0], sw * u[1], cw], p = [cw * u[0], cw * u[1], -sw];   // w = 斜焊後的圓環軸線（往上）、p = 平面內與 w 垂直
+    const ax = ringPos.x, ay = ringPos.y, az = ringPos.z - 1.2;
+    const cx = ax + 1.2 * w[0], cy = ay + 1.2 * w[1], cz = az + 1.2 * w[2];
+    const solid = (s, t, l) => {                                             // 圓環座標（沿 w、沿 p、沿 n）→ 作品實心？
+        const x = cx + s * w[0] + t * p[0] + l * n[0], y = cy + s * w[1] + t * p[1] + l * n[1], z = cz + s * w[2] + t * p[2];
+        const i = Math.floor((x - x0) / S), j = Math.floor((y - y0) / S), k = Math.floor((z - z0) / S);
+        return i >= 0 && i < nx && j >= 0 && j < ny && k >= 0 && k < nz && occ[(i * ny + j) * nz + k] === 1;
+    };
+    const RC = R_IN + TUBE, H = 0.1;
+    for (let a = -60; a <= 60; a += 5) {                                     // 頂端管子
+        const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180);
+        for (let r = R_IN; r <= R_OUT + 1e-6; r += H) for (let l = -TUBE; l <= TUBE + 1e-6; l += H) {
+            if ((r - RC) ** 2 + l * l > TUBE * TUBE + 1e-6) continue;
+            if (solid(r * ca, r * sa, l)) return false;
+        }
+    }
+    for (let s = 0; s < R_IN; s += H) for (let t = -R_IN; t <= R_IN; t += H)  // 洞的上半部
+        if (s * s + t * t < R_IN * R_IN && solid(s, t, 0)) return false;
+    for (let s = R_OUT; s <= 3.0; s += H) for (let t = -0.5; t <= 0.5 + 1e-6; t += H) for (let l = -1.0; l <= 1.0 + 1e-6; l += H)
+        if (solid(s, t, l)) return false;                                    // 墜頭下緣
+    return true;
+}
+
+// 斜焊角度碰到禁區時往直立方向縮小，直到頂端淨空（直立 = 舊焊法，已通過既有檢查，所以一定有解）
+export function clampWeldTilt(masks, ringPos, rotDeg, weld) {
+    for (let k = 20; k > 0; k--) { const w = weld * k / 20; if (weldTopClear(masks, ringPos, rotDeg, w)) return w; }
+    return 0;
+}
