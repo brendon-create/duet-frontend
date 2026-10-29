@@ -1371,16 +1371,14 @@
 /* ── 看配戴傾斜切換（作品正下方，跟背景切換器同一套半透明深色風格） ── */
 #wear-tilt-btn {
     position: fixed;
-    bottom: 20px;
+    bottom: 133px;                      /* 原 20px 往上 3cm（≈113px） */
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
     display: none;
     width: auto;
     padding: 8px 18px;
-    background: rgba(0, 0, 0, 0.32);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.6);     /* 黑色半透明（不用毛玻璃，背景亮時字才看得清楚） */
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 20px;
     color: rgba(255,255,255,0.62);
@@ -1400,7 +1398,7 @@
 #wear-tilt-btn.active {
     color: #d4af37;
     border-color: rgba(212,175,55,0.55);
-    background: rgba(212,175,55,0.12);
+    background: rgba(0, 0, 0, 0.6);
 }
 
 /* ── 背景切換器 ── */
@@ -1724,7 +1722,7 @@
 
 @media (max-width: 768px) {
     #wear-tilt-btn {
-        bottom: calc(36vh + 10px);
+        bottom: calc(36vh + 123px);
         padding: 7px 14px;
         font-size: 11.5px;
         letter-spacing: 0.8px;
