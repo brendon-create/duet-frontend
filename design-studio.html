@@ -5747,12 +5747,8 @@
                     }
                 }
 
-                if (!aiData) {
-                    console.warn('⚠️ 無 AI 諮詢資料，使用預設格式');
-                    return `這個 DUET 作品交織了 ${combination.letters.letter1} 和 ${combination.letters.letter2} 兩個字母。\n\n${fontReason}`;
-                }
-
-                const conversationSummary = aiData.conversationSummary || aiData;
+                // 沒做諮詢也交給 AI 寫：只有字體說明也足以寫出一篇（後端 prompt 會處理沒有對話的情況）
+                const conversationSummary = aiData ? (aiData.conversationSummary || aiData) : {};
 
                 const response = await fetch(`${window.BACKEND_URL}/api/design-story`, {
                     method: 'POST',

@@ -436,8 +436,8 @@ window.translations = {
 
         // ── 字體選擇原因 Modal ──
         'font.reason.title':             '分享您的設計理念',
-        'font.reason.question':          '可以分享一下選擇這兩個字體的原因嗎？',
-        'font.reason.placeholder':        '分享您的想法...',
+        'font.reason.question':          '這兩個字，哪裡讓你想到對方，或想到你自己？',
+        'font.reason.placeholder':        '例如：S 的弧度很像她笑起來的樣子；m 很低調，像我。也可以寫下這份禮物是為了什麼日子，像是生日或週年。',
         'font.reason.skip':               '跳過',
         'font.reason.submit':              '送出',
         'font.reason.alert.empty':        '請分享您的想法',
@@ -904,8 +904,8 @@ window.translations = {
 
         // ── 字體選擇原因 Modal ──
         'font.reason.title':             'Share Your Design Story',
-        'font.reason.question':          'Could you share why you chose these two fonts?',
-        'font.reason.placeholder':        'Share your thoughts...',
+        'font.reason.question':          'What about these two letters reminds you of them, or of yourself?',
+        'font.reason.placeholder':        'e.g. The curve of the S feels like her smile; the m is quiet, like me. You can also mention the occasion, like a birthday or an anniversary.',
         'font.reason.skip':               'Skip',
         'font.reason.submit':              'Submit',
         'font.reason.alert.empty':        'Please share your thoughts',
