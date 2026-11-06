@@ -33,6 +33,11 @@
 
     if (!window.DUET_FEATURE_RECORDER) return; // 跟 Recorder 共用同一個開關
 
+    // 2026-11-06 暫時隱藏分享按鈕：CONTENT 服務（Render）暫停中以省月費，
+    // 按鈕留著會讓顧客按到失敗。程式全部保留，要恢復時把這行改成 true 即可。
+    var SHARE_BUTTON_ENABLED = false;
+    if (!SHARE_BUTTON_ENABLED) return;
+
     // AI 諮詢完成回到 design-studio 時，字母/字體/模型是頁面載入當下就用程式
     // 直接還原好的，「作品完整」這個條件幾乎立刻成立——如果說明框在那個當下
     // 馬上跳出來，使用者的眼睛根本還沒對焦到頁面上，會完全錯過。所以條件滿足
