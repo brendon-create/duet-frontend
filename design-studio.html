@@ -2660,7 +2660,6 @@
         let modelTopZ = 0;
         let modelCenter = new THREE.Vector3();
         let modelNeedsCleanup = false;    // 標記：模型有分離部件尚未處理（封鎖購物車）
-        let modelHasLargeFragment = false; // 標記：有大塊只靠極細連結相接（或分離）的部件，清理不會切它 → 無法製作，封鎖購物車、提示換字體/尺寸
         let isModelGenerating = false;    // 標記：generateModel() 尚未跑完（封鎖購物車，避免抓到重繪中的殘影 BBox/圓環位置）
         let cleanFragmentsApplied = false; // 標記：使用者已執行清理（傳給後端生成 STL）
         let isCleanupInProgress = false;  // 防止清理重複執行
@@ -3244,7 +3243,6 @@
             }
             
             modelNeedsCleanup = false;
-            modelHasLargeFragment = false;
             cleanFragmentsApplied = false;
             fragmentCheckPending = true;
             renderCount++;
@@ -3329,18 +3327,7 @@
                     // 影響——isCleanupInProgress 只該用來決定「現在要不要立刻啟動一輪新的清理」，
                     // 不然如果上一個（已經被放棄的）設計的清理還沒真正結束（isCleanupInProgress 還是
                     // true 的殘留狀態），會誤判成「這個新設計不需要清理」而放行加入購物車
-                    if (confirmedResult.large_fragments > 0) {
-                        // 大塊分離部件：後端清理不會切它（切了字會缺一塊），這個組合做不出來 → 不清理、擋購物車、提示換字體/尺寸
-                        modelHasLargeFragment = true;
-                        modelNeedsCleanup = false;
-                        showFragmentWarning('fragment.warning.large');
-                        const cleanupLabel = document.getElementById('cleanup-label');
-                        if (cleanupLabel) {
-                            cleanupLabel.textContent = window.t('studio.cleanup.unmakeable');
-                            cleanupLabel.style.color = '#e07a5f';
-                        }
-                        console.log(`⛔ 片段偵測：${confirmedResult.large_fragments} 個大塊分離部件（最大 ${confirmedResult.largest_fragment_mm3}mm³），無法製作`);
-                    } else if (confirmedResult.has_fragments) {
+                    if (confirmedResult.has_fragments) {
                         modelNeedsCleanup = true;
                         showFragmentWarning();
                         const toggleContainer = document.getElementById('cleanup-toggle-container');
@@ -3379,10 +3366,7 @@
                 // 若有人在 pending 期間就加入購物車，通知購物車更新狀態
                 const cartPendingMsg = document.getElementById('cart-fragment-pending-msg');
                 if (cartPendingMsg) {
-                    if (modelHasLargeFragment) {
-                        cartPendingMsg.innerHTML = window.t('fragment.cart.large');
-                        cartPendingMsg.style.color = '#e07a5f';
-                    } else if (modelNeedsCleanup) {
+                    if (modelNeedsCleanup) {
                         cartPendingMsg.innerHTML = window.t('fragment.cart.detected');
                         cartPendingMsg.style.color = '#d4af37';
                     } else {
@@ -3460,7 +3444,7 @@
         }
 
         // ⚠️ 顯示零碎部件警告（DUET 風格）
-        function showFragmentWarning(bodyKey = 'fragment.warning.body') {
+        function showFragmentWarning() {
             if (document.getElementById('fragment-warning-toast')) return;
             const toast = document.createElement('div');
             toast.id = 'fragment-warning-toast';
@@ -3485,7 +3469,7 @@
                 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;">
                     <div style="flex-shrink:0; font-size:18px; color:#d4af37; line-height:1.5; margin-top:1px;">←</div>
                     <p style="color:#e8d5a0; font-size:13px; line-height:1.7; margin:0; letter-spacing:0.2px;">
-                        ${window.t(bodyKey)}
+                        ${window.t('fragment.warning.body')}
                     </p>
                 </div>
                 <div style="text-align:center;">
@@ -4620,12 +4604,6 @@
             // ⛔ 斜焊後圓環頂端被筆畫擋住：墜頭掛不上去
             if (ringMesh && weldTopBlocked()) {
                 showToast(window.t('studio.ring.weldBlocked'));
-                return;
-            }
-
-            // ⛔ 大塊分離部件：清理不會處理，這個組合做不出來
-            if (modelHasLargeFragment) {
-                showToast(window.t('studio.fragment.unmakeable'));
                 return;
             }
 
