@@ -22,3 +22,11 @@ font-preprocessor_old.js
 
 # Large binary assets - not suitable for GitHub Pages
 *.exr
+
+# HDR 備份（只保留 duet_studio.hdr、duet_studio5.hdr 上線；其他放本機備份，不進 repo / 不部署）
+assets/images/hdr/HDR backup/
+
+# 舊測試工具（暫不部署，之後確認是否刪除）
+font-test-tool.html
+font-test-tool grok.html
+test-fillet.html

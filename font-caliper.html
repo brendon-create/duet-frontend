@@ -69,6 +69,13 @@
         .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #000; }
         .badge.ok { background: var(--ok); } .badge.warn { background: var(--warn); } .badge.bad { background: var(--bad); }
         .note { color: var(--text-muted); font-size: 11px; line-height: 1.5; margin-top: 6px; }
+        /* 筆畫檢查（backend/tools/stroke_width 產生的 assets/data/stroke-check.json） */
+        #swSummary .ok { color: var(--ok); } #swSummary .bad { color: var(--bad); }
+        .sw-body { max-width: 680px; max-height: 132px; overflow: auto; margin-top: 6px; line-height: 1.8; }
+        .sw-body .sizes span { margin-right: 12px; }
+        .sw-body .ok { color: var(--ok); } .sw-body .bad { color: var(--bad); } .sw-body .warn { color: var(--warn); }
+        .sw-chip { background: transparent; color: var(--bad); border: 1px solid #444; border-radius: 12px; padding: 1px 9px; margin: 0 4px 4px 0; font-weight: 500; font-size: 12px; }
+        .sw-chip:hover { border-color: var(--bad); }
         #authMsg { display: none; padding: 60px; text-align: center; color: var(--text-muted); font-size: 15px; }
     </style>
     <script type="importmap">
@@ -125,6 +132,10 @@
                 <label>截面積 黃 &lt;<input id="areaOk" type="number" step="0.05"></label>
                 <button class="ghost" id="rulesReset">恢復預設</button>
             </div>
+        </details>
+        <details id="swBox" style="display:none;">
+            <summary id="swSummary">筆畫檢查</summary>
+            <div id="swBody" class="sw-body"></div>
         </details>
         <span id="status"></span>
     </div>
@@ -217,6 +228,65 @@ for (const sel of [$('char1'), $('char2')]) sel.innerHTML = CHARS.map(c => `<opt
 $('font1').value = 'Alex Brush'; $('char1').value = 'm';
 $('font2').value = 'Allura'; $('char2').value = 'A';
 $('size').value = '12';
+
+// ── 筆畫檢查結果（本機跑 backend/tools/stroke_width 產生，見該資料夾 README） ─────
+// 顯示字母 1 的字體在目前尺寸的最細值；點不足的字元 → 載入該字並跳到最細處、固定量測
+let swData = null;
+try { const r = await fetch('assets/data/stroke-check.json', { cache: 'no-cache' }); if (r.ok) swData = await r.json(); } catch {}
+function renderStrokeCheck() {
+    if (!swData) return;
+    $('swBox').style.display = '';
+    const font = $('font1').value, size = $('size').value, T = swData.threshold;
+    const f = swData.fonts[font];
+    if (!f) { $('swSummary').textContent = `筆畫檢查：${font} 沒有檢查資料（${swData.generated} 之後新增的字體？）`; $('swBody').innerHTML = ''; return; }
+    const s = f.sizes[size];
+    const nowR = (fontsJson.fonts.find(x => x.name === font) || {}).offset_r || 0;
+    $('swSummary').innerHTML = s
+        ? `筆畫檢查：${font} ${size}mm 最細 <span class="${s.fails.length ? 'bad' : 'ok'}">${s.min.toFixed(2)} mm</span>` +
+          (s.fails.length ? `，<span class="bad">${s.fails.length} 字不足 ${T} mm</span>` : `，全部 ≥ ${T} mm`)
+        : `筆畫檢查：${font} ${size}mm 沒有資料`;
+    const sizes = Object.entries(f.sizes).map(([z, v]) =>
+        `<span class="${v.fails.length ? 'bad' : 'ok'}">${z}mm ${v.min.toFixed(2)}${v.fails.length ? `（${v.fails.length} 字）` : ' ✓'}</span>`).join('');
+    const stale = Math.abs(nowR - f.R) > 1e-9
+        ? `<div class="warn">⚠ 此字體 R 已從 ${f.R} 改成 ${nowR}，下面是舊 R 的結果，需要重跑檢查</div>` : '';
+    const chips = s && s.fails.length
+        ? s.fails.map(([ch, w, x, y]) => `<button class="sw-chip" data-sw="${ch}|${x}|${y}" title="載入並跳到最細處">${ch} ${w.toFixed(2)}</button>`).join('')
+        : '';
+    $('swBody').innerHTML = `${stale}<div class="sizes">${sizes}</div>${chips}` +
+        `<div class="note">檢查日期 ${swData.generated}。已排除筆畫收尖末端、加粗接觸點、有替代路徑的頸縮。點字元會載入到「字母 1」並固定量測最細處。` +
+        (f.missing ? `字體缺字（未檢查）：${f.missing}` : '') + `</div>`;
+}
+$('font1').addEventListener('change', renderStrokeCheck);
+$('size').addEventListener('change', renderStrokeCheck);
+renderStrokeCheck();
+$('swBody').addEventListener('click', async e => {
+    const b = e.target.closest('[data-sw]');
+    if (!b) return;
+    const [ch, x, y] = b.dataset.sw.split('|');
+    $('char1').value = ch;
+    $('r1').value = '';
+    await load();
+    // load() 失敗時不會丟錯、畫面留著上一個字：確認真的載入了這個字才跳
+    if (L[1] && L[1].source === 'font' && L[1].data.char === ch && L[1].data.font === $('font1').value) focusThin(parseFloat(x), parseFloat(y));
+});
+// 檢查結果的位置 = 量測線中點；字形 $fn 與檢查時略有不同，取附近 0.15 mm 內最接近的實體點來量
+function focusThin(x, y) {
+    let best = null;
+    for (let dx = -0.15; dx <= 0.1501; dx += 0.03) for (let dy = -0.15; dy <= 0.1501; dy += 0.03) {
+        if (!pointInShape(L[1].shape, x + dx, y + dy)) continue;
+        const d = Math.hypot(dx, dy);
+        if (!best || d < best.d) best = { d, x: x + dx, y: y + dy };
+    }
+    if (!best) return;
+    const cal = caliperAt(L[1].shape, best.x, best.y);
+    if (!cal) return;
+    hover = { which: 1, x: best.x, y: best.y, cal, blocks: sectionBlocks(cal, L[2].shape, 48, rayFor(1)) };
+    pins.push({ ...hover }); renderPins();
+    const c = cv[1];
+    view[1].k *= 3; view[1].ox = c.width / 2 - best.x * view[1].k; view[1].oy = c.height / 2 + best.y * view[1].k;
+    redrawAll();
+    $('ro1').textContent = `最細處 (${best.x.toFixed(2)}, ${best.y.toFixed(2)}) mm　筆畫垂直寬度 ${cal.width.toFixed(3)} mm（已固定量測，雙擊畫面恢復全圖）`;
+}
 
 // ── 向後端取 OpenSCAD 實際輪廓 ───────────────────
 const outlineCache = new Map();

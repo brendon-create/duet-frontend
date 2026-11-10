@@ -1353,7 +1353,7 @@
         // 與 design-studio 的 js/3d-scene.js 相同做法：直接指定 equirect 貼圖為環境圖，
         // 不經過 PMREMGenerator（其 texImage3D 呼叫在 Safari 會觸發 WebGL 錯誤，
         // 導致渲染狀態損壞、吊墜消失只剩背景；design-studio 從未用過 PMREMGenerator 所以沒這問題）
-        const DEFAULT_HDR_FILE = 'studio_kontrast_04_4kc.hdr';
+        const DEFAULT_HDR_FILE = 'duet_studio.hdr';
 
         // 幫任意 Promise 加上時間上限，逾時就直接 resolve（不 reject），用於錄製前
         // 等待 HDR 就緒——網路真的卡住時也不會讓錄製流程無限期卡著
