@@ -5,7 +5,6 @@
  */
 
 import * as THREE from 'three';
-import { applySeamRounding } from './seam-rounding.js';
 
 // 材質定義
 export const MATERIALS = {
@@ -33,7 +32,6 @@ export const PLATING_COLORS = {
  * @returns {THREE.MeshStandardMaterial}
  */
 export function getMaterial(materialType, finish, plating = 'none') {
-    // 交接縫倒圓角著色（見 seam-rounding.js）：所有作品材質都帶著，clone 也保留
     const mat = MATERIALS[materialType];
     const roughness = mat.roughness[finish];
 
@@ -54,5 +52,5 @@ export function getMaterial(materialType, finish, plating = 'none') {
         materialConfig.envMap = window.envMap;
     }
 
-    return applySeamRounding(new THREE.MeshStandardMaterial(materialConfig));
+    return new THREE.MeshStandardMaterial(materialConfig);
 }
