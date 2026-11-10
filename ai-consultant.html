@@ -377,6 +377,7 @@
             color: #fff;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             text-align: left;
+            white-space: pre-wrap;
         }
 
         .typing-indicator {
@@ -423,11 +424,11 @@
             backdrop-filter: blur(15px) saturate(120%);
             -webkit-backdrop-filter: blur(15px) saturate(120%);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50px;
+            border-radius: 30px;
             padding: 8px;
             display: flex;
             gap: 10px;
-            align-items: center;
+            align-items: flex-end;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
         }
@@ -438,18 +439,22 @@
             box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
         }
 
-        .input-area input {
+        .input-area textarea {
             flex: 1;
             background: transparent;
             border: none;
             color: #fff;
-            padding: 12px 20px;
+            padding: 10px 20px;
             font-size: 16px;
+            line-height: 24px;
             font-family: inherit;
             outline: none;
+            resize: none;
+            max-height: 140px;
+            overflow-y: auto;
         }
 
-        .input-area input::placeholder {
+        .input-area textarea::placeholder {
             color: var(--text-lighter);
         }
 
@@ -716,8 +721,8 @@
         </div>
 
         <div class="input-area">
-            <input type="text" id="user-input" data-i18n-placeholder="ai.page.input.placeholder" placeholder="輸入您的回答..."
-                onkeypress="if(event.key==='Enter') sendMessage()" />
+            <textarea id="user-input" rows="1" data-i18n-placeholder="ai.page.input.placeholder" placeholder="輸入您的回答..."
+                oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
             <button class="send-btn" id="send-btn" onclick="sendMessage()">
                 <svg viewBox="0 0 24 24">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -964,6 +969,7 @@
 
             // Clear input
             input.value = '';
+            input.style.height = 'auto';
 
             // Update state
             isWaitingForResponse = true;
