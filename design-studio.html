@@ -5140,6 +5140,10 @@
                     appliedPromoCode = promoCode;
                     appliedPromoType = result.discountType || '';
                     promoDiscount = result.discount;
+                    // 一般結帳模式下使用嘖嘖兌換碼（例如延長期限的支持者）：同樣記下收件資訊，結帳表單才帶得到超商店到店
+                    if (result.recipientInfo) {
+                        window._zeczecRecipientInfo = result.recipientInfo;
+                    }
 
                     console.log('✅ 優惠碼有效!');
                     console.log('💰 折扣金額:', promoDiscount);
@@ -5192,6 +5196,10 @@
             appliedPromoType = '';
             pendingRedeemCheckout = null;
             promoDiscount = 0;
+            // 移除嘖嘖兌換碼後不應再帶入該支持者的出貨方式（兌換碼模式改用每件商品各自的欄位，不經過這裡）
+            if (window.CHECKOUT_MODE !== 'redemption') {
+                window._zeczecRecipientInfo = null;
+            }
 
             const promoInput = document.getElementById('promo-code-input');
             const promoMessage = document.getElementById('promo-message');
@@ -6762,8 +6770,8 @@
                         window.toggleRecipientFields(true);
                     }
                     updateEmailHint();
-                } else if (window.CHECKOUT_MODE === 'redemption' && window._zeczecRecipientInfo) {
-                    // 兌換碼結帳模式：依已驗證兌換碼帶出的嘖嘖募資資料自動帶入購買人資訊（欄位仍可手動修改）
+                } else if (window._zeczecRecipientInfo) {
+                    // 依已驗證嘖嘖兌換碼帶出的募資資料自動帶入購買人資訊（欄位仍可手動修改）；兌換碼模式與一般模式皆適用
                     const info = window._zeczecRecipientInfo;
                     document.getElementById('buyer-name').value = info.backerName || '';
                     document.getElementById('buyer-email').value = info.recipientEmail || '';
