@@ -424,7 +424,7 @@
             try {
                 localStorage.setItem('duet_svs_global', JSON.stringify(panelSettings()));
                 localStorage.setItem('duet_svs_rows', JSON.stringify(rows.map(r => ({
-                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, opening: r.opening, story: r.story, aiOriginal: r.aiOriginal, copyFor: r.copyFor, layout: r.layout, settings: r.settings
+                    letterA: r.letterA, letterB: r.letterB, combos: r.combos, hook: r.hook, photoLine: r.photoLine, hashtags: r.hashtags, story: r.story, aiOriginal: r.aiOriginal, copyFor: r.copyFor, layout: r.layout, settings: r.settings
                 }))));
             } catch (e) { /* 配額滿了就算了 */ }
         }
@@ -624,7 +624,7 @@
             if (currentGroup !== group) { if (currentGroup) scene.remove(currentGroup); currentGroup = group; if (group) scene.add(group); }
             if (group) {
                 group.rotation.z = -angleRad;
-                group.position.z = parseFloat(g('g-voffset'));
+                group.position.z = parseFloat(g('g-voffset')) - pxToMm(hookDropPx(), 100);
                 setGroupOpacity(group, opacity);
             }
             if (bgTexture) {
@@ -761,7 +761,7 @@
         function addRow(data) {
             const row = {
                 id: ++rowSeq, letterA: data?.letterA || '', letterB: data?.letterB || '',
-                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', opening: data?.opening || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, copyFor: data?.copyFor || null, layout: data?.layout || 'carousel',
+                combos: data?.combos || [], photo: null, hook: data?.hook || '', photoLine: data?.photoLine || '', hashtags: data?.hashtags || '', story: data?.story || '', aiOriginal: data?.aiOriginal || {}, copyFor: data?.copyFor || null, layout: data?.layout || 'carousel',
                 settings: { ...panelSettings(), ...(data?.settings || (rows.length ? rows[rows.length - 1].settings : {})) }
             };
             // 臨時上傳的背景只存在這次開啟的頁面裡；重新整理後網址失效，改回預設背景
@@ -771,7 +771,7 @@
             if (!rows.length || rows.every(r => selected.has(r))) selected.add(row);
             if (!row.letterA) [row.letterA, row.letterB] = randomLetters();
             // 舊存檔沒有 copyFor：當作是為目前的字母寫的
-            if (!row.copyFor) row.copyFor = Object.fromEntries(['story', 'hook', 'photoLine', 'opening'].map(k => [k, row.letterA + row.letterB]));
+            if (!row.copyFor) row.copyFor = Object.fromEntries(['story', 'hook', 'photoLine', 'hashtags'].map(k => [k, row.letterA + row.letterB]));
             // 照片不會存進瀏覽器，重新載入時一定沒有照片 → 存檔裡殘留的「客戶作品」鎖定要解除
             row.combos.forEach(c => { c.locked = false; });
             if (row.combos.length !== 3) {
@@ -813,14 +813,14 @@
                 </div>
                 <div class="card caption">
                     <h3>字幕</h3>
-                    <label class="f">故事背景（AI 參考用；附在文案檔最後，不進貼文本文）</label>
+                    <label class="f">故事（就是貼文本文）</label>
                     <div class="ai-row"><textarea class="story" placeholder="字母各代表誰、什麼關係、誰送誰、想說什麼。可按 ✨ 讓 AI 設想">${escapeHtml(row.story)}</textarea><button class="ai-btn ai-story" title="AI 產生">✨</button></div>
                     <label class="f">上方勾子句（留空用預設）</label>
                     <div class="ai-row"><input type="text" class="hook" placeholder="" value="${row.hook.replace(/"/g, '&quot;')}"><button class="ai-btn ai-hook" title="AI 產生">✨</button></div>
                     <label class="f">片尾補一句（選填；沒照片時取代全域片尾句）</label>
                     <div class="ai-row"><input type="text" class="pline" placeholder="例：送給女兒的成年禮" value="${row.photoLine.replace(/"/g, '&quot;')}"><button class="ai-btn ai-pline" title="AI 產生">✨</button></div>
-                    <label class="f">貼文開頭（只放進貼文草稿，選填）</label>
-                    <div class="ai-row"><textarea class="opening" placeholder="可按 ✨ 依標題延伸">${escapeHtml(row.opening)}</textarea><button class="ai-btn ai-opening" title="AI 產生">✨</button></div>
+                    <label class="f">Hashtag（5 個，依故事產生；放在貼文最後）</label>
+                    <div class="ai-row"><input type="text" class="tags" placeholder="#DUET 加上 4 個跟故事有關的" value="${row.hashtags.replace(/"/g, '&quot;')}"><button class="ai-btn ai-tags" title="AI 依故事產生">✨</button></div>
                     <div class="hint">自動帶入：大字「A × B」、片尾照片上的「A × B」、CTA。<br>文字都避開 IG 上下 UI 遮擋區。</div>
                 </div>
                 <div class="card actions">
@@ -940,14 +940,14 @@
 
             // 字幕
             // 填欄位（手打或 AI）時記下是為哪組字母寫的
-            [['hook', '.hook'], ['photoLine', '.pline'], ['opening', '.opening'], ['story', '.story']].forEach(([k, sel]) =>
+            [['hook', '.hook'], ['photoLine', '.pline'], ['hashtags', '.tags'], ['story', '.story']].forEach(([k, sel]) =>
                 el.querySelector(sel).addEventListener('input', e => { row[k] = e.target.value; row.copyFor[k] = row.letterA + row.letterB; saveState(); }));
             const ctxFor = (field) => () => {
-                const c = copyCtx(row), useResolved = field === 'photoLine' || field === 'opening';
+                const c = copyCtx(row), useResolved = field === 'photoLine' || field === 'hashtags';
                 return { letterA: row.letterA, letterB: row.letterB, hasPhoto: !!row.photo, theme: row.settings['g-theme'] || '',
                     story: c.story, photoLine: c.photoLine, hook: useResolved ? c.resolvedHook : c.hook, current: c[field] };
             };
-            [['story', '.ai-story', '.story'], ['photoLine', '.ai-pline', '.pline'], ['hook', '.ai-hook', '.hook'], ['opening', '.ai-opening', '.opening']].forEach(([field, btn, sel]) =>
+            [['story', '.ai-story', '.story'], ['photoLine', '.ai-pline', '.pline'], ['hook', '.ai-hook', '.hook'], ['hashtags', '.ai-tags', '.tags']].forEach(([field, btn, sel]) =>
                 el.querySelector(btn).addEventListener('click', e => aiSuggest(e.currentTarget, field, ctxFor(field), el.querySelector(sel))));
             // 動作
             const layoutSel = el.querySelector('.layout');
@@ -997,10 +997,47 @@
         // 影片中文字體：Noto Serif TC 思源宋體（Google Fonts，SIL OFL 可商用，台灣標點置中、字集完整）；載入失敗時退回 PingFang
         const VIDEO_SANS = "'Noto Serif TC', 'PingFang TC', -apple-system, serif";
 
+        // 勾子句、片尾句共用的大字（兩者一樣大）：一行放不下就斷成兩行，從最接近中間的標點或空白斷、不切開英文單字；兩行還放不下才一起縮字
+        const BIG = 120, BIG_LH = 1.25, BIG_MAXW = W - 100;
+        function bigLines(str) {
+            const ctx = cctx; ctx.save(); ctx.font = `700 ${BIG}px ${VIDEO_SANS}`;
+            let lines = [str];
+            if (ctx.measureText(str).width > BIG_MAXW) {
+                const ch = [...str], mid = ch.length / 2; let best = 1, bestScore = Infinity;
+                for (let i = 1; i < ch.length; i++) {
+                    let score = Math.abs(i - mid);
+                    if (/[，。、！？；：,.!?;:…\s]/.test(ch[i - 1])) score -= 3;            // 標點、空白之後斷最自然
+                    if (/[，。、！？；：,.!?;:…」』）)]/.test(ch[i])) score += 100;         // 標點不放行首
+                    if (/[A-Za-z0-9'&]/.test(ch[i - 1]) && /[A-Za-z0-9'&]/.test(ch[i])) score += 100; // 不切開英文單字
+                    if (score < bestScore) { bestScore = score; best = i; }
+                }
+                lines = [ch.slice(0, best).join('').trim(), ch.slice(best).join('').trim()].filter(Boolean);
+            }
+            let size = BIG;
+            while (size > 24 && lines.some(l => ctx.measureText(l).width > BIG_MAXW)) { size -= 2; ctx.font = `700 ${size}px ${VIDEO_SANS}`; }
+            ctx.restore();
+            return { lines, size };
+        }
+        // y：第一行中心；center 為 true 時 y 是整段的中心
+        function bigText(ctx, str, x, y, alpha, center = false) {
+            if (!str) return;
+            const { lines, size } = bigLines(str), lh = size * BIG_LH;
+            const y0 = center ? y - (lines.length - 1) * lh / 2 : y;
+            lines.forEach((l, i) => text(ctx, l, x, y0 + i * lh, { size, weight: 700, alpha }));
+        }
+        // 勾子句斷成兩行時，作品往下讓出一行的高度（只在生成影片時；三格版由 triCells 調整格子）
+        function hookDropPx() {
+            if (!generating || !activeRow || activeRow.layout === 'triptych') return 0;
+            const { lines, size } = bigLines(hookOf(activeRow));
+            return (lines.length - 1) * size * BIG_LH;
+        }
+        // 畫面像素 → 作品所在深度的公釐（兩台相機視角都是 30°；dist = 相機到作品的距離）
+        const pxToMm = (px, dist) => px * 2 * dist * Math.tan(Math.PI / 12) / H;
+        const hookOf = (row) => (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
+
         function drawHeader(ctx, row, alpha) {
-            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
             text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.155, { size: 170, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.235, { size: 70, weight: 700, alpha, maxW: W - 100 });
+            bigText(ctx, hookOf(row), W / 2, H * 0.24, alpha);
         }
         // CTA：網址、標語兩行置中；size 預設等於輪播版原本勾子句的字級
         function drawCTA(ctx, alpha, y = H * 0.785, size = 54) {
@@ -1115,23 +1152,25 @@
                 grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.78)');
                 cctx.save(); cctx.globalAlpha = a; cctx.fillStyle = grad; cctx.fillRect(0, H * 0.55, W, H * 0.45); cctx.restore();
                 const ta = clamp01((lt - 0.25) / 0.4);
-                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, H * (row.photoLine ? 0.645 : 0.68), { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
-                if (row.photoLine) text(cctx, row.photoLine, W / 2, H * 0.705, { size: 44, weight: 700, alpha: ta, maxW: W - 100 });
+                const pl = row.photoLine ? bigLines(row.photoLine) : null, up = pl ? (pl.lines.length - 1) * pl.size * BIG_LH : 0;
+                text(cctx, `${row.letterA} × ${row.letterB}`, W / 2, (pl ? H * 0.6 : H * 0.68) - up, { size: 96, weight: 600, family: SERIF, alpha: ta, spacing: '0.06em' });
+                if (pl) bigText(cctx, row.photoLine, W / 2, H * 0.68 - up, ta);
                 drawCTA(cctx, ta);
             } else {
                 drawHeader(cctx, row, 1);
                 // 沒照片時：這支有寫「片尾補一句」就用它，空白才用全域的片尾句
-                text(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, { size: 72, weight: 700, alpha: a, maxW: W - 100 });
+                bigText(cctx, row.photoLine || g('g-nophoto'), W / 2, H * 0.50, a, true);
                 drawCTA(cctx, 1);
             }
         }
         const endSecOf = (row) => row.photo ? Math.max(parseFloat(g('g-endsec')), row.photo.list.length * 1.5) : 2.4;
 
         // 三格版：上方標題 → 三格（作品置中，不放文字）→ CTA；三件同步轉一整圈
-        const TRI_TOP = H * 0.19, TRI_BOTTOM = H * 0.755;
-        function triCells() {
-            const ch = (TRI_BOTTOM - TRI_TOP) / 3;
-            return [0, 1, 2].map(i => ({ x: 0, y: Math.round(TRI_TOP + i * ch), w: W, h: Math.round(ch) }));
+        const TRI_HOOK_Y = H * 0.155, TRI_BOTTOM = H * 0.755;
+        function triCells(row) {
+            const { lines, size } = bigLines(hookOf(row));
+            const top = TRI_HOOK_Y + (lines.length - 1) * size * BIG_LH + size / 2 + 24, ch = (TRI_BOTTOM - top) / 3;
+            return [0, 1, 2].map(i => ({ x: 0, y: Math.round(top + i * ch), w: W, h: Math.round(ch) }));
         }
         function drawTriDividers(ctx, cells, alpha) {
             ctx.save(); ctx.globalAlpha = alpha * 0.3; ctx.strokeStyle = '#E6C98A'; ctx.lineWidth = 1.5;
@@ -1139,14 +1178,13 @@
             ctx.restore();
         }
         function drawTriHeader(ctx, row, alpha) {
-            const hook = (row.hook || g('g-hook')).replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB);
-            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.105, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
-            text(ctx, hook, W / 2, H * 0.165, { size: 62, weight: 700, alpha, maxW: W - 100 });
+            text(ctx, `${row.letterA} × ${row.letterB}`, W / 2, H * 0.085, { size: 130, weight: 600, family: SERIF, alpha, spacing: '0.06em' });
+            bigText(ctx, hookOf(row), W / 2, TRI_HOOK_Y, alpha);
         }
         function buildTriptychTimeline(row, groups) {
             const introSec = 0.8, spinSec = parseFloat(g('g-spin')), endSec = endSecOf(row), outSec = 0.35;
             const total = introSec + spinSec + endSec, totalFrames = Math.round(total * FPS);
-            const cells = triCells(), fit = fitCells(groups, cells[0].w / cells[0].h);
+            const cells = triCells(row), fit = fitCells(groups, cells[0].w / cells[0].h);
             function draw(i) {
                 const t = i / FPS;
                 cctx.clearRect(0, 0, W, H);
@@ -1189,7 +1227,7 @@
         }
         function renderOrbit(groups, theta, t, segSec, alpha) {
             renderGL(null, 0, 1, W, H); cctx.drawImage(glCanvas, 0, 0); // 背景（同時清掉 currentGroup）
-            const target = new THREE.Vector3(0, -ORBIT_R, 10 - parseFloat(g('g-voffset')));
+            const target = new THREE.Vector3(0, -ORBIT_R, 10 - parseFloat(g('g-voffset')) + pxToMm(hookDropPx(), ORBIT_DIST));
             orbitCam.position.set(0, target.y - ORBIT_DIST * Math.cos(ORBIT_PITCH), target.z + ORBIT_DIST * Math.sin(ORBIT_PITCH));
             orbitCam.lookAt(target); orbitCam.updateProjectionMatrix();
             const viewDir = target.clone().sub(orbitCam.position).normalize();
@@ -1350,7 +1388,7 @@
         // 記下 AI 填進某一欄的原稿；影片生成時連同你改過的定稿一起送回後端累積（日後當範例用）
         function recordAiOriginal(targetEl, field, text) {
             const row = rows.find(r => r.el.contains(targetEl));
-            if (row && ['story', 'hook', 'photoLine', 'opening'].includes(field)) { row.aiOriginal[field] = text; saveState(); }
+            if (row && ['story', 'hook', 'photoLine', 'hashtags'].includes(field)) { row.aiOriginal[field] = text; saveState(); }
         }
         // 每一欄各自的 AI 狀態掛在該欄位元素上（targetEl._ai），顯示在欄位正下方：
         // 各欄互不影響、點別處也不會中斷；產生完點欄位展開三個版本
@@ -1430,7 +1468,7 @@
             const key = row.letterA + row.letterB, fresh = k => (row.copyFor?.[k] === key ? row[k] : '');
             const hook = fresh('hook');
             return {
-                story: fresh('story'), hook, photoLine: fresh('photoLine'), opening: fresh('opening'),
+                story: fresh('story'), hook, photoLine: fresh('photoLine'), hashtags: fresh('hashtags'),
                 resolvedHook: (hook || row.settings['g-hook'] || '').replace(/\{A\}/g, row.letterA).replace(/\{B\}/g, row.letterB)
             };
         }
@@ -1458,7 +1496,7 @@
 
         // 「✨ 全部產生文案」：一次把所有影片送給 AI，看得到整批內容才能避免各支重複；
         // 預設只填空白欄位（已填的當作定稿讓 AI 呼應），勾「覆蓋」才全部重寫
-        const AI_FIELD_SEL = { story: '.story', hook: '.hook', photoLine: '.pline', opening: '.opening' };
+        const AI_FIELD_SEL = { story: '.story', hook: '.hook', photoLine: '.pline', hashtags: '.tags' };
         document.getElementById('ai-all').addEventListener('click', async () => {
             const btn = document.getElementById('ai-all'); // 按下就是要新內容：一律重寫所有欄位
             const list = rows.filter(r => r.letterA && r.letterB);
@@ -1471,7 +1509,7 @@
             const stopTick = waitTicker(showStatus, `✨ 正在為 ${list.length} 支影片產生故事與文案，通常 30 秒到 1 分半`);
             try {
                 const theme = (list.map(r => (r.settings['g-theme'] || '').trim()).find(Boolean)) || '';
-                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, theme, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, opening: r.opening })) }, token).finally(stopTick);
+                const res = await aiFetch('/api/admin/social-copy-batch', { overwrite: true, theme, videos: list.map(r => ({ letterA: r.letterA, letterB: r.letterB, hasPhoto: !!r.photo, story: r.story, hook: r.hook, photoLine: r.photoLine, hashtags: r.hashtags })) }, token).finally(stopTick);
                 if (res.status === 401) { showStatus(`後台登入已過期，請重新登入後再按一次。${loginLink}`); return; }
                 if (res.status === 429) { showStatus('按得太頻繁了，請等一分鐘再試。'); return; }
                 const data = await res.json();
@@ -1496,17 +1534,16 @@
             }
         });
 
-        // 貼文草稿：依使用者定稿格式，不放作品資訊（字體、材質）
+        // 貼文文案：故事 → DUET 介紹 → 5 個 hashtag（沒填 hashtag 時用全域標籤）
         function captionText(row) {
-            const lines = row.opening.trim() ? [row.opening.trim(), ''] : [];
+            const lines = row.story.trim() ? [row.story.trim(), ''] : [];
             lines.push(
-                '每一件 DUET ',
+                '每一件 DUET',
                 '都是兩個英文字母在立體空間裡的交集',
                 `正面看是 ${row.letterA}，轉 90 度變成 ${row.letterB}。`,
-                '同樣的字母，換一種字體，就是完全不同的性格。'
+                '同樣的字母，換一種字體，就是完全不同的性格。',
+                '', row.hashtags.trim() || g('g-tags')
             );
-            if (row.photoLine) lines.push('', row.photoLine);
-            lines.push('', '👉 ' + g('g-cta-url'), g('g-cta-line'), '', g('g-tags'));
             return lines.join('\n');
         }
         function download(blob, name) {
@@ -1554,9 +1591,7 @@
                         });
                         renderGL(null, 0, 1, W, H);
                         download(blob, name + '.mp4');
-                        // 故事背景附在貼文後面、用分隔線隔開（虛構設定，可當 Threads 等文字貼文的素材，不屬於貼文本文）
-                        const story = row.story.trim();
-                        captions.push({ name, text: captionText(row) + (story ? `\n\n\n──── 故事背景（虛構設定，不是貼文本文；可當 Threads 素材）────\n${story}` : '') });
+                        captions.push({ name, text: captionText(row) });
                         setRowStatus(row, `✅ ${name}.mp4（${tl.total.toFixed(1)}s，${(blob.size / 1048576).toFixed(1)} MB）`);
                     } catch (e) {
                         console.error(e); setRowStatus(row, '❌ ' + e.message);
