@@ -12,6 +12,7 @@ window.translations = {
         'nav.gallery': '作品展示',
         'nav.faq':     '常見問題',
         'nav.order':   '訂單查詢',
+        'nav.blog':    'Blog',
         'nav.start':   '免費開始設計',
         'nav.lang':    'EN',
 
@@ -98,8 +99,19 @@ window.translations = {
         'footer.exp1':       '品牌故事',
         'footer.exp2':       '設計流程',
         'footer.exp3':       '作品展示',
+        'footer.exp4':       'Blog',
         'footer.privacy':    '隱私權政策',
         'footer.terms':      '使用條款',
+
+        // ── Blog（/blog 頁面固定文字；文章內容本身只有中文）──
+        'blog.subtitle':   '關於字母、設計，與兩個人的故事',
+        'blog.readMore':   '閱讀全文',
+        'blog.back':       '← 所有文章',
+        'blog.empty':      '第一篇文章正在準備中，敬請期待。',
+        'blog.error':      '文章暫時無法載入，請稍後再試。',
+        'blog.notFound':   '找不到這篇文章，可能已經下架或網址有誤。',
+        'blog.backToBlog': '回到 Blog',
+        'blog.ctaTitle':   '把你們的故事，交織成一件作品',
 
         // ── Design Studio 控制面板 ──
         'studio.letter1':          '字母 1',
@@ -562,8 +574,19 @@ window.translations = {
         'footer.exp1':       'Our Story',
         'footer.exp2':       'Process',
         'footer.exp3':       'Gallery',
+        'footer.exp4':       'Blog',
         'footer.privacy':    'Privacy Policy',
         'footer.terms':      'Terms of Use',
+
+        // ── Blog ──
+        'blog.subtitle':   'On letters, design, and the story of two',
+        'blog.readMore':   'Read more',
+        'blog.back':       '← All posts',
+        'blog.empty':      'Our first story is on its way.',
+        'blog.error':      'Posts are temporarily unavailable. Please try again later.',
+        'blog.notFound':   'This post could not be found. It may have been removed, or the link may be incorrect.',
+        'blog.backToBlog': 'Back to Blog',
+        'blog.ctaTitle':   'Weave your story into one piece',
 
         // ── Design Studio ──
         'studio.letter1':          'Letter 1',
