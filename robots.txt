@@ -4,3 +4,4 @@ Disallow: /admin
 Disallow: /distributor
 
 Sitemap: https://duet.brendonchen.com/sitemap.xml
+Sitemap: https://duet.brendonchen.com/blog/sitemap.xml
