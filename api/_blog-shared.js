@@ -6,6 +6,10 @@
  * 檔名底線開頭，Vercel 不會把它當成獨立的 function。
  */
 
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
 const SITE = 'https://duet.brendonchen.com';
 const API = 'https://bcct-world.com/api/public';
 const PUBLICATION = 'duet';
@@ -22,6 +26,29 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+/* ===== 語言 =====
+ * 網址帶 ?lang=en 就是英文頁，否則中文。固定文字直接讀前端的 translations.js
+ * （翻譯只維護一份；vercel.json 的 includeFiles 確保打包時帶上這個檔）。 */
+const DICT = (() => {
+    const code = fs.readFileSync(path.join(process.cwd(), 'assets/js/translations.js'), 'utf8');
+    const sandbox = { window: {} };
+    vm.runInNewContext(code, sandbox);
+    return sandbox.window.translations;
+})();
+
+function T(lang, key) {
+    return DICT[lang]?.[key] ?? DICT.zh[key] ?? key;
+}
+
+function getLang(req) {
+    return req.query && req.query.lang === 'en' ? 'en' : 'zh';
+}
+
+// 站內路徑加上語言參數，例如 withLang('/blog', 'en') → '/blog?lang=en'
+function withLang(p, lang) {
+    return lang === 'en' ? p + '?lang=en' : p;
 }
 
 function localMedia(url) {
@@ -43,11 +70,16 @@ function postUrl(slug) {
     return '/blog/' + encodeURIComponent(slug);
 }
 
-// 台灣時間 YYYY.MM.DD
-function formatDate(iso) {
+// 台灣時間；中文 YYYY.MM.DD，英文 Jul 17, 2025
+function formatDate(iso, lang) {
     if (!iso) return '';
     const d = new Date(iso);
     if (isNaN(d)) return '';
+    if (lang === 'en') {
+        return new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Taipei', year: 'numeric', month: 'short', day: 'numeric',
+        }).format(d);
+    }
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
     }).format(d);
@@ -151,6 +183,8 @@ nav {
     padding: 6px 14px; border-radius: 20px; font-size: 12px; letter-spacing: 1px;
     cursor: pointer; font-family: inherit;
 }
+a.lang-toggle-btn { display: inline-block; text-decoration: none; line-height: 1.4; }
+.nav-links a.lang-toggle-btn::after { display: none; }
 #mobile-lang-btn { display: none; padding: 5px 12px; }
 .cta-button {
     display: inline-block; padding: 12px 28px; border: 1.5px solid #2C2A26;
@@ -218,6 +252,7 @@ main { min-height: 60vh; }
 .post-header { text-align: center; margin: 48px 0 40px; }
 .post-header h1 { font-size: 44px; line-height: 1.3; margin: 14px 0 18px; }
 .post-meta { font-size: 13px; color: #8B8680; letter-spacing: 0.5px; }
+.ai-note { font-size: 13px; font-style: italic; color: #8B8680; margin-top: 18px; }
 .post-cover { max-width: 1040px; margin: 0 auto 56px; padding: 0 24px; }
 .post-cover img { width: 100%; display: block; }
 .post-body { font-size: 17px; line-height: 1.95; color: #3A3732; letter-spacing: 0.2px; }
@@ -281,20 +316,34 @@ posthog.init('phc_ouDRrx6CU24mFEBcGk5HV4tgGPV8dySaJ7Y4Fot8Qm2k', { api_host: 'ht
 
 /**
  * 組整頁 HTML。
- * opts: { title, description, canonical, ogImage, ogType, jsonLd, robots, body }
- * title/description 傳原始字串（這裡負責跳脫）；body 是已組好的 HTML。
+ * opts: { lang, title, description, canonical, alternates, switchHref, ogImage, ogType, jsonLd, robots, body }
+ * - title/description 傳原始字串（這裡負責跳脫）；body 是已組好的 HTML
+ * - alternates: { zh, en } 兩個語言版的完整網址；有值才輸出 hreflang
+ * - switchHref: 語言切換鈕要去的另一個語言網址
  */
 function renderPage(opts) {
+    const lang = opts.lang === 'en' ? 'en' : 'zh';
+    const other = lang === 'en' ? 'zh' : 'en';
+    const t = key => escapeHtml(T(lang, key));
     const title = escapeHtml(opts.title);
     const desc = escapeHtml(opts.description || '');
     const ogImage = escapeHtml(opts.ogImage || SITE + '/assets/images/og-cover.jpg');
     const canonical = opts.canonical ? escapeHtml(opts.canonical) : '';
+    const switchHref = escapeHtml(opts.switchHref || withLang('/blog', other));
+    const blogHref = withLang('/blog', lang);
+    const alt = opts.alternates;
+    const hreflang = alt
+        ? `<link rel="alternate" hreflang="zh-TW" href="${escapeHtml(alt.zh)}">
+<link rel="alternate" hreflang="en" href="${escapeHtml(alt.en)}">
+<link rel="alternate" hreflang="x-default" href="${escapeHtml(alt.zh)}">`
+        : '';
     const jsonLd = opts.jsonLd
         ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd).replace(/</g, '\\u003c')}</script>`
         : '';
+    const langBtn = (id) => `<a class="lang-toggle-btn"${id ? ` id="${id}"` : ''} href="${switchHref}" data-set-lang="${other}">${t('nav.lang')}</a>`;
 
     return `<!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="${lang === 'en' ? 'en' : 'zh-TW'}">
 <head>
 <script src="/assets/js/meta-pixel.js"></script>
 <meta charset="UTF-8">
@@ -303,13 +352,14 @@ function renderPage(opts) {
 <link rel="icon" type="image/png" href="/assets/images/logo/favicon.png">
 ${desc ? `<meta name="description" content="${desc}">` : ''}
 ${canonical ? `<link rel="canonical" href="${canonical}">` : ''}
+${hreflang}
 ${opts.robots ? `<meta name="robots" content="${opts.robots}">` : ''}
 <meta property="og:type" content="${opts.ogType || 'website'}">
 <meta property="og:title" content="${title}">
 ${desc ? `<meta property="og:description" content="${desc}">` : ''}
 <meta property="og:image" content="${ogImage}">
 ${canonical ? `<meta property="og:url" content="${canonical}">` : ''}
-<meta property="og:locale" content="zh_TW">
+<meta property="og:locale" content="${lang === 'en' ? 'en_US' : 'zh_TW'}">
 <meta property="og:site_name" content="DUET by BCAG">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
@@ -317,7 +367,6 @@ ${desc ? `<meta name="twitter:description" content="${desc}">` : ''}
 <meta name="twitter:image" content="${ogImage}">
 ${jsonLd}
 <script src="/assets/js/config.js"></script>
-<script src="/assets/js/translations.js"></script>
 <script>${POSTHOG}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,19 +380,19 @@ ${jsonLd}
         <div class="logo">DUET</div>
         <div class="logo-subtitle">by BCAG</div>
     </a>
-    <button class="lang-toggle-btn" id="mobile-lang-btn" onclick="window.toggleLanguage()">EN</button>
+    ${langBtn('mobile-lang-btn')}
     <div class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('active');this.classList.toggle('active');">
         <span></span><span></span><span></span>
     </div>
     <ul class="nav-links" id="navLinks">
-        <li><a href="/#story" data-i18n="nav.story">品牌故事</a></li>
-        <li><a href="/#process" data-i18n="nav.process">設計流程</a></li>
-        <li><a href="/#gallery" data-i18n="nav.gallery">作品展示</a></li>
-        <li><a href="/#faq" data-i18n="nav.faq">常見問題</a></li>
-        <li><a href="/blog" data-i18n="nav.blog" aria-current="page">Blog</a></li>
-        <li><a href="/order-tracker.html" data-i18n="nav.order">訂單查詢</a></li>
-        <li><button class="lang-toggle-btn" onclick="window.toggleLanguage()">EN</button></li>
-        <li><button class="cta-button" data-i18n="nav.start">免費開始設計</button></li>
+        <li><a href="/#story">${t('nav.story')}</a></li>
+        <li><a href="/#process">${t('nav.process')}</a></li>
+        <li><a href="/#gallery">${t('nav.gallery')}</a></li>
+        <li><a href="/#faq">${t('nav.faq')}</a></li>
+        <li><a href="${blogHref}" aria-current="page">${t('nav.blog')}</a></li>
+        <li><a href="/order-tracker.html">${t('nav.order')}</a></li>
+        <li>${langBtn('')}</li>
+        <li><button class="cta-button">${t('nav.start')}</button></li>
     </ul>
 </nav>
 
@@ -356,27 +405,27 @@ ${opts.body}
         <div class="footer-brand">
             <h3>DUET</h3>
             <div class="subtitle">BY BCAG</div>
-            <p data-i18n="footer.brand.body">為你的故事，鑄造永恆的交織。以數位精密工藝與傳統手作技藝，創造獨一無二的專屬珠寶。</p>
+            <p>${t('footer.brand.body')}</p>
         </div>
         <div class="footer-section">
-            <h4 data-i18n="footer.services">服務</h4>
+            <h4>${t('footer.services')}</h4>
             <ul>
-                <li><a href="/design-studio" class="start-design-link" data-i18n="footer.svc1">開始設計</a></li>
-                <li><a href="/order-tracker.html" data-i18n="footer.svc2">訂單查詢</a></li>
-                <li><a href="#" data-i18n="footer.svc3">保固服務</a></li>
+                <li><a href="/design-studio" class="start-design-link">${t('footer.svc1')}</a></li>
+                <li><a href="/order-tracker.html">${t('footer.svc2')}</a></li>
+                <li><a href="#">${t('footer.svc3')}</a></li>
             </ul>
         </div>
         <div class="footer-section">
-            <h4 data-i18n="footer.explore">探索</h4>
+            <h4>${t('footer.explore')}</h4>
             <ul>
-                <li><a href="/#story" data-i18n="footer.exp1">品牌故事</a></li>
-                <li><a href="/#process" data-i18n="footer.exp2">設計流程</a></li>
-                <li><a href="/#gallery" data-i18n="footer.exp3">作品展示</a></li>
-                <li><a href="/blog" data-i18n="footer.exp4">Blog</a></li>
+                <li><a href="/#story">${t('footer.exp1')}</a></li>
+                <li><a href="/#process">${t('footer.exp2')}</a></li>
+                <li><a href="/#gallery">${t('footer.exp3')}</a></li>
+                <li><a href="${blogHref}">${t('footer.exp4')}</a></li>
             </ul>
         </div>
         <div class="footer-section">
-            <h4 data-i18n="footer.contact">聯絡</h4>
+            <h4>${t('footer.contact')}</h4>
             <ul>
                 <li><a href="mailto:service@brendonchen.com">service@brendonchen.com</a></li>
                 <li><a href="https://www.instagram.com/duet_by_bcag/" target="_blank" rel="noopener">Instagram</a></li>
@@ -389,14 +438,20 @@ ${opts.body}
     <div class="footer-bottom">
         <p>© 2026 DUET by BCAG. All rights reserved.</p>
         <div class="footer-socials">
-            <a href="/privacy.html" data-i18n="footer.privacy">隱私權政策</a>
-            <a href="/terms.html" data-i18n="footer.terms">使用條款</a>
+            <a href="/privacy.html">${t('footer.privacy')}</a>
+            <a href="/terms.html">${t('footer.terms')}</a>
         </div>
     </div>
 </footer>
 
 <script>
 (function () {
+    // 語言跟著網址走；同步記到 localStorage，回首頁時語言一致
+    function saveLang(l) { try { localStorage.setItem('duet_language', l); } catch (e) {} }
+    saveLang('${lang}');
+    document.querySelectorAll('[data-set-lang]').forEach(function (el) {
+        el.addEventListener('click', function () { saveLang(el.getAttribute('data-set-lang')); });
+    });
     // 開始設計：跟首頁一樣帶 env 參數，staging 網址才會接到 staging 後端
     function goDesign(e) {
         e.preventDefault();
@@ -406,7 +461,6 @@ ${opts.body}
     document.querySelectorAll('.cta-button, .start-design-link').forEach(function (el) {
         el.addEventListener('click', goDesign);
     });
-    if (typeof window.initLanguage === 'function') window.initLanguage();
 })();
 </script>
 </body>
@@ -421,5 +475,6 @@ function setCache(res, kind) {
 
 module.exports = {
     SITE, API, PUBLICATION,
+    T, getLang, withLang,
     escapeHtml, localMedia, fetchJson, postUrl, formatDate, sanitizeBody, renderPage, setCache,
 };

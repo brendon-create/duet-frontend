@@ -112,6 +112,8 @@ window.translations = {
         'blog.notFound':   '找不到這篇文章，可能已經下架或網址有誤。',
         'blog.backToBlog': '回到 Blog',
         'blog.ctaTitle':   '把你們的故事，交織成一件作品',
+        'blog.metaDesc':   'DUET 的設計故事、字母靈感與客製墜飾背後的工藝。',
+        'blog.aiNote':     '本文原以中文撰寫，英文版由 AI 翻譯。',
 
         // ── Design Studio 控制面板 ──
         'studio.letter1':          '字母 1',
@@ -587,6 +589,8 @@ window.translations = {
         'blog.notFound':   'This post could not be found. It may have been removed, or the link may be incorrect.',
         'blog.backToBlog': 'Back to Blog',
         'blog.ctaTitle':   'Weave your story into one piece',
+        'blog.metaDesc':   'Design stories, letter inspiration, and the craft behind DUET custom pendants.',
+        'blog.aiNote':     'Originally written in Chinese. This English version was translated by AI.',
 
         // ── Design Studio ──
         'studio.letter1':          'Letter 1',
@@ -997,6 +1001,11 @@ window.applyLanguage = function(lang) {
     // 更新所有語言切換按鈕文字
     document.querySelectorAll('.lang-toggle-btn').forEach(btn => {
         btn.textContent = t['nav.lang'] || (lang === 'zh' ? 'EN' : '中文');
+    });
+
+    // Blog 是伺服器依網址語言組頁，連結要帶上語言
+    document.querySelectorAll('a[data-blog-link]').forEach(a => {
+        a.href = lang === 'en' ? '/blog?lang=en' : '/blog';
     });
 };
 
