@@ -1,10 +1,34 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/blog/*.js": {
+      "includeFiles": "assets/js/translations.js"
+    },
+    "api/blog-sitemap.js": {
+      "includeFiles": "assets/js/translations.js"
+    }
+  },
   "rewrites": [
     {
       "source": "/d/:code",
       "destination": "/api/d/:code"
+    },
+    {
+      "source": "/media/blog/:path*",
+      "destination": "https://bcct-world.com/media/duet/:path*"
+    },
+    {
+      "source": "/blog/sitemap.xml",
+      "destination": "/api/blog-sitemap"
+    },
+    {
+      "source": "/blog",
+      "destination": "/api/blog"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/blog/:slug"
     },
     {
       "source": "/ack/:token",
