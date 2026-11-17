@@ -37,8 +37,8 @@ module.exports = async function handler(req, res) {
             if (en.status !== 404) return messagePage(res, lang, 503, 'blog.error');
             const zh = await fetchPost(slug, 'zh');
             if (zh.data && zh.data.post) {
-                // 英文版還沒翻好，先看中文
-                setCache(res, 'ok');
+                // 英文版還沒翻好，先看中文；不快取這個轉址，翻好後要立刻生效
+                setCache(res, 'error');
                 res.setHeader('Location', postUrl(slug));
                 res.status(302).end();
                 return;
