@@ -1801,3 +1801,15 @@
     50%      { box-shadow: 0 0 0 3px rgba(212,175,55,0.35), 0 0 14px rgba(212,175,55,0.55); background: rgba(212,175,55,0.3); }
 }
 .bail-turn-confirm-btn.blink { animation: bailTurnBlink 2s ease-in-out infinite; }
+
+/* 結帳表單（收件資料）字級：全站 label 12px 是給左側調整面板用的，結帳表單另外放大；
+   輸入框 16px 避免 iPhone Safari 點擊時自動放大畫面 */
+#user-info-modal label {
+    font-size: 15px;
+}
+
+#user-info-modal input:not([type="radio"]):not([type="checkbox"]),
+#user-info-modal select,
+#user-info-modal textarea {
+    font-size: 16px;
+}
