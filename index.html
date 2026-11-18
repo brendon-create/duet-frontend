@@ -1211,6 +1211,14 @@
     <!-- ===== 嘖嘖募資橫幅（結帳模式為 closed/redemption 時顯示，open 時自動隱藏） ===== -->
     <div id="zeczec-banner-container" style="display:none; background:#2C2A26; color:#F1E4C3; text-align:center; padding:18px 20px; font-size:18px; font-weight:600; letter-spacing:0.5px;"></div>
 
+    <!-- ===== 聖誕節檔期最後下單日（2026/12/2 台灣時間 23:59 後自動隱藏） ===== -->
+    <div id="xmas-banner" data-i18n="xmas.banner" style="display:none; background:#F1E4C3; color:#2C2A26; text-align:center; padding:14px 16px; font-size:18px; letter-spacing:0.5px; line-height:1.5;">聖誕節送禮 ｜ 台灣本島 12/2（三）前完成訂購，12/23 前送達</div>
+    <script>
+        if (Date.now() < Date.parse('2026-12-03T00:00:00+08:00')) {
+            document.getElementById('xmas-banner').style.display = 'block';
+        }
+    </script>
+
     <!-- ===== Hero 區塊 ===== -->
     <section class="hero">
         <div class="hero-content">
@@ -1448,7 +1456,7 @@
         <div class="faq-grid">
             <div class="faq-item">
                 <div class="faq-question" data-i18n="faq.q1">製作需要多久時間?</div>
-                <div class="faq-answer" data-i18n="faq.a1">付款完成後，製作時間約 7-14 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。</div>
+                <div class="faq-answer" data-i18n="faq.a1">付款完成後，製作時間約 7-14 個工作天（不含物流）。我們會在製作完成後立即寄出，並提供物流追蹤碼。如需修改設計，製作時間以確認修改日起算。</div>
             </div>
             <div class="faq-item">
                 <div class="faq-question" data-i18n="faq.q2">可以選擇什麼材質?</div>
