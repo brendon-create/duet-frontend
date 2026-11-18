@@ -6553,6 +6553,45 @@
                                     </select>
                                 </div>
 
+                                <!-- 寄送方式（台灣）／海外運費說明 -->
+                                <div id="shipping-method-box" style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.8);">${window.t('order.form.shippingMethod')} *</label>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="radio" name="shipping-method" value="post" checked style="width: 16px; height: 16px;"><span style="color: rgba(255,255,255,0.8);">${window.t('ship.post')}</span></label>
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="radio" name="shipping-method" value="cvs" style="width: 16px; height: 16px;"><span style="color: rgba(255,255,255,0.8);">${window.t('ship.cvs')}</span></label>
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="radio" name="shipping-method" value="tcat" style="width: 16px; height: 16px;"><span style="color: rgba(255,255,255,0.8);">${window.t('ship.tcat')}</span></label>
+                                    </div>
+                                </div>
+                                <div id="shipping-overseas-note" style="display: none; margin-bottom: 15px; font-size: 13px; color: #d4af37;">${window.t('ship.overseas')}</div>
+
+                                <!-- 超商店到店：選超商 → 官方門市查詢連結 → 填門市（7-11 自動補另一欄） -->
+                                <div id="cvs-fields" style="display: none; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
+                                        <label style="color: rgba(255,255,255,0.8);">${window.t('ship.cvs.chain')} *</label>
+                                        <select id="cvs-chain" style="padding: 8px 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(30,30,40,0.9); color: white; border-radius: 5px; font-family: inherit;">
+                                            <option value="7-11">7-11</option>
+                                            <option value="全家">全家 FamilyMart</option>
+                                            <option value="萊爾富">萊爾富 Hi-Life</option>
+                                        </select>
+                                        <a id="cvs-lookup-link" href="https://emap.pcsc.com.tw/" target="_blank" rel="noopener" style="color: #d4af37; font-size: 13px;">${window.t('ship.cvs.lookup')}</a>
+                                    </div>
+                                    <div id="cvs-hint" style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 10px;">${window.t('ship.cvs.hint711')}</div>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        <div style="flex: 2; min-width: 160px;">
+                                            <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('ship.cvs.storeName')} *</label>
+                                            <input type="text" id="cvs-store-name" autocomplete="off" maxlength="20"
+                                                   style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
+                                        </div>
+                                        <div style="flex: 1; min-width: 120px;">
+                                            <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('ship.cvs.storeCode')} *</label>
+                                            <input type="text" id="cvs-store-code" autocomplete="off" maxlength="10"
+                                                   style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
+                                        </div>
+                                    </div>
+                                    <div id="cvs-lookup-result" style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.7);"></div>
+                                </div>
+
+                                <div id="address-fields">
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.postalCode')}</label>
                                     <input type="text" id="postal-code" autocomplete="off"
@@ -6568,6 +6607,7 @@
                                               style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2);
                                                      background: rgba(255,255,255,0.1); color: white; border-radius: 5px;
                                                      resize: vertical; font-family: inherit;"></textarea>
+                                </div>
                                 </div>
 
                                 <div id="zeczec-shipping-method-box" style="display:none; margin-bottom: 15px; padding: 10px; background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3); border-radius: 8px; font-size: 13px; color: #d4af37;">
@@ -6640,9 +6680,13 @@
                                     <span>-NT$ ${promoDiscount.toLocaleString()}</span>
                                 </div>
                                 ` : ''}
+                                <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 5px;">
+                                    <span>${window.t('order.form.shipping')}</span>
+                                    <span id="summary-shipping">${window.t('order.form.shippingFree')}</span>
+                                </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #d4af37; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
                                     <span>${window.t('order.form.total')}</span>
-                                    <span>NT$ ${calculateCartTotal().toLocaleString()}</span>
+                                    <span id="summary-total">NT$ ${calculateCartTotal().toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -6729,6 +6773,95 @@
                 // 初始化（套用預設國家 TW 的格式）
                 window.updatePostalHint(document.getElementById('shipping-country').value || 'TW');
 
+                // ── 寄送方式與運費（金額以後端計算為準，這裡只是顯示）──
+                // 折抵到 0 元的訂單免運；海外 500；台灣黑貓 130；郵局、超商店到店免運。
+                // 嘖嘖兌換碼帶入的訂單沿用募資資料的出貨方式，不顯示選擇。
+                const _CVS_LOOKUP_LINKS = {
+                    '7-11': 'https://emap.pcsc.com.tw/',
+                    '全家': 'https://www.family.com.tw/Marketing/zh/Map',
+                    '萊爾富': 'https://www.hilife.com.tw/filter',
+                };
+                const _hasZeczecShipping = !!window._zeczecRecipientInfo;
+                const _getShippingMethod = () => {
+                    if (document.getElementById('shipping-country').value !== 'TW') return 'intl';
+                    if (_hasZeczecShipping) return window._zeczecRecipientInfo.shippingMethod || 'post';
+                    return document.querySelector('input[name="shipping-method"]:checked').value;
+                };
+                const refreshShipping = () => {
+                    const isTW = document.getElementById('shipping-country').value === 'TW';
+                    const method = _getShippingMethod();
+                    const showChoice = isTW && !_hasZeczecShipping;
+                    const isCvs = showChoice && method === 'cvs';
+                    document.getElementById('shipping-method-box').style.display = showChoice ? 'block' : 'none';
+                    document.getElementById('shipping-overseas-note').style.display = isTW ? 'none' : 'block';
+                    document.getElementById('cvs-fields').style.display = isCvs ? 'block' : 'none';
+                    document.getElementById('address-fields').style.display = isCvs ? 'none' : 'block';
+                    document.getElementById('shipping-address').required = !isCvs;
+                    document.getElementById('cvs-store-name').required = isCvs;
+                    document.getElementById('cvs-store-code').required = isCvs;
+
+                    const goodsTotal = calculateCartTotal();
+                    const fee = goodsTotal <= 0 ? 0 : (!isTW ? 500 : (showChoice && method === 'tcat' ? 130 : 0));
+                    document.getElementById('summary-shipping').textContent = fee ? `NT$ ${fee.toLocaleString()}` : window.t('order.form.shippingFree');
+                    document.getElementById('summary-total').textContent = `NT$ ${(Math.max(0, goodsTotal) + fee).toLocaleString()}`;
+                };
+                document.getElementById('shipping-country').addEventListener('change', refreshShipping);
+                document.querySelectorAll('input[name="shipping-method"]').forEach(r => r.addEventListener('change', refreshShipping));
+
+                // 超商門市：切換超商時換官方查詢連結；7-11 填店號或店名其中一個，自動查出另一個讓顧客核對
+                const cvsChainSel = document.getElementById('cvs-chain');
+                const cvsNameInput = document.getElementById('cvs-store-name');
+                const cvsCodeInput = document.getElementById('cvs-store-code');
+                const cvsResult = document.getElementById('cvs-lookup-result');
+                const applyCvsChain = () => {
+                    const chain = cvsChainSel.value;
+                    document.getElementById('cvs-lookup-link').href = _CVS_LOOKUP_LINKS[chain];
+                    document.getElementById('cvs-hint').textContent = window.t(chain === '7-11' ? 'ship.cvs.hint711' : 'ship.cvs.hintOther');
+                    cvsResult.innerHTML = '';
+                };
+                cvsChainSel.addEventListener('change', () => {
+                    cvsNameInput.value = '';
+                    cvsCodeInput.value = '';
+                    applyCvsChain();
+                });
+                const showPickedStore = (s) => {
+                    cvsNameInput.value = s.name;
+                    cvsCodeInput.value = s.code;
+                    cvsResult.innerHTML = '';
+                    const ok = document.createElement('div');
+                    ok.style.color = '#4ade80';
+                    ok.textContent = `✓ 7-11 ${s.name}（${s.code}）${s.address}`;
+                    cvsResult.appendChild(ok);
+                };
+                const lookup711 = async (q) => {
+                    if (cvsChainSel.value !== '7-11' || !q) return;
+                    cvsResult.textContent = window.t('ship.cvs.searching');
+                    try {
+                        const res = await fetch(`${window.BACKEND_URL}/api/cvs/711-lookup?q=${encodeURIComponent(q)}`);
+                        const data = await res.json();
+                        const stores = (data && data.stores) || [];
+                        if (!stores.length) { cvsResult.textContent = window.t('ship.cvs.notFound'); return; }
+                        if (stores.length === 1) { showPickedStore(stores[0]); return; }
+                        cvsResult.innerHTML = '';
+                        const title = document.createElement('div');
+                        title.style.marginBottom = '6px';
+                        title.textContent = window.t('ship.cvs.pick');
+                        cvsResult.appendChild(title);
+                        stores.forEach(s => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.style.cssText = 'display:block;width:100%;text-align:left;margin-bottom:4px;padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:white;cursor:pointer;font-size:13px;';
+                            btn.textContent = `${s.name}（${s.code}）${s.address}`;
+                            btn.addEventListener('click', () => showPickedStore(s));
+                            cvsResult.appendChild(btn);
+                        });
+                    } catch (err) {
+                        cvsResult.textContent = window.t('ship.cvs.notFound');
+                    }
+                };
+                cvsCodeInput.addEventListener('change', () => lookup711(cvsCodeInput.value.trim()));
+                cvsNameInput.addEventListener('change', () => lookup711(cvsNameInput.value.trim().replace(/門市$/, '')));
+
                 // 發票類型切換處理
                 window.toggleInvoiceFields = function (isCompany) {
                     const fields = document.getElementById('company-invoice-fields');
@@ -6769,6 +6902,13 @@
                         document.getElementById('same-as-buyer').checked = true;
                         window.toggleRecipientFields(true);
                     }
+                    const cachedMethodRadio = document.querySelector(`input[name="shipping-method"][value="${cached.shippingMethod}"]`);
+                    if (cachedMethodRadio) cachedMethodRadio.checked = true;
+                    if (cached.shippingMethod === 'cvs') {
+                        cvsChainSel.value = cached.cvsChain || '7-11';
+                        cvsNameInput.value = cached.cvsStoreName || '';
+                        cvsCodeInput.value = cached.cvsStoreCode || '';
+                    }
                     updateEmailHint();
                 } else if (window._zeczecRecipientInfo) {
                     // 依已驗證嘖嘖兌換碼帶出的募資資料自動帶入購買人資訊（欄位仍可手動修改）；兌換碼模式與一般模式皆適用
@@ -6807,6 +6947,9 @@
                     }
                 }
 
+                applyCvsChain();
+                refreshShipping();
+
                 // 處理表單提交
                 document.getElementById('user-info-form').addEventListener('submit', (e) => {
                     e.preventDefault();
@@ -6841,6 +6984,14 @@
                         email: document.getElementById('buyer-email').value.trim(),
                         phone: document.getElementById('recipient-phone').value.trim(),
                         address: document.getElementById('shipping-address').value.trim(),
+
+                        // 寄送方式（post / cvs / tcat / intl）；運費由後端依此計算
+                        shippingMethod: _getShippingMethod(),
+                        ...(_getShippingMethod() === 'cvs' && !_hasZeczecShipping ? {
+                            cvsChain: cvsChainSel.value,
+                            cvsStoreName: cvsNameInput.value.trim(),
+                            cvsStoreCode: cvsCodeInput.value.trim()
+                        } : {}),
 
                         // 兌換碼結帳模式：出貨方式（依嘖嘖募資資料帶入，僅此流程使用，一般結帳不受影響）
                         ...(window._zeczecRecipientInfo ? {
