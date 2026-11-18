@@ -6481,7 +6481,7 @@
                         <form id="user-info-form" autocomplete="off">
                             <!-- 購買人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.buyerInfo')}</h3>
+                                <h3 style="color: #d4af37; font-size: 18px; margin-bottom: 15px;">${window.t('order.form.buyerInfo')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.buyerName')} *</label>
@@ -6508,14 +6508,14 @@
 
                             <!-- 收件人資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.recipientInfo')}</h3>
+                                <h3 style="color: #d4af37; font-size: 18px; margin-bottom: 15px;">${window.t('order.form.recipientInfo')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                                         <input type="checkbox" id="same-as-buyer"
                                                style="width: 16px; height: 16px; cursor: pointer;"
                                                onchange="toggleRecipientFields(this.checked)">
-                                        <label for="same-as-buyer" style="cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.7);">
+                                        <label for="same-as-buyer" style="cursor: pointer; font-size: 15px; color: rgba(255,255,255,0.7);">
                                             ${window.t('order.form.sameAsBuyer')}
                                         </label>
                                     </div>
@@ -6537,7 +6537,7 @@
 
                             <!-- 收貨地址 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.shippingAddr')}</h3>
+                                <h3 style="color: #d4af37; font-size: 18px; margin-bottom: 15px;">${window.t('order.form.shippingAddr')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('order.form.country')} *</label>
@@ -6562,20 +6562,20 @@
                                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="radio" name="shipping-method" value="tcat" style="width: 16px; height: 16px;"><span style="color: rgba(255,255,255,0.8);">${window.t('ship.tcat')}</span></label>
                                     </div>
                                 </div>
-                                <div id="shipping-overseas-note" style="display: none; margin-bottom: 15px; font-size: 13px; color: #d4af37;">${window.t('ship.overseas')}</div>
+                                <div id="shipping-overseas-note" style="display: none; margin-bottom: 15px; font-size: 14px; color: #d4af37;">${window.t('ship.overseas')}</div>
 
                                 <!-- 超商店到店：選超商 → 官方門市查詢連結 → 填門市（7-11 自動補另一欄） -->
                                 <div id="cvs-fields" style="display: none; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;">
                                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
-                                        <label style="color: rgba(255,255,255,0.8);">${window.t('ship.cvs.chain')} *</label>
-                                        <select id="cvs-chain" style="padding: 8px 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(30,30,40,0.9); color: white; border-radius: 5px; font-family: inherit;">
+                                        <label style="color: rgba(255,255,255,0.8); margin-bottom: 0;">${window.t('ship.cvs.chain')} *</label>
+                                        <select id="cvs-chain" style="width: auto; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(30,30,40,0.9); color: white; border-radius: 5px; font-family: inherit;">
                                             <option value="7-11">7-11</option>
                                             <option value="全家">全家 FamilyMart</option>
                                             <option value="萊爾富">萊爾富 Hi-Life</option>
                                         </select>
-                                        <a id="cvs-lookup-link" href="https://emap.pcsc.com.tw/" target="_blank" rel="noopener" style="color: #d4af37; font-size: 13px;">${window.t('ship.cvs.lookup')}</a>
+                                        <a id="cvs-lookup-link" href="https://emap.pcsc.com.tw/" target="_blank" rel="noopener" style="color: #d4af37; font-size: 14px;">${window.t('ship.cvs.lookup')}</a>
                                     </div>
-                                    <div id="cvs-hint" style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 10px;">${window.t('ship.cvs.hint711')}</div>
+                                    <div id="cvs-hint" style="font-size: 14px; color: rgba(255,255,255,0.5); margin-bottom: 10px;">${window.t('ship.cvs.hint711')}</div>
                                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                                         <div style="flex: 2; min-width: 160px;">
                                             <label style="display: block; margin-bottom: 5px; color: rgba(255,255,255,0.8);">${window.t('ship.cvs.storeName')} *</label>
@@ -6588,7 +6588,7 @@
                                                    style="width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; border-radius: 5px;">
                                         </div>
                                     </div>
-                                    <div id="cvs-lookup-result" style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.7);"></div>
+                                    <div id="cvs-lookup-result" style="margin-top: 8px; font-size: 14px; color: rgba(255,255,255,0.7);"></div>
                                 </div>
 
                                 <div id="address-fields">
@@ -6618,7 +6618,7 @@
 
                             <!-- 發票資訊 -->
                             <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                <h3 style="color: #d4af37; font-size: 16px; margin-bottom: 15px;">${window.t('order.form.invoiceInfo')}</h3>
+                                <h3 style="color: #d4af37; font-size: 18px; margin-bottom: 15px;">${window.t('order.form.invoiceInfo')}</h3>
 
                                 <div style="margin-bottom: 15px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
